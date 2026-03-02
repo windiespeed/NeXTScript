@@ -16,21 +16,21 @@ export async function POST(_: Request, { params }: { params: Promise<{ id: strin
     return NextResponse.json({ error: "No Google access token. Please sign out and sign in again." }, { status: 401 });
   }
 
-  const lesson = store.getById(id);
+  const lesson = await store.getById(id);
   if (!lesson) {
     return NextResponse.json({ error: "Lesson not found." }, { status: 404 });
   }
 
   // Mark as generating (or regenerating if a bundle already existed)
   const inProgressStatus = lesson.status === "done" ? "regenerating" : "generating";
-  store.update(id, { status: inProgressStatus });
+  await store.update(id, { status: inProgressStatus });
 
   try {
     const { folderUrl } = await generateBundle(lesson, accessToken);
-    const updated = store.update(id, { status: "done", folderUrl });
+    const updated = await store.update(id, { status: "done", folderUrl });
     return NextResponse.json(updated);
   } catch (err: any) {
-    store.update(id, { status: "error", errorMessage: err.message });
+    await store.update(id, { status: "error", errorMessage: err.message });
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
