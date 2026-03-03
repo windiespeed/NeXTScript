@@ -7,7 +7,7 @@ import Nav from "@/components/Nav";
 const geist = Geist({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "NeXTPathways Curriculum Engine",
+  title: "NeXTScript",
   description: "Build and export lesson bundles to Google Drive.",
 };
 

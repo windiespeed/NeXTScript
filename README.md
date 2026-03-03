@@ -1,4 +1,4 @@
-# NeXTPathways Curriculum Engine
+# NeXTScript
 
 A Next.js web app that replaces the Google Apps Script curriculum builder. Create and edit lessons in the browser, then generate a full **Google Drive bundle** (Slides deck + Docs poster + Forms quiz) with one click.
 
