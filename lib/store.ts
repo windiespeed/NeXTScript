@@ -4,14 +4,14 @@
  */
 
 import { v4 as uuidv4 } from "uuid";
-import { db } from "@/lib/firebase";
+import { getDb } from "@/lib/firebase";
 import type { Lesson, LessonInput } from "@/types/lesson";
 
 const COLLECTION = "lessons";
 
 export const store = {
   async getAll(): Promise<Lesson[]> {
-    const snapshot = await db
+    const snapshot = await getDb()
       .collection(COLLECTION)
       .orderBy("createdAt", "desc")
       .get();
@@ -19,7 +19,7 @@ export const store = {
   },
 
   async getById(id: string): Promise<Lesson | undefined> {
-    const doc = await db.collection(COLLECTION).doc(id).get();
+    const doc = await getDb().collection(COLLECTION).doc(id).get();
     if (!doc.exists) return undefined;
     return doc.data() as Lesson;
   },
@@ -33,12 +33,12 @@ export const store = {
       createdAt: now,
       updatedAt: now,
     };
-    await db.collection(COLLECTION).doc(lesson.id).set(lesson);
+    await getDb().collection(COLLECTION).doc(lesson.id).set(lesson);
     return lesson;
   },
 
   async update(id: string, patch: Partial<Lesson>): Promise<Lesson | null> {
-    const ref = db.collection(COLLECTION).doc(id);
+    const ref = getDb().collection(COLLECTION).doc(id);
     const doc = await ref.get();
     if (!doc.exists) return null;
     const updated: Lesson = {
@@ -51,7 +51,7 @@ export const store = {
   },
 
   async delete(id: string): Promise<boolean> {
-    const ref = db.collection(COLLECTION).doc(id);
+    const ref = getDb().collection(COLLECTION).doc(id);
     const doc = await ref.get();
     if (!doc.exists) return false;
     await ref.delete();
