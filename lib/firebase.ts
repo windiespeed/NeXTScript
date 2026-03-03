@@ -14,7 +14,9 @@ function getFirebaseApp() {
       projectId: process.env.FIREBASE_PROJECT_ID,
       clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
       // .env.local stores the private key with literal \n — convert back to real newlines
-      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
+      privateKey: process.env.FIREBASE_PRIVATE_KEY
+        ?.replace(/^["']|["']$/g, "")   // strip surrounding quotes if accidentally included
+        ?.replace(/\\n/g, "\n"),
     }),
   });
 }

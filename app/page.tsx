@@ -12,7 +12,7 @@ export default function DashboardPage() {
   async function loadLessons() {
     const res = await fetch("/api/lessons");
     const data = await res.json();
-    setLessons(data);
+    setLessons(Array.isArray(data) ? data : []);
     setLoading(false);
   }
 
@@ -36,11 +36,11 @@ export default function DashboardPage() {
   async function handleDuplicate(id: string) {
     const res = await fetch(`/api/lessons/${id}`);
     const lesson = await res.json();
-    const { title, topics, deadline, overview, learningTargets, guidedLab, selfPaced, submissionChecklist, slideContent, devJournalPrompt, taKeywords } = lesson;
+    const { title, subtitle, topics, deadline, overview, learningTargets, warmUp, guidedLab, selfPaced, submissionChecklist, checkpoint, industryBestPractices, slideContent, devJournalPrompt, taChecklist, sources } = lesson;
     const copy = await fetch("/api/lessons", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: `Copy of ${title}`, topics, deadline, overview, learningTargets, guidedLab, selfPaced, submissionChecklist, slideContent, devJournalPrompt, taKeywords }),
+      body: JSON.stringify({ title: `Copy of ${title}`, subtitle, topics, deadline, overview, learningTargets, warmUp, guidedLab, selfPaced, submissionChecklist, checkpoint, industryBestPractices, slideContent, devJournalPrompt, taChecklist, sources }),
     });
     const newLesson = await copy.json();
     setLessons((prev) => [...prev, newLesson]);
