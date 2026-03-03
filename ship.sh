@@ -1,5 +1,5 @@
 #!/bin/bash
-# Usage: bash ship.sh "Your commit message"
+# Usage: bash .\ship.sh "Your commit message"
 
 if [ -z "$1" ]; then
   echo "Error: Please provide a commit message."
