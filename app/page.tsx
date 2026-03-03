@@ -4,12 +4,19 @@ import { useEffect, useState } from "react";
 import { useSession, signIn } from "next-auth/react";
 import Link from "next/link";
 import LessonCard from "@/components/LessonCard";
+import GenerateModal from "@/components/GenerateModal";
 import type { Lesson } from "@/types/lesson";
+
+type FileChoice = "slides" | "doc" | "quiz";
+type Destination = "drive" | "download";
 
 export default function DashboardPage() {
   const { status } = useSession();
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [loading, setLoading] = useState(true);
+  const [modalLessonId, setModalLessonId] = useState<string | null>(null);
+
+  const modalLesson = lessons.find(l => l.id === modalLessonId) ?? null;
 
   async function loadLessons() {
     const res = await fetch("/api/lessons");
@@ -24,15 +31,50 @@ export default function DashboardPage() {
     setLessons((prev) => prev.filter((l) => l.id !== id));
   }
 
-  async function handleGenerate(id: string) {
-    const lesson = lessons.find((l) => l.id === id);
+  function handleOpenModal(id: string) {
+    setModalLessonId(id);
+  }
+
+  async function handleGenerateWithOptions(id: string, files: FileChoice[], destination: Destination) {
+    const lesson = lessons.find(l => l.id === id);
     const inProgressStatus = lesson?.status === "done" ? "regenerating" : "generating";
-    // Optimistically show in-progress status immediately
-    setLessons((prev) => prev.map((l) => l.id === id ? { ...l, status: inProgressStatus } : l));
-    const res = await fetch(`/api/generate/${id}`, { method: "POST" });
-    const data = await res.json();
-    // Update with the final result from the server
-    setLessons((prev) => prev.map((l) => l.id === id ? { ...l, ...data } : l));
+    setLessons(prev => prev.map(l => l.id === id ? { ...l, status: inProgressStatus } : l));
+
+    const res = await fetch(`/api/generate/${id}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ files, destination }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json();
+      setLessons(prev => prev.map(l => l.id === id ? { ...l, status: "error", errorMessage: data.error } : l));
+      throw new Error(data.error || "Generation failed");
+    }
+
+    if (destination === "drive") {
+      const data = await res.json();
+      setLessons(prev => prev.map(l => l.id === id ? { ...l, ...data } : l));
+    } else {
+      const { downloads } = await res.json();
+      triggerDownloads(downloads);
+      setLessons(prev => prev.map(l => l.id === id ? { ...l, status: "done" } : l));
+    }
+  }
+
+  function triggerDownloads(downloads: { filename: string; data: string }[]) {
+    for (const file of downloads) {
+      const bytes = Uint8Array.from(atob(file.data), c => c.charCodeAt(0));
+      const blob = new Blob([bytes], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = file.filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
   }
 
   async function handleDuplicate(id: string) {
@@ -63,7 +105,7 @@ export default function DashboardPage() {
           </p>
           <button
             onClick={() => signIn("google")}
-            className="inline-flex items-center gap-3 rounded-lg bg-blue-900 px-6 py-3 text-sm font-semibold text-white hover:bg-blue-800 transition shadow"
+            className="inline-flex items-center gap-3 rounded-lg bg-blue-950 px-6 py-3 text-sm font-semibold text-white hover:bg-blue-900 transition shadow"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#ffffff"/>
@@ -84,16 +126,16 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6 bg-gray-700 rounded-xl px-5 py-4">
+      <div className="flex items-center justify-between mb-6 bg-gray-700 dark:bg-gray-200 rounded-xl px-5 py-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Lesson Dashboard</h1>
-          <p className="text-sm text-white mt-1">
+          <h1 className="text-2xl font-bold text-white dark:text-gray-900">Lesson Dashboard</h1>
+          <p className="text-sm text-white dark:text-gray-600 mt-1">
             Build a lesson, then click Generate to push a full bundle to Google Drive.
           </p>
         </div>
         <Link
           href="/lessons/new"
-          className="rounded-md bg-white px-4 py-2 text-sm font-bold text-blue-900 hover:bg-gray-100 transition"
+          className="rounded-md bg-white dark:bg-gray-700 px-4 py-2 text-sm font-bold text-blue-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-600 transition"
         >
           + New Lesson
         </Link>
@@ -106,7 +148,7 @@ export default function DashboardPage() {
           <p className="text-gray-400 text-sm mb-4">No lessons yet.</p>
           <Link
             href="/lessons/new"
-            className="rounded-md bg-blue-900 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800 transition"
+            className="rounded-md bg-blue-950 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-900 transition"
           >
             Create your first lesson
           </Link>
@@ -114,10 +156,16 @@ export default function DashboardPage() {
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 items-stretch">
           {lessons.map((lesson) => (
-            <LessonCard key={lesson.id} lesson={lesson} onDelete={handleDelete} onDuplicate={handleDuplicate} onGenerate={handleGenerate} />
+            <LessonCard key={lesson.id} lesson={lesson} onDelete={handleDelete} onDuplicate={handleDuplicate} onOpenModal={handleOpenModal} />
           ))}
         </div>
       )}
+
+      <GenerateModal
+        lesson={modalLesson}
+        onClose={() => setModalLessonId(null)}
+        onGenerate={handleGenerateWithOptions}
+      />
     </div>
   );
 }

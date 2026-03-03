@@ -398,6 +398,76 @@ export async function buildQuiz(lesson: Lesson, accessToken: string): Promise<st
   return formId;
 }
 
+// ─── Selective / download bundle generators ──────────────────────────────────
+
+type FileChoice = "slides" | "doc" | "quiz";
+
+export async function generateBundleSelective(
+  lesson: Lesson,
+  files: FileChoice[],
+  accessToken: string
+): Promise<{ folderUrl: string }> {
+  const folder = await createFolder(
+    `Lesson Bundle — ${lesson.title}: ${lesson.subtitle}`,
+    accessToken
+  );
+  const folderId = folder.id!;
+
+  const tasks: Promise<string>[] = [];
+  if (files.includes("slides")) tasks.push(buildSlideDeck(lesson, accessToken));
+  if (files.includes("doc"))    tasks.push(buildPosterDoc(lesson, accessToken));
+  if (files.includes("quiz"))   tasks.push(buildQuiz(lesson, accessToken));
+
+  const fileIds = await Promise.all(tasks);
+  await Promise.all(fileIds.map(id => moveFileToFolder(id, folderId, accessToken)));
+
+  return { folderUrl: folder.webViewLink! };
+}
+
+async function exportFileAsPdf(fileId: string, accessToken: string): Promise<Buffer> {
+  const drive = google.drive({ version: "v3", auth: getAuthClient(accessToken) });
+  const res = await drive.files.export(
+    { fileId, mimeType: "application/pdf" },
+    { responseType: "arraybuffer" }
+  );
+  return Buffer.from(res.data as ArrayBuffer);
+}
+
+async function deleteFile(fileId: string, accessToken: string): Promise<void> {
+  const drive = google.drive({ version: "v3", auth: getAuthClient(accessToken) });
+  await drive.files.delete({ fileId });
+}
+
+export async function generateBundleAsDownload(
+  lesson: Lesson,
+  files: Exclude<FileChoice, "quiz">[],
+  accessToken: string
+): Promise<{ filename: string; data: string }[]> {
+  const createTasks: { key: string; promise: Promise<string> }[] = [];
+  if (files.includes("slides")) createTasks.push({ key: "slides", promise: buildSlideDeck(lesson, accessToken) });
+  if (files.includes("doc"))    createTasks.push({ key: "doc",    promise: buildPosterDoc(lesson, accessToken) });
+
+  const fileIds = await Promise.all(createTasks.map(t => t.promise));
+
+  const results = await Promise.all(
+    fileIds.map(async (fileId, i) => {
+      const key = createTasks[i].key;
+      try {
+        const pdfBuffer = await exportFileAsPdf(fileId, accessToken);
+        return { key, pdfBuffer };
+      } finally {
+        await deleteFile(fileId, accessToken).catch(() => {});
+      }
+    })
+  );
+
+  const safeTitle = lesson.title.replace(/[^a-z0-9]/gi, "_").slice(0, 40);
+  return results.map(({ key, pdfBuffer }) => ({
+    filename: `${safeTitle}_${key === "slides" ? "Slides" : "Assessment_Doc"}.pdf`,
+    data: pdfBuffer.toString("base64"),
+  }));
+}
+
 // ─── Main bundle generator ───────────────────────────────────────────────────
 
 export async function generateBundle(

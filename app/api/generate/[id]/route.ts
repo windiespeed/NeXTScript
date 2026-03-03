@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { store } from "@/lib/store";
-import { generateBundle } from "@/lib/google";
+import { generateBundleSelective, generateBundleAsDownload } from "@/lib/google";
 
 export const dynamic = "force-dynamic";
 
-export async function POST(_: Request, { params }: { params: Promise<{ id: string }> }) {
+type FileChoice = "slides" | "doc" | "quiz";
+type Destination = "drive" | "download";
+
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
   const session = await auth();
@@ -23,14 +26,31 @@ export async function POST(_: Request, { params }: { params: Promise<{ id: strin
     return NextResponse.json({ error: "Lesson not found." }, { status: 404 });
   }
 
-  // Mark as generating (or regenerating if a bundle already existed)
+  // Parse body — fall back to "all files, drive" if body is absent (backwards compat)
+  let files: FileChoice[] = ["slides", "doc", "quiz"];
+  let destination: Destination = "drive";
+  try {
+    const body = await req.json();
+    if (Array.isArray(body.files) && body.files.length > 0) files = body.files;
+    if (body.destination === "download") destination = "download";
+  } catch {
+    // empty body — use defaults
+  }
+
   const inProgressStatus = lesson.status === "done" ? "regenerating" : "generating";
   await store.update(id, { status: inProgressStatus });
 
   try {
-    const { folderUrl } = await generateBundle(lesson, accessToken);
-    const updated = await store.update(id, { status: "done", folderUrl });
-    return NextResponse.json(updated);
+    if (destination === "drive") {
+      const { folderUrl } = await generateBundleSelective(lesson, files, accessToken);
+      const updated = await store.update(id, { status: "done", folderUrl });
+      return NextResponse.json(updated);
+    } else {
+      const downloadFiles = files.filter(f => f !== "quiz") as ("slides" | "doc")[];
+      const downloads = await generateBundleAsDownload(lesson, downloadFiles, accessToken);
+      await store.update(id, { status: "done" });
+      return NextResponse.json({ downloads });
+    }
   } catch (err: any) {
     await store.update(id, { status: "error", errorMessage: err.message });
     return NextResponse.json({ error: err.message }, { status: 500 });
