@@ -14,12 +14,14 @@ export default function Nav() {
         </Link>
 
         <div className="flex items-center gap-4">
-          <Link
-            href="/lessons/new"
-            className="rounded-md bg-blue-900 px-3 py-1.5 text-sm font-semibold text-white hover:bg-blue-800 transition"
-          >
-            + New Lesson
-          </Link>
+          {session && (
+            <Link
+              href="/lessons/new"
+              className="rounded-md bg-blue-900 px-3 py-1.5 text-sm font-semibold text-white hover:bg-blue-800 transition"
+            >
+              + New Lesson
+            </Link>
+          )}
 
           {status === "loading" ? null : session ? (
             <div className="flex items-center gap-2">
