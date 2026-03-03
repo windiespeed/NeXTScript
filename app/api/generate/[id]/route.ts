@@ -3,6 +3,8 @@ import { auth } from "@/lib/auth";
 import { store } from "@/lib/store";
 import { generateBundle } from "@/lib/google";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 

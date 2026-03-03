@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { store } from "@/lib/store";
 import type { Lesson } from "@/types/lesson";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const lesson = await store.getById(id);

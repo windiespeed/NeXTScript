@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { store } from "@/lib/store";
 import type { LessonInput } from "@/types/lesson";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   const lessons = await store.getAll();
   return NextResponse.json(lessons);
