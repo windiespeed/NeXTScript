@@ -10,12 +10,14 @@ import type { Lesson, LessonInput } from "@/types/lesson";
 const COLLECTION = "lessons";
 
 export const store = {
-  async getAll(): Promise<Lesson[]> {
+  async getAll(userId: string): Promise<Lesson[]> {
     const snapshot = await getDb()
       .collection(COLLECTION)
-      .orderBy("createdAt", "desc")
+      .where("userId", "==", userId)
       .get();
-    return snapshot.docs.map((doc) => doc.data() as Lesson);
+    return snapshot.docs
+      .map((doc) => doc.data() as Lesson)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   },
 
   async getById(id: string): Promise<Lesson | undefined> {
@@ -24,11 +26,12 @@ export const store = {
     return doc.data() as Lesson;
   },
 
-  async create(input: LessonInput): Promise<Lesson> {
+  async create(input: LessonInput, userId: string): Promise<Lesson> {
     const now = new Date().toISOString();
     const lesson: Lesson = {
       ...input,
       id: uuidv4(),
+      userId,
       status: "draft",
       createdAt: now,
       updatedAt: now,

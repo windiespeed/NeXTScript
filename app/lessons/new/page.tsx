@@ -1,10 +1,12 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import LessonForm from "@/components/LessonForm";
 import type { LessonInput } from "@/types/lesson";
 
 export default function NewLessonPage() {
+  useSession({ required: true });
   const router = useRouter();
 
   async function handleSubmit(data: LessonInput) {

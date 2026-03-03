@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 import LessonCard from "@/components/LessonCard";
 import type { Lesson } from "@/types/lesson";
 
 export default function DashboardPage() {
+  const { status } = useSession({ required: true });
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -47,8 +49,8 @@ export default function DashboardPage() {
   }
 
   useEffect(() => {
-    loadLessons();
-  }, []);
+    if (status === "authenticated") loadLessons();
+  }, [status]);
 
   return (
     <div>

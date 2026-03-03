@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
+import { useSession } from "next-auth/react";
 import LessonForm from "@/components/LessonForm";
 import type { Lesson, LessonInput } from "@/types/lesson";
 
 export default function EditLessonPage() {
+  useSession({ required: true });
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const [lesson, setLesson] = useState<Lesson | null>(null);

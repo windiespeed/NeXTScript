@@ -1,5 +1,6 @@
 export interface Lesson {
   id: string;
+  userId: string;          // owner's Google email — used to scope lessons per user
   title: string;
   topics: string;
   deadline: string;
@@ -27,5 +28,5 @@ export interface Lesson {
 
 export type LessonInput = Omit<
   Lesson,
-  "id" | "status" | "folderUrl" | "errorMessage" | "createdAt" | "updatedAt"
+  "id" | "userId" | "status" | "folderUrl" | "errorMessage" | "createdAt" | "updatedAt"
 >;
