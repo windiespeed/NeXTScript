@@ -29,10 +29,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   // Parse body — fall back to "all files, drive" if body is absent (backwards compat)
   let files: FileChoice[] = ["slides", "doc", "quiz"];
   let destination: Destination = "drive";
+  let templateId: string | undefined;
   try {
     const body = await req.json();
     if (Array.isArray(body.files) && body.files.length > 0) files = body.files;
     if (body.destination === "download") destination = "download";
+    if (typeof body.templateId === "string" && body.templateId) templateId = body.templateId;
   } catch {
     // empty body — use defaults
   }
@@ -42,12 +44,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   try {
     if (destination === "drive") {
-      const { folderUrl } = await generateBundleSelective(lesson, files, accessToken);
+      const { folderUrl } = await generateBundleSelective(lesson, files, accessToken, templateId);
       const updated = await store.update(id, { status: "done", folderUrl });
       return NextResponse.json(updated);
     } else {
       const downloadFiles = files.filter(f => f !== "quiz") as ("slides" | "doc")[];
-      const downloads = await generateBundleAsDownload(lesson, downloadFiles, accessToken);
+      const downloads = await generateBundleAsDownload(lesson, downloadFiles, accessToken, templateId);
       await store.update(id, { status: "done" });
       return NextResponse.json({ downloads });
     }

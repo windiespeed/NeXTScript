@@ -52,12 +52,14 @@ function uid(prefix: string): string {
   return `${prefix}_${Date.now().toString(36)}_${(++_idSeq).toString(36)}`;
 }
 
-/** Replace all text in a shape. Returns two requests: delete then insert. */
-function replaceText(objectId: string, text: string): any[] {
-  return [
-    { deleteText: { objectId, textRange: { type: "ALL" } } },
-    { insertText: { objectId, insertionIndex: 0, text } },
-  ];
+/** Replace all text in a shape. Only deletes first if the shape already has content. */
+function replaceText(objectId: string, text: string, hasExistingContent: boolean): any[] {
+  const reqs: any[] = [];
+  if (hasExistingContent) {
+    reqs.push({ deleteText: { objectId, textRange: { type: "ALL" } } });
+  }
+  reqs.push({ insertText: { objectId, insertionIndex: 0, text } });
+  return reqs;
 }
 
 /**
@@ -104,11 +106,11 @@ const TEXT_BLACK = { red: 0, green: 0, blue: 0 };
  * Body text wrapped in backticks is rendered in blue (code examples).
  * All other body text is rendered in black.
  */
-function slideRequests(title: string, body: string): any[] {
+function slideRequests(title: string, body: string | undefined): any[] {
   const sId = uid("s");
   const tId = uid("t");
   const bId = uid("b");
-  const { plain: bodyPlain, codeRanges } = parseCodeSegments(body);
+  const { plain: bodyPlain, codeRanges } = parseCodeSegments(body ?? "");
 
   const requests: any[] = [
     {
@@ -154,45 +156,56 @@ function slideRequests(title: string, body: string): any[] {
   return requests;
 }
 
-export async function buildSlideDeck(lesson: Lesson, accessToken: string): Promise<string> {
+/** Resolve rubric field, falling back to legacy taChecklist for old Firestore documents. */
+function getRubric(lesson: Lesson): string {
+  return lesson.rubric ?? (lesson as any).taChecklist ?? "";
+}
+
+export async function buildSlideDeck(lesson: Lesson, accessToken: string, templateId?: string): Promise<string> {
   _idSeq = 0; // reset counter for each deck build
   const drive  = google.drive({ version: "v3", auth: getAuthClient(accessToken) });
   const slides = google.slides({ version: "v1", auth: getAuthClient(accessToken) });
 
-  const templateId = process.env.SLIDES_TEMPLATE_ID!;
+  const resolvedTemplateId = templateId ?? process.env.SLIDES_TEMPLATE_ID!;
 
   // 1. Copy the template, naming it with both title and subtitle
   const copy = await drive.files.copy({
-    fileId: templateId,
+    fileId: resolvedTemplateId,
     requestBody: { name: `Deck: ${lesson.title} — ${lesson.subtitle}` },
     fields: "id",
   });
   const deckId = copy.data.id!;
 
-  // 2. Fetch the presentation to read existing title-slide shape IDs
+  // 2. Fetch the presentation to read existing title-slide shape IDs and master layouts
   const pres = await slides.presentations.get({ presentationId: deckId });
   const titleSlide = (pres.data.slides || [])[0];
+
+  // Find a blank-ish layout from the template master to use for the success slide
+  const masterLayouts = (pres.data.masters || [])[0]?.layouts || [];
+  const blankLayout = masterLayouts.find(
+    (l: any) => l.layoutProperties?.name?.toLowerCase().includes("blank")
+  ) ?? masterLayouts[masterLayouts.length - 1] ?? null;
 
   // ── Title slide replacements ────────────────────────────────────────────
   const titleRequests: any[] = [];
 
   if (titleSlide) {
     for (const el of titleSlide.pageElements || []) {
+      const placeholderType = el.shape?.placeholder?.type as string | undefined;
       const text = el.shape?.text?.textElements
         ?.map((t: any) => t.textRun?.content || "")
         .join("")
         .toLowerCase() ?? "";
 
-      if (text.includes("module") || text.includes("day") || text.includes("click to add title")) {
-        // LESSON TITLE → Module #, Lesson #
-        titleRequests.push(...replaceText(el.objectId!, lesson.title));
-      } else if (text.includes("subtitle") || text.includes("specific lesson") || text.includes("topic/subject")) {
-        // LESSON SUBTITLE → specific topic
-        titleRequests.push(...replaceText(el.objectId!, lesson.subtitle));
+      const hasContent = text.length > 0;
+      if (placeholderType === "CENTERED_TITLE" || placeholderType === "TITLE") {
+        titleRequests.push(...replaceText(el.objectId!, lesson.title, hasContent));
+      } else if (placeholderType === "SUBTITLE") {
+        titleRequests.push(...replaceText(el.objectId!, lesson.subtitle, hasContent));
       } else if (text.includes("goal:")) {
-        titleRequests.push(...replaceText(el.objectId!, `Goal: ${lesson.overview}`));
+        titleRequests.push(...replaceText(el.objectId!, `Goal: ${lesson.overview}`, hasContent));
       } else if (text.includes("reminder:")) {
-        titleRequests.push(...replaceText(el.objectId!, `Reminder:\n${lesson.submissionChecklist}`));
+        titleRequests.push(...replaceText(el.objectId!, `Reminder:\n${lesson.submissionChecklist}`, hasContent));
       }
     }
   }
@@ -219,14 +232,19 @@ export async function buildSlideDeck(lesson: Lesson, accessToken: string): Promi
     ...slideRequests("CHECKPOINT",              lesson.checkpoint),
     ...slideRequests("INDUSTRY BEST PRACTICES", lesson.industryBestPractices),
     ...slideRequests("DEVELOPMENT JOURNAL",     lesson.devJournalPrompt),
-    ...slideRequests("TA CHECKLIST",            lesson.taChecklist),
+    ...slideRequests("RUBRIC",                  getRubric(lesson)),
   );
 
   // ── Success slide ───────────────────────────────────────────────────────
   const successSlideId = uid("ss");
   const successTextId  = uid("st");
   contentRequests.push(
-    { createSlide: { objectId: successSlideId } },
+    {
+      createSlide: {
+        objectId: successSlideId,
+        ...(blankLayout?.objectId ? { slideLayoutReference: { layoutId: blankLayout.objectId } } : {}),
+      },
+    },
     {
       createShape: {
         objectId: successTextId,
@@ -326,8 +344,8 @@ export async function buildQuiz(lesson: Lesson, accessToken: string): Promise<st
   });
   const formId = form.data.formId!;
 
-  // Parse taChecklist: each non-empty line becomes one MC question (up to 10)
-  const checklistItems = lesson.taChecklist
+  // Parse rubric: each non-empty line becomes one MC question (up to 10)
+  const checklistItems = getRubric(lesson)
     .split("\n")
     .map((line) => line.replace(/^[\s☐✓\-\*•]+/, "").trim()) // strip checkbox markers
     .filter(Boolean)
@@ -405,7 +423,8 @@ type FileChoice = "slides" | "doc" | "quiz";
 export async function generateBundleSelective(
   lesson: Lesson,
   files: FileChoice[],
-  accessToken: string
+  accessToken: string,
+  templateId?: string
 ): Promise<{ folderUrl: string }> {
   const folder = await createFolder(
     `Lesson Bundle — ${lesson.title}: ${lesson.subtitle}`,
@@ -414,7 +433,7 @@ export async function generateBundleSelective(
   const folderId = folder.id!;
 
   const tasks: Promise<string>[] = [];
-  if (files.includes("slides")) tasks.push(buildSlideDeck(lesson, accessToken));
+  if (files.includes("slides")) tasks.push(buildSlideDeck(lesson, accessToken, templateId));
   if (files.includes("doc"))    tasks.push(buildPosterDoc(lesson, accessToken));
   if (files.includes("quiz"))   tasks.push(buildQuiz(lesson, accessToken));
 
@@ -441,10 +460,11 @@ async function deleteFile(fileId: string, accessToken: string): Promise<void> {
 export async function generateBundleAsDownload(
   lesson: Lesson,
   files: Exclude<FileChoice, "quiz">[],
-  accessToken: string
+  accessToken: string,
+  templateId?: string
 ): Promise<{ filename: string; data: string }[]> {
   const createTasks: { key: string; promise: Promise<string> }[] = [];
-  if (files.includes("slides")) createTasks.push({ key: "slides", promise: buildSlideDeck(lesson, accessToken) });
+  if (files.includes("slides")) createTasks.push({ key: "slides", promise: buildSlideDeck(lesson, accessToken, templateId) });
   if (files.includes("doc"))    createTasks.push({ key: "doc",    promise: buildPosterDoc(lesson, accessToken) });
 
   const fileIds = await Promise.all(createTasks.map(t => t.promise));

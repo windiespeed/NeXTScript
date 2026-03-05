@@ -22,7 +22,7 @@ export interface Lesson {
   checkpoint: string;            // CHECKPOINT — common problems & solutions
   industryBestPractices: string; // INDUSTRY BEST PRACTICES
   devJournalPrompt: string;      // DEVELOPMENT JOURNAL PROMPT
-  taChecklist: string;           // TA CHECKLIST — comprehension/objective checklist
+  rubric: string;                // RUBRIC — comprehension/objective checklist
   sources: string;               // Reference URLs (one per line) used during generation
 }
 

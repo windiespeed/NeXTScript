@@ -35,7 +35,7 @@ export default function DashboardPage() {
     setModalLessonId(id);
   }
 
-  async function handleGenerateWithOptions(id: string, files: FileChoice[], destination: Destination) {
+  async function handleGenerateWithOptions(id: string, files: FileChoice[], destination: Destination, templateId?: string) {
     const lesson = lessons.find(l => l.id === id);
     const inProgressStatus = lesson?.status === "done" ? "regenerating" : "generating";
     setLessons(prev => prev.map(l => l.id === id ? { ...l, status: inProgressStatus } : l));
@@ -43,7 +43,7 @@ export default function DashboardPage() {
     const res = await fetch(`/api/generate/${id}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ files, destination }),
+      body: JSON.stringify({ files, destination, templateId }),
     });
 
     if (!res.ok) {
@@ -80,11 +80,11 @@ export default function DashboardPage() {
   async function handleDuplicate(id: string) {
     const res = await fetch(`/api/lessons/${id}`);
     const lesson = await res.json();
-    const { title, subtitle, topics, deadline, overview, learningTargets, warmUp, guidedLab, selfPaced, submissionChecklist, checkpoint, industryBestPractices, slideContent, devJournalPrompt, taChecklist, sources } = lesson;
+    const { title, subtitle, topics, deadline, overview, learningTargets, warmUp, guidedLab, selfPaced, submissionChecklist, checkpoint, industryBestPractices, slideContent, devJournalPrompt, rubric, taChecklist, sources } = lesson;
     const copy = await fetch("/api/lessons", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: `Copy of ${title}`, subtitle, topics, deadline, overview, learningTargets, warmUp, guidedLab, selfPaced, submissionChecklist, checkpoint, industryBestPractices, slideContent, devJournalPrompt, taChecklist, sources }),
+      body: JSON.stringify({ title: `Copy of ${title}`, subtitle, topics, deadline, overview, learningTargets, warmUp, guidedLab, selfPaced, submissionChecklist, checkpoint, industryBestPractices, slideContent, devJournalPrompt, rubric: rubric ?? taChecklist ?? "", sources }),
     });
     const newLesson = await copy.json();
     setLessons((prev) => [...prev, newLesson]);

@@ -41,7 +41,7 @@ const EMPTY: LessonInput = {
   checkpoint: "",
   industryBestPractices: "",
   devJournalPrompt: "",
-  taChecklist: "",
+  rubric: "",
   sources: "",
 };
 
@@ -62,7 +62,7 @@ const POST_SLIDE_FIELDS: SectionField[] = [
   { key: "checkpoint",            label: "Checkpoint",                hint: "Common problems and challenges students may face, with suggested solutions.", rows: 4 },
   { key: "industryBestPractices", label: "Industry Best Practices",   hint: "Industry standards, best practices, and tips & tricks for this topic.", rows: 4 },
   { key: "devJournalPrompt",      label: "Development Journal Prompt", hint: "Copy/paste into dev journal. 3–5 specific, evidence-based reflection questions.", rows: 4 },
-  { key: "taChecklist",           label: "TA Checklist",              hint: "Comprehension and objective checklist used by TAs to assess student submissions.", rows: 4 },
+  { key: "rubric",                label: "Rubric",                    hint: "Comprehension and objective checklist used by TAs to assess student submissions.", rows: 4 },
 ];
 
 export default function LessonForm({ initial = {}, onSubmit, submitLabel = "Save Lesson" }: Props) {

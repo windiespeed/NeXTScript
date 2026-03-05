@@ -10,19 +10,26 @@ type ModalStatus = "idle";
 interface Props {
   lesson: Lesson | null;
   onClose: () => void;
-  onGenerate: (id: string, files: FileChoice[], destination: Destination) => Promise<void>;
+  onGenerate: (id: string, files: FileChoice[], destination: Destination, templateId?: string) => Promise<void>;
+}
+
+function extractPresentationId(url: string): string | null {
+  const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  return match ? match[1] : null;
 }
 
 export default function GenerateModal({ lesson, onClose, onGenerate }: Props) {
   const [selectedFiles, setSelectedFiles] = useState<FileChoice[]>(["slides", "doc", "quiz"]);
   const [destination, setDestination] = useState<Destination>("drive");
   const [modalStatus] = useState<ModalStatus>("idle");
+  const [templateUrl, setTemplateUrl] = useState("");
 
   // Reset state whenever a new lesson opens the modal
   useEffect(() => {
     if (lesson) {
       setSelectedFiles(["slides", "doc", "quiz"]);
       setDestination("drive");
+      setTemplateUrl("");
     }
   }, [lesson?.id]);
 
@@ -49,8 +56,9 @@ export default function GenerateModal({ lesson, onClose, onGenerate }: Props) {
 
   async function handleGenerate() {
     if (!canGenerate) return;
+    const templateId = templateUrl.trim() ? extractPresentationId(templateUrl.trim()) ?? undefined : undefined;
     onClose();
-    onGenerate(lesson.id, effectiveFiles, destination);
+    onGenerate(lesson.id, effectiveFiles, destination, templateId);
   }
 
   function handleBackdropClick(e: React.MouseEvent<HTMLDivElement>) {
@@ -145,6 +153,24 @@ export default function GenerateModal({ lesson, onClose, onGenerate }: Props) {
               Download as PDF
             </label>
           </div>
+        </div>
+
+        {/* Template URL */}
+        <div>
+          <p className={sectionLabel}>Slides Template <span className="normal-case font-normal text-gray-500">(optional)</span></p>
+          <input
+            type="url"
+            value={templateUrl}
+            onChange={(e) => setTemplateUrl(e.target.value)}
+            placeholder="https://docs.google.com/presentation/d/…"
+            className="w-full rounded-lg bg-gray-600 dark:bg-gray-300 border border-gray-500 dark:border-gray-400 text-white dark:text-gray-900 placeholder:text-gray-400 dark:placeholder:text-gray-500 text-xs px-3 py-2 focus:outline-none focus:ring-1 focus:ring-emerald-600"
+          />
+          {templateUrl.trim() && !extractPresentationId(templateUrl.trim()) && (
+            <p className="text-xs text-red-400 dark:text-red-500 mt-1">Could not extract a presentation ID from that URL.</p>
+          )}
+          {!templateUrl.trim() && (
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Leave blank to use the default template.</p>
+          )}
         </div>
 
         {/* Footer */}
