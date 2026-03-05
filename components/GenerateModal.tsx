@@ -5,7 +5,7 @@ import type { Lesson } from "@/types/lesson";
 
 type FileChoice = "slides" | "doc" | "quiz";
 type Destination = "drive" | "download";
-type ModalStatus = "idle";
+type ModalStatus = "idle" | "loading";
 
 interface Props {
   lesson: Lesson | null;
@@ -58,7 +58,7 @@ export default function GenerateModal({ lesson, onClose, onGenerate }: Props) {
     if (!canGenerate) return;
     const templateId = templateUrl.trim() ? extractPresentationId(templateUrl.trim()) ?? undefined : undefined;
     onClose();
-    onGenerate(lesson.id, effectiveFiles, destination, templateId);
+    onGenerate(lesson!.id, effectiveFiles, destination, templateId);
   }
 
   function handleBackdropClick(e: React.MouseEvent<HTMLDivElement>) {

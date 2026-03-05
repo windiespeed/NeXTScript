@@ -181,7 +181,7 @@ export async function buildSlideDeck(lesson: Lesson, accessToken: string, templa
   const titleSlide = (pres.data.slides || [])[0];
 
   // Find a blank-ish layout from the template master to use for the success slide
-  const masterLayouts = (pres.data.masters || [])[0]?.layouts || [];
+  const masterLayouts = ((pres.data.masters || [])[0] as any)?.layouts || [];
   const blankLayout = masterLayouts.find(
     (l: any) => l.layoutProperties?.name?.toLowerCase().includes("blank")
   ) ?? masterLayouts[masterLayouts.length - 1] ?? null;
