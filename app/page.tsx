@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSession, signIn } from "next-auth/react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
@@ -16,7 +16,7 @@ type Tab = "lessons" | "decks" | "forms";
 type FileChoice = "slides" | "doc" | "quiz";
 type Destination = "drive" | "download";
 
-export default function DashboardPage() {
+function Dashboard() {
   const { status } = useSession();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -246,5 +246,13 @@ export default function DashboardPage() {
         onGenerate={handleGenerateWithOptions}
       />
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense>
+      <Dashboard />
+    </Suspense>
   );
 }
