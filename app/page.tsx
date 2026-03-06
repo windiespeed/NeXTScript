@@ -23,14 +23,12 @@ export default function DashboardPage() {
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [projects, setProjects] = useState<SavedProject[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<Tab>(() => {
-    const t = searchParams.get("tab");
-    return (t === "decks" || t === "forms") ? t : "lessons";
-  });
   const [modalLessonId, setModalLessonId] = useState<string | null>(null);
 
+  const tabParam = searchParams.get("tab");
+  const tab: Tab = (tabParam === "decks" || tabParam === "forms") ? tabParam : "lessons";
+
   function switchTab(t: Tab) {
-    setTab(t);
     router.replace(t === "lessons" ? "/" : `/?tab=${t}`, { scroll: false });
   }
 
