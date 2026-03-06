@@ -30,7 +30,7 @@ export default function Nav() {
         <div className="flex items-center gap-4">
           {session && (
             <div className="hidden sm:flex items-center gap-4 text-sm">
-              <Link href="/" className="text-[#0cc0df] hover:text-white transition font-medium">
+              <Link href="/?tab=lessons" className="text-[#0cc0df] hover:text-white transition font-medium">
                 Lessons
               </Link>
               <Link href="/slides/new" className="text-[#0cc0df] hover:text-white transition font-medium">

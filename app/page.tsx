@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSession, signIn } from "next-auth/react";
+import { useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import LessonCard from "@/components/LessonCard";
@@ -17,11 +18,21 @@ type Destination = "drive" | "download";
 
 export default function DashboardPage() {
   const { status } = useSession();
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [projects, setProjects] = useState<SavedProject[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<Tab>("lessons");
+  const [tab, setTab] = useState<Tab>(() => {
+    const t = searchParams.get("tab");
+    return (t === "decks" || t === "forms") ? t : "lessons";
+  });
   const [modalLessonId, setModalLessonId] = useState<string | null>(null);
+
+  function switchTab(t: Tab) {
+    setTab(t);
+    router.replace(t === "lessons" ? "/" : `/?tab=${t}`, { scroll: false });
+  }
 
   const modalLesson = lessons.find(l => l.id === modalLessonId) ?? null;
   const decks = projects.filter(p => p.type === "deck");
@@ -150,7 +161,7 @@ export default function DashboardPage() {
 
   const tabBtn = (t: Tab, label: string, count: number) => (
     <button
-      onClick={() => setTab(t)}
+      onClick={() => switchTab(t)}
       className={`px-4 py-2 text-sm font-semibold rounded-lg transition ${
         tab === t
           ? "bg-[#0cc0df] text-[#112543] shadow"
