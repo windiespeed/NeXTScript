@@ -121,7 +121,7 @@ export default function DashboardPage() {
       <div className="flex flex-col items-center justify-center min-h-[70vh] text-center px-4">
         <div className="max-w-md w-full bg-gradient-to-br from-[#1e4a85] to-[#112543] rounded-2xl border border-[#1e4a85] shadow-xl px-8 py-10">
           <div className="flex justify-center mb-5">
-            <Image src="/logo.png" alt="NeXTScript" width={200} height={56} className="h-14 w-auto" priority />
+            <Image src="/logo.png" alt="NeXTScript" width={200} height={56} className="h-14 w-auto brightness-0 invert" priority />
           </div>
           <p className="text-[#0cc0df] text-base font-medium mb-2">Curriculum Builder</p>
           <p className="text-gray-300 text-sm mb-8">
