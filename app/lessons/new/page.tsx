@@ -26,16 +26,12 @@ export default function NewLessonPage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto">
-      <div className="mb-6 bg-gray-700 rounded-xl px-5 py-4">
-        <h1 className="text-2xl font-bold text-white">New Lesson</h1>
-        <p className="text-sm text-white mt-1">
-          Fill in the sections below. You can generate the full Google Drive bundle from the dashboard.
-        </p>
+    <main className="mx-auto max-w-3xl px-4 py-10">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-black dark:text-white">New Lesson</h1>
+        <p className="text-sm text-gray-500 mt-1">Fill in the sections below. Generate the full Google Drive bundle from the dashboard.</p>
       </div>
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-        <LessonForm onSubmit={handleSubmit} submitLabel="Create Lesson" />
-      </div>
-    </div>
+      <LessonForm onSubmit={handleSubmit} submitLabel="Create Lesson" />
+    </main>
   );
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { buildStandaloneSlides } from "@/lib/google";
+import { projectStore } from "@/lib/projectStore";
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -16,7 +17,8 @@ export async function POST(req: NextRequest) {
   try {
     const deckId = await buildStandaloneSlides(title, subtitle ?? "", slides, accessToken, templateId);
     const url = `https://docs.google.com/presentation/d/${deckId}/edit`;
-    return NextResponse.json({ deckId, url });
+    const project = await projectStore.create({ type: "deck", title, subtitle, url }, session.user.email);
+    return NextResponse.json({ deckId, url, projectId: project.id });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || "Failed to create slide deck" }, { status: 500 });
   }

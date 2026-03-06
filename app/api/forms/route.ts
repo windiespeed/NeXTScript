@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { buildCustomForm } from "@/lib/google";
+import { projectStore } from "@/lib/projectStore";
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -18,7 +19,8 @@ export async function POST(req: NextRequest) {
   try {
     const formId = await buildCustomForm(title, description ?? "", questions, accessToken, !!isQuiz);
     const url = `https://docs.google.com/forms/d/${formId}/edit`;
-    return NextResponse.json({ formId, url });
+    const project = await projectStore.create({ type: "form", title, description, isQuiz: !!isQuiz, url }, session.user.email);
+    return NextResponse.json({ formId, url, projectId: project.id });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || "Failed to create form" }, { status: 500 });
   }

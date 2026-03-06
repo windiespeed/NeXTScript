@@ -118,10 +118,10 @@ export default function LessonForm({ initial = {}, onSubmit, submitLabel = "Save
       {/* ── Meta fields ──────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="sm:col-span-2">
-          <label className="block text-sm font-semibold text-black mb-1">
+          <label className="block text-sm font-semibold text-black dark:text-white mb-1">
             Lesson Title <span className="text-red-500">*</span>
           </label>
-          <p className="text-xs text-black mb-1">Module number and lesson number (e.g. Module 3, Lesson 2)</p>
+          <p className="text-xs text-gray-500 mb-1">Module number and lesson number (e.g. Module 3, Lesson 2)</p>
           <input
             required
             type="text"
@@ -133,8 +133,8 @@ export default function LessonForm({ initial = {}, onSubmit, submitLabel = "Save
         </div>
 
         <div className="sm:col-span-2">
-          <label className="block text-sm font-semibold text-black mb-1">Lesson Subtitle</label>
-          <p className="text-xs text-black mb-1">Specific topic or subject covered in this lesson</p>
+          <label className="block text-sm font-semibold text-black dark:text-white mb-1">Lesson Subtitle</label>
+          <p className="text-xs text-gray-500 mb-1">Specific topic or subject covered in this lesson</p>
           <input
             type="text"
             value={form.subtitle}
@@ -145,7 +145,7 @@ export default function LessonForm({ initial = {}, onSubmit, submitLabel = "Save
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-black mb-1">Topics</label>
+          <label className="block text-sm font-semibold text-black dark:text-white mb-1">Topics</label>
           <input
             type="text"
             value={form.topics}
@@ -156,7 +156,7 @@ export default function LessonForm({ initial = {}, onSubmit, submitLabel = "Save
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-black mb-1">Deadline</label>
+          <label className="block text-sm font-semibold text-black dark:text-white mb-1">Deadline</label>
           <input
             type="date"
             value={form.deadline}
@@ -166,8 +166,8 @@ export default function LessonForm({ initial = {}, onSubmit, submitLabel = "Save
         </div>
 
         <div className="sm:col-span-2">
-          <label className="block text-sm font-semibold text-black mb-1">Sources</label>
-          <p className="text-xs text-black mb-1">
+          <label className="block text-sm font-semibold text-black dark:text-white mb-1">Sources</label>
+          <p className="text-xs text-gray-500 mb-1">
             Reference URLs used to generate this lesson — one URL per line (e.g. W3C specs, MDN docs, W3Schools pages).
           </p>
           <textarea
@@ -184,8 +184,8 @@ export default function LessonForm({ initial = {}, onSubmit, submitLabel = "Save
       <div className="space-y-5">
         {PRE_SLIDE_FIELDS.map(({ key, label, hint, rows }) => (
           <div key={key}>
-            <label className="block text-sm font-semibold text-black mb-1">{label}</label>
-            <p className="text-xs text-black mb-1">{hint}</p>
+            <label className="block text-sm font-semibold text-black dark:text-white mb-1">{label}</label>
+            <p className="text-xs text-gray-500 mb-1">{hint}</p>
             <textarea
               value={form[key] as string}
               onChange={(e) => set(key, e.target.value)}
@@ -249,8 +249,8 @@ export default function LessonForm({ initial = {}, onSubmit, submitLabel = "Save
       <div className="space-y-5">
         {POST_SLIDE_FIELDS.map(({ key, label, hint, rows }) => (
           <div key={key}>
-            <label className="block text-sm font-semibold text-black mb-1">{label}</label>
-            <p className="text-xs text-black mb-1">{hint}</p>
+            <label className="block text-sm font-semibold text-black dark:text-white mb-1">{label}</label>
+            <p className="text-xs text-gray-500 mb-1">{hint}</p>
             <textarea
               value={form[key] as string}
               onChange={(e) => set(key, e.target.value)}

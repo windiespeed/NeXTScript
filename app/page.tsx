@@ -4,8 +4,12 @@ import { useEffect, useState } from "react";
 import { useSession, signIn } from "next-auth/react";
 import Link from "next/link";
 import LessonCard from "@/components/LessonCard";
+import ProjectCard from "@/components/ProjectCard";
 import GenerateModal from "@/components/GenerateModal";
 import type { Lesson } from "@/types/lesson";
+import type { SavedProject } from "@/types/project";
+
+type Tab = "lessons" | "decks" | "forms";
 
 type FileChoice = "slides" | "doc" | "quiz";
 type Destination = "drive" | "download";
@@ -13,16 +17,25 @@ type Destination = "drive" | "download";
 export default function DashboardPage() {
   const { status } = useSession();
   const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [projects, setProjects] = useState<SavedProject[]>([]);
   const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState<Tab>("lessons");
   const [modalLessonId, setModalLessonId] = useState<string | null>(null);
 
   const modalLesson = lessons.find(l => l.id === modalLessonId) ?? null;
+  const decks = projects.filter(p => p.type === "deck");
+  const forms = projects.filter(p => p.type === "form");
 
   async function loadLessons() {
     const res = await fetch("/api/lessons");
     const data = await res.json();
     setLessons(Array.isArray(data) ? data : []);
-    setLoading(false);
+  }
+
+  async function loadProjects() {
+    const res = await fetch("/api/projects");
+    const data = await res.json();
+    setProjects(Array.isArray(data) ? data : []);
   }
 
   async function handleDelete(id: string) {
@@ -90,8 +103,16 @@ export default function DashboardPage() {
     setLessons((prev) => [...prev, newLesson]);
   }
 
+  async function handleDeleteProject(id: string) {
+    if (!confirm("Delete this item?")) return;
+    await fetch(`/api/projects/${id}`, { method: "DELETE" });
+    setProjects(prev => prev.filter(p => p.id !== id));
+  }
+
   useEffect(() => {
-    if (status === "authenticated") loadLessons();
+    if (status === "authenticated") {
+      Promise.all([loadLessons(), loadProjects()]).then(() => setLoading(false));
+    }
   }, [status]);
 
   if (status === "unauthenticated") {
@@ -124,41 +145,87 @@ export default function DashboardPage() {
     return <p className="text-gray-500 text-sm text-center mt-20">Loading…</p>;
   }
 
+  const tabBtn = (t: Tab, label: string, count: number) => (
+    <button
+      onClick={() => setTab(t)}
+      className={`px-4 py-2 text-sm font-semibold rounded-lg transition ${
+        tab === t
+          ? "bg-white dark:bg-gray-700 text-blue-900 dark:text-white shadow"
+          : "text-gray-300 dark:text-gray-600 hover:text-white dark:hover:text-gray-900"
+      }`}
+    >
+      {label} {count > 0 && <span className="ml-1 text-xs opacity-70">({count})</span>}
+    </button>
+  );
+
+  const newHref = tab === "lessons" ? "/lessons/new" : tab === "decks" ? "/slides/new" : "/forms/new";
+  const newLabel = tab === "lessons" ? "+ New Lesson" : tab === "decks" ? "+ New Deck" : "+ New Form";
+
   return (
     <div>
-      <div className="flex items-center justify-between mb-6 bg-gray-700 dark:bg-gray-200 rounded-xl px-5 py-4">
+      <div className="flex items-center justify-between mb-4 bg-gray-700 dark:bg-gray-200 rounded-xl px-5 py-4">
         <div>
-          <h1 className="text-2xl font-bold text-white dark:text-gray-900">Lesson Dashboard</h1>
-          <p className="text-sm text-white dark:text-gray-600 mt-1">
-            Build a lesson, then click Generate to push a full bundle to Google Drive.
-          </p>
+          <h1 className="text-2xl font-bold text-white dark:text-gray-900">Dashboard</h1>
+          <p className="text-sm text-white dark:text-gray-600 mt-1">Build lessons, slide decks, and forms.</p>
         </div>
         <Link
-          href="/lessons/new"
+          href={newHref}
           className="rounded-md bg-white dark:bg-gray-700 px-4 py-2 text-sm font-bold text-blue-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-600 transition"
         >
-          + New Lesson
+          {newLabel}
         </Link>
       </div>
 
+      {/* Tabs */}
+      <div className="flex gap-1 mb-5 bg-gray-700 dark:bg-gray-200 rounded-lg p-1 w-fit">
+        {tabBtn("lessons", "Lessons", lessons.length)}
+        {tabBtn("decks", "Slide Decks", decks.length)}
+        {tabBtn("forms", "Forms", forms.length)}
+      </div>
+
       {loading ? (
-        <p className="text-gray-500 text-sm">Loading lessons…</p>
-      ) : lessons.length === 0 ? (
-        <div className="rounded-xl border-2 border-dashed border-gray-300 p-12 text-center">
-          <p className="text-gray-400 text-sm mb-4">No lessons yet.</p>
-          <Link
-            href="/lessons/new"
-            className="rounded-md bg-blue-950 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-900 transition"
-          >
-            Create your first lesson
-          </Link>
-        </div>
+        <p className="text-gray-500 text-sm">Loading…</p>
+      ) : tab === "lessons" ? (
+        lessons.length === 0 ? (
+          <div className="rounded-xl border-2 border-dashed border-gray-300 p-12 text-center">
+            <p className="text-gray-400 text-sm mb-4">No lessons yet.</p>
+            <Link href="/lessons/new" className="rounded-md bg-blue-950 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-900 transition">
+              Create your first lesson
+            </Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 items-stretch">
+            {lessons.map(lesson => (
+              <LessonCard key={lesson.id} lesson={lesson} onDelete={handleDelete} onDuplicate={handleDuplicate} onOpenModal={handleOpenModal} />
+            ))}
+          </div>
+        )
+      ) : tab === "decks" ? (
+        decks.length === 0 ? (
+          <div className="rounded-xl border-2 border-dashed border-gray-300 p-12 text-center">
+            <p className="text-gray-400 text-sm mb-4">No slide decks yet.</p>
+            <Link href="/slides/new" className="rounded-md bg-blue-950 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-900 transition">
+              Create your first slide deck
+            </Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 items-stretch">
+            {decks.map(p => <ProjectCard key={p.id} project={p} onDelete={handleDeleteProject} />)}
+          </div>
+        )
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 items-stretch">
-          {lessons.map((lesson) => (
-            <LessonCard key={lesson.id} lesson={lesson} onDelete={handleDelete} onDuplicate={handleDuplicate} onOpenModal={handleOpenModal} />
-          ))}
-        </div>
+        forms.length === 0 ? (
+          <div className="rounded-xl border-2 border-dashed border-gray-300 p-12 text-center">
+            <p className="text-gray-400 text-sm mb-4">No forms yet.</p>
+            <Link href="/forms/new" className="rounded-md bg-blue-950 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-900 transition">
+              Create your first form
+            </Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 items-stretch">
+            {forms.map(p => <ProjectCard key={p.id} project={p} onDelete={handleDeleteProject} />)}
+          </div>
+        )
       )}
 
       <GenerateModal
