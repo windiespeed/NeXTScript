@@ -128,7 +128,7 @@ function Dashboard() {
   if (status === "unauthenticated") {
     return (
       <div className="flex flex-col items-center justify-center min-h-[70vh] text-center px-4">
-        <div className="max-w-md w-full bg-gradient-to-br from-[#1e4a85] to-[#112543] rounded-2xl border border-[#1e4a85] shadow-xl px-8 py-10">
+        <div className="max-w-md w-full bg-gradient-to-br from-[#1b2d4f] to-[#1a9bbf] rounded-2xl border border-[#1a9bbf]/40 shadow-xl px-8 py-10">
           <div className="flex justify-center mb-5">
             <Image src="/logo.png" alt="NeXTScript" width={200} height={56} className="h-24 w-auto brightness-0 invert" priority />
           </div>
@@ -175,7 +175,7 @@ function Dashboard() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4 bg-gradient-to-r from-[#1e4a85] to-[#112543] rounded-xl px-5 py-4 shadow">
+      <div className="flex items-center justify-between mb-4 bg-gradient-to-br from-[#1b2d4f] to-[#1a9bbf] rounded-xl px-5 py-4 shadow">
         <div>
           <h1 className="text-2xl font-bold text-white">Dashboard</h1>
           <p className="text-sm text-[#0cc0df] mt-1">Build lessons, slide decks, and forms.</p>

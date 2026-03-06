@@ -42,7 +42,7 @@ export default function LessonCard({ lesson, onDelete, onDuplicate, onOpenModal 
   const busy = lesson.status === "generating" || lesson.status === "regenerating";
 
   return (
-    <div className="h-full rounded-2xl bg-[#112543] dark:bg-gradient-to-br dark:from-[#1e4a85] dark:to-[#112543] flex flex-col overflow-hidden border border-[#1e4a85] shadow-sm hover:-translate-y-1 hover:shadow-lg transition-all duration-200">
+    <div className="h-full rounded-2xl bg-[#112543] dark:bg-gradient-to-br dark:from-[#1b2d4f] dark:to-[#1a9bbf] flex flex-col overflow-hidden border border-[#1e4a85] shadow-sm hover:-translate-y-1 hover:shadow-lg transition-all duration-200">
       {/* Status accent bar */}
       <div className={`h-1 w-full ${STATUS_ACCENT[lesson.status]}`} />
 
