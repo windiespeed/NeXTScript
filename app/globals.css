@@ -3,8 +3,8 @@
 @variant dark (&:where(.dark, .dark *));
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f0f9ff;
+  --foreground: #112543;
 }
 
 @theme inline {
@@ -15,8 +15,8 @@
 }
 
 .dark {
-  --background: #0a0a0a;
-  --foreground: #ededed;
+  --background: #0d1c35;
+  --foreground: #f0f9ff;
 }
 
 html {
@@ -24,13 +24,13 @@ html {
 }
 
 body {
-  background-color: #e5e7eb !important;
+  background-color: #f0f9ff !important;
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
 
 .dark body {
-  background-color: #111827 !important;
+  background-color: #0d1c35 !important;
 }
 
 button, a, [role="button"] {

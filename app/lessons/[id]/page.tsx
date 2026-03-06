@@ -63,14 +63,14 @@ export default function EditLessonPage() {
         <button
           onClick={handleGenerate}
           disabled={generating}
-          className="shrink-0 rounded-md bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-50 transition"
+          className="shrink-0 rounded-md bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50 transition"
         >
           {generating ? "Generating…" : "Generate Bundle"}
         </button>
       </div>
 
       {genResult && (
-        <div className={`rounded-md mb-4 p-3 text-sm ${genResult.error ? "bg-red-50 text-red-700" : "bg-green-50 text-green-700"}`}>
+        <div className={`rounded-md mb-4 p-3 text-sm ${genResult.error ? "bg-red-50 text-red-700" : "bg-[#2dd4a0]/10 border border-[#2dd4a0] text-[#112543]"}`}>
           {genResult.error ? (
             <>Error: {genResult.error}</>
           ) : (

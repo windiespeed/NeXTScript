@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useSession, signIn, signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
 
@@ -20,29 +21,30 @@ export default function Nav() {
   }
 
   return (
-    <nav className="border-b border-gray-600 dark:border-gray-300 bg-gray-700 dark:bg-gray-200 shadow-sm">
+    <nav className="bg-[#112543] shadow-md">
       <div className="mx-auto max-w-5xl px-4 py-3 flex items-center justify-between">
-        <Link href="/" className="font-bold text-white dark:text-blue-800 text-lg tracking-tight">
-          NeXTScript
+        <Link href="/" className="flex items-center">
+          <Image src="/logo.png" alt="NeXTScript" width={160} height={44} className="h-10 w-auto" priority />
         </Link>
 
         <div className="flex items-center gap-4">
           {session && (
-            <div className="hidden sm:flex items-center gap-3 text-sm">
-              <Link href="/" className="text-gray-300 dark:text-gray-600 hover:text-white dark:hover:text-gray-900 transition">
+            <div className="hidden sm:flex items-center gap-4 text-sm">
+              <Link href="/" className="text-[#0cc0df] hover:text-white transition font-medium">
                 Lessons
               </Link>
-              <Link href="/slides/new" className="text-gray-300 dark:text-gray-600 hover:text-white dark:hover:text-gray-900 transition">
+              <Link href="/slides/new" className="text-[#0cc0df] hover:text-white transition font-medium">
                 Slides
               </Link>
-              <Link href="/forms/new" className="text-gray-300 dark:text-gray-600 hover:text-white dark:hover:text-gray-900 transition">
+              <Link href="/forms/new" className="text-[#0cc0df] hover:text-white transition font-medium">
                 Forms
               </Link>
             </div>
           )}
+
           <button
             onClick={toggleTheme}
-            className="rounded-md border border-gray-500 dark:border-gray-400 px-3 py-1.5 text-sm text-gray-300 dark:text-gray-600 hover:bg-gray-600 dark:hover:bg-gray-300 active:scale-95 transition-all duration-150"
+            className="rounded-md border border-[#1e4a85] px-3 py-1.5 text-xs text-[#0cc0df] hover:bg-[#1e4a85] active:scale-95 transition-all duration-150"
             aria-label="Toggle theme"
           >
             {dark ? "☀ Light" : "☾ Dark"}
@@ -50,10 +52,10 @@ export default function Nav() {
 
           {status === "loading" ? null : session ? (
             <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-300 dark:text-gray-600 hidden sm:block">{session.user?.email}</span>
+              <span className="text-xs text-gray-400 hidden sm:block">{session.user?.email}</span>
               <button
                 onClick={() => signOut()}
-                className="text-xs text-gray-300 dark:text-gray-600 hover:text-white dark:hover:text-gray-900 underline active:scale-95 transition-all duration-150"
+                className="text-xs text-gray-400 hover:text-white underline active:scale-95 transition-all duration-150"
               >
                 Sign out
               </button>
@@ -61,9 +63,9 @@ export default function Nav() {
           ) : (
             <button
               onClick={() => signIn("google")}
-              className="rounded-md border border-gray-500 dark:border-gray-400 px-3 py-1.5 text-sm font-medium text-gray-200 dark:text-gray-700 hover:bg-gray-600 dark:hover:bg-gray-300 active:scale-95 transition-all duration-150"
+              className="rounded-md bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-1.5 text-sm font-semibold text-white hover:opacity-90 active:scale-95 transition-all duration-150 shadow"
             >
-              Sign in with Google
+              Sign in
             </button>
           )}
         </div>

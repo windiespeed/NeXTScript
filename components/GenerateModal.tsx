@@ -65,26 +65,26 @@ export default function GenerateModal({ lesson, onClose, onGenerate }: Props) {
     if (e.target === e.currentTarget && modalStatus !== "loading") onClose();
   }
 
-  const labelClass = "flex items-center gap-2.5 text-sm text-white dark:text-gray-900 cursor-pointer select-none";
-  const sectionLabel = "text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-2";
+  const labelClass = "flex items-center gap-2.5 text-sm text-white cursor-pointer select-none";
+  const sectionLabel = "text-xs font-semibold text-[#0cc0df] uppercase tracking-wide mb-2";
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[#0d1c35]/80"
       onClick={handleBackdropClick}
     >
-      <div className="w-full max-w-sm rounded-2xl bg-gray-700 dark:bg-gray-200 border border-gray-600 dark:border-gray-300 shadow-xl p-6 flex flex-col gap-5 mx-4">
+      <div className="w-full max-w-sm rounded-2xl bg-gradient-to-br from-[#1e4a85] to-[#112543] border border-[#1e4a85] shadow-2xl p-6 flex flex-col gap-5 mx-4">
 
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="font-bold text-white dark:text-gray-900 text-base">Generate Bundle</h2>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 truncate max-w-[220px]">{lesson.title}</p>
+            <h2 className="font-bold text-white text-base">Generate Bundle</h2>
+            <p className="text-xs text-[#0cc0df] mt-0.5 truncate max-w-[220px]">{lesson.title}</p>
           </div>
           <button
             onClick={onClose}
             disabled={modalStatus === "loading"}
-            className="text-gray-400 dark:text-gray-500 hover:text-white dark:hover:text-gray-900 text-lg leading-none disabled:opacity-40 active:scale-95 transition-all duration-150"
+            className="text-gray-400 hover:text-white text-lg leading-none disabled:opacity-40 active:scale-95 transition-all duration-150"
             aria-label="Close"
           >
             ✕
@@ -100,28 +100,28 @@ export default function GenerateModal({ lesson, onClose, onGenerate }: Props) {
                 type="checkbox"
                 checked={selectedFiles.includes("slides")}
                 onChange={() => toggleFile("slides")}
-                className="w-4 h-4 accent-emerald-700"
+                className="w-4 h-4 accent-[#0cc0df]"
               />
-              Slides <span className="text-gray-400 dark:text-gray-500 text-xs">(Google Slides)</span>
+              Slides <span className="text-gray-400 text-xs">(Google Slides)</span>
             </label>
             <label className={labelClass}>
               <input
                 type="checkbox"
                 checked={selectedFiles.includes("doc")}
                 onChange={() => toggleFile("doc")}
-                className="w-4 h-4 accent-emerald-700"
+                className="w-4 h-4 accent-[#0cc0df]"
               />
-              Assessment Doc <span className="text-gray-400 dark:text-gray-500 text-xs">(Google Doc)</span>
+              Assessment Doc <span className="text-gray-400 text-xs">(Google Doc)</span>
             </label>
-            <label className={`flex items-center gap-2.5 text-sm cursor-pointer select-none ${quizDisabled ? "opacity-40 cursor-not-allowed" : "text-white dark:text-gray-900"}`}>
+            <label className={`flex items-center gap-2.5 text-sm cursor-pointer select-none ${quizDisabled ? "opacity-40 cursor-not-allowed" : "text-white"}`}>
               <input
                 type="checkbox"
                 checked={selectedFiles.includes("quiz")}
                 onChange={() => !quizDisabled && toggleFile("quiz")}
                 disabled={quizDisabled}
-                className="w-4 h-4 accent-emerald-700"
+                className="w-4 h-4 accent-[#0cc0df]"
               />
-              Quiz <span className="text-xs text-gray-400 dark:text-gray-500">{quizDisabled ? "(not available as PDF)" : "(Google Forms)"}</span>
+              Quiz <span className="text-xs text-gray-400">{quizDisabled ? "(not available as PDF)" : "(Google Forms)"}</span>
             </label>
           </div>
         </div>
@@ -137,7 +137,7 @@ export default function GenerateModal({ lesson, onClose, onGenerate }: Props) {
                 value="drive"
                 checked={destination === "drive"}
                 onChange={() => handleDestinationChange("drive")}
-                className="w-4 h-4 accent-emerald-700"
+                className="w-4 h-4 accent-[#0cc0df]"
               />
               Push to Google Drive
             </label>
@@ -148,7 +148,7 @@ export default function GenerateModal({ lesson, onClose, onGenerate }: Props) {
                 value="download"
                 checked={destination === "download"}
                 onChange={() => handleDestinationChange("download")}
-                className="w-4 h-4 accent-emerald-700"
+                className="w-4 h-4 accent-[#0cc0df]"
               />
               Download as PDF
             </label>
@@ -157,19 +157,19 @@ export default function GenerateModal({ lesson, onClose, onGenerate }: Props) {
 
         {/* Template URL */}
         <div>
-          <p className={sectionLabel}>Slides Template <span className="normal-case font-normal text-gray-500">(optional)</span></p>
+          <p className={sectionLabel}>Slides Template <span className="normal-case font-normal text-gray-400">(optional)</span></p>
           <input
             type="url"
             value={templateUrl}
             onChange={(e) => setTemplateUrl(e.target.value)}
             placeholder="https://docs.google.com/presentation/d/…"
-            className="w-full rounded-lg bg-gray-600 dark:bg-gray-300 border border-gray-500 dark:border-gray-400 text-white dark:text-gray-900 placeholder:text-gray-400 dark:placeholder:text-gray-500 text-xs px-3 py-2 focus:outline-none focus:ring-1 focus:ring-emerald-600"
+            className="w-full rounded-lg bg-[#0d1c35] border border-[#1e4a85] text-white placeholder:text-gray-500 text-xs px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#0cc0df]"
           />
           {templateUrl.trim() && !extractPresentationId(templateUrl.trim()) && (
-            <p className="text-xs text-red-400 dark:text-red-500 mt-1">Could not extract a presentation ID from that URL.</p>
+            <p className="text-xs text-red-400 mt-1">Could not extract a presentation ID from that URL.</p>
           )}
           {!templateUrl.trim() && (
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Leave blank to use the default template.</p>
+            <p className="text-xs text-gray-400 mt-1">Leave blank to use the default template.</p>
           )}
         </div>
 
@@ -178,14 +178,14 @@ export default function GenerateModal({ lesson, onClose, onGenerate }: Props) {
           <button
             onClick={onClose}
             disabled={modalStatus === "loading"}
-            className="rounded-lg px-4 py-1.5 text-xs font-semibold bg-gray-600 dark:bg-gray-300 text-white dark:text-gray-900 hover:bg-gray-500 dark:hover:bg-gray-400 disabled:opacity-40 active:scale-95 transition-all duration-150"
+            className="rounded-lg px-4 py-1.5 text-xs font-semibold bg-[#1e4a85] text-white hover:bg-[#2a5a9a] disabled:opacity-40 active:scale-95 transition-all duration-150"
           >
             Cancel
           </button>
           <button
             onClick={handleGenerate}
             disabled={!canGenerate}
-            className="rounded-lg px-4 py-1.5 text-xs font-semibold bg-emerald-800 text-white hover:bg-emerald-900 disabled:opacity-40 active:scale-95 transition-all duration-150"
+            className="rounded-lg px-4 py-1.5 text-xs font-semibold bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] text-white hover:opacity-90 disabled:opacity-40 active:scale-95 transition-all duration-150"
           >
             Generate
           </button>

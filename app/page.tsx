@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSession, signIn } from "next-auth/react";
+import Image from "next/image";
 import Link from "next/link";
 import LessonCard from "@/components/LessonCard";
 import ProjectCard from "@/components/ProjectCard";
@@ -118,15 +119,17 @@ export default function DashboardPage() {
   if (status === "unauthenticated") {
     return (
       <div className="flex flex-col items-center justify-center min-h-[70vh] text-center px-4">
-        <div className="max-w-md">
-          <h1 className="text-4xl font-extrabold text-blue-900 mb-2">NeXTScript</h1>
-          <p className="text-gray-500 text-lg mb-2">Curriculum Builder</p>
-          <p className="text-gray-400 text-sm mb-8">
+        <div className="max-w-md w-full bg-gradient-to-br from-[#1e4a85] to-[#112543] rounded-2xl border border-[#1e4a85] shadow-xl px-8 py-10">
+          <div className="flex justify-center mb-5">
+            <Image src="/logo.png" alt="NeXTScript" width={200} height={56} className="h-14 w-auto" priority />
+          </div>
+          <p className="text-[#0cc0df] text-base font-medium mb-2">Curriculum Builder</p>
+          <p className="text-gray-300 text-sm mb-8">
             Create and edit lessons, then generate a full Google Drive bundle — slides, poster, and quiz — with one click.
           </p>
           <button
             onClick={() => signIn("google")}
-            className="inline-flex items-center gap-3 rounded-lg bg-blue-950 px-6 py-3 text-sm font-semibold text-white hover:bg-blue-900 transition shadow"
+            className="inline-flex items-center gap-3 rounded-lg bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-6 py-3 text-sm font-semibold text-white hover:opacity-90 transition shadow"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#ffffff"/>
@@ -142,7 +145,7 @@ export default function DashboardPage() {
   }
 
   if (status === "loading") {
-    return <p className="text-gray-500 text-sm text-center mt-20">Loading…</p>;
+    return <p className="text-[#0cc0df] text-sm text-center mt-20">Loading…</p>;
   }
 
   const tabBtn = (t: Tab, label: string, count: number) => (
@@ -150,8 +153,8 @@ export default function DashboardPage() {
       onClick={() => setTab(t)}
       className={`px-4 py-2 text-sm font-semibold rounded-lg transition ${
         tab === t
-          ? "bg-white dark:bg-gray-700 text-blue-900 dark:text-white shadow"
-          : "text-gray-300 dark:text-gray-600 hover:text-white dark:hover:text-gray-900"
+          ? "bg-[#0cc0df] text-[#112543] shadow"
+          : "text-gray-300 hover:text-white hover:bg-[#1e4a85]"
       }`}
     >
       {label} {count > 0 && <span className="ml-1 text-xs opacity-70">({count})</span>}
@@ -163,33 +166,33 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4 bg-gray-700 dark:bg-gray-200 rounded-xl px-5 py-4">
+      <div className="flex items-center justify-between mb-4 bg-gradient-to-r from-[#1e4a85] to-[#112543] rounded-xl px-5 py-4 shadow">
         <div>
-          <h1 className="text-2xl font-bold text-white dark:text-gray-900">Dashboard</h1>
-          <p className="text-sm text-white dark:text-gray-600 mt-1">Build lessons, slide decks, and forms.</p>
+          <h1 className="text-2xl font-bold text-white">Dashboard</h1>
+          <p className="text-sm text-[#0cc0df] mt-1">Build lessons, slide decks, and forms.</p>
         </div>
         <Link
           href={newHref}
-          className="rounded-md bg-white dark:bg-gray-700 px-4 py-2 text-sm font-bold text-blue-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-600 transition"
+          className="rounded-md bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-bold text-white hover:opacity-90 transition shadow"
         >
           {newLabel}
         </Link>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-5 bg-gray-700 dark:bg-gray-200 rounded-lg p-1 w-fit">
+      <div className="flex gap-1 mb-5 bg-[#112543] rounded-lg p-1 w-fit shadow">
         {tabBtn("lessons", "Lessons", lessons.length)}
         {tabBtn("decks", "Slide Decks", decks.length)}
         {tabBtn("forms", "Forms", forms.length)}
       </div>
 
       {loading ? (
-        <p className="text-gray-500 text-sm">Loading…</p>
+        <p className="text-[#0cc0df] text-sm">Loading…</p>
       ) : tab === "lessons" ? (
         lessons.length === 0 ? (
-          <div className="rounded-xl border-2 border-dashed border-gray-300 p-12 text-center">
+          <div className="rounded-xl border-2 border-dashed border-[#1e4a85] p-12 text-center">
             <p className="text-gray-400 text-sm mb-4">No lessons yet.</p>
-            <Link href="/lessons/new" className="rounded-md bg-blue-950 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-900 transition">
+            <Link href="/lessons/new" className="rounded-md bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition">
               Create your first lesson
             </Link>
           </div>
@@ -202,9 +205,9 @@ export default function DashboardPage() {
         )
       ) : tab === "decks" ? (
         decks.length === 0 ? (
-          <div className="rounded-xl border-2 border-dashed border-gray-300 p-12 text-center">
+          <div className="rounded-xl border-2 border-dashed border-[#1e4a85] p-12 text-center">
             <p className="text-gray-400 text-sm mb-4">No slide decks yet.</p>
-            <Link href="/slides/new" className="rounded-md bg-blue-950 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-900 transition">
+            <Link href="/slides/new" className="rounded-md bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition">
               Create your first slide deck
             </Link>
           </div>
@@ -215,9 +218,9 @@ export default function DashboardPage() {
         )
       ) : (
         forms.length === 0 ? (
-          <div className="rounded-xl border-2 border-dashed border-gray-300 p-12 text-center">
+          <div className="rounded-xl border-2 border-dashed border-[#1e4a85] p-12 text-center">
             <p className="text-gray-400 text-sm mb-4">No forms yet.</p>
-            <Link href="/forms/new" className="rounded-md bg-blue-950 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-900 transition">
+            <Link href="/forms/new" className="rounded-md bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition">
               Create your first form
             </Link>
           </div>

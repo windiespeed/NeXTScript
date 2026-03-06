@@ -118,7 +118,7 @@ export default function LessonForm({ initial = {}, onSubmit, submitLabel = "Save
       {/* ── Meta fields ──────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="sm:col-span-2">
-          <label className="block text-sm font-semibold text-black dark:text-white mb-1">
+          <label className="block text-sm font-semibold text-[#112543] dark:text-white mb-1">
             Lesson Title <span className="text-red-500">*</span>
           </label>
           <p className="text-xs text-gray-500 mb-1">Module number and lesson number (e.g. Module 3, Lesson 2)</p>
@@ -128,35 +128,35 @@ export default function LessonForm({ initial = {}, onSubmit, submitLabel = "Save
             value={form.title}
             onChange={(e) => set("title", e.target.value)}
             placeholder="e.g. Module 3, Lesson 2"
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-black shadow-sm placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-900"
+            className="w-full rounded-md border border-[#1e4a85]/30 px-3 py-2 text-sm text-[#112543] shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
           />
         </div>
 
         <div className="sm:col-span-2">
-          <label className="block text-sm font-semibold text-black dark:text-white mb-1">Lesson Subtitle</label>
+          <label className="block text-sm font-semibold text-[#112543] dark:text-white mb-1">Lesson Subtitle</label>
           <p className="text-xs text-gray-500 mb-1">Specific topic or subject covered in this lesson</p>
           <input
             type="text"
             value={form.subtitle}
             onChange={(e) => set("subtitle", e.target.value)}
             placeholder="e.g. Introduction to CSS Flexbox"
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-black shadow-sm placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-900"
+            className="w-full rounded-md border border-[#1e4a85]/30 px-3 py-2 text-sm text-[#112543] shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-black dark:text-white mb-1">Topics</label>
+          <label className="block text-sm font-semibold text-[#112543] dark:text-white mb-1">Topics</label>
           <input
             type="text"
             value={form.topics}
             onChange={(e) => set("topics", e.target.value)}
             placeholder="e.g. Flexbox, CSS Layout"
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-black shadow-sm placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-900"
+            className="w-full rounded-md border border-[#1e4a85]/30 px-3 py-2 text-sm text-[#112543] shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-black dark:text-white mb-1">Deadline</label>
+          <label className="block text-sm font-semibold text-[#112543] dark:text-white mb-1">Deadline</label>
           <input
             type="date"
             value={form.deadline}
@@ -166,7 +166,7 @@ export default function LessonForm({ initial = {}, onSubmit, submitLabel = "Save
         </div>
 
         <div className="sm:col-span-2">
-          <label className="block text-sm font-semibold text-black dark:text-white mb-1">Sources</label>
+          <label className="block text-sm font-semibold text-[#112543] dark:text-white mb-1">Sources</label>
           <p className="text-xs text-gray-500 mb-1">
             Reference URLs used to generate this lesson — one URL per line (e.g. W3C specs, MDN docs, W3Schools pages).
           </p>
@@ -184,13 +184,13 @@ export default function LessonForm({ initial = {}, onSubmit, submitLabel = "Save
       <div className="space-y-5">
         {PRE_SLIDE_FIELDS.map(({ key, label, hint, rows }) => (
           <div key={key}>
-            <label className="block text-sm font-semibold text-black dark:text-white mb-1">{label}</label>
+            <label className="block text-sm font-semibold text-[#112543] dark:text-white mb-1">{label}</label>
             <p className="text-xs text-gray-500 mb-1">{hint}</p>
             <textarea
               value={form[key] as string}
               onChange={(e) => set(key, e.target.value)}
               rows={rows}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-black font-mono shadow-sm placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-900"
+              className="w-full rounded-md border border-[#1e4a85]/30 px-3 py-2 text-sm text-[#112543] font-mono shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
             />
           </div>
         ))}
@@ -200,13 +200,13 @@ export default function LessonForm({ initial = {}, onSubmit, submitLabel = "Save
       <div>
         <div className="flex items-center justify-between mb-3">
           <div>
-            <p className="text-sm font-semibold text-black">Slide Content</p>
-            <p className="text-xs text-black">Each card is one slide. The title becomes the slide heading.</p>
+            <p className="text-sm font-semibold text-[#112543]">Slide Content</p>
+            <p className="text-xs text-gray-500">Each card is one slide. The title becomes the slide heading.</p>
           </div>
           <button
             type="button"
             onClick={addSlide}
-            className="rounded-md bg-blue-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-800 transition"
+            className="rounded-md bg-[#112543] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#1e4a85] transition"
           >
             + Add Slide
           </button>
@@ -214,9 +214,9 @@ export default function LessonForm({ initial = {}, onSubmit, submitLabel = "Save
 
         <div className="space-y-3">
           {slides.map((slide, i) => (
-            <div key={i} className="rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-2">
+            <div key={i} className="rounded-lg border border-[#1e4a85]/20 bg-white p-4 space-y-2">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Slide {i + 1}</span>
+                <span className="text-xs font-semibold text-[#112543]/50 uppercase tracking-wide">Slide {i + 1}</span>
                 <button
                   type="button"
                   onClick={() => removeSlide(i)}
@@ -231,14 +231,14 @@ export default function LessonForm({ initial = {}, onSubmit, submitLabel = "Save
                 value={slide.title}
                 onChange={(e) => setSlide(i, "title", e.target.value)}
                 placeholder="Slide title"
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-black bg-white shadow-sm placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-900"
+                className="w-full rounded-md border border-[#1e4a85]/30 px-3 py-2 text-sm text-[#112543] bg-white shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
               />
               <textarea
                 value={slide.body}
                 onChange={(e) => setSlide(i, "body", e.target.value)}
                 rows={4}
                 placeholder="Slide content…"
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-black font-mono bg-white shadow-sm placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-900"
+                className="w-full rounded-md border border-[#1e4a85]/30 px-3 py-2 text-sm text-[#112543] font-mono bg-white shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
               />
             </div>
           ))}
@@ -249,13 +249,13 @@ export default function LessonForm({ initial = {}, onSubmit, submitLabel = "Save
       <div className="space-y-5">
         {POST_SLIDE_FIELDS.map(({ key, label, hint, rows }) => (
           <div key={key}>
-            <label className="block text-sm font-semibold text-black dark:text-white mb-1">{label}</label>
+            <label className="block text-sm font-semibold text-[#112543] dark:text-white mb-1">{label}</label>
             <p className="text-xs text-gray-500 mb-1">{hint}</p>
             <textarea
               value={form[key] as string}
               onChange={(e) => set(key, e.target.value)}
               rows={rows}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-black font-mono shadow-sm placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-900"
+              className="w-full rounded-md border border-[#1e4a85]/30 px-3 py-2 text-sm text-[#112543] font-mono shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
             />
           </div>
         ))}
@@ -265,13 +265,13 @@ export default function LessonForm({ initial = {}, onSubmit, submitLabel = "Save
       <div>
         <div className="flex items-center justify-between mb-3">
           <div>
-            <p className="text-sm font-semibold text-black">Quiz Questions</p>
-            <p className="text-xs text-black">Optional — define custom questions for the generated quiz. If left empty, questions are auto-generated from the Rubric.</p>
+            <p className="text-sm font-semibold text-[#112543]">Quiz Questions</p>
+            <p className="text-xs text-gray-500">Optional — define custom questions for the generated quiz. If left empty, questions are auto-generated from the Rubric.</p>
           </div>
           <button
             type="button"
             onClick={() => setQuizQuestions(prev => [...prev, emptyQuestion(`q_${Date.now()}`)])}
-            className="rounded-md bg-blue-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-800 transition"
+            className="rounded-md bg-[#112543] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#1e4a85] transition"
           >
             + Add Question
           </button>
@@ -279,9 +279,9 @@ export default function LessonForm({ initial = {}, onSubmit, submitLabel = "Save
 
         <div className="space-y-4">
           {quizQuestions.map((q, i) => (
-            <div key={q.id} className="rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-3">
+            <div key={q.id} className="rounded-lg border border-[#1e4a85]/20 bg-white p-4 space-y-3">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Question {i + 1}</span>
+                <span className="text-xs font-semibold text-[#112543]/50 uppercase tracking-wide">Question {i + 1}</span>
                 <button
                   type="button"
                   onClick={() => setQuizQuestions(prev => prev.filter((_, idx) => idx !== i))}
@@ -293,21 +293,21 @@ export default function LessonForm({ initial = {}, onSubmit, submitLabel = "Save
 
               <div className="flex gap-3">
                 <div className="flex-1">
-                  <label className="block text-xs font-semibold text-black mb-1">Question</label>
+                  <label className="block text-xs font-semibold text-[#112543] mb-1">Question</label>
                   <input
                     type="text"
                     value={q.text}
                     onChange={e => setQuizQuestions(prev => prev.map((x, idx) => idx === i ? { ...x, text: e.target.value } : x))}
                     placeholder="Enter question text"
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-black bg-white shadow-sm placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-900"
+                    className="w-full rounded-md border border-[#1e4a85]/30 px-3 py-2 text-sm text-[#112543] bg-white shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-black mb-1">Type</label>
+                  <label className="block text-xs font-semibold text-[#112543] mb-1">Type</label>
                   <select
                     value={q.type}
                     onChange={e => setQuizQuestions(prev => prev.map((x, idx) => idx === i ? { ...x, type: e.target.value as FormQuestion["type"] } : x))}
-                    className="rounded-md border border-gray-300 px-3 py-2 text-sm text-black bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-900"
+                    className="rounded-md border border-[#1e4a85]/30 px-3 py-2 text-sm text-[#112543] bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
                   >
                     <option value="multiple_choice">Multiple Choice</option>
                     <option value="short_answer">Short Answer</option>
@@ -329,7 +329,7 @@ export default function LessonForm({ initial = {}, onSubmit, submitLabel = "Save
                           : x
                         ))}
                         placeholder={`Option ${oi + 1}`}
-                        className="flex-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm text-black bg-white shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-900"
+                        className="flex-1 rounded-md border border-[#1e4a85]/30 px-3 py-1.5 text-sm text-[#112543] bg-white shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
                       />
                       <button
                         type="button"
@@ -347,7 +347,7 @@ export default function LessonForm({ initial = {}, onSubmit, submitLabel = "Save
                   <button
                     type="button"
                     onClick={() => setQuizQuestions(prev => prev.map((x, idx) => idx === i ? { ...x, options: [...x.options, ""] } : x))}
-                    className="text-xs text-blue-700 hover:text-blue-900 transition"
+                    className="text-xs text-[#0cc0df] hover:text-[#1e4a85] transition"
                   >
                     + Add option
                   </button>
@@ -357,7 +357,7 @@ export default function LessonForm({ initial = {}, onSubmit, submitLabel = "Save
                     <select
                       value={q.correctAnswer}
                       onChange={e => setQuizQuestions(prev => prev.map((x, idx) => idx === i ? { ...x, correctAnswer: e.target.value } : x))}
-                      className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm text-black bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-900"
+                      className="w-full rounded-md border border-[#1e4a85]/30 px-3 py-1.5 text-sm text-[#112543] bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
                     >
                       <option value="">— None —</option>
                       {q.options.filter(o => o.trim()).map((o, oi) => (
@@ -368,7 +368,7 @@ export default function LessonForm({ initial = {}, onSubmit, submitLabel = "Save
                 </div>
               )}
 
-              <label className="flex items-center gap-2 text-xs text-black cursor-pointer">
+              <label className="flex items-center gap-2 text-xs text-[#112543] cursor-pointer">
                 <input
                   type="checkbox"
                   checked={q.required}
@@ -385,7 +385,7 @@ export default function LessonForm({ initial = {}, onSubmit, submitLabel = "Save
       <button
         type="submit"
         disabled={saving}
-        className="w-full rounded-md bg-blue-900 px-4 py-2.5 text-sm font-semibold text-white shadow hover:bg-blue-800 disabled:opacity-50 transition"
+        className="w-full rounded-md bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2.5 text-sm font-semibold text-white shadow hover:opacity-90 disabled:opacity-50 transition"
       >
         {saving ? "Saving…" : submitLabel}
       </button>
