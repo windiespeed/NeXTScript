@@ -18,7 +18,7 @@ export default function ProjectCard({ project, onDelete }: Props) {
   const openLabel = isDeck ? "Open in Slides" : "Open in Forms";
 
   return (
-    <div className="h-full rounded-2xl bg-gradient-to-br from-[#1e4a85] to-[#112543] flex flex-col overflow-hidden border border-[#1e4a85] shadow-sm hover:-translate-y-1 hover:shadow-lg transition-all duration-200">
+    <div className="h-full rounded-2xl bg-[#112543] dark:bg-gradient-to-br dark:from-[#1e4a85] dark:to-[#112543] flex flex-col overflow-hidden border border-[#1e4a85] shadow-sm hover:-translate-y-1 hover:shadow-lg transition-all duration-200">
       <div className={`h-1 w-full ${accentColor}`} />
 
       <div className="flex flex-col gap-3 p-5 flex-1">
@@ -44,7 +44,7 @@ export default function ProjectCard({ project, onDelete }: Props) {
         </div>
       </div>
 
-      <div className="flex gap-2 px-5 py-3 bg-[#0d1c35] border-t border-[#1e4a85]">
+      <div className="flex gap-2 px-5 py-3 border-t border-white/10">
         <a
           href={project.url}
           target="_blank"
