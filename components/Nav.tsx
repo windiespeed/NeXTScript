@@ -33,10 +33,10 @@ export default function Nav() {
               <Link href="/?tab=lessons" className="text-[#0cc0df] hover:text-white transition font-medium">
                 Lessons
               </Link>
-              <Link href="/slides/new" className="text-[#0cc0df] hover:text-white transition font-medium">
+              <Link href="/?tab=decks" className="text-[#0cc0df] hover:text-white transition font-medium">
                 Slides
               </Link>
-              <Link href="/forms/new" className="text-[#0cc0df] hover:text-white transition font-medium">
+              <Link href="/?tab=forms" className="text-[#0cc0df] hover:text-white transition font-medium">
                 Forms
               </Link>
             </div>
