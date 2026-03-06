@@ -1,3 +1,5 @@
+import type { FormQuestion } from "./form";
+
 export interface Lesson {
   id: string;
   userId: string;          // owner's Google email — used to scope lessons per user
@@ -24,6 +26,7 @@ export interface Lesson {
   devJournalPrompt: string;      // DEVELOPMENT JOURNAL PROMPT
   rubric: string;                // RUBRIC — comprehension/objective checklist
   sources: string;               // Reference URLs (one per line) used during generation
+  quizQuestions?: FormQuestion[]; // Custom quiz questions — if set, used instead of auto-gen
 }
 
 export type LessonInput = Omit<

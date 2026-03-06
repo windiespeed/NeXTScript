@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import type { Lesson, LessonInput } from "@/types/lesson";
+import type { FormQuestion } from "@/types/form";
+import { emptyQuestion } from "@/types/form";
 
 interface Props {
   initial?: Partial<Lesson>;
@@ -68,6 +70,11 @@ const POST_SLIDE_FIELDS: SectionField[] = [
 export default function LessonForm({ initial = {}, onSubmit, submitLabel = "Save Lesson" }: Props) {
   const [form, setForm] = useState<LessonInput>({ ...EMPTY, ...initial });
   const [slides, setSlides] = useState<Slide[]>(() => parseSlides(initial.slideContent ?? ""));
+  const [quizQuestions, setQuizQuestions] = useState<FormQuestion[]>(
+    () => (initial.quizQuestions && initial.quizQuestions.length > 0)
+      ? initial.quizQuestions
+      : []
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -92,7 +99,7 @@ export default function LessonForm({ initial = {}, onSubmit, submitLabel = "Save
     setError("");
     setSaving(true);
     try {
-      await onSubmit({ ...form, slideContent: serializeSlides(slides) });
+      await onSubmit({ ...form, slideContent: serializeSlides(slides), quizQuestions });
     } catch (err: any) {
       setError(err.message || "Something went wrong.");
     } finally {
@@ -252,6 +259,127 @@ export default function LessonForm({ initial = {}, onSubmit, submitLabel = "Save
             />
           </div>
         ))}
+      </div>
+
+      {/* ── Quiz Questions ────────────────────────────────────────────── */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <p className="text-sm font-semibold text-black">Quiz Questions</p>
+            <p className="text-xs text-black">Optional — define custom questions for the generated quiz. If left empty, questions are auto-generated from the Rubric.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setQuizQuestions(prev => [...prev, emptyQuestion(`q_${Date.now()}`)])}
+            className="rounded-md bg-blue-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-800 transition"
+          >
+            + Add Question
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          {quizQuestions.map((q, i) => (
+            <div key={q.id} className="rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Question {i + 1}</span>
+                <button
+                  type="button"
+                  onClick={() => setQuizQuestions(prev => prev.filter((_, idx) => idx !== i))}
+                  className="text-xs text-red-500 hover:text-red-700 transition"
+                >
+                  Remove
+                </button>
+              </div>
+
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <label className="block text-xs font-semibold text-black mb-1">Question</label>
+                  <input
+                    type="text"
+                    value={q.text}
+                    onChange={e => setQuizQuestions(prev => prev.map((x, idx) => idx === i ? { ...x, text: e.target.value } : x))}
+                    placeholder="Enter question text"
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-black bg-white shadow-sm placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-900"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-black mb-1">Type</label>
+                  <select
+                    value={q.type}
+                    onChange={e => setQuizQuestions(prev => prev.map((x, idx) => idx === i ? { ...x, type: e.target.value as FormQuestion["type"] } : x))}
+                    className="rounded-md border border-gray-300 px-3 py-2 text-sm text-black bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-900"
+                  >
+                    <option value="multiple_choice">Multiple Choice</option>
+                    <option value="short_answer">Short Answer</option>
+                    <option value="paragraph">Paragraph</option>
+                  </select>
+                </div>
+              </div>
+
+              {q.type === "multiple_choice" && (
+                <div className="space-y-2">
+                  <label className="block text-xs font-semibold text-black">Answer Options</label>
+                  {q.options.map((opt, oi) => (
+                    <div key={oi} className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={opt}
+                        onChange={e => setQuizQuestions(prev => prev.map((x, idx) => idx === i
+                          ? { ...x, options: x.options.map((o, oIdx) => oIdx === oi ? e.target.value : o) }
+                          : x
+                        ))}
+                        placeholder={`Option ${oi + 1}`}
+                        className="flex-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm text-black bg-white shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-900"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setQuizQuestions(prev => prev.map((x, idx) => idx === i
+                          ? { ...x, options: x.options.filter((_, oIdx) => oIdx !== oi) }
+                          : x
+                        ))}
+                        disabled={q.options.length <= 2}
+                        className="text-xs text-red-400 hover:text-red-600 disabled:opacity-30 transition"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setQuizQuestions(prev => prev.map((x, idx) => idx === i ? { ...x, options: [...x.options, ""] } : x))}
+                    className="text-xs text-blue-700 hover:text-blue-900 transition"
+                  >
+                    + Add option
+                  </button>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-black mt-2 mb-1">Correct Answer (optional — for grading)</label>
+                    <select
+                      value={q.correctAnswer}
+                      onChange={e => setQuizQuestions(prev => prev.map((x, idx) => idx === i ? { ...x, correctAnswer: e.target.value } : x))}
+                      className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm text-black bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-900"
+                    >
+                      <option value="">— None —</option>
+                      {q.options.filter(o => o.trim()).map((o, oi) => (
+                        <option key={oi} value={o}>{o}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              <label className="flex items-center gap-2 text-xs text-black cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={q.required}
+                  onChange={e => setQuizQuestions(prev => prev.map((x, idx) => idx === i ? { ...x, required: e.target.checked } : x))}
+                  className="rounded"
+                />
+                Required
+              </label>
+            </div>
+          ))}
+        </div>
       </div>
 
       <button

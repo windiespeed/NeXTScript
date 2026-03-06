@@ -7,6 +7,7 @@
 
 import { google } from "googleapis";
 import type { Lesson } from "@/types/lesson";
+import type { FormQuestion } from "@/types/form";
 
 function getAuthClient(accessToken: string) {
   const auth = new google.auth.OAuth2();
@@ -344,74 +345,247 @@ export async function buildQuiz(lesson: Lesson, accessToken: string): Promise<st
   });
   const formId = form.data.formId!;
 
-  // Parse rubric: each non-empty line becomes one MC question (up to 10)
-  const checklistItems = getRubric(lesson)
-    .split("\n")
-    .map((line) => line.replace(/^[\s☐✓\-\*•]+/, "").trim()) // strip checkbox markers
-    .filter(Boolean)
-    .slice(0, 10);
+  const customQuestions = lesson.quizQuestions?.filter(q => q.text.trim());
 
-  const mcItems: any[] = checklistItems.map((item, i) => ({
-    createItem: {
-      item: {
-        title: `Which statement best describes the following: "${item}"?`,
-        questionItem: {
+  let items: any[];
+
+  if (customQuestions && customQuestions.length > 0) {
+    // Use custom questions defined in the lesson
+    items = customQuestions.map((q, i) => {
+      let questionItem: any;
+      if (q.type === "multiple_choice") {
+        const opts = q.options.filter(o => o.trim()).map(o => ({ value: o }));
+        questionItem = {
           question: {
-            grading: {
-              pointValue: 10,
-              correctAnswers: { answers: [{ value: "This is the industry-standard approach" }] },
-            },
-            choiceQuestion: {
-              type: "RADIO",
-              options: [
-                { value: "This is the industry-standard approach" },
-                { value: "This is an outdated legacy approach" },
-                { value: "This only applies to specific frameworks" },
-                { value: "This is not recommended practice" },
-              ],
+            required: q.required,
+            ...(q.correctAnswer.trim()
+              ? { grading: { pointValue: 10, correctAnswers: { answers: [{ value: q.correctAnswer }] } } }
+              : {}),
+            choiceQuestion: { type: "RADIO", options: opts },
+          },
+        };
+      } else {
+        questionItem = {
+          question: {
+            required: q.required,
+            textQuestion: { paragraph: q.type === "paragraph" },
+          },
+        };
+      }
+      return { createItem: { item: { title: q.text, questionItem }, location: { index: i } } };
+    });
+  } else {
+    // Auto-generate from rubric (legacy fallback)
+    const checklistItems = getRubric(lesson)
+      .split("\n")
+      .map((line) => line.replace(/^[\s☐✓\-\*•]+/, "").trim())
+      .filter(Boolean)
+      .slice(0, 10);
+
+    const mcItems: any[] = checklistItems.map((item, i) => ({
+      createItem: {
+        item: {
+          title: `Which statement best describes the following: "${item}"?`,
+          questionItem: {
+            question: {
+              grading: { pointValue: 10, correctAnswers: { answers: [{ value: "This is the industry-standard approach" }] } },
+              choiceQuestion: {
+                type: "RADIO",
+                options: [
+                  { value: "This is the industry-standard approach" },
+                  { value: "This is an outdated legacy approach" },
+                  { value: "This only applies to specific frameworks" },
+                  { value: "This is not recommended practice" },
+                ],
+              },
             },
           },
         },
+        location: { index: i },
       },
-      location: { index: i },
-    },
-  }));
+    }));
 
-  // 2 short answer questions (10–12 total with MC above)
-  const firstTarget =
-    lesson.learningTargets.split("\n").find((l) => l.trim()) || "a key concept from this lesson";
-
-  const shortAnswers: any[] = [
-    {
-      createItem: {
-        item: {
-          title: "Describe your debugging process when you encounter an error in your code.",
-          questionItem: { question: { required: true, textQuestion: { paragraph: true } } },
+    const firstTarget = lesson.learningTargets.split("\n").find((l) => l.trim()) || "a key concept from this lesson";
+    const shortAnswers: any[] = [
+      {
+        createItem: {
+          item: {
+            title: "Describe your debugging process when you encounter an error in your code.",
+            questionItem: { question: { required: true, textQuestion: { paragraph: true } } },
+          },
+          location: { index: checklistItems.length },
         },
-        location: { index: checklistItems.length },
       },
-    },
-    {
-      createItem: {
-        item: {
-          title: `Explain how you would apply this concept in a real project: ${firstTarget.trim()}`,
-          questionItem: { question: { required: true, textQuestion: { paragraph: true } } },
+      {
+        createItem: {
+          item: {
+            title: `Explain how you would apply this concept in a real project: ${firstTarget.trim()}`,
+            questionItem: { question: { required: true, textQuestion: { paragraph: true } } },
+          },
+          location: { index: checklistItems.length + 1 },
         },
-        location: { index: checklistItems.length + 1 },
       },
-    },
-  ];
+    ];
+    items = [...mcItems, ...shortAnswers];
+  }
 
   await forms.forms.batchUpdate({
     formId,
     requestBody: {
       requests: [
         { updateSettings: { settings: { quizSettings: { isQuiz: true } }, updateMask: "quizSettings" } },
-        ...mcItems,
-        ...shortAnswers,
+        ...items,
       ],
     },
   });
+
+  return formId;
+}
+
+// ─── Standalone Slide Deck ────────────────────────────────────────────────────
+
+export interface StandaloneSlide {
+  title: string;
+  body: string;
+}
+
+export async function buildStandaloneSlides(
+  deckTitle: string,
+  deckSubtitle: string,
+  slideList: StandaloneSlide[],
+  accessToken: string,
+  templateId?: string
+): Promise<string> {
+  _idSeq = 0;
+  const drive  = google.drive({ version: "v3", auth: getAuthClient(accessToken) });
+  const slides = google.slides({ version: "v1", auth: getAuthClient(accessToken) });
+
+  const resolvedTemplateId = templateId ?? process.env.SLIDES_TEMPLATE_ID!;
+
+  const copy = await drive.files.copy({
+    fileId: resolvedTemplateId,
+    requestBody: { name: deckTitle },
+    fields: "id",
+  });
+  const deckId = copy.data.id!;
+
+  const pres = await slides.presentations.get({ presentationId: deckId });
+  const titleSlide = (pres.data.slides || [])[0];
+  const masterLayouts = ((pres.data.masters || [])[0] as any)?.layouts || [];
+  const blankLayout = masterLayouts.find(
+    (l: any) => l.layoutProperties?.name?.toLowerCase().includes("blank")
+  ) ?? masterLayouts[masterLayouts.length - 1] ?? null;
+
+  // Fill title slide
+  const titleRequests: any[] = [];
+  if (titleSlide) {
+    for (const el of titleSlide.pageElements || []) {
+      const placeholderType = el.shape?.placeholder?.type as string | undefined;
+      const text = el.shape?.text?.textElements?.map((t: any) => t.textRun?.content || "").join("") ?? "";
+      const hasContent = text.length > 0;
+      if (placeholderType === "CENTERED_TITLE" || placeholderType === "TITLE") {
+        titleRequests.push(...replaceText(el.objectId!, deckTitle, hasContent));
+      } else if (placeholderType === "SUBTITLE") {
+        titleRequests.push(...replaceText(el.objectId!, deckSubtitle, hasContent));
+      }
+    }
+  }
+
+  // Build content slides
+  const contentRequests: any[] = [];
+  for (const slide of slideList) {
+    if (!slide.title.trim() && !slide.body.trim()) continue;
+    contentRequests.push(...slideRequests(slide.title, slide.body));
+  }
+
+  // Success slide
+  const successSlideId = uid("ss");
+  const successTextId  = uid("st");
+  contentRequests.push(
+    {
+      createSlide: {
+        objectId: successSlideId,
+        ...(blankLayout?.objectId ? { slideLayoutReference: { layoutId: blankLayout.objectId } } : {}),
+      },
+    },
+    {
+      createShape: {
+        objectId: successTextId,
+        shapeType: "TEXT_BOX",
+        elementProperties: {
+          pageObjectId: successSlideId,
+          size: { width: { magnitude: 720, unit: "PT" }, height: { magnitude: 100, unit: "PT" } },
+          transform: { scaleX: 1, scaleY: 1, translateX: 0, translateY: 150, unit: "PT" },
+        },
+      },
+    },
+    { insertText: { objectId: successTextId, insertionIndex: 0, text: deckTitle.toUpperCase() } },
+    {
+      updateTextStyle: {
+        objectId: successTextId,
+        textRange: { type: "ALL" },
+        style: { bold: true, fontSize: { magnitude: 40, unit: "PT" } },
+        fields: "bold,fontSize",
+      },
+    },
+  );
+
+  if (titleRequests.length > 0) {
+    await slides.presentations.batchUpdate({ presentationId: deckId, requestBody: { requests: titleRequests } });
+  }
+  await slides.presentations.batchUpdate({ presentationId: deckId, requestBody: { requests: contentRequests } });
+
+  return deckId;
+}
+
+// ─── Standalone Custom Form ───────────────────────────────────────────────────
+
+export async function buildCustomForm(
+  title: string,
+  description: string,
+  questions: FormQuestion[],
+  accessToken: string,
+  isQuiz: boolean
+): Promise<string> {
+  const forms = google.forms({ version: "v1", auth: getAuthClient(accessToken) });
+
+  const form = await forms.forms.create({ requestBody: { info: { title, description } } });
+  const formId = form.data.formId!;
+
+  const validQuestions = questions.filter(q => q.text.trim());
+  const items: any[] = validQuestions.map((q, i) => {
+    let questionItem: any;
+    if (q.type === "multiple_choice") {
+      const opts = q.options.filter(o => o.trim()).map(o => ({ value: o }));
+      questionItem = {
+        question: {
+          required: q.required,
+          ...(isQuiz && q.correctAnswer.trim()
+            ? { grading: { pointValue: 10, correctAnswers: { answers: [{ value: q.correctAnswer }] } } }
+            : {}),
+          choiceQuestion: { type: "RADIO", options: opts.length > 0 ? opts : [{ value: "Option 1" }] },
+        },
+      };
+    } else {
+      questionItem = {
+        question: {
+          required: q.required,
+          textQuestion: { paragraph: q.type === "paragraph" },
+        },
+      };
+    }
+    return { createItem: { item: { title: q.text, questionItem }, location: { index: i } } };
+  });
+
+  const requests: any[] = [];
+  if (isQuiz) {
+    requests.push({ updateSettings: { settings: { quizSettings: { isQuiz: true } }, updateMask: "quizSettings" } });
+  }
+  requests.push(...items);
+
+  if (requests.length > 0) {
+    await forms.forms.batchUpdate({ formId, requestBody: { requests } });
+  }
 
   return formId;
 }

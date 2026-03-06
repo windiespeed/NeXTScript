@@ -27,6 +27,19 @@ export default function Nav() {
         </Link>
 
         <div className="flex items-center gap-4">
+          {session && (
+            <div className="hidden sm:flex items-center gap-3 text-sm">
+              <Link href="/" className="text-gray-300 dark:text-gray-600 hover:text-white dark:hover:text-gray-900 transition">
+                Lessons
+              </Link>
+              <Link href="/slides/new" className="text-gray-300 dark:text-gray-600 hover:text-white dark:hover:text-gray-900 transition">
+                Slides
+              </Link>
+              <Link href="/forms/new" className="text-gray-300 dark:text-gray-600 hover:text-white dark:hover:text-gray-900 transition">
+                Forms
+              </Link>
+            </div>
+          )}
           <button
             onClick={toggleTheme}
             className="rounded-md border border-gray-500 dark:border-gray-400 px-3 py-1.5 text-sm text-gray-300 dark:text-gray-600 hover:bg-gray-600 dark:hover:bg-gray-300 active:scale-95 transition-all duration-150"
