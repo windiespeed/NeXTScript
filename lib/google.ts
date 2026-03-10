@@ -422,10 +422,12 @@ export async function buildQuiz(lesson: Lesson, accessToken: string): Promise<st
     },
   });
 
-  await forms.forms.batchUpdate({
-    formId,
-    requestBody: { requests: items },
-  });
+  if (items.length > 0) {
+    await forms.forms.batchUpdate({
+      formId,
+      requestBody: { requests: items },
+    });
+  }
 
   return formId;
 }
