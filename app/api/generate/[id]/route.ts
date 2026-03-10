@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { store } from "@/lib/store";
+import { projectStore } from "@/lib/projectStore";
 import { generateBundleSelective, generateBundleAsDownload } from "@/lib/google";
 
 export const dynamic = "force-dynamic";
@@ -44,7 +45,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   try {
     if (destination === "drive") {
-      const { folderUrl } = await generateBundleSelective(lesson, files, accessToken, templateId);
+      const { folderUrl, deckId, formId } = await generateBundleSelective(lesson, files, accessToken, templateId);
+
+      // Save generated files to the projects collection so they appear in dashboard tabs
+      await Promise.all([
+        deckId ? projectStore.create({ type: "deck", title: lesson.title, subtitle: lesson.subtitle, url: `https://docs.google.com/presentation/d/${deckId}/edit` }, session.user!.email!) : null,
+        formId ? projectStore.create({ type: "form", title: lesson.title, subtitle: lesson.subtitle, isQuiz: true, url: `https://docs.google.com/forms/d/${formId}/edit` }, session.user!.email!) : null,
+      ]);
+
       const updated = await store.update(id, { status: "done", folderUrl });
       return NextResponse.json(updated);
     } else {

@@ -169,7 +169,7 @@ export default function GenerateModal({ lesson, onClose, onGenerate }: Props) {
             <p className="text-xs text-red-400 mt-1">Could not extract a presentation ID from that URL.</p>
           )}
           {!templateUrl.trim() && (
-            <p className="text-xs text-gray-400 mt-1">Leave blank to use the default template.</p>
+            <p className="text-xs text-gray-400 mt-1">Leave blank to create a fresh presentation.</p>
           )}
         </div>
 

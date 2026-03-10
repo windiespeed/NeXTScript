@@ -170,21 +170,18 @@ function Dashboard() {
     </button>
   );
 
-  const newHref = tab === "lessons" ? "/lessons/new" : tab === "decks" ? "/slides/new" : "/forms/new";
-  const newLabel = tab === "lessons" ? "+ New Lesson" : tab === "decks" ? "+ New Deck" : "+ New Form";
-
   return (
     <div>
       <div className="flex items-center justify-between mb-4 bg-gradient-to-br from-[#0d1c35] to-[#0cc0df] rounded-xl px-5 py-4 shadow">
         <div>
           <h1 className="text-2xl font-bold text-white">Dashboard</h1>
-          <p className="text-sm text-[#0cc0df] mt-1">Build lessons, slide decks, and forms.</p>
+          <p className="text-sm text-[#0cc0df] mt-1">Build lessons and generate Drive bundles — slides, docs, and quizzes.</p>
         </div>
         <Link
-          href={newHref}
+          href="/lessons/new"
           className="rounded-md bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-bold text-white hover:opacity-90 transition shadow"
         >
-          {newLabel}
+          + New Lesson
         </Link>
       </div>
 
@@ -215,10 +212,7 @@ function Dashboard() {
       ) : tab === "decks" ? (
         decks.length === 0 ? (
           <div className="rounded-xl border-2 border-dashed border-[#1e4a85] p-12 text-center">
-            <p className="text-gray-400 text-sm mb-4">No slide decks yet.</p>
-            <Link href="/slides/new" className="rounded-md bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition">
-              Create your first slide deck
-            </Link>
+            <p className="text-gray-400 text-sm">No slide decks yet. Generate a bundle from a lesson to create slide decks.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 items-stretch">
@@ -228,10 +222,7 @@ function Dashboard() {
       ) : (
         forms.length === 0 ? (
           <div className="rounded-xl border-2 border-dashed border-[#1e4a85] p-12 text-center">
-            <p className="text-gray-400 text-sm mb-4">No forms yet.</p>
-            <Link href="/forms/new" className="rounded-md bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition">
-              Create your first form
-            </Link>
+            <p className="text-gray-400 text-sm">No quiz forms yet. Generate a bundle from a lesson to create quiz forms.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 items-stretch">
