@@ -78,7 +78,29 @@ export default function LessonForm({ initial = {}, onSubmit, submitLabel = "Save
       : []
   );
   const [saving, setSaving] = useState(false);
+  const [aiGenerating, setAiGenerating] = useState(false);
   const [error, setError] = useState("");
+
+  async function handleAIGenerate() {
+    if (!form.title.trim()) return;
+    setAiGenerating(true);
+    setError("");
+    try {
+      const res = await fetch("/api/ai/lesson", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: form.title, subtitle: form.subtitle, topics: form.topics, sources: form.sources }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "AI generation failed");
+      setForm(f => ({ ...f, ...data }));
+      if (data.slideContent) setSlides(parseSlides(data.slideContent));
+    } catch (err: any) {
+      setError(err.message || "AI generation failed.");
+    } finally {
+      setAiGenerating(false);
+    }
+  }
 
   function set(key: keyof LessonInput, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -182,11 +204,33 @@ export default function LessonForm({ initial = {}, onSubmit, submitLabel = "Save
         </div>
       </div>
 
+      {/* ── AI Fill ──────────────────────────────────────────────────── */}
+      <div className="rounded-xl border border-[#0cc0df]/40 bg-gradient-to-br from-[#0d1c35] to-[#0d2a45] p-4">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold text-white">Fill with AI</p>
+            <p className="text-xs text-[#0cc0df] mt-0.5">
+              Generates all content sections below using Claude. Fill in the title (and optionally subtitle, topics, sources) first.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleAIGenerate}
+            disabled={aiGenerating || !form.title.trim()}
+            className="shrink-0 rounded-md bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-40 transition"
+          >
+            {aiGenerating ? "Generating…" : "Generate with AI"}
+          </button>
+        </div>
+      </div>
+
       {/* ── Pre-slide content sections ────────────────────────────────── */}
       <div className="space-y-5">
         {PRE_SLIDE_FIELDS.map(({ key, label, hint, rows }) => (
           <div key={key}>
-            <label className="block text-sm font-semibold text-[#0d1c35] dark:text-white mb-1">{label}</label>
+            <label className="block text-sm font-semibold text-[#0d1c35] dark:text-white mb-1">
+              {label} <span className="ml-1 text-[10px] font-semibold text-[#0cc0df] bg-[#0cc0df]/10 border border-[#0cc0df]/30 rounded px-1 py-0.5">AI</span>
+            </label>
             <p className="text-xs text-gray-500 mb-1">{hint}</p>
             <textarea
               value={form[key] as string}
@@ -202,7 +246,9 @@ export default function LessonForm({ initial = {}, onSubmit, submitLabel = "Save
       <div>
         <div className="flex items-center justify-between mb-3">
           <div>
-            <p className="text-sm font-semibold text-[#0d1c35]">Slide Content</p>
+            <p className="text-sm font-semibold text-[#0d1c35]">
+              Slide Content <span className="ml-1 text-[10px] font-semibold text-[#0cc0df] bg-[#0cc0df]/10 border border-[#0cc0df]/30 rounded px-1 py-0.5">AI</span>
+            </p>
             <p className="text-xs text-gray-500">Each card is one slide. The title becomes the slide heading.</p>
           </div>
           <button
@@ -251,7 +297,9 @@ export default function LessonForm({ initial = {}, onSubmit, submitLabel = "Save
       <div className="space-y-5">
         {POST_SLIDE_FIELDS.map(({ key, label, hint, rows }) => (
           <div key={key}>
-            <label className="block text-sm font-semibold text-[#0d1c35] dark:text-white mb-1">{label}</label>
+            <label className="block text-sm font-semibold text-[#0d1c35] dark:text-white mb-1">
+              {label} <span className="ml-1 text-[10px] font-semibold text-[#0cc0df] bg-[#0cc0df]/10 border border-[#0cc0df]/30 rounded px-1 py-0.5">AI</span>
+            </label>
             <p className="text-xs text-gray-500 mb-1">{hint}</p>
             <textarea
               value={form[key] as string}
@@ -267,8 +315,10 @@ export default function LessonForm({ initial = {}, onSubmit, submitLabel = "Save
       <div>
         <div className="flex items-center justify-between mb-3">
           <div>
-            <p className="text-sm font-semibold text-[#0d1c35]">Quiz Questions</p>
-            <p className="text-xs text-gray-500">Optional — define custom questions for the generated quiz. If left empty, questions are auto-generated from the Rubric.</p>
+            <p className="text-sm font-semibold text-[#0d1c35]">
+              Quiz Questions <span className="ml-1 text-[10px] font-semibold text-[#0cc0df] bg-[#0cc0df]/10 border border-[#0cc0df]/30 rounded px-1 py-0.5">AI</span>
+            </p>
+            <p className="text-xs text-gray-500">Optional — define custom questions. If left empty, AI will generate 10 multiple choice + 2 short answer questions when you generate the bundle.</p>
           </div>
           <button
             type="button"
