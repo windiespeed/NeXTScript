@@ -60,6 +60,9 @@ Generate the following sections for this lesson. Return ONLY a valid JSON object
     return NextResponse.json(fields);
   } catch (err: any) {
     console.error("AI generation error:", err);
+    if (err.message?.includes("credit balance is too low")) {
+      return NextResponse.json({ error: "AI credits exhausted.", creditsError: true }, { status: 402 });
+    }
     return NextResponse.json({ error: err.message || "AI generation failed" }, { status: 500 });
   }
 }

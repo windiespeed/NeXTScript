@@ -8,6 +8,7 @@ import { emptyQuestion } from "@/types/form";
 interface Props {
   initial?: Partial<Lesson>;
   onSubmit: (data: LessonInput) => Promise<void>;
+  onBundle?: (data: LessonInput) => Promise<{ folderUrl: string }>;
   submitLabel?: string;
 }
 
@@ -69,7 +70,7 @@ const POST_SLIDE_FIELDS: SectionField[] = [
   { key: "rubric",                label: "Rubric",                    hint: "Comprehension and objective checklist used by TAs to assess student submissions.", rows: 4 },
 ];
 
-export default function LessonForm({ initial = {}, onSubmit, submitLabel = "Save Lesson" }: Props) {
+export default function LessonForm({ initial = {}, onSubmit, onBundle, submitLabel = "Save Lesson" }: Props) {
   const [form, setForm] = useState<LessonInput>({ ...EMPTY, ...initial });
   const [slides, setSlides] = useState<Slide[]>(() => parseSlides(initial.slideContent ?? ""));
   const [quizQuestions, setQuizQuestions] = useState<FormQuestion[]>(
@@ -79,26 +80,59 @@ export default function LessonForm({ initial = {}, onSubmit, submitLabel = "Save
   );
   const [saving, setSaving] = useState(false);
   const [aiGenerating, setAiGenerating] = useState(false);
+  const [bundleStep, setBundleStep] = useState<null | "ai" | "saving" | "bundling">(null);
+  const [creditsError, setCreditsError] = useState(false);
   const [error, setError] = useState("");
+
+  async function callAIFill(currentForm: LessonInput): Promise<LessonInput | null> {
+    const res = await fetch("/api/ai/lesson", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: currentForm.title, subtitle: currentForm.subtitle, topics: currentForm.topics, sources: currentForm.sources }),
+    });
+    const data = await res.json();
+    if (data.creditsError) {
+      setCreditsError(true);
+      return null;
+    }
+    if (!res.ok) throw new Error(data.error || "AI generation failed");
+    const filled = { ...currentForm, ...data };
+    setForm(filled);
+    if (data.slideContent) setSlides(parseSlides(data.slideContent));
+    return filled;
+  }
 
   async function handleAIGenerate() {
     if (!form.title.trim()) return;
     setAiGenerating(true);
+    setCreditsError(false);
     setError("");
     try {
-      const res = await fetch("/api/ai/lesson", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: form.title, subtitle: form.subtitle, topics: form.topics, sources: form.sources }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "AI generation failed");
-      setForm(f => ({ ...f, ...data }));
-      if (data.slideContent) setSlides(parseSlides(data.slideContent));
+      await callAIFill(form);
     } catch (err: any) {
       setError(err.message || "AI generation failed.");
     } finally {
       setAiGenerating(false);
+    }
+  }
+
+  async function handleBundle() {
+    if (!onBundle || !form.title.trim()) return;
+    setBundleStep("ai");
+    setCreditsError(false);
+    setError("");
+    try {
+      const filled = await callAIFill(form);
+      if (!filled) { setBundleStep(null); return; }
+      const finalData = { ...filled, slideContent: serializeSlides(slides), quizQuestions };
+      setBundleStep("saving");
+      await new Promise(r => setTimeout(r, 0)); // flush state
+      setBundleStep("bundling");
+      await onBundle(finalData);
+    } catch (err: any) {
+      setError(err.message || "Bundle generation failed.");
+    } finally {
+      setBundleStep(null);
     }
   }
 
@@ -133,6 +167,11 @@ export default function LessonForm({ initial = {}, onSubmit, submitLabel = "Save
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {creditsError && (
+        <div className="rounded-md bg-amber-50 border border-amber-300 p-3 text-amber-800 text-sm font-medium">
+          AI credits exhausted.
+        </div>
+      )}
       {error && (
         <div className="rounded-md bg-red-50 border border-red-200 p-3 text-red-700 text-sm">
           {error}
@@ -210,17 +249,34 @@ export default function LessonForm({ initial = {}, onSubmit, submitLabel = "Save
           <div>
             <p className="text-sm font-semibold text-white">Fill with AI</p>
             <p className="text-xs text-[#0cc0df] mt-0.5">
-              Generates all content sections below using Claude. Fill in the title (and optionally subtitle, topics, sources) first.
+              {onBundle
+                ? "Fill in the title (and optionally subtitle, topics, sources), then use one of the buttons to generate content only or generate + create the Drive bundle in one step."
+                : "Generates all content sections below using Claude. Fill in the title (and optionally subtitle, topics, sources) first."}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={handleAIGenerate}
-            disabled={aiGenerating || !form.title.trim()}
-            className="shrink-0 rounded-md bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-40 transition"
-          >
-            {aiGenerating ? "Generating…" : "Generate with AI"}
-          </button>
+          <div className="flex flex-col gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={handleAIGenerate}
+              disabled={aiGenerating || !!bundleStep || !form.title.trim()}
+              className="rounded-md bg-[#1e4a85] px-4 py-2 text-xs font-semibold text-white hover:bg-[#2a5a9a] disabled:opacity-40 transition"
+            >
+              {aiGenerating ? "Generating…" : "Fill with AI"}
+            </button>
+            {onBundle && (
+              <button
+                type="button"
+                onClick={handleBundle}
+                disabled={aiGenerating || !!bundleStep || !form.title.trim()}
+                className="rounded-md bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-40 transition"
+              >
+                {bundleStep === "ai" ? "Generating content…"
+                  : bundleStep === "saving" ? "Saving lesson…"
+                  : bundleStep === "bundling" ? "Creating Drive bundle…"
+                  : "AI + Generate Bundle"}
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
