@@ -73,7 +73,7 @@ export default function GenerateModal({ lesson, onClose, onGenerate }: Props) {
       className="fixed inset-0 z-50 flex items-center justify-center bg-[#0d1c35]/80"
       onClick={handleBackdropClick}
     >
-      <div className="w-full max-w-sm rounded-2xl bg-gradient-to-br from-[#1b2d4f] to-[#1a9bbf] border border-[#1a9bbf]/40 shadow-2xl p-6 flex flex-col gap-5 mx-4">
+      <div className="w-full max-w-sm rounded-2xl bg-gradient-to-br from-[#0d1c35] to-[#0cc0df] border border-[#0cc0df]/40 shadow-2xl p-6 flex flex-col gap-5 mx-4">
 
         {/* Header */}
         <div className="flex items-center justify-between">

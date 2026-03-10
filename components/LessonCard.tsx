@@ -42,7 +42,7 @@ export default function LessonCard({ lesson, onDelete, onDuplicate, onOpenModal 
   const busy = lesson.status === "generating" || lesson.status === "regenerating";
 
   return (
-    <div className="h-full rounded-2xl bg-[#112543] dark:bg-gradient-to-br dark:from-[#1b2d4f] dark:to-[#1a9bbf] flex flex-col overflow-hidden border border-[#1e4a85] shadow-sm hover:-translate-y-1 hover:shadow-lg transition-all duration-200">
+    <div className="h-full rounded-2xl bg-[#0d1c35] dark:bg-gradient-to-br dark:from-[#0d1c35] dark:to-[#0cc0df] flex flex-col overflow-hidden border border-[#1e4a85] shadow-sm hover:-translate-y-1 hover:shadow-lg transition-all duration-200">
       {/* Status accent bar */}
       <div className={`h-1 w-full ${STATUS_ACCENT[lesson.status]}`} />
 
@@ -99,7 +99,7 @@ export default function LessonCard({ lesson, onDelete, onDuplicate, onOpenModal 
       <div className="flex gap-2 px-5 py-3 border-t border-white/10">
         <Link
           href={`/lessons/${lesson.id}`}
-          className="flex-1 flex items-center justify-center rounded-lg bg-[#0cc0df] px-3 py-1.5 text-xs font-semibold text-[#112543] hover:opacity-90 active:scale-95 transition-all duration-150"
+          className="flex-1 flex items-center justify-center rounded-lg bg-[#0cc0df] px-3 py-1.5 text-xs font-semibold text-[#0d1c35] hover:opacity-90 active:scale-95 transition-all duration-150"
         >
           Edit
         </Link>

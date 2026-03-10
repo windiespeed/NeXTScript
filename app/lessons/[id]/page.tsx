@@ -70,7 +70,7 @@ export default function EditLessonPage() {
       </div>
 
       {genResult && (
-        <div className={`rounded-md mb-4 p-3 text-sm ${genResult.error ? "bg-red-50 text-red-700" : "bg-[#2dd4a0]/10 border border-[#2dd4a0] text-[#112543]"}`}>
+        <div className={`rounded-md mb-4 p-3 text-sm ${genResult.error ? "bg-red-50 text-red-700" : "bg-[#2dd4a0]/10 border border-[#2dd4a0] text-[#0d1c35]"}`}>
           {genResult.error ? (
             <>Error: {genResult.error}</>
           ) : (

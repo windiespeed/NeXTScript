@@ -218,8 +218,12 @@ export async function buildSlideDeck(lesson: Lesson, accessToken: string, templa
     ...slideRequests("WARM-UP",           lesson.warmUp),
   ];
 
-  // ── Custom slide content blocks (blank line = slide break, first line = title) ─
-  for (const block of lesson.slideContent.split(/\n\s*\n/)) {
+  // ── Custom slide content blocks (--- = slide break, first line = title) ─
+  const slideSep = /\n---\n/;
+  const slideBlocks = slideSep.test(lesson.slideContent)
+    ? lesson.slideContent.split(slideSep)
+    : lesson.slideContent.split(/\n\s*\n/);
+  for (const block of slideBlocks) {
     const lines = block.trim().split("\n");
     if (lines.length < 2) continue;
     contentRequests.push(...slideRequests(lines[0].trim(), lines.slice(1).join("\n").trim()));

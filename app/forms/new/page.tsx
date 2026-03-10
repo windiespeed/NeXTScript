@@ -55,13 +55,13 @@ export default function NewFormPage() {
   return (
     <main className="mx-auto max-w-3xl px-4 py-10">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-[#112543] dark:text-white">Form Builder</h1>
+        <h1 className="text-2xl font-bold text-[#0d1c35] dark:text-white">Form Builder</h1>
         <p className="text-sm text-gray-500 mt-1">Create a custom Google Form — surveys, quizzes, feedback, and more.</p>
       </div>
 
       {result && (
         <div className="mb-6 rounded-md bg-[#2dd4a0]/10 border border-[#2dd4a0] p-4">
-          <p className="text-sm font-semibold text-[#112543] mb-1">Form created!</p>
+          <p className="text-sm font-semibold text-[#0d1c35] mb-1">Form created!</p>
           <a href={result.url} target="_blank" rel="noopener noreferrer" className="text-sm text-[#0cc0df] underline break-all">
             Open in Google Forms
           </a>
@@ -78,7 +78,7 @@ export default function NewFormPage() {
         {/* Meta */}
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-semibold text-[#112543] dark:text-white mb-1">
+            <label className="block text-sm font-semibold text-[#0d1c35] dark:text-white mb-1">
               Form Title <span className="text-red-500">*</span>
             </label>
             <input
@@ -86,20 +86,20 @@ export default function NewFormPage() {
               value={title}
               onChange={e => setTitle(e.target.value)}
               placeholder="e.g. End of Unit Survey"
-              className="w-full rounded-md border border-[#1e4a85]/30 px-3 py-2 text-sm text-[#112543] shadow-sm placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
+              className="w-full rounded-md border border-[#1e4a85]/30 px-3 py-2 text-sm text-[#0d1c35] shadow-sm placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
             />
           </div>
           <div>
-            <label className="block text-sm font-semibold text-[#112543] dark:text-white mb-1">Description</label>
+            <label className="block text-sm font-semibold text-[#0d1c35] dark:text-white mb-1">Description</label>
             <textarea
               value={description}
               onChange={e => setDescription(e.target.value)}
               rows={2}
               placeholder="Optional description shown at the top of the form"
-              className="w-full rounded-md border border-[#1e4a85]/30 px-3 py-2 text-sm text-[#112543] shadow-sm placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
+              className="w-full rounded-md border border-[#1e4a85]/30 px-3 py-2 text-sm text-[#0d1c35] shadow-sm placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
             />
           </div>
-          <label className="flex items-center gap-2 text-sm text-[#112543] dark:text-white cursor-pointer">
+          <label className="flex items-center gap-2 text-sm text-[#0d1c35] dark:text-white cursor-pointer">
             <input
               type="checkbox"
               checked={isQuiz}
@@ -114,13 +114,13 @@ export default function NewFormPage() {
         <div>
           <div className="flex items-center justify-between mb-3">
             <div>
-              <p className="text-sm font-semibold text-[#112543] dark:text-white">Questions</p>
+              <p className="text-sm font-semibold text-[#0d1c35] dark:text-white">Questions</p>
               <p className="text-xs text-gray-500">Add questions for your form.</p>
             </div>
             <button
               type="button"
               onClick={() => setQuestions(prev => [...prev, emptyQuestion(`q_${Date.now()}`)])}
-              className="rounded-md bg-[#112543] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#1e4a85] transition"
+              className="rounded-md bg-[#0d1c35] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#1e4a85] transition"
             >
               + Add Question
             </button>
@@ -149,7 +149,7 @@ export default function NewFormPage() {
                       value={q.text}
                       onChange={e => updateQuestion(i, { text: e.target.value })}
                       placeholder="Enter question text"
-                      className="w-full rounded-md border border-[#1e4a85]/30 px-3 py-2 text-sm text-[#112543] bg-white shadow-sm placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
+                      className="w-full rounded-md border border-[#1e4a85]/30 px-3 py-2 text-sm text-[#0d1c35] bg-white shadow-sm placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
                     />
                   </div>
                   <div>
@@ -157,7 +157,7 @@ export default function NewFormPage() {
                     <select
                       value={q.type}
                       onChange={e => updateQuestion(i, { type: e.target.value as FormQuestion["type"] })}
-                      className="rounded-md border border-[#1e4a85]/30 px-3 py-2 text-sm text-[#112543] bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
+                      className="rounded-md border border-[#1e4a85]/30 px-3 py-2 text-sm text-[#0d1c35] bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
                     >
                       <option value="multiple_choice">Multiple Choice</option>
                       <option value="short_answer">Short Answer</option>
@@ -176,7 +176,7 @@ export default function NewFormPage() {
                           value={opt}
                           onChange={e => updateQuestion(i, { options: q.options.map((o, oIdx) => oIdx === oi ? e.target.value : o) })}
                           placeholder={`Option ${oi + 1}`}
-                          className="flex-1 rounded-md border border-[#1e4a85]/30 px-3 py-1.5 text-sm text-[#112543] bg-white shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
+                          className="flex-1 rounded-md border border-[#1e4a85]/30 px-3 py-1.5 text-sm text-[#0d1c35] bg-white shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
                         />
                         <button
                           type="button"
@@ -202,7 +202,7 @@ export default function NewFormPage() {
                         <select
                           value={q.correctAnswer}
                           onChange={e => updateQuestion(i, { correctAnswer: e.target.value })}
-                          className="w-full rounded-md border border-[#1e4a85]/30 px-3 py-1.5 text-sm text-[#112543] bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
+                          className="w-full rounded-md border border-[#1e4a85]/30 px-3 py-1.5 text-sm text-[#0d1c35] bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
                         >
                           <option value="">— None —</option>
                           {q.options.filter(o => o.trim()).map((o, oi) => (

@@ -21,7 +21,7 @@ export default function Nav() {
   }
 
   return (
-    <nav className="bg-[#112543] shadow-md">
+    <nav className="bg-[#0d1c35] shadow-md">
       <div className="mx-auto max-w-5xl px-4 py-3 flex items-center justify-between">
         <Link href="/" className="flex items-center">
           <Image src="/logo.png" alt="NeXTScript" width={160} height={44} className="h-15 w-auto brightness-0 invert" priority />

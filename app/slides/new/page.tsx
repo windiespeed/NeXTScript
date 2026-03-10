@@ -74,13 +74,13 @@ export default function NewSlideDeckPage() {
   return (
     <main className="mx-auto max-w-3xl px-4 py-10">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-[#112543] dark:text-white">Slide Deck Builder</h1>
+        <h1 className="text-2xl font-bold text-[#0d1c35] dark:text-white">Slide Deck Builder</h1>
         <p className="text-sm text-gray-500 mt-1">Create a custom Google Slides presentation.</p>
       </div>
 
       {result && (
         <div className="mb-6 rounded-md bg-[#2dd4a0]/10 border border-[#2dd4a0] p-4">
-          <p className="text-sm font-semibold text-[#112543] mb-1">Slide deck created!</p>
+          <p className="text-sm font-semibold text-[#0d1c35] mb-1">Slide deck created!</p>
           <a href={result.url} target="_blank" rel="noopener noreferrer" className="text-sm text-[#0cc0df] underline break-all">
             Open in Google Slides
           </a>
@@ -97,7 +97,7 @@ export default function NewSlideDeckPage() {
         {/* Meta */}
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-semibold text-[#112543] dark:text-white mb-1">
+            <label className="block text-sm font-semibold text-[#0d1c35] dark:text-white mb-1">
               Deck Title <span className="text-red-500">*</span>
             </label>
             <input
@@ -105,27 +105,27 @@ export default function NewSlideDeckPage() {
               value={title}
               onChange={e => setTitle(e.target.value)}
               placeholder="e.g. Introduction to HTML"
-              className="w-full rounded-md border border-[#1e4a85]/30 px-3 py-2 text-sm text-[#112543] shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
+              className="w-full rounded-md border border-[#1e4a85]/30 px-3 py-2 text-sm text-[#0d1c35] shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
             />
           </div>
           <div>
-            <label className="block text-sm font-semibold text-[#112543] dark:text-white mb-1">Subtitle</label>
+            <label className="block text-sm font-semibold text-[#0d1c35] dark:text-white mb-1">Subtitle</label>
             <input
               type="text"
               value={subtitle}
               onChange={e => setSubtitle(e.target.value)}
               placeholder="e.g. Tags, Attributes, and Structure"
-              className="w-full rounded-md border border-[#1e4a85]/30 px-3 py-2 text-sm text-[#112543] shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
+              className="w-full rounded-md border border-[#1e4a85]/30 px-3 py-2 text-sm text-[#0d1c35] shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
             />
           </div>
           <div>
-            <label className="block text-sm font-semibold text-[#112543] dark:text-white mb-1">Slides Template URL (optional)</label>
+            <label className="block text-sm font-semibold text-[#0d1c35] dark:text-white mb-1">Slides Template URL (optional)</label>
             <input
               type="url"
               value={templateUrl}
               onChange={e => setTemplateUrl(e.target.value)}
               placeholder="https://docs.google.com/presentation/d/..."
-              className="w-full rounded-md border border-[#1e4a85]/30 px-3 py-2 text-sm text-[#112543] shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
+              className="w-full rounded-md border border-[#1e4a85]/30 px-3 py-2 text-sm text-[#0d1c35] shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
             />
           </div>
         </div>
@@ -134,13 +134,13 @@ export default function NewSlideDeckPage() {
         <div>
           <div className="flex items-center justify-between mb-3">
             <div>
-              <p className="text-sm font-semibold text-[#112543] dark:text-white">Slides</p>
+              <p className="text-sm font-semibold text-[#0d1c35] dark:text-white">Slides</p>
               <p className="text-xs text-gray-500">Each card is one slide.</p>
             </div>
             <button
               type="button"
               onClick={addSlide}
-              className="rounded-md bg-[#112543] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#1e4a85] transition"
+              className="rounded-md bg-[#0d1c35] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#1e4a85] transition"
             >
               + Add Slide
             </button>
@@ -165,14 +165,14 @@ export default function NewSlideDeckPage() {
                   value={slide.title}
                   onChange={e => setSlide(i, "title", e.target.value)}
                   placeholder="Slide title"
-                  className="w-full rounded-md border border-[#1e4a85]/30 px-3 py-2 text-sm text-[#112543] bg-white shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
+                  className="w-full rounded-md border border-[#1e4a85]/30 px-3 py-2 text-sm text-[#0d1c35] bg-white shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
                 />
                 <textarea
                   value={slide.body}
                   onChange={e => setSlide(i, "body", e.target.value)}
                   rows={4}
                   placeholder="Slide content…"
-                  className="w-full rounded-md border border-[#1e4a85]/30 px-3 py-2 text-sm text-[#112543] font-mono bg-white shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
+                  className="w-full rounded-md border border-[#1e4a85]/30 px-3 py-2 text-sm text-[#0d1c35] font-mono bg-white shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
                 />
               </div>
             ))}

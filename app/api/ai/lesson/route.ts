@@ -31,7 +31,7 @@ Generate the following sections for this lesson. Return ONLY a valid JSON object
   "overview": "Paragraph overview of everything covered in this lesson.",
   "learningTargets": "3–8 bullet points (each on its own line starting with •) of specific, measurable learning objectives.",
   "warmUp": "3–5 open-ended questions (each on its own line starting with a number and period) to engage students at the start of class.",
-  "slideContent": "Slides separated by a blank line. Each slide starts with the slide title on its own line, followed by the content. Create 8–12 slides covering the topic progressively.",
+  "slideContent": "Slides separated by a line containing only ---. Each slide starts with the slide title on its own line, followed by the content (which may contain blank lines). Create 8–12 slides covering the topic progressively.",
   "guidedLab": "In-class instructor-led exercise. Must be step-by-step with numbered steps, including specific file and folder naming conventions.",
   "selfPaced": "Independent student exercise. Must be step-by-step with numbered steps, including specific file and folder naming conventions.",
   "submissionChecklist": "Specific requirements students must meet and turn in, as a bullet list starting each item with •.",
