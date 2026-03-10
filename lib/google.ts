@@ -433,14 +433,17 @@ export async function buildQuiz(lesson: Lesson, accessToken: string): Promise<st
     items = [...mcItems, ...shortAnswers];
   }
 
+  // Must make the form a quiz BEFORE adding graded items — two separate batches.
   await forms.forms.batchUpdate({
     formId,
     requestBody: {
-      requests: [
-        { updateSettings: { settings: { quizSettings: { isQuiz: true } }, updateMask: "quizSettings" } },
-        ...items,
-      ],
+      requests: [{ updateSettings: { settings: { quizSettings: { isQuiz: true } }, updateMask: "quizSettings" } }],
     },
+  });
+
+  await forms.forms.batchUpdate({
+    formId,
+    requestBody: { requests: items },
   });
 
   return formId;
