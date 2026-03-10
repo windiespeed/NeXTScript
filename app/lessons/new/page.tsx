@@ -58,7 +58,7 @@ export default function NewLessonPage() {
         <h1 className="text-2xl font-bold text-black dark:text-white">New Lesson</h1>
         <p className="text-sm text-gray-500 mt-1">Fill in the sections below. Generate the full Google Drive bundle from the dashboard.</p>
       </div>
-      <LessonForm onSubmit={handleSubmit} onBundle={handleBundle} submitLabel="Create Lesson" />
+      <LessonForm onSubmit={handleSubmit} onBundle={handleBundle} onCancel={() => router.push("/")} submitLabel="Create Lesson" />
     </main>
   );
 }

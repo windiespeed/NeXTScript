@@ -71,7 +71,7 @@ export default function EditLessonPage() {
         <p className="text-sm text-gray-500 mt-1">{lesson.title}</p>
       </div>
 
-      <LessonForm initial={lesson} onSubmit={handleSubmit} onBundle={handleBundle} submitLabel="Save Changes" />
+      <LessonForm initial={lesson} onSubmit={handleSubmit} onBundle={handleBundle} onCancel={() => router.push("/")} submitLabel="Save Changes" />
     </main>
   );
 }

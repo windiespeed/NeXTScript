@@ -9,6 +9,7 @@ interface Props {
   initial?: Partial<Lesson>;
   onSubmit: (data: LessonInput) => Promise<void>;
   onBundle?: (data: LessonInput) => Promise<{ folderUrl: string }>;
+  onCancel?: () => void;
   submitLabel?: string;
 }
 
@@ -70,7 +71,7 @@ const POST_SLIDE_FIELDS: SectionField[] = [
   { key: "rubric",                label: "Rubric",                    hint: "Comprehension and objective checklist used by TAs to assess student submissions.", rows: 4 },
 ];
 
-export default function LessonForm({ initial = {}, onSubmit, onBundle, submitLabel = "Save Lesson" }: Props) {
+export default function LessonForm({ initial = {}, onSubmit, onBundle, onCancel, submitLabel = "Save Lesson" }: Props) {
   const [form, setForm] = useState<LessonInput>({ ...EMPTY, ...initial });
   const [slides, setSlides] = useState<Slide[]>(() => parseSlides(initial.slideContent ?? ""));
   const [quizQuestions, setQuizQuestions] = useState<FormQuestion[]>(
@@ -490,13 +491,25 @@ export default function LessonForm({ initial = {}, onSubmit, onBundle, submitLab
         </div>
       </div>
 
-      <button
-        type="submit"
-        disabled={saving}
-        className="w-full rounded-md bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2.5 text-sm font-semibold text-white shadow hover:opacity-90 disabled:opacity-50 transition"
-      >
-        {saving ? "Saving…" : submitLabel}
-      </button>
+      <div className={`flex gap-3 ${onCancel ? "" : ""}`}>
+        {onCancel && (
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={saving || !!bundleStep}
+            className="flex-1 rounded-md border border-[#1e4a85] px-4 py-2.5 text-sm font-semibold text-[#0d1c35] dark:text-white hover:bg-[#1e4a85]/10 disabled:opacity-50 transition"
+          >
+            Cancel
+          </button>
+        )}
+        <button
+          type="submit"
+          disabled={saving || !!bundleStep}
+          className={`rounded-md bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2.5 text-sm font-semibold text-white shadow hover:opacity-90 disabled:opacity-50 transition ${onCancel ? "flex-1" : "w-full"}`}
+        >
+          {saving ? "Saving…" : submitLabel}
+        </button>
+      </div>
     </form>
   );
 }
