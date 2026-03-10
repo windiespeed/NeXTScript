@@ -168,11 +168,6 @@ export default function LessonForm({ initial = {}, onSubmit, onBundle, onCancel,
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {creditsError && (
-        <div className="rounded-md bg-amber-50 border border-amber-300 p-3 text-amber-800 text-sm font-medium">
-          AI credits exhausted.
-        </div>
-      )}
       {error && (
         <div className="rounded-md bg-red-50 border border-red-200 p-3 text-red-700 text-sm">
           {error}
@@ -279,6 +274,11 @@ export default function LessonForm({ initial = {}, onSubmit, onBundle, onCancel,
             )}
           </div>
         </div>
+        {creditsError && (
+          <div className="mt-3 rounded-md bg-amber-900/40 border border-amber-400/50 p-2.5 text-amber-300 text-xs font-medium">
+            AI credits exhausted.
+          </div>
+        )}
       </div>
 
       {/* ── Pre-slide content sections ────────────────────────────────── */}
