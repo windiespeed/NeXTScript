@@ -35,32 +35,6 @@ export default function EditLessonPage() {
     router.refresh();
   }
 
-  async function handleBundle(data: LessonInput): Promise<{ folderUrl: string }> {
-    const saveRes = await fetch(`/api/lessons/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-    if (!saveRes.ok) {
-      const err = await saveRes.json();
-      throw new Error(err.error || "Failed to update lesson.");
-    }
-
-    const genRes = await fetch(`/api/generate/${id}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ files: ["slides", "doc", "quiz"], destination: "drive" }),
-    });
-    if (!genRes.ok) {
-      const err = await genRes.json();
-      throw new Error(err.error || "Generation failed.");
-    }
-    const { folderUrl } = await genRes.json();
-    router.push("/");
-    router.refresh();
-    return { folderUrl };
-  }
-
   if (loading) return <p className="text-sm text-gray-500">Loading…</p>;
   if (!lesson) return <p className="text-sm text-red-500">Lesson not found.</p>;
 
@@ -71,7 +45,7 @@ export default function EditLessonPage() {
         <p className="text-sm text-gray-500 mt-1">{lesson.title}</p>
       </div>
 
-      <LessonForm initial={lesson} onSubmit={handleSubmit} onBundle={handleBundle} onCancel={() => router.push("/")} submitLabel="Save Changes" />
+      <LessonForm initial={lesson} onSubmit={handleSubmit} onCancel={() => router.push("/")} submitLabel="Save Changes" />
     </main>
   );
 }

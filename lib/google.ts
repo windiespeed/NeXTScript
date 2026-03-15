@@ -9,7 +9,6 @@
 import { google } from "googleapis";
 import type { Lesson } from "@/types/lesson";
 import type { FormQuestion } from "@/types/form";
-import { generateQuizQuestions } from "@/lib/ai";
 
 function getAuthClient(accessToken: string) {
   const auth = new google.auth.OAuth2();
@@ -387,31 +386,7 @@ export async function buildQuiz(lesson: Lesson, accessToken: string): Promise<st
       return { createItem: { item: { title: q.text, questionItem }, location: { index: i } } };
     });
   } else {
-    // AI-generated questions when no custom questions are defined
-    const aiQuestions = await generateQuizQuestions(lesson);
-    items = aiQuestions.map((q, i) => {
-      let questionItem: any;
-      if (q.type === "multiple_choice") {
-        const opts = q.options.filter(o => o.trim()).map(o => ({ value: o }));
-        questionItem = {
-          question: {
-            required: q.required,
-            ...(q.correctAnswer.trim()
-              ? { grading: { pointValue: 10, correctAnswers: { answers: [{ value: q.correctAnswer }] } } }
-              : {}),
-            choiceQuestion: { type: "RADIO", options: opts },
-          },
-        };
-      } else {
-        questionItem = {
-          question: {
-            required: q.required,
-            textQuestion: { paragraph: true },
-          },
-        };
-      }
-      return { createItem: { item: { title: q.text, questionItem }, location: { index: i } } };
-    });
+    items = [];
   }
 
   // Must make the form a quiz BEFORE adding graded items — two separate batches.
