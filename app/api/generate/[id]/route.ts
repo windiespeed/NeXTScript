@@ -17,6 +17,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
   }
 
+  if ((session as any).error === "RefreshAccessTokenError") {
+    return NextResponse.json({ error: "Your Google session has expired. Please sign out and sign in again." }, { status: 401 });
+  }
+
   const accessToken = (session as any).accessToken as string | undefined;
   if (!accessToken) {
     return NextResponse.json({ error: "No Google access token. Please sign out and sign in again." }, { status: 401 });
