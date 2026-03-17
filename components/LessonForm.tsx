@@ -10,6 +10,7 @@ interface Props {
   onSubmit: (data: LessonInput) => Promise<void>;
   onCancel?: () => void;
   submitLabel?: string;
+  hasAiKey?: boolean;
 }
 
 interface Slide {
@@ -70,7 +71,7 @@ const POST_SLIDE_FIELDS: SectionField[] = [
   { key: "rubric",                label: "Rubric",                    hint: "Comprehension and objective checklist used by TAs to assess student submissions.", rows: 4 },
 ];
 
-export default function LessonForm({ initial = {}, onSubmit, onCancel, submitLabel = "Save Lesson" }: Props) {
+export default function LessonForm({ initial = {}, onSubmit, onCancel, submitLabel = "Save Lesson", hasAiKey = false }: Props) {
   const [form, setForm] = useState<LessonInput>({ ...EMPTY, ...initial });
   const [slides, setSlides] = useState<Slide[]>(() => parseSlides(initial.slideContent ?? ""));
   const [quizQuestions, setQuizQuestions] = useState<FormQuestion[]>(
@@ -79,6 +80,7 @@ export default function LessonForm({ initial = {}, onSubmit, onCancel, submitLab
       : []
   );
   const [saving, setSaving] = useState(false);
+  const [aiFilling, setAiFilling] = useState(false);
   const [error, setError] = useState("");
 
   function set(key: keyof LessonInput, value: string) {
@@ -95,6 +97,25 @@ export default function LessonForm({ initial = {}, onSubmit, onCancel, submitLab
 
   function removeSlide(index: number) {
     setSlides((prev) => prev.length > 1 ? prev.filter((_, i) => i !== index) : prev);
+  }
+
+  async function handleAiFill() {
+    setAiFilling(true);
+    setError("");
+    try {
+      const res = await fetch("/api/ai/lesson", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...form, slideContent: serializeSlides(slides) }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "AI fill failed.");
+      setForm((f) => ({ ...f, ...data }));
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setAiFilling(false);
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -115,6 +136,24 @@ export default function LessonForm({ initial = {}, onSubmit, onCancel, submitLab
       {error && (
         <div className="rounded-md bg-red-50 border border-red-200 p-3 text-red-700 text-sm">
           {error}
+        </div>
+      )}
+
+      {/* ── AI Fill ──────────────────────────────────────────────────── */}
+      {hasAiKey && (
+        <div className="flex items-center justify-between rounded-lg border border-[#1e4a85]/20 bg-[#f0f9ff] dark:bg-[#0d1c35] px-4 py-3">
+          <div>
+            <p className="text-sm font-semibold text-[#0d1c35] dark:text-white">AI Fill</p>
+            <p className="text-xs text-gray-500">Auto-generate all content sections from your title, subtitle, topics, and sources.</p>
+          </div>
+          <button
+            type="button"
+            onClick={handleAiFill}
+            disabled={aiFilling || saving}
+            className="rounded-md bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-white shadow hover:opacity-90 disabled:opacity-50 transition whitespace-nowrap"
+          >
+            {aiFilling ? "Filling…" : "AI Fill"}
+          </button>
         </div>
       )}
 

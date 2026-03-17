@@ -12,11 +12,17 @@ export default function EditLessonPage() {
   const router = useRouter();
   const [lesson, setLesson] = useState<Lesson | null>(null);
   const [loading, setLoading] = useState(true);
+  const [hasAiKey, setHasAiKey] = useState(false);
 
   useEffect(() => {
-    fetch(`/api/lessons/${id}`)
-      .then((r) => r.json())
-      .then((data) => { setLesson(data); setLoading(false); });
+    Promise.all([
+      fetch(`/api/lessons/${id}`).then((r) => r.json()),
+      fetch("/api/user/settings").then((r) => r.json()),
+    ]).then(([lessonData, settings]) => {
+      setLesson(lessonData);
+      setHasAiKey(settings.hasKey ?? false);
+      setLoading(false);
+    });
   }, [id]);
 
   async function handleSubmit(data: LessonInput) {
@@ -45,7 +51,7 @@ export default function EditLessonPage() {
         <p className="text-sm text-gray-500 mt-1">{lesson.title}</p>
       </div>
 
-      <LessonForm initial={lesson} onSubmit={handleSubmit} onCancel={() => router.push("/")} submitLabel="Save Changes" />
+      <LessonForm initial={lesson} onSubmit={handleSubmit} onCancel={() => router.push("/")} submitLabel="Save Changes" hasAiKey={hasAiKey} />
     </main>
   );
 }

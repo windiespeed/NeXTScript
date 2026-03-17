@@ -39,6 +39,9 @@ export default function Nav() {
               <Link href="/?tab=forms" className="text-[#0cc0df] hover:text-white transition font-medium">
                 Forms
               </Link>
+              <Link href="/settings" className="text-[#0cc0df] hover:text-white transition font-medium">
+                Settings
+              </Link>
             </div>
           )}
 
