@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Lesson, LessonInput } from "@/types/lesson";
 import type { FormQuestion } from "@/types/form";
 import { emptyQuestion } from "@/types/form";
@@ -8,6 +8,8 @@ import { emptyQuestion } from "@/types/form";
 interface Props {
   initial?: Partial<Lesson>;
   onSubmit: (data: LessonInput) => Promise<void>;
+  onSaveDraft?: (data: LessonInput) => Promise<void>;
+  autoSave?: (data: LessonInput) => Promise<void>;
   onCancel?: () => void;
   submitLabel?: string;
   hasAiKey?: boolean;
@@ -71,7 +73,7 @@ const POST_SLIDE_FIELDS: SectionField[] = [
   { key: "rubric",                label: "Rubric",                    hint: "Comprehension and objective checklist used by TAs to assess student submissions.", rows: 4 },
 ];
 
-export default function LessonForm({ initial = {}, onSubmit, onCancel, submitLabel = "Save Lesson", hasAiKey = false }: Props) {
+export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSave, onCancel, submitLabel = "Save Lesson", hasAiKey = false }: Props) {
   const [form, setForm] = useState<LessonInput>({ ...EMPTY, ...initial });
   const [slides, setSlides] = useState<Slide[]>(() => parseSlides(initial.slideContent ?? ""));
   const [quizQuestions, setQuizQuestions] = useState<FormQuestion[]>(
@@ -80,8 +82,32 @@ export default function LessonForm({ initial = {}, onSubmit, onCancel, submitLab
       : []
   );
   const [saving, setSaving] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
   const [aiFilling, setAiFilling] = useState(false);
   const [error, setError] = useState("");
+  const [autoSaveStatus, setAutoSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+
+  const autoSaveRef = useRef(autoSave);
+  useEffect(() => { autoSaveRef.current = autoSave; }, [autoSave]);
+  const isFirstRender = useRef(true);
+
+  useEffect(() => {
+    if (isFirstRender.current) { isFirstRender.current = false; return; }
+    if (!autoSaveRef.current) return;
+    setAutoSaveStatus("idle");
+    const timer = setTimeout(async () => {
+      if (!autoSaveRef.current) return;
+      setAutoSaveStatus("saving");
+      try {
+        await autoSaveRef.current({ ...form, slideContent: serializeSlides(slides), quizQuestions });
+        setAutoSaveStatus("saved");
+      } catch {
+        setAutoSaveStatus("idle");
+      }
+    }, 3000);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form, slides, quizQuestions]);
 
   function set(key: keyof LessonInput, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -115,6 +141,19 @@ export default function LessonForm({ initial = {}, onSubmit, onCancel, submitLab
       setError(err.message);
     } finally {
       setAiFilling(false);
+    }
+  }
+
+  async function handleSaveDraft() {
+    if (!onSaveDraft) return;
+    setSavingDraft(true);
+    setError("");
+    try {
+      await onSaveDraft({ ...form, slideContent: serializeSlides(slides), quizQuestions });
+    } catch (err: any) {
+      setError(err.message || "Failed to save draft.");
+    } finally {
+      setSavingDraft(false);
     }
   }
 
@@ -428,24 +467,43 @@ export default function LessonForm({ initial = {}, onSubmit, onCancel, submitLab
         </div>
       </div>
 
-      <div className="flex gap-3">
-        {onCancel && (
+      <div className="space-y-2">
+        <div className="flex gap-3">
+          {onCancel && (
+            <button
+              type="button"
+              onClick={onCancel}
+              disabled={saving || savingDraft}
+              className="flex-1 rounded-md border border-[#1e4a85] px-4 py-2.5 text-sm font-semibold text-[#0d1c35] dark:text-white hover:bg-[#1e4a85]/10 disabled:opacity-50 transition"
+            >
+              Cancel
+            </button>
+          )}
+          {onSaveDraft && (
+            <button
+              type="button"
+              onClick={handleSaveDraft}
+              disabled={saving || savingDraft}
+              className="flex-1 rounded-md border border-[#1e4a85] bg-[#1e4a85]/10 px-4 py-2.5 text-sm font-semibold text-[#0d1c35] dark:text-white hover:bg-[#1e4a85]/20 disabled:opacity-50 transition"
+            >
+              {savingDraft ? "Saving…" : "Save Draft"}
+            </button>
+          )}
           <button
-            type="button"
-            onClick={onCancel}
-            disabled={saving}
-            className="flex-1 rounded-md border border-[#1e4a85] px-4 py-2.5 text-sm font-semibold text-[#0d1c35] dark:text-white hover:bg-[#1e4a85]/10 disabled:opacity-50 transition"
+            type="submit"
+            disabled={saving || savingDraft}
+            className={`rounded-md bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2.5 text-sm font-semibold text-white shadow hover:opacity-90 disabled:opacity-50 transition ${onCancel || onSaveDraft ? "flex-1" : "w-full"}`}
           >
-            Cancel
+            {saving ? "Saving…" : submitLabel}
           </button>
+        </div>
+        {autoSave && (
+          <p className="text-xs text-right text-gray-400">
+            {autoSaveStatus === "saving" && "Auto-saving…"}
+            {autoSaveStatus === "saved" && "✓ Auto-saved"}
+            {autoSaveStatus === "idle" && ""}
+          </p>
         )}
-        <button
-          type="submit"
-          disabled={saving}
-          className={`rounded-md bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2.5 text-sm font-semibold text-white shadow hover:opacity-90 disabled:opacity-50 transition ${onCancel ? "flex-1" : "w-full"}`}
-        >
-          {saving ? "Saving…" : submitLabel}
-        </button>
       </div>
     </form>
   );

@@ -21,18 +21,27 @@ export default function NewLessonPage() {
       });
   }, []);
 
-  async function handleSubmit(data: LessonInput) {
+  async function postLesson(data: LessonInput): Promise<string> {
     const res = await fetch("/api/lessons", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
-
     if (!res.ok) {
       const err = await res.json();
       throw new Error(err.error || "Failed to create lesson.");
     }
+    const lesson = await res.json();
+    return lesson.id as string;
+  }
 
+  async function handleSaveDraft(data: LessonInput) {
+    const id = await postLesson(data);
+    router.replace(`/lessons/${id}`);
+  }
+
+  async function handleSubmit(data: LessonInput) {
+    await postLesson(data);
     router.push("/");
     router.refresh();
   }
@@ -43,7 +52,7 @@ export default function NewLessonPage() {
         <h1 className="text-2xl font-bold text-black dark:text-white">New Lesson</h1>
         <p className="text-sm text-gray-500 mt-1">Fill in the sections below. Generate the full Google Drive bundle from the dashboard.</p>
       </div>
-      <LessonForm onSubmit={handleSubmit} onCancel={() => router.push("/")} submitLabel="Create Lesson" hasAiKey={hasAiKey} initial={{ sources: defaultSources }} />
+      <LessonForm onSubmit={handleSubmit} onSaveDraft={handleSaveDraft} onCancel={() => router.push("/")} submitLabel="Create Lesson" hasAiKey={hasAiKey} initial={{ sources: defaultSources }} />
     </main>
   );
 }
