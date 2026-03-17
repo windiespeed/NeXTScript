@@ -9,10 +9,11 @@ export async function GET() {
     const session = await auth();
     if (!session?.user?.email) return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
 
-    const key = await userSettings.getAnthropicKey(session.user.email);
+    const s = await userSettings.get(session.user.email);
     return NextResponse.json({
-      hasKey: !!key,
-      maskedKey: key ? `${key.slice(0, 12)}…${key.slice(-4)}` : null,
+      hasKey: !!s.anthropicKey,
+      maskedKey: s.anthropicKey ? `${s.anthropicKey.slice(0, 12)}…${s.anthropicKey.slice(-4)}` : null,
+      avatarUrl: s.avatarUrl ?? null,
     });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });

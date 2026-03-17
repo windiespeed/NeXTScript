@@ -4,6 +4,7 @@ const COLLECTION = "userSettings";
 
 interface UserSettings {
   anthropicKey?: string;
+  avatarUrl?: string; // base64 data URL, resized to 200×200 client-side
 }
 
 export const userSettings = {

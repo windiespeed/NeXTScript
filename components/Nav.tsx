@@ -2,16 +2,36 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useSession, signIn, signOut } from "next-auth/react";
+import { useSession, signIn } from "next-auth/react";
 import { useEffect, useState } from "react";
+
+function initials(name?: string | null, email?: string | null): string {
+  if (name) {
+    const parts = name.trim().split(" ");
+    return parts.length >= 2
+      ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+      : parts[0].slice(0, 2).toUpperCase();
+  }
+  return (email ?? "?")[0].toUpperCase();
+}
 
 export default function Nav() {
   const { data: session, status } = useSession();
   const [dark, setDark] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   useEffect(() => {
     setDark(document.documentElement.classList.contains("dark"));
   }, []);
+
+  useEffect(() => {
+    if (session?.user?.email) {
+      fetch("/api/user/settings")
+        .then((r) => r.json())
+        .then((data) => setAvatarUrl(data.avatarUrl ?? null))
+        .catch(() => {});
+    }
+  }, [session?.user?.email]);
 
   function toggleTheme() {
     const next = !dark;
@@ -19,6 +39,9 @@ export default function Nav() {
     document.documentElement.classList.toggle("dark", next);
     localStorage.setItem("theme", next ? "dark" : "light");
   }
+
+  const displaySrc = avatarUrl ?? session?.user?.image ?? null;
+  const userInitials = initials(session?.user?.name, session?.user?.email);
 
   return (
     <nav className="bg-[#0d1c35] shadow-md">
@@ -39,9 +62,6 @@ export default function Nav() {
               <Link href="/?tab=forms" className="text-[#0cc0df] hover:text-white transition font-medium">
                 Forms
               </Link>
-              <Link href="/settings" className="text-[#0cc0df] hover:text-white transition font-medium">
-                Settings
-              </Link>
             </div>
           )}
 
@@ -54,15 +74,26 @@ export default function Nav() {
           </button>
 
           {status === "loading" ? null : session ? (
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-400 hidden sm:block">{session.user?.email}</span>
-              <button
-                onClick={() => signOut()}
-                className="text-xs text-gray-400 hover:text-white underline active:scale-95 transition-all duration-150"
-              >
-                Sign out
-              </button>
-            </div>
+            <Link
+              href="/profile"
+              className="flex items-center gap-2 group"
+              aria-label="Profile"
+            >
+              {/* Avatar circle */}
+              <div className="w-8 h-8 rounded-full overflow-hidden ring-2 ring-transparent group-hover:ring-[#0cc0df] transition-all flex-shrink-0">
+                {displaySrc ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={displaySrc} alt="Profile" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full bg-[#1e4a85] flex items-center justify-center">
+                    <span className="text-xs font-bold text-white">{userInitials}</span>
+                  </div>
+                )}
+              </div>
+              <span className="text-xs text-gray-400 group-hover:text-white transition hidden sm:block max-w-[140px] truncate">
+                {session.user?.email}
+              </span>
+            </Link>
           ) : (
             <button
               onClick={() => signIn("google")}
