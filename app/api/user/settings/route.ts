@@ -14,6 +14,7 @@ export async function GET() {
       hasKey: !!s.anthropicKey,
       maskedKey: s.anthropicKey ? `${s.anthropicKey.slice(0, 12)}…${s.anthropicKey.slice(-4)}` : null,
       avatarUrl: s.avatarUrl ?? null,
+      defaultSources: s.defaultSources ?? "",
     });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
@@ -25,12 +26,21 @@ export async function PUT(req: Request) {
     const session = await auth();
     if (!session?.user?.email) return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
 
-    const { anthropicKey } = await req.json();
-    if (typeof anthropicKey !== "string" || !anthropicKey.trim()) {
-      return NextResponse.json({ error: "Invalid key." }, { status: 400 });
+    const body = await req.json();
+    const update: Record<string, string | undefined> = {};
+
+    if ("anthropicKey" in body) {
+      if (typeof body.anthropicKey !== "string" || !body.anthropicKey.trim()) {
+        return NextResponse.json({ error: "Invalid key." }, { status: 400 });
+      }
+      update.anthropicKey = body.anthropicKey.trim();
     }
 
-    await userSettings.save(session.user.email, { anthropicKey: anthropicKey.trim() });
+    if ("defaultSources" in body) {
+      update.defaultSources = typeof body.defaultSources === "string" ? body.defaultSources : "";
+    }
+
+    await userSettings.save(session.user.email, update);
     return NextResponse.json({ success: true });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });

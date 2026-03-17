@@ -60,6 +60,10 @@ export default function ProfilePage() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [removingAvatar, setRemovingAvatar] = useState(false);
 
+  // Default sources
+  const [defaultSources, setDefaultSources] = useState("");
+  const [savingSources, setSavingSources] = useState(false);
+
   // API key
   const [hasKey, setHasKey] = useState(false);
   const [maskedKey, setMaskedKey] = useState<string | null>(null);
@@ -77,6 +81,7 @@ export default function ProfilePage() {
         setHasKey(data.hasKey);
         setMaskedKey(data.maskedKey);
         setAvatarUrl(data.avatarUrl ?? null);
+        setDefaultSources(data.defaultSources ?? "");
       });
   }, []);
 
@@ -117,6 +122,21 @@ export default function ProfilePage() {
     setAvatarUrl(null);
     setRemovingAvatar(false);
     flash("Profile photo removed.");
+  }
+
+  // ── Default sources ───────────────────────────────────────────────────
+  async function handleSaveSources(e: React.FormEvent) {
+    e.preventDefault();
+    setSavingSources(true);
+    flash("");
+    const res = await fetch("/api/user/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ defaultSources }),
+    });
+    setSavingSources(false);
+    if (res.ok) flash("Default sources saved.");
+    else { const d = await res.json(); flash(d.error || "Failed to save.", true); }
   }
 
   // ── API key ───────────────────────────────────────────────────────────
@@ -248,6 +268,32 @@ export default function ProfilePage() {
             {dark ? "☀ Light mode" : "☾ Dark mode"}
           </button>
         </div>
+      </div>
+
+      {/* ── Default sources ───────────────────────────────────────────── */}
+      <div className="rounded-xl border border-[#1e4a85]/30 bg-white dark:bg-[#112543] p-6 space-y-4">
+        <div>
+          <h2 className="text-base font-semibold text-[#0d1c35] dark:text-white">Default Sources</h2>
+          <p className="text-xs text-gray-500 mt-1">
+            These URLs are pre-filled in the Sources field on every new lesson. Add one URL per line.
+          </p>
+        </div>
+        <form onSubmit={handleSaveSources} className="space-y-3">
+          <textarea
+            value={defaultSources}
+            onChange={(e) => setDefaultSources(e.target.value)}
+            rows={5}
+            placeholder={"https://www.w3schools.com/\nhttps://developer.mozilla.org/\nhttps://www.w3.org/"}
+            className="w-full rounded-md border border-[#1e4a85]/30 px-3 py-2 text-sm font-mono text-[#0d1c35] shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
+          />
+          <button
+            type="submit"
+            disabled={savingSources}
+            className="rounded-md bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-white shadow hover:opacity-90 disabled:opacity-50 transition"
+          >
+            {savingSources ? "Saving…" : "Save Sources"}
+          </button>
+        </form>
       </div>
 
       {/* ── Anthropic API key ──────────────────────────────────────────── */}
