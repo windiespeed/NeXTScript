@@ -136,7 +136,9 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "AI fill failed.");
-      setForm((f) => ({ ...f, ...data }));
+      const { slides: aiSlides, ...fields } = data;
+      setForm((f) => ({ ...f, ...fields }));
+      if (aiSlides?.length) setSlides(aiSlides);
     } catch (err: any) {
       setError(err.message);
     } finally {
