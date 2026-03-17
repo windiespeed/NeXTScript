@@ -17,12 +17,7 @@ function initials(name?: string | null, email?: string | null): string {
 
 export default function Nav() {
   const { data: session, status } = useSession();
-  const [dark, setDark] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    setDark(document.documentElement.classList.contains("dark"));
-  }, []);
 
   useEffect(() => {
     if (session?.user?.email) {
@@ -32,13 +27,6 @@ export default function Nav() {
         .catch(() => {});
     }
   }, [session?.user?.email]);
-
-  function toggleTheme() {
-    const next = !dark;
-    setDark(next);
-    document.documentElement.classList.toggle("dark", next);
-    localStorage.setItem("theme", next ? "dark" : "light");
-  }
 
   const displaySrc = avatarUrl ?? session?.user?.image ?? null;
   const userInitials = initials(session?.user?.name, session?.user?.email);
@@ -64,14 +52,6 @@ export default function Nav() {
               </Link>
             </div>
           )}
-
-          <button
-            onClick={toggleTheme}
-            className="rounded-md border border-[#1e4a85] px-3 py-1.5 text-xs text-[#0cc0df] hover:bg-[#1e4a85] active:scale-95 transition-all duration-150"
-            aria-label="Toggle theme"
-          >
-            {dark ? "☀ Light" : "☾ Dark"}
-          </button>
 
           {status === "loading" ? null : session ? (
             <Link

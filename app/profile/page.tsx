@@ -41,6 +41,20 @@ export default function ProfilePage() {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
 
+  // Theme
+  const [dark, setDark] = useState(false);
+
+  useEffect(() => {
+    setDark(document.documentElement.classList.contains("dark"));
+  }, []);
+
+  function toggleTheme() {
+    const next = !dark;
+    setDark(next);
+    document.documentElement.classList.toggle("dark", next);
+    localStorage.setItem("theme", next ? "dark" : "light");
+  }
+
   // Avatar
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -219,6 +233,22 @@ export default function ProfilePage() {
       {/* ── Status messages ────────────────────────────────────────────── */}
       {message && <p className="text-sm text-green-600">{message}</p>}
       {error && <p className="text-sm text-red-600">{error}</p>}
+
+      {/* ── Appearance ────────────────────────────────────────────────── */}
+      <div className="rounded-xl border border-[#1e4a85]/30 bg-white dark:bg-[#112543] p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-base font-semibold text-[#0d1c35] dark:text-white">Appearance</h2>
+            <p className="text-xs text-gray-500 mt-1">Choose your preferred color theme.</p>
+          </div>
+          <button
+            onClick={toggleTheme}
+            className="rounded-md border border-[#1e4a85] px-4 py-2 text-sm font-semibold text-[#0d1c35] dark:text-white hover:bg-[#1e4a85]/20 active:scale-95 transition-all duration-150 min-w-[100px]"
+          >
+            {dark ? "☀ Light mode" : "☾ Dark mode"}
+          </button>
+        </div>
+      </div>
 
       {/* ── Anthropic API key ──────────────────────────────────────────── */}
       <div className="rounded-xl border border-[#1e4a85]/30 bg-white dark:bg-[#112543] p-6 space-y-5">
