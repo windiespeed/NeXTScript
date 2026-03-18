@@ -17,6 +17,7 @@ export async function GET() {
       defaultSources: s.defaultSources ?? "",
       folders: s.folders ?? [],
       defaultTemplateUrl: s.defaultTemplateUrl ?? "",
+      lessonOrder: s.lessonOrder ?? [],
     });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
@@ -48,6 +49,10 @@ export async function PUT(req: Request) {
 
     if ("defaultTemplateUrl" in body) {
       update.defaultTemplateUrl = typeof body.defaultTemplateUrl === "string" ? body.defaultTemplateUrl : "";
+    }
+
+    if ("lessonOrder" in body) {
+      update.lessonOrder = Array.isArray(body.lessonOrder) ? body.lessonOrder : [];
     }
 
     await userSettings.save(session.user.email, update);

@@ -8,6 +8,7 @@ interface UserSettings {
   defaultSources?: string; // newline-separated URLs pre-filled on new lessons
   folders?: string[]; // named lesson folders on the dashboard
   defaultTemplateUrl?: string; // Google Slides template URL pre-filled in Generate modal
+  lessonOrder?: string[];      // ordered lesson IDs; new/unordered lessons appear first
 }
 
 export const userSettings = {

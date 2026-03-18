@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import React, { useState } from "react";
 import type { Lesson } from "@/types/lesson";
 import type { SavedProject } from "@/types/project";
 
@@ -39,13 +39,14 @@ interface Props {
   selecting?: boolean;
   selected?: boolean;
   onToggleSelect?: (id: string) => void;
+  gripProps?: React.HTMLAttributes<HTMLDivElement>;
 }
 
 function fmt(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
-export default function LessonCard({ lesson, projects = [], onDelete, onDuplicate, onOpenModal, selecting = false, selected = false, onToggleSelect }: Props) {
+export default function LessonCard({ lesson, projects = [], onDelete, onDuplicate, onOpenModal, selecting = false, selected = false, onToggleSelect, gripProps }: Props) {
   const busy = lesson.status === "generating" || lesson.status === "regenerating";
   const [assetsOpen, setAssetsOpen] = useState(false);
   const deck = projects.find(p => p.type === "deck");
@@ -104,6 +105,20 @@ export default function LessonCard({ lesson, projects = [], onDelete, onDuplicat
                 <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
               </svg>
             </button>
+            {/* Drag grip */}
+            {!selecting && gripProps && (
+              <div
+                {...gripProps}
+                title="Drag to reorder"
+                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#1e4a85]/20 transition cursor-grab active:cursor-grabbing"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                  <circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/>
+                  <circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/>
+                  <circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/>
+                </svg>
+              </div>
+            )}
           </div>
         </div>
 
@@ -113,6 +128,11 @@ export default function LessonCard({ lesson, projects = [], onDelete, onDuplicat
             <span className={`inline-block w-1.5 h-1.5 rounded-full ${STATUS_DOT[lesson.status]}`} />
             {STATUS_LABELS[lesson.status]}
           </span>
+          {lesson.tag && (
+            <span className="rounded-full bg-[#1e4a85]/10 dark:bg-[#1e4a85]/40 px-2 py-0.5 text-[10px] font-semibold text-[#1e4a85] dark:text-[#7eb3f5]">
+              {lesson.tag}
+            </span>
+          )}
           {lesson.deadline && (
             <span className="text-xs text-gray-500 dark:text-gray-400">
               Due <span className="font-medium text-gray-600 dark:text-gray-300">{lesson.deadline}</span>

@@ -6,6 +6,7 @@ export interface Lesson {
   title: string;
   topics: string;
   deadline: string;
+  tag: string;               // short custom label shown next to the due date on cards
   status: "draft" | "generating" | "regenerating" | "done" | "error";
   folderUrl?: string;
   errorMessage?: string;

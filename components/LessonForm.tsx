@@ -40,6 +40,7 @@ const EMPTY: LessonInput = {
   subtitle: "",
   topics: "",
   deadline: "",
+  tag: "",
   overview: "",
   learningTargets: "",
   vocabulary: "",
@@ -288,12 +289,21 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
         <div>
           <label className="block text-sm font-semibold text-[#0d1c35] dark:text-white mb-1">Deadline</label>
           <p className="text-xs text-gray-500 mb-1">The due date for this lesson's assignments.</p>
-          <input
-            type="date"
-            value={form.deadline}
-            onChange={(e) => set("deadline", e.target.value)}
-            className={`w-full rounded-md border border-[#1e4a85]/30 dark:border-[#1e4a85]/50 bg-white dark:bg-[#0d1c35] px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-[#0cc0df] ${form.deadline ? "text-[#0d1c35] dark:text-white" : "text-gray-400 dark:text-gray-600"}`}
-          />
+          <div className="flex gap-2">
+            <input
+              type="date"
+              value={form.deadline}
+              onChange={(e) => set("deadline", e.target.value)}
+              className={`flex-1 rounded-md border border-[#1e4a85]/30 dark:border-[#1e4a85]/50 bg-white dark:bg-[#0d1c35] px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-[#0cc0df] ${form.deadline ? "text-[#0d1c35] dark:text-white" : "text-gray-400 dark:text-gray-600"}`}
+            />
+            <input
+              type="text"
+              placeholder="Label (e.g. Sprint 3)"
+              value={form.tag}
+              onChange={(e) => set("tag", e.target.value)}
+              className="w-36 rounded-md border border-[#1e4a85]/30 dark:border-[#1e4a85]/50 bg-white dark:bg-[#0d1c35] px-3 py-2 text-sm text-[#0d1c35] dark:text-white placeholder-gray-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
+            />
+          </div>
         </div>
 
         <div className="sm:col-span-2">

@@ -1,9 +1,24 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useState, useCallback, Suspense } from "react";
 import { useSession, signIn } from "next-auth/react";
 import Image from "next/image";
 import Link from "next/link";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  useSortable,
+  rectSortingStrategy,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import LessonCard from "@/components/LessonCard";
 import GenerateModal from "@/components/GenerateModal";
 import type { Lesson } from "@/types/lesson";
@@ -11,6 +26,36 @@ import type { SavedProject } from "@/types/project";
 
 type FileChoice = "slides" | "doc" | "quiz";
 type Destination = "drive" | "download";
+
+interface SortableCardProps {
+  lesson: Lesson;
+  projects: SavedProject[];
+  onDelete: (id: string) => void;
+  onDuplicate: (id: string) => void;
+  onOpenModal: (id: string) => void;
+  selecting: boolean;
+  selected: boolean;
+  onToggleSelect: (id: string) => void;
+}
+
+function SortableLessonCard({ lesson, ...props }: SortableCardProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: lesson.id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+    zIndex: isDragging ? 10 : undefined,
+  };
+  return (
+    <div ref={setNodeRef} style={style}>
+      <LessonCard
+        lesson={lesson}
+        {...props}
+        gripProps={{ ...listeners, ...attributes }}
+      />
+    </div>
+  );
+}
 
 function Dashboard() {
   const { status } = useSession();
@@ -22,9 +67,21 @@ function Dashboard() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [bulkDuplicating, setBulkDuplicating] = useState(false);
+  const [lessonOrder, setLessonOrder] = useState<string[]>([]);
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   const modalLesson = lessons.find(l => l.id === modalLessonId) ?? null;
-  const sorted = [...lessons].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+
+  // Sort: unordered (new) lessons first by updatedAt, then ordered lessons in saved order
+  const sorted = (() => {
+    const orderedIds = lessonOrder.filter(id => lessons.some(l => l.id === id));
+    const unordered = lessons
+      .filter(l => !lessonOrder.includes(l.id))
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    const ordered = orderedIds.map(id => lessons.find(l => l.id === id)!);
+    return [...unordered, ...ordered];
+  })();
 
   function toggleSelect(id: string) {
     setSelected(prev => {
@@ -41,6 +98,27 @@ function Dashboard() {
   function exitSelecting() {
     setSelecting(false);
     setSelected(new Set());
+  }
+
+  async function saveOrder(order: string[]) {
+    await fetch("/api/user/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lessonOrder: order }),
+    });
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = sorted.findIndex(l => l.id === active.id);
+    const newIndex = sorted.findIndex(l => l.id === over.id);
+    const newSorted = arrayMove(sorted, oldIndex, newIndex);
+    const newOrder = newSorted.map(l => l.id);
+
+    setLessonOrder(newOrder);
+    saveOrder(newOrder);
   }
 
   async function handleBulkDuplicate() {
@@ -138,7 +216,13 @@ function Dashboard() {
 
   useEffect(() => {
     if (status === "authenticated") {
-      Promise.all([loadLessons(), loadProjects()]).then(() => setLoading(false));
+      Promise.all([
+        loadLessons(),
+        loadProjects(),
+        fetch("/api/user/settings").then(r => r.json()).then(s => {
+          if (Array.isArray(s.lessonOrder)) setLessonOrder(s.lessonOrder);
+        }),
+      ]).then(() => setLoading(false));
     }
   }, [status]);
 
@@ -257,21 +341,25 @@ function Dashboard() {
           </Link>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 items-stretch">
-          {sorted.map(lesson => (
-            <LessonCard
-              key={lesson.id}
-              lesson={lesson}
-              projects={projects.filter(p => p.lessonId === lesson.id)}
-              onDelete={handleDelete}
-              onDuplicate={handleDuplicate}
-              onOpenModal={setModalLessonId}
-              selecting={selecting}
-              selected={selected.has(lesson.id)}
-              onToggleSelect={toggleSelect}
-            />
-          ))}
-        </div>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={sorted.map(l => l.id)} strategy={rectSortingStrategy}>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 items-stretch">
+              {sorted.map(lesson => (
+                <SortableLessonCard
+                  key={lesson.id}
+                  lesson={lesson}
+                  projects={projects.filter(p => p.lessonId === lesson.id)}
+                  onDelete={handleDelete}
+                  onDuplicate={handleDuplicate}
+                  onOpenModal={setModalLessonId}
+                  selecting={selecting}
+                  selected={selected.has(lesson.id)}
+                  onToggleSelect={toggleSelect}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
       )}
 
       <GenerateModal
