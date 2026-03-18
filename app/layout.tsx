@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import "./globals.css";
 import Providers from "./providers";
-import Nav from "@/components/Nav";
+import Sidebar from "@/components/Sidebar";
 
 const geist = Geist({ subsets: ["latin"] });
 
@@ -17,10 +17,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script dangerouslySetInnerHTML={{ __html: `(function(){var t=localStorage.getItem('theme');if(t==='dark'||(t===null&&window.matchMedia('(prefers-color-scheme: dark)').matches)){document.documentElement.classList.add('dark')}})()` }} />
       </head>
-      <body className={`${geist.className} bg-[#f0f9ff] dark:bg-[#0d1c35] min-h-screen antialiased`}>
+      <body className={`${geist.className} min-h-screen antialiased`} style={{ backgroundColor: "var(--bg-body)", color: "var(--text-primary)" }}>
         <Providers>
-          <Nav />
-          <main className="mx-auto max-w-5xl px-4 py-8">{children}</main>
+          <Sidebar />
+          {/* Desktop: offset for sidebar. Mobile: offset for top bar */}
+          <div className="lg:pl-60 pt-[57px] lg:pt-0 min-h-screen">
+            <main className="mx-auto max-w-5xl px-4 py-8">
+              {children}
+            </main>
+          </div>
         </Providers>
       </body>
     </html>
