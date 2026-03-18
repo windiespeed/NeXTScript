@@ -57,7 +57,7 @@ export default function EditLessonPage() {
         <p className="text-sm text-gray-500 mt-1">{lesson.title}</p>
       </div>
 
-      <LessonForm initial={lesson} onSubmit={handleSubmit} autoSave={handleAutoSave} onCancel={() => router.push("/")} submitLabel="Save Changes" hasAiKey={hasAiKey} />
+      <LessonForm initial={lesson} onSubmit={handleSubmit} autoSave={handleAutoSave} onCancel={() => router.push("/")} submitLabel="Save Changes" hasAiKey={hasAiKey} isEditing />
     </main>
   );
 }

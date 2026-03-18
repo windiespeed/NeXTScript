@@ -24,12 +24,19 @@ export default function GenerateModal({ lesson, onClose, onGenerate }: Props) {
   const [modalStatus] = useState<ModalStatus>("idle");
   const [templateUrl, setTemplateUrl] = useState("");
 
-  // Reset state whenever a new lesson opens the modal
+  // Load saved template URL once on mount
+  useEffect(() => {
+    fetch("/api/user/settings")
+      .then(r => r.json())
+      .then(data => { if (data.defaultTemplateUrl) setTemplateUrl(data.defaultTemplateUrl); })
+      .catch(() => {});
+  }, []);
+
+  // Reset file/destination state whenever a new lesson opens the modal
   useEffect(() => {
     if (lesson) {
       setSelectedFiles(["slides", "doc", "quiz"]);
       setDestination("drive");
-      setTemplateUrl("");
     }
   }, [lesson?.id]);
 
@@ -56,7 +63,14 @@ export default function GenerateModal({ lesson, onClose, onGenerate }: Props) {
 
   async function handleGenerate() {
     if (!canGenerate) return;
-    const templateId = templateUrl.trim() ? extractPresentationId(templateUrl.trim()) ?? undefined : undefined;
+    const trimmed = templateUrl.trim();
+    const templateId = trimmed ? extractPresentationId(trimmed) ?? undefined : undefined;
+    // Persist the template URL for next time
+    fetch("/api/user/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ defaultTemplateUrl: trimmed }),
+    }).catch(() => {});
     onClose();
     onGenerate(lesson!.id, effectiveFiles, destination, templateId);
   }
@@ -70,10 +84,10 @@ export default function GenerateModal({ lesson, onClose, onGenerate }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-[#0d1c35]/80"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
       onClick={handleBackdropClick}
     >
-      <div className="w-full max-w-sm rounded-2xl bg-gradient-to-br from-[#0d1c35] to-[#0cc0df] border border-[#0cc0df]/40 shadow-2xl p-6 flex flex-col gap-5 mx-4">
+      <div className="w-full max-w-sm rounded-2xl bg-[#112543] border border-[#1e4a85]/60 shadow-2xl p-6 flex flex-col gap-5 mx-4">
 
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -158,13 +172,24 @@ export default function GenerateModal({ lesson, onClose, onGenerate }: Props) {
         {/* Template URL */}
         <div>
           <p className={sectionLabel}>Slides Template <span className="normal-case font-normal text-gray-400">(optional)</span></p>
-          <input
-            type="url"
-            value={templateUrl}
-            onChange={(e) => setTemplateUrl(e.target.value)}
-            placeholder="https://docs.google.com/presentation/d/…"
-            className="w-full rounded-lg bg-[#0d1c35] border border-[#1e4a85] text-white placeholder:text-gray-500 text-xs px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#0cc0df]"
-          />
+          <div className="flex gap-2">
+            <input
+              type="url"
+              value={templateUrl}
+              onChange={(e) => setTemplateUrl(e.target.value)}
+              placeholder="https://docs.google.com/presentation/d/…"
+              className="flex-1 rounded-lg bg-[#0d1c35] border border-[#1e4a85] text-white placeholder:text-gray-500 text-xs px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#0cc0df]"
+            />
+            {templateUrl.trim() && (
+              <button
+                onClick={() => { setTemplateUrl(""); fetch("/api/user/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ defaultTemplateUrl: "" }) }).catch(() => {}); }}
+                className="rounded-lg bg-[#0d1c35] border border-[#1e4a85] px-2.5 text-gray-400 hover:text-white transition text-xs"
+                title="Clear saved template"
+              >
+                ✕
+              </button>
+            )}
+          </div>
           {templateUrl.trim() && !extractPresentationId(templateUrl.trim()) && (
             <p className="text-xs text-red-400 mt-1">Could not extract a presentation ID from that URL.</p>
           )}

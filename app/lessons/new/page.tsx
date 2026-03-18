@@ -11,6 +11,7 @@ export default function NewLessonPage() {
   const router = useRouter();
   const [hasAiKey, setHasAiKey] = useState(false);
   const [defaultSources, setDefaultSources] = useState("");
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
 
   useEffect(() => {
     fetch("/api/user/settings")
@@ -18,6 +19,7 @@ export default function NewLessonPage() {
       .then((data) => {
         setHasAiKey(data.hasKey ?? false);
         setDefaultSources(data.defaultSources ?? "");
+        setSettingsLoaded(true);
       });
   }, []);
 
@@ -52,7 +54,7 @@ export default function NewLessonPage() {
         <h1 className="text-2xl font-bold text-black dark:text-white">New Lesson</h1>
         <p className="text-sm text-gray-500 mt-1">Fill in the sections below. Generate the full Google Drive bundle from the dashboard.</p>
       </div>
-      <LessonForm onSubmit={handleSubmit} onSaveDraft={handleSaveDraft} onCancel={() => router.push("/")} submitLabel="Create Lesson" hasAiKey={hasAiKey} initial={{ sources: defaultSources }} />
+      {settingsLoaded && <LessonForm onSubmit={handleSubmit} onSaveDraft={handleSaveDraft} onCancel={() => router.push("/")} submitLabel="Create Lesson" hasAiKey={hasAiKey} initial={{ sources: defaultSources }} />}
     </main>
   );
 }

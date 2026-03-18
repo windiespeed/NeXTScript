@@ -39,26 +39,15 @@ export default function Nav() {
         </Link>
 
         <div className="flex items-center gap-4">
-          {session && (
-            <div className="hidden sm:flex items-center gap-4 text-sm">
-              <Link href="/?tab=lessons" className="text-[#0cc0df] hover:text-white transition font-medium">
-                Lessons
-              </Link>
-              <Link href="/?tab=decks" className="text-[#0cc0df] hover:text-white transition font-medium">
-                Slides
-              </Link>
-              <Link href="/?tab=forms" className="text-[#0cc0df] hover:text-white transition font-medium">
-                Forms
-              </Link>
-            </div>
-          )}
-
-          {status === "loading" ? null : session ? (
+{status === "loading" ? null : session ? (
             <Link
               href="/profile"
               className="flex items-center gap-2 group"
               aria-label="Profile"
             >
+              <span className="text-xs text-gray-400 group-hover:text-white transition hidden sm:block max-w-[140px] truncate">
+                {session.user?.email}
+              </span>
               {/* Avatar circle */}
               <div className="w-8 h-8 rounded-full overflow-hidden ring-2 ring-transparent group-hover:ring-[#0cc0df] transition-all flex-shrink-0">
                 {displaySrc ? (
@@ -70,9 +59,6 @@ export default function Nav() {
                   </div>
                 )}
               </div>
-              <span className="text-xs text-gray-400 group-hover:text-white transition hidden sm:block max-w-[140px] truncate">
-                {session.user?.email}
-              </span>
             </Link>
           ) : (
             <button

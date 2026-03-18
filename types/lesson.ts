@@ -25,7 +25,9 @@ export interface Lesson {
   industryBestPractices: string; // INDUSTRY BEST PRACTICES
   devJournalPrompt: string;      // DEVELOPMENT JOURNAL PROMPT
   rubric: string;                // RUBRIC — comprehension/objective checklist
+  folder?: string;               // Optional folder name for grouping lessons on the dashboard
   sources: string;               // Reference URLs (one per line) used during generation
+  studentLevel?: "beginner" | "intermediate" | "advanced"; // Target student experience level for AI generation
   quizQuestions?: FormQuestion[]; // Custom quiz questions — if set, used instead of auto-gen
 }
 

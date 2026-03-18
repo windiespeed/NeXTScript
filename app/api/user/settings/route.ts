@@ -15,6 +15,8 @@ export async function GET() {
       maskedKey: s.anthropicKey ? `${s.anthropicKey.slice(0, 12)}…${s.anthropicKey.slice(-4)}` : null,
       avatarUrl: s.avatarUrl ?? null,
       defaultSources: s.defaultSources ?? "",
+      folders: s.folders ?? [],
+      defaultTemplateUrl: s.defaultTemplateUrl ?? "",
     });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
@@ -27,7 +29,7 @@ export async function PUT(req: Request) {
     if (!session?.user?.email) return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
 
     const body = await req.json();
-    const update: Record<string, string | undefined> = {};
+    const update: Record<string, string | string[] | undefined> = {};
 
     if ("anthropicKey" in body) {
       if (typeof body.anthropicKey !== "string" || !body.anthropicKey.trim()) {
@@ -38,6 +40,14 @@ export async function PUT(req: Request) {
 
     if ("defaultSources" in body) {
       update.defaultSources = typeof body.defaultSources === "string" ? body.defaultSources : "";
+    }
+
+    if ("folders" in body) {
+      update.folders = Array.isArray(body.folders) ? body.folders : [];
+    }
+
+    if ("defaultTemplateUrl" in body) {
+      update.defaultTemplateUrl = typeof body.defaultTemplateUrl === "string" ? body.defaultTemplateUrl : "";
     }
 
     await userSettings.save(session.user.email, update);

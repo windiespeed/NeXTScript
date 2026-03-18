@@ -13,6 +13,7 @@ interface Props {
   onCancel?: () => void;
   submitLabel?: string;
   hasAiKey?: boolean;
+  isEditing?: boolean;
 }
 
 interface Slide {
@@ -51,6 +52,7 @@ const EMPTY: LessonInput = {
   devJournalPrompt: "",
   rubric: "",
   sources: "",
+  studentLevel: "beginner",
 };
 
 type SectionField = { key: keyof LessonInput; label: string; hint: string; rows: number };
@@ -73,7 +75,7 @@ const POST_SLIDE_FIELDS: SectionField[] = [
   { key: "rubric",                label: "Rubric",                    hint: "Comprehension and objective checklist used by TAs to assess student submissions.", rows: 4 },
 ];
 
-export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSave, onCancel, submitLabel = "Save Lesson", hasAiKey = false }: Props) {
+export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSave, onCancel, submitLabel = "Save Lesson", hasAiKey = false, isEditing = false }: Props) {
   const [form, setForm] = useState<LessonInput>({ ...EMPTY, ...initial });
   const [slides, setSlides] = useState<Slide[]>(() => parseSlides(initial.slideContent ?? ""));
   const [quizQuestions, setQuizQuestions] = useState<FormQuestion[]>(
@@ -211,7 +213,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
             value={form.title}
             onChange={(e) => set("title", e.target.value)}
             placeholder="e.g. Module 3, Lesson 2"
-            className="w-full rounded-md border border-[#1e4a85]/30 px-3 py-2 text-sm text-[#0d1c35] shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
+            className="w-full rounded-md border border-[#1e4a85]/30 dark:border-[#1e4a85]/50 bg-white dark:bg-[#0d1c35] px-3 py-2 text-sm text-[#0d1c35] dark:text-white shadow-sm placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
           />
         </div>
 
@@ -223,7 +225,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
             value={form.subtitle}
             onChange={(e) => set("subtitle", e.target.value)}
             placeholder="e.g. Introduction to CSS Flexbox"
-            className="w-full rounded-md border border-[#1e4a85]/30 px-3 py-2 text-sm text-[#0d1c35] shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
+            className="w-full rounded-md border border-[#1e4a85]/30 dark:border-[#1e4a85]/50 bg-white dark:bg-[#0d1c35] px-3 py-2 text-sm text-[#0d1c35] dark:text-white shadow-sm placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
           />
         </div>
 
@@ -234,7 +236,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
             value={form.topics}
             onChange={(e) => set("topics", e.target.value)}
             placeholder="e.g. Flexbox, CSS Layout"
-            className="w-full rounded-md border border-[#1e4a85]/30 px-3 py-2 text-sm text-[#0d1c35] shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
+            className="w-full rounded-md border border-[#1e4a85]/30 dark:border-[#1e4a85]/50 bg-white dark:bg-[#0d1c35] px-3 py-2 text-sm text-[#0d1c35] dark:text-white shadow-sm placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
           />
         </div>
 
@@ -244,22 +246,54 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
             type="date"
             value={form.deadline}
             onChange={(e) => set("deadline", e.target.value)}
-            className={`w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-900 ${form.deadline ? "text-black" : "text-gray-500"}`}
+            className={`w-full rounded-md border border-[#1e4a85]/30 dark:border-[#1e4a85]/50 bg-white dark:bg-[#0d1c35] px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-[#0cc0df] ${form.deadline ? "text-[#0d1c35] dark:text-white" : "text-gray-400 dark:text-gray-600"}`}
           />
         </div>
 
         <div className="sm:col-span-2">
           <label className="block text-sm font-semibold text-[#0d1c35] dark:text-white mb-1">Sources</label>
           <p className="text-xs text-gray-500 mb-1">
-            Reference URLs used to generate this lesson — one URL per line (e.g. W3C specs, MDN docs, W3Schools pages).
+            One URL per line. These are passed to the AI as reference material when generating lesson content.
+            {form.sources
+              ? isEditing
+                ? " These are the sources saved with this lesson — edit as needed."
+                : " The URLs below are pre-filled from your default sources — add, remove, or edit as needed for this lesson."
+              : " No sources set — add URLs or configure defaults in your Profile settings."}
           </p>
           <textarea
             value={form.sources}
             onChange={(e) => set("sources", e.target.value)}
             rows={4}
             placeholder={"https://www.w3.org/\nhttps://www.w3schools.com/\nhttps://www.wcag.com/"}
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-black font-mono shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-900"
+            className="w-full rounded-md border border-[#1e4a85]/30 dark:border-[#1e4a85]/50 bg-white dark:bg-[#0d1c35] px-3 py-2 text-sm text-[#0d1c35] dark:text-white font-mono shadow-sm placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
           />
+        </div>
+
+        <div className="sm:col-span-2">
+          <label className="block text-sm font-semibold text-[#0d1c35] dark:text-white mb-1">Student Level</label>
+          <p className="text-xs text-gray-500 mb-1">
+            Adjusts the tone and complexity of AI-generated content to match your students&apos; experience.
+          </p>
+          <div className="flex gap-3">
+            {(["beginner", "intermediate", "advanced"] as const).map((level) => (
+              <label key={level} className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="studentLevel"
+                  value={level}
+                  checked={(form.studentLevel ?? "beginner") === level}
+                  onChange={() => set("studentLevel", level)}
+                  className="accent-[#0cc0df]"
+                />
+                <span className="text-sm text-[#0d1c35] dark:text-white capitalize">{level}</span>
+              </label>
+            ))}
+          </div>
+          <p className="text-xs text-gray-400 mt-1">
+            {(form.studentLevel ?? "beginner") === "beginner" && "No coding experience — simple language, extra explanation, no assumed knowledge."}
+            {form.studentLevel === "intermediate" && "Some coding experience — moderate complexity, references prior knowledge."}
+            {form.studentLevel === "advanced" && "Strong coding background — technical depth, industry terminology."}
+          </p>
         </div>
       </div>
 
@@ -275,7 +309,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
               value={form[key] as string}
               onChange={(e) => set(key, e.target.value)}
               rows={rows}
-              className="w-full rounded-md border border-[#1e4a85]/30 px-3 py-2 text-sm text-[#0d1c35] font-mono shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
+              className="w-full rounded-md border border-[#1e4a85]/30 dark:border-[#1e4a85]/50 bg-white dark:bg-[#0d1c35] px-3 py-2 text-sm text-[#0d1c35] dark:text-white font-mono shadow-sm placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
             />
           </div>
         ))}
@@ -285,7 +319,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
       <div>
         <div className="flex items-center justify-between mb-3">
           <div>
-            <p className="text-sm font-semibold text-[#0d1c35]">Slide Content</p>
+            <p className="text-sm font-semibold text-[#0d1c35] dark:text-white">Slide Content</p>
             <p className="text-xs text-gray-500">Each card is one slide. The title becomes the slide heading.</p>
           </div>
           <button
@@ -299,14 +333,14 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
 
         <div className="space-y-3">
           {slides.map((slide, i) => (
-            <div key={i} className="rounded-lg border border-[#1e4a85]/20 bg-white p-4 space-y-2">
+            <div key={i} className="rounded-lg border border-[#1e4a85]/20 dark:border-[#1e4a85]/40 bg-white dark:bg-[#112543] p-4 space-y-2">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-semibold text-[#0d1c35]/50 uppercase tracking-wide">Slide {i + 1}</span>
+                <span className="text-xs font-semibold text-[#0d1c35]/50 dark:text-white/60 uppercase tracking-wide">Slide {i + 1}</span>
                 <button
                   type="button"
                   onClick={() => removeSlide(i)}
                   disabled={slides.length === 1}
-                  className="text-xs text-red-500 hover:text-red-700 disabled:opacity-30 transition"
+                  className="text-xs text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 disabled:opacity-30 transition"
                 >
                   Remove
                 </button>
@@ -316,14 +350,14 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
                 value={slide.title}
                 onChange={(e) => setSlide(i, "title", e.target.value)}
                 placeholder="Slide title"
-                className="w-full rounded-md border border-[#1e4a85]/30 px-3 py-2 text-sm text-[#0d1c35] bg-white shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
+                className="w-full rounded-md border border-[#1e4a85]/30 dark:border-[#1e4a85]/50 bg-white dark:bg-[#0d1c35] px-3 py-2 text-sm text-[#0d1c35] dark:text-white shadow-sm placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
               />
               <textarea
                 value={slide.body}
                 onChange={(e) => setSlide(i, "body", e.target.value)}
                 rows={4}
                 placeholder="Slide content…"
-                className="w-full rounded-md border border-[#1e4a85]/30 px-3 py-2 text-sm text-[#0d1c35] font-mono bg-white shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
+                className="w-full rounded-md border border-[#1e4a85]/30 dark:border-[#1e4a85]/50 bg-white dark:bg-[#0d1c35] px-3 py-2 text-sm text-[#0d1c35] dark:text-white font-mono shadow-sm placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
               />
             </div>
           ))}
@@ -342,7 +376,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
               value={form[key] as string}
               onChange={(e) => set(key, e.target.value)}
               rows={rows}
-              className="w-full rounded-md border border-[#1e4a85]/30 px-3 py-2 text-sm text-[#0d1c35] font-mono shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
+              className="w-full rounded-md border border-[#1e4a85]/30 dark:border-[#1e4a85]/50 bg-white dark:bg-[#0d1c35] px-3 py-2 text-sm text-[#0d1c35] dark:text-white font-mono shadow-sm placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
             />
           </div>
         ))}
@@ -352,7 +386,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
       <div>
         <div className="flex items-center justify-between mb-3">
           <div>
-            <p className="text-sm font-semibold text-[#0d1c35]">Quiz Questions</p>
+            <p className="text-sm font-semibold text-[#0d1c35] dark:text-white">Quiz Questions</p>
             <p className="text-xs text-gray-500">Optional — define custom questions for the quiz form.</p>
           </div>
           <button
@@ -366,9 +400,9 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
 
         <div className="space-y-4">
           {quizQuestions.map((q, i) => (
-            <div key={q.id} className="rounded-lg border border-[#1e4a85]/20 bg-white p-4 space-y-3">
+            <div key={q.id} className="rounded-lg border border-[#1e4a85]/20 dark:border-[#1e4a85]/40 bg-white dark:bg-[#112543] p-4 space-y-3">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-semibold text-[#0d1c35]/50 uppercase tracking-wide">Question {i + 1}</span>
+                <span className="text-xs font-semibold text-[#0d1c35]/50 dark:text-white/60 uppercase tracking-wide">Question {i + 1}</span>
                 <button
                   type="button"
                   onClick={() => setQuizQuestions(prev => prev.filter((_, idx) => idx !== i))}
@@ -380,21 +414,21 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
 
               <div className="flex gap-3">
                 <div className="flex-1">
-                  <label className="block text-xs font-semibold text-[#0d1c35] mb-1">Question</label>
+                  <label className="block text-xs font-semibold text-[#0d1c35] dark:text-white mb-1">Question</label>
                   <input
                     type="text"
                     value={q.text}
                     onChange={e => setQuizQuestions(prev => prev.map((x, idx) => idx === i ? { ...x, text: e.target.value } : x))}
                     placeholder="Enter question text"
-                    className="w-full rounded-md border border-[#1e4a85]/30 px-3 py-2 text-sm text-[#0d1c35] bg-white shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
+                    className="w-full rounded-md border border-[#1e4a85]/30 dark:border-[#1e4a85]/50 bg-white dark:bg-[#0d1c35] px-3 py-2 text-sm text-[#0d1c35] dark:text-white shadow-sm placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-[#0d1c35] mb-1">Type</label>
+                  <label className="block text-xs font-semibold text-[#0d1c35] dark:text-white mb-1">Type</label>
                   <select
                     value={q.type}
                     onChange={e => setQuizQuestions(prev => prev.map((x, idx) => idx === i ? { ...x, type: e.target.value as FormQuestion["type"] } : x))}
-                    className="rounded-md border border-[#1e4a85]/30 px-3 py-2 text-sm text-[#0d1c35] bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
+                    className="rounded-md border border-[#1e4a85]/30 dark:border-[#1e4a85]/50 bg-white dark:bg-[#0d1c35] px-3 py-2 text-sm text-[#0d1c35] dark:text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
                   >
                     <option value="multiple_choice">Multiple Choice</option>
                     <option value="short_answer">Short Answer</option>
@@ -405,7 +439,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
 
               {q.type === "multiple_choice" && (
                 <div className="space-y-2">
-                  <label className="block text-xs font-semibold text-black">Answer Options</label>
+                  <label className="block text-xs font-semibold text-[#0d1c35] dark:text-white">Answer Options</label>
                   {q.options.map((opt, oi) => (
                     <div key={oi} className="flex items-center gap-2">
                       <input
@@ -416,7 +450,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
                           : x
                         ))}
                         placeholder={`Option ${oi + 1}`}
-                        className="flex-1 rounded-md border border-[#1e4a85]/30 px-3 py-1.5 text-sm text-[#0d1c35] bg-white shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
+                        className="flex-1 rounded-md border border-[#1e4a85]/30 dark:border-[#1e4a85]/50 bg-white dark:bg-[#0d1c35] px-3 py-1.5 text-sm text-[#0d1c35] dark:text-white shadow-sm placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
                       />
                       <button
                         type="button"
@@ -440,11 +474,11 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
                   </button>
 
                   <div>
-                    <label className="block text-xs font-semibold text-black mt-2 mb-1">Correct Answer (optional — for grading)</label>
+                    <label className="block text-xs font-semibold text-[#0d1c35] dark:text-white mt-2 mb-1">Correct Answer (optional — for grading)</label>
                     <select
                       value={q.correctAnswer}
                       onChange={e => setQuizQuestions(prev => prev.map((x, idx) => idx === i ? { ...x, correctAnswer: e.target.value } : x))}
-                      className="w-full rounded-md border border-[#1e4a85]/30 px-3 py-1.5 text-sm text-[#0d1c35] bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
+                      className="w-full rounded-md border border-[#1e4a85]/30 dark:border-[#1e4a85]/50 bg-white dark:bg-[#0d1c35] px-3 py-1.5 text-sm text-[#0d1c35] dark:text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
                     >
                       <option value="">— None —</option>
                       {q.options.filter(o => o.trim()).map((o, oi) => (
@@ -455,7 +489,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
                 </div>
               )}
 
-              <label className="flex items-center gap-2 text-xs text-[#0d1c35] cursor-pointer">
+              <label className="flex items-center gap-2 text-xs text-[#0d1c35] dark:text-white cursor-pointer">
                 <input
                   type="checkbox"
                   checked={q.required}

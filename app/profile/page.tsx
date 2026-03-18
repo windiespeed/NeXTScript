@@ -284,7 +284,7 @@ export default function ProfilePage() {
             onChange={(e) => setDefaultSources(e.target.value)}
             rows={5}
             placeholder={"https://www.w3schools.com/\nhttps://developer.mozilla.org/\nhttps://www.w3.org/"}
-            className="w-full rounded-md border border-[#1e4a85]/30 px-3 py-2 text-sm font-mono text-[#0d1c35] shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
+            className="w-full rounded-md border border-[#1e4a85]/30 dark:border-[#1e4a85]/50 bg-white dark:bg-[#0d1c35] px-3 py-2 text-sm font-mono text-[#0d1c35] dark:text-white shadow-sm placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
           />
           <button
             type="submit"
@@ -330,7 +330,7 @@ export default function ProfilePage() {
             value={keyInput}
             onChange={(e) => setKeyInput(e.target.value)}
             placeholder="sk-ant-api03-…"
-            className="w-full rounded-md border border-[#1e4a85]/30 px-3 py-2 text-sm font-mono text-[#0d1c35] shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
+            className="w-full rounded-md border border-[#1e4a85]/30 dark:border-[#1e4a85]/50 bg-white dark:bg-[#0d1c35] px-3 py-2 text-sm font-mono text-[#0d1c35] dark:text-white shadow-sm placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
           />
           <p className="text-xs text-gray-400">
             Get your key from{" "}

@@ -6,6 +6,8 @@ interface UserSettings {
   anthropicKey?: string;
   avatarUrl?: string; // base64 data URL, resized to 200×200 client-side
   defaultSources?: string; // newline-separated URLs pre-filled on new lessons
+  folders?: string[]; // named lesson folders on the dashboard
+  defaultTemplateUrl?: string; // Google Slides template URL pre-filled in Generate modal
 }
 
 export const userSettings = {

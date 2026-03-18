@@ -2,39 +2,25 @@
 
 import { useEffect, useState, Suspense } from "react";
 import { useSession, signIn } from "next-auth/react";
-import { useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import LessonCard from "@/components/LessonCard";
-import ProjectCard from "@/components/ProjectCard";
 import GenerateModal from "@/components/GenerateModal";
 import type { Lesson } from "@/types/lesson";
 import type { SavedProject } from "@/types/project";
-
-type Tab = "lessons" | "decks" | "forms";
 
 type FileChoice = "slides" | "doc" | "quiz";
 type Destination = "drive" | "download";
 
 function Dashboard() {
   const { status } = useSession();
-  const searchParams = useSearchParams();
-  const router = useRouter();
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [projects, setProjects] = useState<SavedProject[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalLessonId, setModalLessonId] = useState<string | null>(null);
 
-  const tabParam = searchParams.get("tab");
-  const tab: Tab = (tabParam === "decks" || tabParam === "forms") ? tabParam : "lessons";
-
-  function switchTab(t: Tab) {
-    router.replace(t === "lessons" ? "/" : `/?tab=${t}`, { scroll: false });
-  }
-
   const modalLesson = lessons.find(l => l.id === modalLessonId) ?? null;
-  const decks = projects.filter(p => p.type === "deck");
-  const forms = projects.filter(p => p.type === "form");
+  const sorted = [...lessons].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 
   async function loadLessons() {
     const res = await fetch("/api/lessons");
@@ -51,11 +37,20 @@ function Dashboard() {
   async function handleDelete(id: string) {
     if (!confirm("Delete this lesson?")) return;
     await fetch(`/api/lessons/${id}`, { method: "DELETE" });
-    setLessons((prev) => prev.filter((l) => l.id !== id));
+    setLessons(prev => prev.filter(l => l.id !== id));
   }
 
-  function handleOpenModal(id: string) {
-    setModalLessonId(id);
+  async function handleDuplicate(id: string) {
+    const res = await fetch(`/api/lessons/${id}`);
+    const lesson = await res.json();
+    const { title, subtitle, topics, deadline, overview, learningTargets, warmUp, guidedLab, selfPaced, submissionChecklist, checkpoint, industryBestPractices, slideContent, devJournalPrompt, rubric, taChecklist, sources } = lesson;
+    const copy = await fetch("/api/lessons", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: `Copy of ${title}`, subtitle, topics, deadline, overview, learningTargets, warmUp, guidedLab, selfPaced, submissionChecklist, checkpoint, industryBestPractices, slideContent, devJournalPrompt, rubric: rubric ?? taChecklist ?? "", sources }),
+    });
+    const newLesson = await copy.json();
+    setLessons(prev => [newLesson, ...prev]);
   }
 
   async function handleGenerateWithOptions(id: string, files: FileChoice[], destination: Destination, templateId?: string) {
@@ -78,6 +73,7 @@ function Dashboard() {
     if (destination === "drive") {
       const data = await res.json();
       setLessons(prev => prev.map(l => l.id === id ? { ...l, ...data } : l));
+      await loadProjects();
     } else {
       const { downloads } = await res.json();
       triggerDownloads(downloads);
@@ -98,25 +94,6 @@ function Dashboard() {
       document.body.removeChild(a);
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
-  }
-
-  async function handleDuplicate(id: string) {
-    const res = await fetch(`/api/lessons/${id}`);
-    const lesson = await res.json();
-    const { title, subtitle, topics, deadline, overview, learningTargets, warmUp, guidedLab, selfPaced, submissionChecklist, checkpoint, industryBestPractices, slideContent, devJournalPrompt, rubric, taChecklist, sources } = lesson;
-    const copy = await fetch("/api/lessons", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: `Copy of ${title}`, subtitle, topics, deadline, overview, learningTargets, warmUp, guidedLab, selfPaced, submissionChecklist, checkpoint, industryBestPractices, slideContent, devJournalPrompt, rubric: rubric ?? taChecklist ?? "", sources }),
-    });
-    const newLesson = await copy.json();
-    setLessons((prev) => [...prev, newLesson]);
-  }
-
-  async function handleDeleteProject(id: string) {
-    if (!confirm("Delete this item?")) return;
-    await fetch(`/api/projects/${id}`, { method: "DELETE" });
-    setProjects(prev => prev.filter(p => p.id !== id));
   }
 
   useEffect(() => {
@@ -157,24 +134,11 @@ function Dashboard() {
     return <p className="text-[#0cc0df] text-sm text-center mt-20">Loading…</p>;
   }
 
-  const tabBtn = (t: Tab, label: string, count: number) => (
-    <button
-      onClick={() => switchTab(t)}
-      className={`px-4 py-2 text-sm font-semibold rounded-lg transition ${
-        tab === t
-          ? "bg-[#0cc0df] text-[#0d1c35] shadow"
-          : "text-gray-300 hover:text-white hover:bg-[#1e4a85]"
-      }`}
-    >
-      {label} {count > 0 && <span className="ml-1 text-xs opacity-70">({count})</span>}
-    </button>
-  );
-
   return (
     <div>
-      <div className="flex items-center justify-between mb-4 bg-gradient-to-br from-[#0d1c35] to-[#0cc0df] rounded-xl px-5 py-4 shadow">
+      <div className="flex items-center justify-between mb-6 bg-gradient-to-br from-[#0d1c35] to-[#0cc0df] rounded-xl px-5 py-4 shadow">
         <div>
-          <h1 className="text-2xl font-bold text-white">Dashboard</h1>
+          <h1 className="text-2xl font-bold text-white">Lessons</h1>
           <p className="text-sm text-[#0cc0df] mt-1">Build lessons and generate Drive bundles — slides, docs, and quizzes.</p>
         </div>
         <Link
@@ -185,50 +149,28 @@ function Dashboard() {
         </Link>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 mb-5 bg-[#0d1c35] rounded-lg p-1 w-fit shadow">
-        {tabBtn("lessons", "Lessons", lessons.length)}
-        {tabBtn("decks", "Slide Decks", decks.length)}
-        {tabBtn("forms", "Forms", forms.length)}
-      </div>
-
       {loading ? (
         <p className="text-[#0cc0df] text-sm">Loading…</p>
-      ) : tab === "lessons" ? (
-        lessons.length === 0 ? (
-          <div className="rounded-xl border-2 border-dashed border-[#1e4a85] p-12 text-center">
-            <p className="text-gray-400 text-sm mb-4">No lessons yet.</p>
-            <Link href="/lessons/new" className="rounded-md bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition">
-              Create your first lesson
-            </Link>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 items-stretch">
-            {lessons.map(lesson => (
-              <LessonCard key={lesson.id} lesson={lesson} onDelete={handleDelete} onDuplicate={handleDuplicate} onOpenModal={handleOpenModal} />
-            ))}
-          </div>
-        )
-      ) : tab === "decks" ? (
-        decks.length === 0 ? (
-          <div className="rounded-xl border-2 border-dashed border-[#1e4a85] p-12 text-center">
-            <p className="text-gray-400 text-sm">No slide decks yet. Generate a bundle from a lesson to create slide decks.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 items-stretch">
-            {decks.map(p => <ProjectCard key={p.id} project={p} onDelete={handleDeleteProject} />)}
-          </div>
-        )
+      ) : sorted.length === 0 ? (
+        <div className="text-center py-16">
+          <p className="text-gray-400 dark:text-gray-500 text-sm mb-4">No lessons yet.</p>
+          <Link href="/lessons/new" className="rounded-md bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition">
+            Create your first lesson
+          </Link>
+        </div>
       ) : (
-        forms.length === 0 ? (
-          <div className="rounded-xl border-2 border-dashed border-[#1e4a85] p-12 text-center">
-            <p className="text-gray-400 text-sm">No quiz forms yet. Generate a bundle from a lesson to create quiz forms.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 items-stretch">
-            {forms.map(p => <ProjectCard key={p.id} project={p} onDelete={handleDeleteProject} />)}
-          </div>
-        )
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 items-stretch">
+          {sorted.map(lesson => (
+            <LessonCard
+              key={lesson.id}
+              lesson={lesson}
+              projects={projects.filter(p => p.lessonId === lesson.id)}
+              onDelete={handleDelete}
+              onDuplicate={handleDuplicate}
+              onOpenModal={setModalLessonId}
+            />
+          ))}
+        </div>
       )}
 
       <GenerateModal

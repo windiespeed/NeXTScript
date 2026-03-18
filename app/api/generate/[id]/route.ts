@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { store } from "@/lib/store";
 import { projectStore } from "@/lib/projectStore";
+import { userSettings } from "@/lib/userSettings";
 import { generateBundleSelective, generateBundleAsDownload } from "@/lib/google";
+import { generateQuizQuestions } from "@/lib/ai";
 
 export const dynamic = "force-dynamic";
 
@@ -47,21 +49,35 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const inProgressStatus = lesson.status === "done" ? "regenerating" : "generating";
   await store.update(id, { status: inProgressStatus });
 
+  // Auto-generate quiz questions via AI if quiz is selected and none are defined
+  let lessonToGenerate = lesson;
+  if (files.includes("quiz") && (!lesson.quizQuestions || lesson.quizQuestions.length === 0)) {
+    const apiKey = await userSettings.getAnthropicKey(session.user!.email!);
+    if (apiKey) {
+      try {
+        const aiQuestions = await generateQuizQuestions(apiKey, lesson);
+        lessonToGenerate = { ...lesson, quizQuestions: aiQuestions };
+      } catch {
+        // If AI generation fails, proceed with empty quiz rather than blocking generation
+      }
+    }
+  }
+
   try {
     if (destination === "drive") {
-      const { folderUrl, deckId, formId } = await generateBundleSelective(lesson, files, accessToken, templateId);
+      const { folderUrl, deckId, formId } = await generateBundleSelective(lessonToGenerate, files, accessToken, templateId);
 
       // Save generated files to the projects collection so they appear in dashboard tabs
       await Promise.all([
-        deckId ? projectStore.create({ type: "deck", title: lesson.title, subtitle: lesson.subtitle, url: `https://docs.google.com/presentation/d/${deckId}/edit` }, session.user!.email!) : null,
-        formId ? projectStore.create({ type: "form", title: lesson.title, subtitle: lesson.subtitle, isQuiz: true, url: `https://docs.google.com/forms/d/${formId}/edit` }, session.user!.email!) : null,
+        deckId ? projectStore.create({ type: "deck", lessonId: id, title: lesson.title, subtitle: lesson.subtitle, url: `https://docs.google.com/presentation/d/${deckId}/edit` }, session.user!.email!) : null,
+        formId ? projectStore.create({ type: "form", lessonId: id, title: lesson.title, subtitle: lesson.subtitle, isQuiz: true, url: `https://docs.google.com/forms/d/${formId}/edit` }, session.user!.email!) : null,
       ]);
 
       const updated = await store.update(id, { status: "done", folderUrl });
       return NextResponse.json(updated);
     } else {
       const downloadFiles = files.filter(f => f !== "quiz") as ("slides" | "doc")[];
-      const downloads = await generateBundleAsDownload(lesson, downloadFiles, accessToken, templateId);
+      const downloads = await generateBundleAsDownload(lessonToGenerate, downloadFiles, accessToken, templateId);
       await store.update(id, { status: "done" });
       return NextResponse.json({ downloads });
     }
