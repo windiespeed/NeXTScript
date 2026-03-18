@@ -68,6 +68,7 @@ function Dashboard() {
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [bulkDuplicating, setBulkDuplicating] = useState(false);
   const [lessonOrder, setLessonOrder] = useState<string[]>([]);
+  const [defaultSources, setDefaultSources] = useState("");
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -161,11 +162,11 @@ function Dashboard() {
   async function handleDuplicate(id: string) {
     const res = await fetch(`/api/lessons/${id}`);
     const lesson = await res.json();
-    const { title, subtitle, topics, deadline, overview, learningTargets, warmUp, guidedLab, selfPaced, submissionChecklist, checkpoint, industryBestPractices, slideContent, devJournalPrompt, rubric, taChecklist, sources } = lesson;
+    const { title, subtitle, topics, deadline, tag, overview, learningTargets, vocabulary, warmUp, guidedLab, selfPaced, submissionChecklist, checkpoint, industryBestPractices, slideContent, devJournalPrompt, rubric, taChecklist, sources, studentLevel, quizQuestions } = lesson;
     const copy = await fetch("/api/lessons", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: `Copy of ${title}`, subtitle, topics, deadline, overview, learningTargets, warmUp, guidedLab, selfPaced, submissionChecklist, checkpoint, industryBestPractices, slideContent, devJournalPrompt, rubric: rubric ?? taChecklist ?? "", sources }),
+      body: JSON.stringify({ title: `Copy of ${title}`, subtitle, topics, deadline, tag, overview, learningTargets, vocabulary, warmUp, guidedLab, selfPaced, submissionChecklist, checkpoint, industryBestPractices, slideContent, devJournalPrompt, rubric: rubric ?? taChecklist ?? "", sources: sources || defaultSources, studentLevel, quizQuestions }),
     });
     const newLesson = await copy.json();
     setLessons(prev => [newLesson, ...prev]);
@@ -221,6 +222,7 @@ function Dashboard() {
         loadProjects(),
         fetch("/api/user/settings").then(r => r.json()).then(s => {
           if (Array.isArray(s.lessonOrder)) setLessonOrder(s.lessonOrder);
+          if (s.defaultSources) setDefaultSources(s.defaultSources);
         }),
       ]).then(() => setLoading(false));
     }
