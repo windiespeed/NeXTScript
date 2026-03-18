@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Lesson, LessonInput } from "@/types/lesson";
 import type { FormQuestion } from "@/types/form";
 import { emptyQuestion } from "@/types/form";
+import { DEFAULT_SECTION_LABELS, type SectionLabels } from "@/lib/sectionLabels";
 
 interface Props {
   initial?: Partial<Lesson>;
@@ -11,6 +12,7 @@ interface Props {
   onSaveDraft?: (data: LessonInput) => Promise<void>;
   autoSave?: (data: LessonInput) => Promise<void>;
   onCancel?: () => void;
+  onClearRef?: (clearFn: () => void) => void;
   submitLabel?: string;
   hasAiKey?: boolean;
   isEditing?: boolean;
@@ -59,26 +61,28 @@ const EMPTY: LessonInput = {
 
 type SectionField = { key: keyof LessonInput; label: string; hint: string; rows: number };
 
-// Sections that appear BEFORE the slide content cards (matches Google Doc order)
-const PRE_SLIDE_FIELDS: SectionField[] = [
-  { key: "overview",         label: "Lesson Overview",    hint: "Paragraph overview of everything covered in this lesson.", rows: 4 },
-  { key: "learningTargets",  label: "Learning Targets",   hint: "3–8 bullet points of specific, measurable learning objectives.", rows: 4 },
-  { key: "vocabulary",       label: "Vocabulary",         hint: "Key terms and definitions students need to know for this lesson.", rows: 4 },
-  { key: "warmUp",           label: "Warm-Up",            hint: "3–5 questions to engage students at the start of class.", rows: 4 },
-];
+function buildPreSlideFields(l: SectionLabels): SectionField[] {
+  return [
+    { key: "overview",        label: "Lesson Overview",  hint: "Paragraph overview of everything covered in this lesson.", rows: 4 },
+    { key: "learningTargets", label: "Learning Targets", hint: "3–8 bullet points of specific, measurable learning objectives.", rows: 4 },
+    { key: "vocabulary",      label: "Vocabulary",       hint: "Key terms and definitions students need to know for this lesson.", rows: 4 },
+    { key: "warmUp",          label: l.warmUp,           hint: "3–5 questions to engage students at the start of class.", rows: 4 },
+  ];
+}
 
-// Sections that appear AFTER the slide content cards (matches Google Doc order)
-const POST_SLIDE_FIELDS: SectionField[] = [
-  { key: "guidedLab",             label: "Guided Lab",                hint: "In-class instructor-led exercise. Must be step-by-step, including file/folder naming.", rows: 6 },
-  { key: "selfPaced",             label: "Self-Paced",                hint: "Independent student exercise. Must be step-by-step, including file/folder naming.", rows: 6 },
-  { key: "submissionChecklist",   label: "Submission Checklist",      hint: "Specific requirements students must meet and turn in.", rows: 4 },
-  { key: "checkpoint",            label: "Checkpoint",                hint: "Common problems and challenges students may face, with suggested solutions.", rows: 4 },
-  { key: "industryBestPractices", label: "Industry Best Practices",   hint: "Industry standards, best practices, and tips & tricks for this topic.", rows: 4 },
-  { key: "devJournalPrompt",      label: "Development Journal Prompt", hint: "Copy/paste into dev journal. 3–5 specific, evidence-based reflection questions.", rows: 4 },
-  { key: "rubric",                label: "Rubric",                    hint: "Comprehension and objective checklist used by TAs to assess student submissions.", rows: 4 },
-];
+function buildPostSlideFields(l: SectionLabels): SectionField[] {
+  return [
+    { key: "guidedLab",             label: l.guidedLab,             hint: "In-class instructor-led exercise. Must be step-by-step.", rows: 6 },
+    { key: "selfPaced",             label: l.selfPaced,             hint: "Independent student exercise. Must be step-by-step.", rows: 6 },
+    { key: "submissionChecklist",   label: l.submissionChecklist,   hint: "Specific requirements students must meet and turn in.", rows: 4 },
+    { key: "checkpoint",            label: l.checkpoint,            hint: "Common problems and challenges students may face, with suggested solutions.", rows: 4 },
+    { key: "industryBestPractices", label: l.industryBestPractices, hint: "Standards, best practices, and tips & tricks for this topic.", rows: 4 },
+    { key: "devJournalPrompt",      label: l.devJournalPrompt,      hint: "3–5 specific, evidence-based reflection questions.", rows: 4 },
+    { key: "rubric",                label: l.rubric,                hint: "Checklist used to assess student submissions.", rows: 4 },
+  ];
+}
 
-export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSave, onCancel, submitLabel = "Save Lesson", hasAiKey = false, isEditing = false }: Props) {
+export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSave, onCancel, onClearRef, submitLabel = "Save Lesson", hasAiKey = false, isEditing = false }: Props) {
   const [form, setForm] = useState<LessonInput>({ ...EMPTY, ...initial });
   const [slides, setSlides] = useState<Slide[]>(() => parseSlides(initial.slideContent ?? ""));
   const [quizQuestions, setQuizQuestions] = useState<FormQuestion[]>(
@@ -92,6 +96,32 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
   const [aiFilledFields, setAiFilledFields] = useState<Set<string>>(new Set());
   const [error, setError] = useState("");
   const [autoSaveStatus, setAutoSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const [labels, setLabels] = useState<SectionLabels>(DEFAULT_SECTION_LABELS);
+
+  function clearForm() {
+    if (!confirm("Clear all fields? This cannot be undone.")) return;
+    setForm({ ...EMPTY });
+    setSlides([{ title: "", body: "" }]);
+    setQuizQuestions([]);
+    setAiFilledFields(new Set());
+  }
+
+  useEffect(() => {
+    onClearRef?.(clearForm);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/user/settings")
+      .then(r => r.json())
+      .then(s => {
+        if (s.sectionLabels) setLabels({ ...DEFAULT_SECTION_LABELS, ...s.sectionLabels });
+      })
+      .catch(() => {});
+  }, []);
+
+  const PRE_SLIDE_FIELDS = buildPreSlideFields(labels);
+  const POST_SLIDE_FIELDS = buildPostSlideFields(labels);
 
   const autoSaveRef = useRef(autoSave);
   useEffect(() => { autoSaveRef.current = autoSave; }, [autoSave]);
@@ -129,6 +159,16 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
 
   function removeSlide(index: number) {
     setSlides((prev) => prev.length > 1 ? prev.filter((_, i) => i !== index) : prev);
+  }
+
+  function moveSlide(index: number, direction: "up" | "down") {
+    setSlides((prev) => {
+      const next = [...prev];
+      const swapWith = direction === "up" ? index - 1 : index + 1;
+      if (swapWith < 0 || swapWith >= next.length) return prev;
+      [next[index], next[swapWith]] = [next[swapWith], next[index]];
+      return next;
+    });
   }
 
   async function handleAiFill() {
@@ -194,6 +234,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
   }
 
   return (
+    <>
     <form onSubmit={handleSubmit} className="space-y-6">
       {error && (
         <div className="rounded-md bg-red-50 border border-red-200 p-3 text-red-700 text-sm">
@@ -325,7 +366,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
           />
         </div>
 
-        <div className="sm:col-span-2">
+        {hasAiKey && <div className="sm:col-span-2">
           <label className="block text-sm font-semibold text-[#0d1c35] dark:text-white mb-1">Student Level</label>
           <p className="text-xs text-gray-500 mb-1">
             Adjusts the tone and complexity of AI-generated content to match your students&apos; experience.
@@ -350,7 +391,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
             {form.studentLevel === "intermediate" && "Some coding experience — moderate complexity, references prior knowledge."}
             {form.studentLevel === "advanced" && "Strong coding background — technical depth, industry terminology."}
           </p>
-        </div>
+        </div>}
       </div>
 
       {/* ── Pre-slide content sections ────────────────────────────────── */}
@@ -395,14 +436,34 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
             <div key={i} className="rounded-lg border border-[#1e4a85]/20 dark:border-[#1e4a85]/40 bg-white dark:bg-[#112543] p-4 space-y-2">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xs font-semibold text-[#0d1c35]/50 dark:text-white/60 uppercase tracking-wide">Slide {i + 1}</span>
-                <button
-                  type="button"
-                  onClick={() => removeSlide(i)}
-                  disabled={slides.length === 1}
-                  className="text-xs text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 disabled:opacity-30 transition"
-                >
-                  Remove
-                </button>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => moveSlide(i, "up")}
+                    disabled={i === 0}
+                    title="Move up"
+                    className="p-1 rounded text-gray-400 hover:text-[#1e4a85] dark:hover:text-[#7eb3f5] disabled:opacity-20 transition"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => moveSlide(i, "down")}
+                    disabled={i === slides.length - 1}
+                    title="Move down"
+                    className="p-1 rounded text-gray-400 hover:text-[#1e4a85] dark:hover:text-[#7eb3f5] disabled:opacity-20 transition"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => removeSlide(i)}
+                    disabled={slides.length === 1}
+                    className="text-xs text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 disabled:opacity-30 transition ml-1"
+                  >
+                    Remove
+                  </button>
+                </div>
               </div>
               <input
                 type="text"
@@ -567,6 +628,14 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
 
       <div className="space-y-2">
         <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={clearForm}
+            disabled={saving || savingDraft}
+            className="rounded-md border border-red-300 dark:border-red-800 px-4 py-2.5 text-sm font-semibold text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50 transition"
+          >
+            Clear
+          </button>
           {onCancel && (
             <button
               type="button"
@@ -604,5 +673,18 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
         )}
       </div>
     </form>
+
+    {/* Floating scroll-to-top button */}
+    <button
+      type="button"
+      onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+      title="Back to top"
+      className="fixed bottom-6 right-6 z-50 w-10 h-10 rounded-full bg-[#1e4a85] hover:bg-[#0cc0df] shadow-lg flex items-center justify-center text-white transition-colors duration-200"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="18 15 12 9 6 15"/>
+      </svg>
+    </button>
+    </>
   );
 }
