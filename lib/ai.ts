@@ -1,6 +1,13 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { LessonInput } from "@/types/lesson";
 import type { FormQuestion } from "@/types/form";
+import { DEFAULT_SECTION_LABELS, type SectionLabels } from "@/lib/userSettings";
+
+interface CurriculumContext {
+  industry?: string;
+  subject?: string;
+  labels?: SectionLabels;
+}
 
 type AiFillResult = Pick<
   LessonInput,
@@ -27,44 +34,51 @@ const LEVEL_INSTRUCTIONS: Record<string, string> = {
 
 export async function fillLesson(
   apiKey: string,
-  lesson: Partial<LessonInput>
+  lesson: Partial<LessonInput>,
+  ctx: CurriculumContext = {}
 ): Promise<AiFillResult> {
   const client = new Anthropic({ apiKey });
 
   const level = lesson.studentLevel ?? "beginner";
   const levelInstruction = LEVEL_INSTRUCTIONS[level] ?? LEVEL_INSTRUCTIONS.beginner;
+  const labels = ctx.labels ?? DEFAULT_SECTION_LABELS;
+  const industryLine = ctx.industry ? `Industry: ${ctx.industry}` : "";
+  const subjectLine = ctx.subject ? `Subject Area: ${ctx.subject}` : "";
+  const programDesc = [ctx.industry, ctx.subject].filter(Boolean).join(" — ") || "an educational program";
 
-  const prompt = `You are a curriculum designer for a coding bootcamp. Generate content for a lesson with the following details:
+  const prompt = `You are a curriculum designer for ${programDesc}. Generate content for a lesson with the following details:
 
 Title: ${lesson.title || "Untitled"}
 Subtitle: ${lesson.subtitle || ""}
 Topics: ${lesson.topics || ""}
 Sources: ${lesson.sources || ""}
 Student Level: ${level}
+${industryLine}
+${subjectLine}
 
 IMPORTANT — Student Level Guidance: ${levelInstruction}
 
-Generate each of the following sections. Tailor ALL content to the student level above.
+Generate each of the following sections. Tailor ALL content to the student level and program above.
 
 Return ONLY a valid JSON object with these exact keys (no markdown, no explanation):
 {
   "overview": "3-4 sentence paragraph overview of the lesson",
   "learningTargets": "5-7 bullet points (one per line, starting with •) of specific measurable objectives",
   "vocabulary": "8-12 key terms with concise definitions, formatted as 'Term: Definition' (one per line)",
-  "warmUp": "3-5 questions (numbered) to engage students at the start of class",
+  "warmUp": "3-5 questions (numbered) to engage students at the start of class — label this section '${labels.warmUp}'",
   "slides": [
-    { "title": "Slide title", "body": "Slide content — use short bullet points or code snippets. Wrap inline code in backticks." }
+    { "title": "Slide title", "body": "Slide content — use short bullet points or relevant examples. Wrap inline code in backticks." }
   ],
-  "guidedLab": "Step-by-step instructor-led exercise (numbered steps, include file/folder naming)",
-  "selfPaced": "Step-by-step independent exercise (numbered steps, include file/folder naming)",
-  "submissionChecklist": "Specific requirements students must meet (bullet points starting with •)",
-  "checkpoint": "3-5 common problems students may face with solutions",
-  "industryBestPractices": "3-5 industry standards and best practices for this topic (bullet points)",
-  "devJournalPrompt": "3-5 specific reflection questions for a development journal",
-  "rubric": "Comprehension and objective checklist for TAs (bullet points with point values)"
+  "guidedLab": "Step-by-step instructor-led exercise (numbered steps) — label this section '${labels.guidedLab}'",
+  "selfPaced": "Step-by-step independent exercise (numbered steps) — label this section '${labels.selfPaced}'",
+  "submissionChecklist": "Specific requirements students must meet (bullet points starting with •) — label this section '${labels.submissionChecklist}'",
+  "checkpoint": "3-5 common problems students may face with solutions — label this section '${labels.checkpoint}'",
+  "industryBestPractices": "3-5 standards and best practices for this topic (bullet points) — label this section '${labels.industryBestPractices}'",
+  "devJournalPrompt": "3-5 specific reflection questions — label this section '${labels.devJournalPrompt}'",
+  "rubric": "Comprehension and objective checklist (bullet points with point values) — label this section '${labels.rubric}'"
 }
 
-For "slides": generate 10-12 slides that cover the lesson's main concepts in a logical teaching sequence. Each slide should have a concise title and a body with 3-5 short bullet points or a brief code example. The first slide should be an intro/agenda slide.`;
+For "slides": generate 10-12 slides that cover the lesson's main concepts in a logical teaching sequence. Each slide should have a concise title and a body with 3-5 short bullet points or a brief example. The first slide should be an intro/agenda slide.`;
 
   const message = await client.messages.create({
     model: "claude-haiku-4-5-20251001",
@@ -73,24 +87,38 @@ For "slides": generate 10-12 slides that cover the lesson's main concepts in a l
   });
 
   const text = message.content[0].type === "text" ? message.content[0].text : "";
-  const jsonStr = text.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
+  // Strip markdown fences, then extract the outermost {...} block
+  const stripped = text.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
+  const start = stripped.indexOf("{");
+  const end = stripped.lastIndexOf("}");
+  const jsonStr = start !== -1 && end > start ? stripped.slice(start, end + 1) : stripped;
   try {
     return JSON.parse(jsonStr) as AiFillResult;
   } catch {
-    throw new Error(`AI returned invalid JSON. Stop reason: ${message.stop_reason}. Response preview: ${jsonStr.slice(0, 200)}`);
+    // AI sometimes returns literal newlines inside JSON strings — normalize and retry
+    const cleaned = jsonStr.replace(/:\s*"([\s\S]*?)"\s*([,}])/g, (_, val, tail) =>
+      `: "${val.replace(/\n/g, "\\n").replace(/\r/g, "").replace(/"/g, '\\"')}"${tail}`
+    );
+    try {
+      return JSON.parse(cleaned) as AiFillResult;
+    } catch {
+      throw new Error(`AI Fill failed to generate valid content. Please make sure the lesson has a title and try again.`);
+    }
   }
 }
 
 export async function generateQuizQuestions(
   apiKey: string,
-  lesson: Partial<LessonInput>
+  lesson: Partial<LessonInput>,
+  ctx: CurriculumContext = {}
 ): Promise<FormQuestion[]> {
   const client = new Anthropic({ apiKey });
 
   const level = lesson.studentLevel ?? "beginner";
   const levelInstruction = LEVEL_INSTRUCTIONS[level] ?? LEVEL_INSTRUCTIONS.beginner;
+  const programDesc = [ctx.industry, ctx.subject].filter(Boolean).join(" — ") || "an educational program";
 
-  const prompt = `You are a curriculum designer for a coding bootcamp. Generate a quiz based strictly on the lesson content provided below.
+  const prompt = `You are a curriculum designer for ${programDesc}. Generate a quiz based strictly on the lesson content provided below.
 
 Title: ${lesson.title || "Untitled"}
 Subtitle: ${lesson.subtitle || ""}

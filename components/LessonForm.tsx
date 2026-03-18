@@ -264,7 +264,8 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
             <button
               type="button"
               onClick={handleAiFill}
-              disabled={aiFilling || saving}
+              disabled={aiFilling || saving || !form.title.trim()}
+              title={!form.title.trim() ? "Enter a lesson title before using AI Fill" : undefined}
               className="rounded-md bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-white shadow hover:opacity-90 disabled:opacity-50 transition whitespace-nowrap"
             >
               {aiFilling ? (
