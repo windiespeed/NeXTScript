@@ -18,9 +18,49 @@ function Dashboard() {
   const [projects, setProjects] = useState<SavedProject[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalLessonId, setModalLessonId] = useState<string | null>(null);
+  const [selecting, setSelecting] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [bulkDuplicating, setBulkDuplicating] = useState(false);
 
   const modalLesson = lessons.find(l => l.id === modalLessonId) ?? null;
   const sorted = [...lessons].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+
+  function toggleSelect(id: string) {
+    setSelected(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    setSelected(prev => prev.size === sorted.length ? new Set() : new Set(sorted.map(l => l.id)));
+  }
+
+  function exitSelecting() {
+    setSelecting(false);
+    setSelected(new Set());
+  }
+
+  async function handleBulkDuplicate() {
+    setBulkDuplicating(true);
+    const ids = [...selected];
+    for (const id of ids) {
+      await handleDuplicate(id);
+    }
+    exitSelecting();
+    setBulkDuplicating(false);
+  }
+
+  async function handleBulkDelete() {
+    if (!confirm(`Delete ${selected.size} lesson${selected.size !== 1 ? "s" : ""}? This cannot be undone.`)) return;
+    setBulkDeleting(true);
+    await Promise.all([...selected].map(id => fetch(`/api/lessons/${id}`, { method: "DELETE" })));
+    setLessons(prev => prev.filter(l => !selected.has(l.id)));
+    exitSelecting();
+    setBulkDeleting(false);
+  }
 
   async function loadLessons() {
     const res = await fetch("/api/lessons");
@@ -141,13 +181,71 @@ function Dashboard() {
           <h1 className="text-2xl font-bold text-white">Lessons</h1>
           <p className="text-sm text-[#0cc0df] mt-1">Build lessons and generate Drive bundles — slides, docs, and quizzes.</p>
         </div>
-        <Link
-          href="/lessons/new"
-          className="rounded-md bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-bold text-white hover:opacity-90 transition shadow"
-        >
-          + New Lesson
-        </Link>
+        <div className="flex items-center gap-2">
+          {!loading && sorted.length > 0 && (
+            selecting ? (
+              <button
+                onClick={exitSelecting}
+                className="rounded-md border border-white/30 px-4 py-2 text-sm font-semibold text-white hover:bg-white/10 transition"
+              >
+                Cancel
+              </button>
+            ) : (
+              <button
+                onClick={() => setSelecting(true)}
+                className="rounded-md border border-white/30 px-4 py-2 text-sm font-semibold text-white hover:bg-white/10 transition"
+              >
+                Select
+              </button>
+            )
+          )}
+          <Link
+            href="/lessons/new"
+            className="rounded-md bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-bold text-white hover:opacity-90 transition shadow"
+          >
+            + New Lesson
+          </Link>
+        </div>
       </div>
+
+      {/* Bulk action bar */}
+      {selecting && (
+        <div className="flex items-center justify-between mb-4 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#112543] px-4 py-3 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div
+              onClick={toggleSelectAll}
+              className={`w-5 h-5 rounded-md border-2 flex items-center justify-center cursor-pointer transition-all duration-150 ${selected.size === sorted.length && sorted.length > 0 ? "bg-[#0cc0df] border-[#0cc0df]" : selected.size > 0 ? "bg-[#0cc0df]/30 border-[#0cc0df]" : "bg-white dark:bg-[#0d1c35] border-gray-300 dark:border-[#1e4a85]"}`}
+            >
+              {selected.size === sorted.length && sorted.length > 0 ? (
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 text-[#0d1c35]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+              ) : selected.size > 0 ? (
+                <div className="w-2 h-0.5 bg-[#0d1c35]" />
+              ) : null}
+            </div>
+            <span className="text-sm text-gray-600 dark:text-gray-300">
+              {selected.size === 0 ? "Select all" : `${selected.size} of ${sorted.length} selected`}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleBulkDuplicate}
+              disabled={selected.size === 0 || bulkDuplicating}
+              className="rounded-md border border-gray-300 dark:border-white/20 bg-white dark:bg-[#1e4a85]/30 px-4 py-1.5 text-sm font-semibold text-gray-700 dark:text-white hover:bg-gray-50 dark:hover:bg-[#1e4a85]/50 disabled:opacity-40 transition"
+            >
+              {bulkDuplicating ? "Duplicating…" : `Duplicate${selected.size > 0 ? ` (${selected.size})` : ""}`}
+            </button>
+            <button
+              onClick={handleBulkDelete}
+              disabled={selected.size === 0 || bulkDeleting}
+              className="rounded-md bg-red-600 px-4 py-1.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-40 transition"
+            >
+              {bulkDeleting ? "Deleting…" : `Delete${selected.size > 0 ? ` (${selected.size})` : ""}`}
+            </button>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <p className="text-[#0cc0df] text-sm">Loading…</p>
@@ -168,6 +266,9 @@ function Dashboard() {
               onDelete={handleDelete}
               onDuplicate={handleDuplicate}
               onOpenModal={setModalLessonId}
+              selecting={selecting}
+              selected={selected.has(lesson.id)}
+              onToggleSelect={toggleSelect}
             />
           ))}
         </div>

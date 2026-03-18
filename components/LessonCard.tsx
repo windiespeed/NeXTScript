@@ -36,13 +36,16 @@ interface Props {
   onDelete: (id: string) => void;
   onDuplicate: (id: string) => void;
   onOpenModal: (id: string) => void;
+  selecting?: boolean;
+  selected?: boolean;
+  onToggleSelect?: (id: string) => void;
 }
 
 function fmt(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
-export default function LessonCard({ lesson, projects = [], onDelete, onDuplicate, onOpenModal }: Props) {
+export default function LessonCard({ lesson, projects = [], onDelete, onDuplicate, onOpenModal, selecting = false, selected = false, onToggleSelect }: Props) {
   const busy = lesson.status === "generating" || lesson.status === "regenerating";
   const [assetsOpen, setAssetsOpen] = useState(false);
   const deck = projects.find(p => p.type === "deck");
@@ -50,8 +53,26 @@ export default function LessonCard({ lesson, projects = [], onDelete, onDuplicat
 
   return (
     <div
-      className="h-full rounded-2xl bg-white dark:bg-[#112543] flex flex-col overflow-hidden border border-gray-200 dark:border-[#1e4a85]/30 shadow-sm hover:-translate-y-1 hover:shadow-md transition-all duration-200"
+      onClick={selecting ? () => onToggleSelect?.(lesson.id) : undefined}
+      className={`relative h-full rounded-2xl bg-white dark:bg-[#112543] flex flex-col overflow-hidden border shadow-sm transition-all duration-200 ${selecting ? "cursor-pointer" : "hover:-translate-y-1 hover:shadow-md"} ${selected ? "border-[#0cc0df] ring-2 ring-[#0cc0df]/30 opacity-100" : selecting ? "border-gray-200 dark:border-[#1e4a85]/30 opacity-50" : "border-gray-200 dark:border-[#1e4a85]/30"}`}
     >
+      {selecting && (
+        <div
+          className="absolute top-3 right-3 z-10"
+          onClick={e => e.stopPropagation()}
+        >
+          <div
+            onClick={() => onToggleSelect?.(lesson.id)}
+            className={`w-5 h-5 rounded-md border-2 flex items-center justify-center cursor-pointer transition-all duration-150 ${selected ? "bg-[#0cc0df] border-[#0cc0df] shadow-sm" : "bg-white dark:bg-[#0d1c35] border-gray-300 dark:border-[#1e4a85]"}`}
+          >
+            {selected && (
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 text-[#0d1c35]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+            )}
+          </div>
+        </div>
+      )}
       <div className="flex flex-col gap-3 p-5 flex-1">
 
         {/* Title + icon actions row */}
