@@ -140,20 +140,18 @@ export default function LessonCard({ lesson, projects = [], onDelete, onDuplicat
           )}
         </div>
 
-        {/* Topics */}
-        {lesson.topics && (
-          <p className="-mx-5 bg-[#0cc0df]/8 dark:bg-[#0d1c35] border-y border-[#0cc0df]/20 dark:border-[#0cc0df]/10 px-5 py-1.5 text-xs text-[#006f8a] dark:text-[#0cc0df] leading-relaxed">
-            {lesson.topics}
-          </p>
-        )}
-
         {/* Error message */}
         {lesson.status === "error" && lesson.errorMessage && (
           <p className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-3 py-2 text-xs text-red-600 dark:text-red-300">{lesson.errorMessage}</p>
         )}
+      </div>
 
-{/* Dates */}
-        <div className="mt-auto flex gap-3 text-xs text-gray-500 dark:text-gray-400 pt-1">
+      {/* Topics + Dates shaded block — outside flex-1 so it always aligns at the same position */}
+      <div className="bg-[#0cc0df]/15 dark:bg-[#0d1c35]/80 px-5 py-3 flex flex-col gap-2">
+        <p className="text-xs text-[#006f8a] dark:text-[#0cc0df] leading-relaxed line-clamp-3 h-[3.75rem]">
+          {lesson.topics || ""}
+        </p>
+        <div className="flex gap-3 text-xs text-gray-500 dark:text-gray-400">
           <span>Created {fmt(lesson.createdAt)}</span>
           {lesson.updatedAt !== lesson.createdAt && (
             <span>· Modified {fmt(lesson.updatedAt)}</span>
