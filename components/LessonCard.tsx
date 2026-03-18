@@ -77,7 +77,12 @@ export default function LessonCard({ lesson, projects = [], onDelete, onDuplicat
 
         {/* Title + icon actions row */}
         <div className="flex items-start justify-between gap-2">
-          <h2 className="font-semibold text-[#0d1c35] dark:text-white text-base leading-snug flex-1">{lesson.title}</h2>
+          <div className="flex-1 min-w-0">
+            <h2 className="font-semibold text-[#0d1c35] dark:text-white text-base leading-snug">{lesson.title}</h2>
+            {lesson.subtitle && (
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-snug">{lesson.subtitle}</p>
+            )}
+          </div>
           <div className="flex items-center gap-1 shrink-0">
             {/* Duplicate */}
             <button
@@ -103,24 +108,22 @@ export default function LessonCard({ lesson, projects = [], onDelete, onDuplicat
         </div>
 
         {/* Status row */}
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center justify-between gap-3">
           <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${STATUS_TEXT[lesson.status]}`}>
             <span className={`inline-block w-1.5 h-1.5 rounded-full ${STATUS_DOT[lesson.status]}`} />
             {STATUS_LABELS[lesson.status]}
           </span>
+          {lesson.deadline && (
+            <span className="text-xs text-gray-500 dark:text-gray-400">
+              Due <span className="font-medium text-gray-600 dark:text-gray-300">{lesson.deadline}</span>
+            </span>
+          )}
         </div>
 
         {/* Topics */}
         {lesson.topics && (
-          <p className="rounded-lg bg-[#0cc0df]/8 dark:bg-[#0d1c35] border border-[#0cc0df]/20 dark:border-[#0cc0df]/10 px-3 py-1.5 text-xs text-[#006f8a] dark:text-[#0cc0df] leading-relaxed">
+          <p className="-mx-5 bg-[#0cc0df]/8 dark:bg-[#0d1c35] border-y border-[#0cc0df]/20 dark:border-[#0cc0df]/10 px-5 py-1.5 text-xs text-[#006f8a] dark:text-[#0cc0df] leading-relaxed">
             {lesson.topics}
-          </p>
-        )}
-
-        {/* Deadline */}
-        {lesson.deadline && (
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            Due <span className="font-medium text-gray-600 dark:text-gray-300">{lesson.deadline}</span>
           </p>
         )}
 
