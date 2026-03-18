@@ -147,8 +147,8 @@ export default function LessonCard({ lesson, projects = [], onDelete, onDuplicat
       </div>
 
       {/* Topics + Dates shaded block — outside flex-1 so it always aligns at the same position */}
-      <div className="bg-[#0cc0df]/15 dark:bg-[#0d1c35]/80 px-5 py-3 flex flex-col gap-2">
-        <p className="text-xs text-[#006f8a] dark:text-[#0cc0df] leading-relaxed line-clamp-3 h-[3.75rem]">
+      <div className="bg-[#1e4a85]/10 dark:bg-[#1e4a85]/25 px-5 py-3 flex flex-col gap-2">
+        <p className="text-xs text-[#1e4a85] dark:text-[#7eb3f5] leading-relaxed line-clamp-3 h-[3.75rem]">
           {lesson.topics || ""}
         </p>
         <div className="flex gap-3 text-xs text-gray-500 dark:text-gray-400">
