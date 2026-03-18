@@ -260,7 +260,7 @@ function Dashboard() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6 bg-gradient-to-br from-[#0d1c35] to-[#0cc0df] rounded-xl px-5 py-4 shadow">
+      <div className="flex items-center justify-between mb-6 bg-gradient-to-br from-[#0d1c35] from-30% to-[#0cc0df] rounded-xl px-5 py-4 shadow">
         <div>
           <h1 className="text-2xl font-bold text-white">Lessons</h1>
           <p className="text-sm text-[#0cc0df] mt-1">Build lessons and generate Drive bundles — slides, docs, and quizzes.</p>

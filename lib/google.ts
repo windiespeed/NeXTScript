@@ -211,9 +211,9 @@ export async function buildSlideDeck(lesson: Lesson, accessToken: string, templa
       } else if (placeholderType === "SUBTITLE") {
         titleRequests.push(...replaceText(el.objectId!, lesson.subtitle, hasContent));
       } else if (text.includes("goal:")) {
-        titleRequests.push(...replaceText(el.objectId!, `Goal: ${lesson.overview}`, hasContent));
+        titleRequests.push(...replaceText(el.objectId!, `Goal: ${lesson.overview.replace(/\n+/g, " ")}`, hasContent));
       } else if (text.includes("reminder:")) {
-        titleRequests.push(...replaceText(el.objectId!, `Reminder:\n${lesson.submissionChecklist}`, hasContent));
+        titleRequests.push(...replaceText(el.objectId!, `Reminder: ${lesson.submissionChecklist.replace(/\n+/g, " · ")}`, hasContent));
       }
     }
   }
@@ -304,40 +304,17 @@ export async function buildPosterDoc(lesson: Lesson, accessToken: string): Promi
     lesson.subtitle,
     `Deadline: ${lesson.deadline}`,
     "",
-    "──────────────────────────────────────",
     "VOCABULARY",
-    "──────────────────────────────────────",
     lesson.vocabulary ?? "",
     "",
-    "──────────────────────────────────────",
-    "LEARNING OBJECTIVES",
-    "──────────────────────────────────────",
+    "LEARNING TARGETS",
     lesson.learningTargets,
     "",
-    "──────────────────────────────────────",
-    "STEP-BY-STEP TASKS",
-    "──────────────────────────────────────",
-    "Guided Lab (In-Class Exercise)",
-    lesson.guidedLab,
-    "",
-    "Self-Paced (Independent Work)",
-    lesson.selfPaced,
-    "",
-    "──────────────────────────────────────",
-    "GRADING CHECKLIST",
-    "──────────────────────────────────────",
+    "SUBMISSION CHECKLIST",
     lesson.submissionChecklist,
     "",
-    "──────────────────────────────────────",
-    "SUBMISSION INSTRUCTIONS",
-    "──────────────────────────────────────",
-    "Complete all items in the grading checklist above before submitting.",
-    `Deadline: ${lesson.deadline}`,
-    "",
-    "──────────────────────────────────────",
-    "SOURCES",
-    "──────────────────────────────────────",
-    lesson.sources,
+    "DEV JOURNAL PROMPT",
+    lesson.devJournalPrompt,
   ].join("\n");
 
   await docs.documents.batchUpdate({
@@ -424,7 +401,7 @@ export async function generateBundleSelective(
   templateId?: string
 ): Promise<{ folderUrl: string; deckId?: string; formId?: string }> {
   const folder = await createFolder(
-    `Lesson Bundle — ${lesson.title}: ${lesson.subtitle}`,
+    `${lesson.title}: ${lesson.subtitle}`,
     accessToken
   );
   const folderId = folder.id!;
@@ -497,7 +474,7 @@ export async function generateBundle(
   accessToken: string
 ): Promise<{ folderUrl: string; slideCount: number }> {
   const folder = await createFolder(
-    `Lesson Bundle — ${lesson.title}: ${lesson.subtitle}`,
+    `${lesson.title}: ${lesson.subtitle}`,
     accessToken
   );
   const folderId = folder.id!;
