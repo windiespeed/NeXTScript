@@ -16,6 +16,7 @@ export interface Lesson {
   subtitle: string;              // LESSON SUBTITLE — specific topic/subject
   overview: string;              // LESSON OVERVIEW
   learningTargets: string;       // LEARNING TARGETS
+  vocabulary: string;            // VOCABULARY — key terms and definitions
   warmUp: string;                // WARM-UP — 3-5 questions to open class
   slideContent: string;          // SLIDE CONTENT — blank line = new slide
   guidedLab: string;             // GUIDED LAB

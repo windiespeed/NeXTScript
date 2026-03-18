@@ -6,6 +6,7 @@ type AiFillResult = Pick<
   LessonInput,
   | "overview"
   | "learningTargets"
+  | "vocabulary"
   | "warmUp"
   | "guidedLab"
   | "selfPaced"
@@ -49,6 +50,7 @@ Return ONLY a valid JSON object with these exact keys (no markdown, no explanati
 {
   "overview": "3-4 sentence paragraph overview of the lesson",
   "learningTargets": "5-7 bullet points (one per line, starting with •) of specific measurable objectives",
+  "vocabulary": "8-12 key terms with concise definitions, formatted as 'Term: Definition' (one per line)",
   "warmUp": "3-5 questions (numbered) to engage students at the start of class",
   "slides": [
     { "title": "Slide title", "body": "Slide content — use short bullet points or code snippets. Wrap inline code in backticks." }
@@ -100,6 +102,9 @@ IMPORTANT — Student Level Guidance: ${levelInstruction}
 --- LESSON CONTENT ---
 Learning Targets:
 ${lesson.learningTargets || ""}
+
+Vocabulary:
+${lesson.vocabulary || ""}
 
 Overview:
 ${lesson.overview || ""}

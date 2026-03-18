@@ -42,6 +42,7 @@ const EMPTY: LessonInput = {
   deadline: "",
   overview: "",
   learningTargets: "",
+  vocabulary: "",
   warmUp: "",
   slideContent: "",
   guidedLab: "",
@@ -61,6 +62,7 @@ type SectionField = { key: keyof LessonInput; label: string; hint: string; rows:
 const PRE_SLIDE_FIELDS: SectionField[] = [
   { key: "overview",         label: "Lesson Overview",    hint: "Paragraph overview of everything covered in this lesson.", rows: 4 },
   { key: "learningTargets",  label: "Learning Targets",   hint: "3–8 bullet points of specific, measurable learning objectives.", rows: 4 },
+  { key: "vocabulary",       label: "Vocabulary",         hint: "Key terms and definitions students need to know for this lesson.", rows: 4 },
   { key: "warmUp",           label: "Warm-Up",            hint: "3–5 questions to engage students at the start of class.", rows: 4 },
 ];
 
@@ -86,6 +88,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
   const [saving, setSaving] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
   const [aiFilling, setAiFilling] = useState(false);
+  const [aiFilledFields, setAiFilledFields] = useState<Set<string>>(new Set());
   const [error, setError] = useState("");
   const [autoSaveStatus, setAutoSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
 
@@ -139,8 +142,23 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "AI fill failed.");
       const { slides: aiSlides, ...fields } = data;
-      setForm((f) => ({ ...f, ...fields }));
-      if (aiSlides?.length) setSlides(aiSlides);
+      const filled = new Set<string>();
+      setForm((f) => {
+        const next = { ...f };
+        for (const [key, value] of Object.entries(fields)) {
+          if (!f[key as keyof LessonInput]) {
+            (next as any)[key] = value;
+            filled.add(key);
+          }
+        }
+        return next;
+      });
+      const currentSlideContent = serializeSlides(slides).trim();
+      if (aiSlides?.length && !currentSlideContent) {
+        setSlides(aiSlides);
+        filled.add("slideContent");
+      }
+      setAiFilledFields(prev => new Set([...prev, ...filled]));
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -184,19 +202,45 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
 
       {/* ── AI Fill ──────────────────────────────────────────────────── */}
       {hasAiKey && (
-        <div className="flex items-center justify-between rounded-lg border border-[#1e4a85]/20 bg-[#f0f9ff] dark:bg-[#0d1c35] px-4 py-3">
-          <div>
-            <p className="text-sm font-semibold text-[#0d1c35] dark:text-white">AI Fill</p>
-            <p className="text-xs text-gray-500">Auto-generate all content sections from your title, subtitle, topics, and sources.</p>
+        <div className={`relative rounded-lg border px-4 py-3 transition-all ${aiFilling ? "border-[#0cc0df] bg-[#0cc0df]/5 dark:bg-[#0cc0df]/10" : "border-[#1e4a85]/20 bg-[#f0f9ff] dark:bg-[#0d1c35]"}`}>
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold text-[#0d1c35] dark:text-white flex items-center gap-2">
+                AI Fill
+                {aiFilledFields.size > 0 && !aiFilling && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-[#0cc0df] px-2 py-0.5 text-[10px] font-bold text-[#0d1c35] shadow-sm">
+                    ✦ {aiFilledFields.size} field{aiFilledFields.size !== 1 ? "s" : ""} AI-generated
+                  </span>
+                )}
+              </p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                {aiFilling
+                  ? "Generating content — this may take a few seconds…"
+                  : "Fills only empty fields. Existing content is never overwritten."}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleAiFill}
+              disabled={aiFilling || saving}
+              className="rounded-md bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-white shadow hover:opacity-90 disabled:opacity-50 transition whitespace-nowrap"
+            >
+              {aiFilling ? (
+                <span className="flex items-center gap-2">
+                  <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                  </svg>
+                  Generating…
+                </span>
+              ) : "AI Fill"}
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={handleAiFill}
-            disabled={aiFilling || saving}
-            className="rounded-md bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-white shadow hover:opacity-90 disabled:opacity-50 transition whitespace-nowrap"
-          >
-            {aiFilling ? "Filling…" : "AI Fill"}
-          </button>
+          {aiFilling && (
+            <div className="mt-2 h-1 w-full rounded-full bg-[#0cc0df]/20 overflow-hidden">
+              <div className="h-full bg-[#0cc0df] rounded-full animate-pulse" style={{ width: "60%" }} />
+            </div>
+          )}
         </div>
       )}
 
@@ -231,6 +275,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
 
         <div>
           <label className="block text-sm font-semibold text-[#0d1c35] dark:text-white mb-1">Topics</label>
+          <p className="text-xs text-gray-500 mb-1">Enter topics comma-separated (e.g. HTML, CSS, Flexbox)</p>
           <input
             type="text"
             value={form.topics}
@@ -242,6 +287,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
 
         <div>
           <label className="block text-sm font-semibold text-[#0d1c35] dark:text-white mb-1">Deadline</label>
+          <p className="text-xs text-gray-500 mb-1">The due date for this lesson's assignments.</p>
           <input
             type="date"
             value={form.deadline}
@@ -301,15 +347,18 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
       <div className="space-y-5">
         {PRE_SLIDE_FIELDS.map(({ key, label, hint, rows }) => (
           <div key={key}>
-            <label className="block text-sm font-semibold text-[#0d1c35] dark:text-white mb-1">
+            <label className="flex items-center gap-2 text-sm font-semibold text-[#0d1c35] dark:text-white mb-1">
               {label}
+              {aiFilledFields.has(key) && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-[#0cc0df] px-2 py-0.5 text-[10px] font-bold text-[#0d1c35] shadow-sm">✦ AI</span>
+              )}
             </label>
             <p className="text-xs text-gray-500 mb-1">{hint}</p>
             <textarea
               value={form[key] as string}
-              onChange={(e) => set(key, e.target.value)}
+              onChange={(e) => { set(key, e.target.value); setAiFilledFields(prev => { const next = new Set(prev); next.delete(key); return next; }); }}
               rows={rows}
-              className="w-full rounded-md border border-[#1e4a85]/30 dark:border-[#1e4a85]/50 bg-white dark:bg-[#0d1c35] px-3 py-2 text-sm text-[#0d1c35] dark:text-white font-mono shadow-sm placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
+              className={`w-full rounded-md border px-3 py-2 text-sm text-[#0d1c35] dark:text-white font-mono shadow-sm placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#0cc0df] bg-white dark:bg-[#0d1c35] ${aiFilledFields.has(key) ? "border-[#0cc0df]/50 dark:border-[#0cc0df]/30" : "border-[#1e4a85]/30 dark:border-[#1e4a85]/50"}`}
             />
           </div>
         ))}
@@ -368,15 +417,18 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
       <div className="space-y-5">
         {POST_SLIDE_FIELDS.map(({ key, label, hint, rows }) => (
           <div key={key}>
-            <label className="block text-sm font-semibold text-[#0d1c35] dark:text-white mb-1">
+            <label className="flex items-center gap-2 text-sm font-semibold text-[#0d1c35] dark:text-white mb-1">
               {label}
+              {aiFilledFields.has(key) && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-[#0cc0df] px-2 py-0.5 text-[10px] font-bold text-[#0d1c35] shadow-sm">✦ AI</span>
+              )}
             </label>
             <p className="text-xs text-gray-500 mb-1">{hint}</p>
             <textarea
               value={form[key] as string}
-              onChange={(e) => set(key, e.target.value)}
+              onChange={(e) => { set(key, e.target.value); setAiFilledFields(prev => { const next = new Set(prev); next.delete(key); return next; }); }}
               rows={rows}
-              className="w-full rounded-md border border-[#1e4a85]/30 dark:border-[#1e4a85]/50 bg-white dark:bg-[#0d1c35] px-3 py-2 text-sm text-[#0d1c35] dark:text-white font-mono shadow-sm placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
+              className={`w-full rounded-md border px-3 py-2 text-sm text-[#0d1c35] dark:text-white font-mono shadow-sm placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#0cc0df] bg-white dark:bg-[#0d1c35] ${aiFilledFields.has(key) ? "border-[#0cc0df]/50 dark:border-[#0cc0df]/30" : "border-[#1e4a85]/30 dark:border-[#1e4a85]/50"}`}
             />
           </div>
         ))}

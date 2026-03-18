@@ -222,6 +222,7 @@ export async function buildSlideDeck(lesson: Lesson, accessToken: string, templa
   const contentRequests: any[] = [
     ...slideRequests("LESSON OVERVIEW",   lesson.overview),
     ...slideRequests("LEARNING TARGETS",  lesson.learningTargets),
+    ...(lesson.vocabulary ? slideRequests("VOCABULARY", lesson.vocabulary) : []),
     ...slideRequests("WARM-UP",           lesson.warmUp),
   ];
 
@@ -302,6 +303,11 @@ export async function buildPosterDoc(lesson: Lesson, accessToken: string): Promi
     lesson.title,
     lesson.subtitle,
     `Deadline: ${lesson.deadline}`,
+    "",
+    "──────────────────────────────────────",
+    "VOCABULARY",
+    "──────────────────────────────────────",
+    lesson.vocabulary ?? "",
     "",
     "──────────────────────────────────────",
     "LEARNING OBJECTIVES",
