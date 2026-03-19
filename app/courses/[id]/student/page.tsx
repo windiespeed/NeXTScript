@@ -46,7 +46,7 @@ export default function StudentCoursePage() {
   return (
     <div className="space-y-6">
       {/* Hero header */}
-      <div className="rounded-2xl bg-gradient-to-br from-[#08090f] from-30% to-[#0cc0df]/30 px-6 py-6 shadow" style={{ border: "1px solid rgba(12,192,223,0.2)" }}>
+      <div className="rounded-3xl bg-gradient-to-br from-[#08090f] from-30% to-[#0cc0df]/30 px-6 py-6 shadow" style={{ border: "1px solid rgba(12,192,223,0.2)" }}>
         <p className="text-xs font-semibold uppercase tracking-widest text-[#0cc0df]/70 mb-2">Student View</p>
         <h1 className="text-2xl font-bold text-white">{course.title}</h1>
         {course.description && (
@@ -54,15 +54,15 @@ export default function StudentCoursePage() {
         )}
         <div className="flex flex-wrap gap-2 mt-3">
           {course.subject && (
-            <span className="rounded-xl bg-white/10 px-2.5 py-0.5 text-xs text-white/80">{course.subject}</span>
+            <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-xs text-white/80">{course.subject}</span>
           )}
           {course.gradeLevel && (
-            <span className="rounded-xl bg-white/10 px-2.5 py-0.5 text-xs text-white/80">{course.gradeLevel}</span>
+            <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-xs text-white/80">{course.gradeLevel}</span>
           )}
           {course.term && (
-            <span className="rounded-xl bg-white/10 px-2.5 py-0.5 text-xs text-white/80">{course.term}</span>
+            <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-xs text-white/80">{course.term}</span>
           )}
-          <span className="rounded-xl bg-[#2dd4a0]/20 px-2.5 py-0.5 text-xs text-[#2dd4a0]">
+          <span className="rounded-full bg-[#2dd4a0]/20 px-2.5 py-0.5 text-xs text-[#2dd4a0]">
             {course.lessons.length} {course.lessons.length === 1 ? "lesson" : "lessons"} released
           </span>
         </div>
@@ -71,10 +71,10 @@ export default function StudentCoursePage() {
       {/* Lessons */}
       {course.lessons.length === 0 ? (
         <div
-          className="text-center py-16 rounded-2xl"
+          className="text-center py-16 rounded-3xl"
           style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}
         >
-          <div className="w-12 h-12 rounded-xl bg-[#0cc0df]/10 flex items-center justify-center mx-auto mb-4">
+          <div className="w-12 h-12 rounded-full bg-[#0cc0df]/10 flex items-center justify-center mx-auto mb-4">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0cc0df" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
             </svg>
@@ -87,7 +87,7 @@ export default function StudentCoursePage() {
           <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--sidebar-label)" }}>
             Course Lessons
           </p>
-          <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+          <div className="rounded-full overflow-hidden" style={{ border: "1px solid var(--border)" }}>
             {course.lessons.map((lesson, i) => (
               <div
                 key={lesson.id}

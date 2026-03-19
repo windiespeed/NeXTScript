@@ -35,8 +35,8 @@ export default function ResourcesPage() {
         <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>Shared links, files, and references for your curriculum.</p>
       </div>
 
-      <div className="rounded-2xl p-10 text-center" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
-        <div className="w-14 h-14 rounded-2xl bg-[#0cc0df]/10 flex items-center justify-center mx-auto mb-5">
+      <div className="rounded-3xl p-10 text-center" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
+        <div className="w-14 h-14 rounded-3xl bg-[#0cc0df]/10 flex items-center justify-center mx-auto mb-5">
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#0cc0df" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
           </svg>
@@ -48,8 +48,8 @@ export default function ResourcesPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl mx-auto text-left">
           {PLANNED.map((item) => (
-            <div key={item.title} className="rounded-2xl p-4 space-y-2" style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)" }}>
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "var(--bg-card)" }}>
+            <div key={item.title} className="rounded-3xl p-4 space-y-2" style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)" }}>
+              <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: "var(--bg-card)" }}>
                 {item.icon}
               </div>
               <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{item.title}</p>

@@ -122,7 +122,7 @@ export default function Sidebar() {
 
   const sidebarContent = (
     <nav className="flex-1 overflow-y-auto px-3 py-4">
-      <div className="space-y-0.5">
+      <div className="space-y-1.5">
         {nav.map((item, i) => (
           <div
             key={item.href}
@@ -135,14 +135,14 @@ export default function Sidebar() {
           >
             <Link
               href={item.href}
-              className={`flex items-center gap-3 pl-3 pr-8 py-2 rounded-xl text-sm font-medium transition-all duration-150 ${
+              className={`flex items-center gap-3 pl-3 pr-8 py-2 rounded-full text-sm font-medium transition-all duration-150 ${
                 isActive(item.href)
-                  ? "bg-[#6366f1] text-white shadow-sm"
+                  ? "bg-[#0cc0df] text-[#0a0b13] shadow-sm"
                   : "hover:bg-[var(--bg-card-hover)]"
               }`}
-              style={isActive(item.href) ? {} : { color: "var(--text-secondary)" }}
+              style={isActive(item.href) ? {} : { color: "var(--text-secondary)", border: "1px solid var(--border)", background: "var(--bg-card)" }}
             >
-              <span className={`flex-shrink-0 ${isActive(item.href) ? "text-white" : ""}`} style={isActive(item.href) ? {} : { color: "var(--text-muted)" }}>
+              <span className={`flex-shrink-0`} style={isActive(item.href) ? { color: "#0a0b13" } : { color: "var(--text-muted)" }}>
                 {item.icon}
               </span>
               {item.label}
@@ -168,7 +168,7 @@ export default function Sidebar() {
     <>
       {/* Desktop sidebar — floats below top bar with margin */}
       <aside
-        className="hidden lg:flex flex-col fixed left-3 z-40 rounded-2xl w-56"
+        className="hidden lg:flex flex-col fixed left-3 z-40 rounded-3xl w-56"
         style={{
           top: "76px",
           height: "calc(100vh - 88px)",
@@ -184,7 +184,7 @@ export default function Sidebar() {
         <>
           <div className="lg:hidden fixed inset-0 z-40 bg-black/50" onClick={close} />
           <aside
-            className="lg:hidden fixed left-3 z-50 w-56 flex flex-col rounded-2xl"
+            className="lg:hidden fixed left-3 z-50 w-56 flex flex-col rounded-3xl"
             style={{
               top: "76px",
               height: "calc(100vh - 88px)",

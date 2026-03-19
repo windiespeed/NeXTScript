@@ -82,7 +82,7 @@ function NewLessonInner() {
         </div>
         <button
           onClick={() => clearFormRef.current?.()}
-          className="rounded-xl px-3 py-1.5 text-xs font-semibold text-red-500 hover:bg-red-500/10 transition"
+          className="rounded-full px-3 py-1.5 text-xs font-semibold text-red-500 hover:bg-red-500/10 transition"
           style={{ border: "1px solid var(--border)" }}
         >
           Clear Form

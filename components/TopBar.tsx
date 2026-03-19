@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useMobileMenu } from "@/context/MobileMenu";
+import { useTheme } from "@/context/Theme";
 
 function initials(name?: string | null, email?: string | null): string {
   if (name) {
@@ -18,23 +19,12 @@ function initials(name?: string | null, email?: string | null): string {
 }
 
 function ThemeToggle() {
-  const [dark, setDark] = useState(false);
-
-  useEffect(() => {
-    setDark(document.documentElement.classList.contains("dark"));
-  }, []);
-
-  function toggle() {
-    const next = !dark;
-    setDark(next);
-    document.documentElement.classList.toggle("dark", next);
-    localStorage.setItem("theme", next ? "dark" : "light");
-  }
+  const { dark, toggle } = useTheme();
 
   return (
     <button
       onClick={toggle}
-      className="p-2 rounded-xl transition-colors hover:bg-[var(--bg-card-hover)]"
+      className="p-2 rounded-full transition-colors hover:bg-[var(--bg-card-hover)]"
       style={{ color: "var(--text-secondary)" }}
       title={dark ? "Switch to light mode" : "Switch to dark mode"}
     >
@@ -115,7 +105,7 @@ export default function TopBar() {
             value={query}
             onChange={e => setQuery(e.target.value)}
             placeholder="Search lessons, courses…"
-            className="w-full pl-8 pr-3 py-1.5 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-[#0cc0df] transition placeholder:text-[var(--text-muted)]"
+            className="w-full pl-8 pr-3 py-1.5 rounded-full text-xs focus:outline-none focus:ring-2 focus:ring-[#0cc0df] transition placeholder:text-[var(--text-muted)]"
             style={{
               background: "var(--bg-card-hover)",
               border: "1px solid var(--border)",
@@ -133,7 +123,7 @@ export default function TopBar() {
           <>
             <Link
               href="/profile"
-              className="flex items-center gap-2.5 rounded-xl px-2.5 py-1.5 transition hover:bg-[var(--bg-card-hover)]"
+              className="flex items-center gap-2.5 rounded-full px-2.5 py-1.5 transition hover:bg-[var(--bg-card-hover)]"
             >
               <div
                 className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center"
@@ -159,7 +149,7 @@ export default function TopBar() {
         {/* Mobile hamburger */}
         <button
           onClick={toggle}
-          className="lg:hidden p-2 rounded-xl transition-colors hover:bg-[var(--bg-card-hover)]"
+          className="lg:hidden p-2 rounded-full transition-colors hover:bg-[var(--bg-card-hover)]"
           style={{ color: "var(--text-secondary)" }}
           aria-label="Toggle menu"
         >

@@ -11,8 +11,8 @@
   --border:         rgba(15, 20, 60, 0.09);
   --border-accent:  rgba(12, 192, 223, 0.25);
   --text-primary:   #0d1530;
-  --text-secondary: #4a5880;
-  --text-muted:     #8898bb;
+  --text-secondary: #2d3b5e;
+  --text-muted:     #5a6a8c;
   --accent:         #0cc0df;
   --accent-bg:      rgba(12, 192, 223, 0.10);
   --accent-orange:  #ff8c4a;
@@ -61,6 +61,16 @@
 
 html {
   font-size: 17px;
+}
+
+*, *::before, *::after {
+  transition: background-color 0.25s ease, border-color 0.25s ease, color 0.2s ease, box-shadow 0.25s ease;
+}
+
+/* Don't animate things that shouldn't transition */
+input, textarea, select, button, a, [role="button"] {
+  transition: background-color 0.25s ease, border-color 0.25s ease, color 0.2s ease,
+              opacity 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 body {

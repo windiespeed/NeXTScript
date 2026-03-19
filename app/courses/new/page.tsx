@@ -80,7 +80,7 @@ export default function NewCoursePage() {
       <form onSubmit={handleSubmit} className="space-y-6">
 
         {/* ── Course Info ─────────────────────────────────────────────── */}
-        <div className="rounded-2xl p-6 space-y-4" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
+        <div className="rounded-3xl p-6 space-y-4" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
           <p className={sectionHeading}>Course Info</p>
 
           <div>
@@ -136,7 +136,7 @@ export default function NewCoursePage() {
         </div>
 
         {/* ── Generation Settings ─────────────────────────────────────── */}
-        <div className="rounded-2xl p-6 space-y-4" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
+        <div className="rounded-3xl p-6 space-y-4" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
           <p className={sectionHeading}>Generation Settings</p>
           <p className="text-xs -mt-1 mb-2" style={{ color: "var(--text-muted)" }}>
             These override your global profile settings for every lesson in this course.
@@ -211,7 +211,7 @@ export default function NewCoursePage() {
         </div>
 
         {/* ── Section Labels ──────────────────────────────────────────── */}
-        <div className="rounded-2xl p-6 space-y-4" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
+        <div className="rounded-3xl p-6 space-y-4" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
           <div className="flex items-center justify-between">
             <p className={sectionHeading}>Section Labels</p>
             <button
@@ -248,7 +248,7 @@ export default function NewCoursePage() {
           <button
             type="button"
             onClick={() => router.push("/courses")}
-            className="rounded-xl px-5 py-2.5 text-sm font-semibold transition hover:bg-[var(--bg-card-hover)]"
+            className="rounded-full px-5 py-2.5 text-sm font-semibold transition hover:bg-[var(--bg-card-hover)]"
             style={{ border: "1px solid var(--border)", color: "var(--text-primary)" }}
           >
             Cancel
@@ -256,7 +256,7 @@ export default function NewCoursePage() {
           <button
             type="submit"
             disabled={saving}
-            className="flex-1 rounded-xl bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50 transition shadow"
+            className="flex-1 rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50 transition shadow"
           >
             {saving ? "Creating…" : "Create Course"}
           </button>

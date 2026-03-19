@@ -36,7 +36,7 @@ export default function AssetCard({ project, onDelete }: Props) {
 
   return (
     <div
-      className="h-full rounded-2xl flex flex-col overflow-hidden shadow-sm hover:-translate-y-1 hover:shadow-lg transition-all duration-200"
+      className="h-full rounded-3xl flex flex-col overflow-hidden shadow-sm hover:-translate-y-1 hover:shadow-lg transition-all duration-200"
       style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}
     >
       {/* Top accent */}
@@ -45,7 +45,7 @@ export default function AssetCard({ project, onDelete }: Props) {
       <div className="flex flex-col gap-3 p-5 flex-1">
         {/* Icon + type badge row */}
         <div className="flex items-center justify-between gap-3">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}>
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${iconBg}`}>
             {isDeck ? DECK_ICON : FORM_ICON}
           </div>
           <span className={`rounded-md px-2.5 py-0.5 text-[10px] font-semibold ${badgeBg}`}>
@@ -101,13 +101,13 @@ export default function AssetCard({ project, onDelete }: Props) {
           href={project.url}
           target="_blank"
           rel="noopener noreferrer"
-          className={`flex-1 flex items-center justify-center rounded-xl px-3 py-2 text-xs font-semibold text-[#0d1c35] hover:opacity-90 active:scale-95 transition-all duration-150 ${isDeck ? "bg-[#0cc0df]" : "bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] text-white"}`}
+          className={`flex-1 flex items-center justify-center rounded-full px-3 py-2 text-xs font-semibold text-[#0d1c35] hover:opacity-90 active:scale-95 transition-all duration-150 ${isDeck ? "bg-[#0cc0df]" : "bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] text-white"}`}
         >
           {openLabel}
         </a>
         <button
           onClick={() => onDelete(project.id)}
-          className="flex items-center justify-center rounded-xl px-3 py-2 text-xs font-semibold text-red-500 hover:bg-red-500/10 active:scale-95 transition-all duration-150"
+          className="flex items-center justify-center rounded-full px-3 py-2 text-xs font-semibold text-red-500 hover:bg-red-500/10 active:scale-95 transition-all duration-150"
           style={{ border: "1px solid var(--border)" }}
         >
           Delete

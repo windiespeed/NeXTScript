@@ -88,7 +88,7 @@ export default function GenerateModal({ lesson, onClose, onGenerate }: Props) {
       onClick={handleBackdropClick}
     >
       <div
-        className="w-full max-w-sm rounded-2xl shadow-2xl p-6 flex flex-col gap-5 mx-4"
+        className="w-full max-w-sm rounded-3xl shadow-2xl p-6 flex flex-col gap-5 mx-4"
         style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}
       >
 
@@ -191,7 +191,7 @@ export default function GenerateModal({ lesson, onClose, onGenerate }: Props) {
             {templateUrl.trim() && (
               <button
                 onClick={() => { setTemplateUrl(""); fetch("/api/user/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ defaultTemplateUrl: "" }) }).catch(() => {}); }}
-                className="rounded-xl px-2.5 text-xs transition hover:opacity-80"
+                className="rounded-full px-2.5 text-xs transition hover:opacity-80"
                 style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)", color: "var(--text-muted)" }}
                 title="Clear saved template"
               >
@@ -212,7 +212,7 @@ export default function GenerateModal({ lesson, onClose, onGenerate }: Props) {
           <button
             onClick={onClose}
             disabled={modalStatus === "loading"}
-            className="rounded-xl px-4 py-1.5 text-xs font-semibold disabled:opacity-40 active:scale-95 transition-all duration-150 hover:bg-[var(--bg-card-hover)]"
+            className="rounded-full px-4 py-1.5 text-xs font-semibold disabled:opacity-40 active:scale-95 transition-all duration-150 hover:bg-[var(--bg-card-hover)]"
             style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
           >
             Cancel
@@ -220,7 +220,7 @@ export default function GenerateModal({ lesson, onClose, onGenerate }: Props) {
           <button
             onClick={handleGenerate}
             disabled={!canGenerate}
-            className="rounded-xl px-4 py-1.5 text-xs font-semibold bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] text-white hover:opacity-90 disabled:opacity-40 active:scale-95 transition-all duration-150"
+            className="rounded-full px-4 py-1.5 text-xs font-semibold bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] text-white hover:opacity-90 disabled:opacity-40 active:scale-95 transition-all duration-150"
           >
             Generate
           </button>

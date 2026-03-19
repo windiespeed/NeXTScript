@@ -331,7 +331,7 @@ function Dashboard() {
   if (status === "unauthenticated") {
     return (
       <div className="flex flex-col items-center justify-center min-h-[70vh] text-center px-4">
-        <div className="max-w-md w-full rounded-2xl px-8 py-10" style={{ background: "var(--bg-sidebar)", boxShadow: "var(--shadow-card)" }}>
+        <div className="max-w-md w-full rounded-3xl px-8 py-10" style={{ background: "var(--bg-sidebar)", boxShadow: "var(--shadow-card)" }}>
           <div className="flex justify-center mb-6">
             <Image src="/logo.png" alt="NeXTScript" width={200} height={56} className="h-20 w-auto brightness-0 invert dark:brightness-100 dark:invert-0" priority />
           </div>
@@ -341,7 +341,7 @@ function Dashboard() {
           </p>
           <button
             onClick={() => signIn("google")}
-            className="inline-flex items-center gap-3 rounded-xl bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-6 py-3 text-sm font-semibold text-white hover:opacity-90 transition shadow-lg w-full justify-center"
+            className="inline-flex items-center gap-3 rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-6 py-3 text-sm font-semibold text-white hover:opacity-90 transition shadow-lg w-full justify-center"
           >
             Sign in with Google
           </button>
@@ -365,8 +365,8 @@ function Dashboard() {
       {/* ── Welcome row ──────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between gap-4">
         {/* Left: icon + greeting */}
-        <div className="flex items-center gap-3 rounded-2xl px-5 py-4" style={{ background: "var(--bg-sidebar)", boxShadow: "var(--shadow-card)" }}>
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: "rgba(255, 180, 50, 0.15)" }}>
+        <div className="flex items-center gap-3 rounded-full px-5 py-4" style={{ background: "var(--bg-sidebar)", boxShadow: "var(--shadow-card)" }}>
+          <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style={{ background: "rgba(255, 180, 50, 0.15)" }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="5"/>
               <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
@@ -381,8 +381,8 @@ function Dashboard() {
           </div>
         </div>
         {/* Right: date badge */}
-        <div className="hidden sm:flex items-center gap-3 rounded-2xl px-5 py-4" style={{ background: "var(--bg-sidebar)", boxShadow: "var(--shadow-card)" }}>
-          <div className="w-11 h-11 rounded-xl flex items-center justify-center font-bold text-xl" style={{ background: "var(--accent-purple-bg)", color: "var(--accent-purple)" }}>
+        <div className="hidden sm:flex items-center gap-3 rounded-full px-5 py-4" style={{ background: "var(--bg-sidebar)", boxShadow: "var(--shadow-card)" }}>
+          <div className="w-11 h-11 rounded-full flex items-center justify-center font-bold text-xl" style={{ background: "var(--accent-purple-bg)", color: "var(--accent-purple)" }}>
             {today.getDate()}
           </div>
           <div>
@@ -397,7 +397,7 @@ function Dashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
           {/* ── Activity + By Course ── */}
-          <div className="rounded-2xl p-5 flex flex-col gap-4" style={{ background: "var(--bg-sidebar)", boxShadow: "var(--shadow-card)" }}>
+          <div className="rounded-3xl p-5 flex flex-col gap-4" style={{ background: "var(--bg-sidebar)", boxShadow: "var(--shadow-card)" }}>
             <div className="flex items-center justify-between">
               <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Activity</p>
               <span className="text-[10px] px-2 py-0.5 rounded-md font-medium" style={{ background: "var(--bg-card-hover)", color: "var(--text-muted)" }}>
@@ -461,7 +461,7 @@ function Dashboard() {
           </div>
 
           {/* ── Progress donuts ── */}
-          <div className="rounded-2xl p-5 flex flex-col gap-4" style={{ background: "var(--bg-sidebar)", boxShadow: "var(--shadow-card)" }}>
+          <div className="rounded-3xl p-5 flex flex-col gap-4" style={{ background: "var(--bg-sidebar)", boxShadow: "var(--shadow-card)" }}>
             <div className="flex items-center justify-between">
               <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Progress</p>
             </div>
@@ -491,7 +491,7 @@ function Dashboard() {
           </div>
 
           {/* ── Active Course ── */}
-          <div className="rounded-2xl p-5 flex flex-col gap-4" style={{ background: "var(--bg-sidebar)", boxShadow: "var(--shadow-card)" }}>
+          <div className="rounded-3xl p-5 flex flex-col gap-4" style={{ background: "var(--bg-sidebar)", boxShadow: "var(--shadow-card)" }}>
             <div className="flex items-center justify-between">
               <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Active Course</p>
               <Link href="/courses" className="text-[10px] text-[#0cc0df] hover:underline">
@@ -564,7 +564,7 @@ function Dashboard() {
 
                 <Link
                   href={`/courses/${activeCourse.id}`}
-                  className="flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold text-white hover:opacity-90 transition"
+                  className="flex items-center justify-center gap-2 rounded-full py-2.5 text-sm font-semibold text-white hover:opacity-90 transition"
                   style={{ background: "linear-gradient(135deg, #6366f1, #818cf8)" }}
                 >
                   Open Course
@@ -575,14 +575,14 @@ function Dashboard() {
               </>
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center text-center py-4">
-                <div className="w-10 h-10 rounded-xl bg-[#0cc0df]/10 flex items-center justify-center mb-3">
+                <div className="w-10 h-10 rounded-full bg-[#0cc0df]/10 flex items-center justify-center mb-3">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0cc0df" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
                   </svg>
                 </div>
                 <p className="text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>No courses yet</p>
                 <p className="text-xs mb-4" style={{ color: "var(--text-muted)" }}>Organize your lessons into courses for better management.</p>
-                <Link href="/courses/new" className="rounded-xl bg-[#0cc0df] px-4 py-2 text-xs font-semibold text-[#0a0b13] hover:opacity-90 transition">
+                <Link href="/courses/new" className="rounded-full bg-[#0cc0df] px-4 py-2 text-xs font-semibold text-[#0a0b13] hover:opacity-90 transition">
                   Create a Course
                 </Link>
               </div>
@@ -593,7 +593,7 @@ function Dashboard() {
 
       {/* ── Upcoming deadlines strip (if any) ───────────────────────────────── */}
       {!loading && upcoming.length > 0 && (
-        <div className="rounded-2xl p-5" style={{ background: "var(--bg-sidebar)", boxShadow: "var(--shadow-card)" }}>
+        <div className="rounded-3xl p-5" style={{ background: "var(--bg-sidebar)", boxShadow: "var(--shadow-card)" }}>
           <div className="flex items-center justify-between mb-4">
             <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Schedule</p>
             <Link href="/schedule" className="text-[10px] text-[#0cc0df] hover:underline">
@@ -608,7 +608,7 @@ function Dashboard() {
                 <Link
                   key={lesson.id}
                   href={`/lessons/${lesson.id}`}
-                  className="shrink-0 rounded-2xl p-4 flex flex-col gap-2 min-w-[200px] max-w-[220px] transition hover:-translate-y-0.5 hover:shadow-md"
+                  className="shrink-0 rounded-3xl p-4 flex flex-col gap-2 min-w-[200px] max-w-[220px] transition hover:-translate-y-0.5 hover:shadow-md"
                   style={{ background: "var(--bg-card-hover)" }}
                 >
                   <div className="h-0.5 rounded-full w-8" style={{ background: color }} />
@@ -633,7 +633,7 @@ function Dashboard() {
       <GenerateModal lesson={modalLesson} onClose={() => setModalLessonId(null)} onGenerate={handleGenerateWithOptions} />
 
       {toast && (
-        <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-2xl px-5 py-3.5 shadow-2xl text-sm font-semibold transition-all ${toast.type === "success" ? "bg-[#2dd4a0] text-[#0a0b13]" : "bg-red-500 text-white"}`}>
+        <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-3xl px-5 py-3.5 shadow-2xl text-sm font-semibold transition-all ${toast.type === "success" ? "bg-[#2dd4a0] text-[#0a0b13]" : "bg-red-500 text-white"}`}>
           <span>{toast.type === "success" ? "✓" : "✕"}</span>
           {toast.message}
           <button onClick={() => setToast(null)} className="ml-2 opacity-60 hover:opacity-100 text-xs">✕</button>

@@ -5,6 +5,7 @@ import Providers from "./providers";
 import Sidebar from "@/components/Sidebar";
 import TopBar from "@/components/TopBar";
 import { MobileMenuProvider } from "@/context/MobileMenu";
+import { ThemeProvider } from "@/context/Theme";
 
 const geist = Geist({ subsets: ["latin"] });
 
@@ -21,6 +22,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className={`${geist.className} min-h-screen antialiased`} style={{ backgroundColor: "var(--bg-body)", color: "var(--text-primary)" }}>
         <Providers>
+          <ThemeProvider>
           <MobileMenuProvider>
             <TopBar />
             <Sidebar />
@@ -31,6 +33,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </main>
             </div>
           </MobileMenuProvider>
+          </ThemeProvider>
         </Providers>
       </body>
     </html>

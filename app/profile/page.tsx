@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useSession, signOut } from "next-auth/react";
 import { DEFAULT_SECTION_LABELS, type SectionLabels } from "@/lib/sectionLabels";
+import { useTheme } from "@/context/Theme";
 
 function initials(name?: string | null, email?: string | null): string {
   if (name) {
@@ -44,18 +45,7 @@ export default function ProfilePage() {
   const { data: session, status } = useSession({ required: true });
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const [dark, setDark] = useState(false);
-
-  useEffect(() => {
-    setDark(document.documentElement.classList.contains("dark"));
-  }, []);
-
-  function toggleTheme() {
-    const next = !dark;
-    setDark(next);
-    document.documentElement.classList.toggle("dark", next);
-    localStorage.setItem("theme", next ? "dark" : "light");
-  }
+  const { dark, toggle: toggleTheme } = useTheme();
 
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -207,7 +197,7 @@ export default function ProfilePage() {
       </div>
 
       {/* User info card */}
-      <div className="rounded-2xl p-6" style={cardSty}>
+      <div className="rounded-3xl p-6" style={cardSty}>
         <div className="flex items-center gap-6">
           <div className="relative flex-shrink-0">
             <button
@@ -258,7 +248,7 @@ export default function ProfilePage() {
 
           <button
             onClick={() => signOut({ callbackUrl: "/" })}
-            className="flex-shrink-0 rounded-xl px-3 py-1.5 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)]"
+            className="flex-shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)]"
             style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
           >
             Sign out
@@ -271,7 +261,7 @@ export default function ProfilePage() {
       {error && <p className="text-sm text-red-500">{error}</p>}
 
       {/* Appearance */}
-      <div className="rounded-2xl p-6" style={cardSty}>
+      <div className="rounded-3xl p-6" style={cardSty}>
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>Appearance</h2>
@@ -279,7 +269,7 @@ export default function ProfilePage() {
           </div>
           <button
             onClick={toggleTheme}
-            className="rounded-xl px-4 py-2 text-sm font-semibold transition hover:bg-[var(--bg-card-hover)] active:scale-95"
+            className="rounded-full px-4 py-2 text-sm font-semibold transition hover:bg-[var(--bg-card-hover)] active:scale-95"
             style={{ border: "1px solid var(--border)", color: "var(--text-primary)" }}
           >
             {dark ? "☀ Light mode" : "☾ Dark mode"}
@@ -288,7 +278,7 @@ export default function ProfilePage() {
       </div>
 
       {/* Default sources */}
-      <div className="rounded-2xl p-6 space-y-4" style={cardSty}>
+      <div className="rounded-3xl p-6 space-y-4" style={cardSty}>
         <div>
           <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>Default Sources</h2>
           <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
@@ -307,7 +297,7 @@ export default function ProfilePage() {
           <button
             type="submit"
             disabled={savingSources}
-            className="rounded-xl bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-white shadow hover:opacity-90 disabled:opacity-50 transition"
+            className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-white shadow hover:opacity-90 disabled:opacity-50 transition"
           >
             {savingSources ? "Saving…" : "Save Sources"}
           </button>
@@ -315,7 +305,7 @@ export default function ProfilePage() {
       </div>
 
       {/* Curriculum settings */}
-      <div className="rounded-2xl p-6 space-y-5" style={cardSty}>
+      <div className="rounded-3xl p-6 space-y-5" style={cardSty}>
         <div>
           <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>Curriculum Settings</h2>
           <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
@@ -388,7 +378,7 @@ export default function ProfilePage() {
           <button
             type="submit"
             disabled={savingCurriculum}
-            className="rounded-xl bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-white shadow hover:opacity-90 disabled:opacity-50 transition"
+            className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-white shadow hover:opacity-90 disabled:opacity-50 transition"
           >
             {savingCurriculum ? "Saving…" : "Save Curriculum Settings"}
           </button>
@@ -396,7 +386,7 @@ export default function ProfilePage() {
       </div>
 
       {/* Anthropic API key */}
-      <div className="rounded-2xl p-6 space-y-5" style={cardSty}>
+      <div className="rounded-3xl p-6 space-y-5" style={cardSty}>
         <div>
           <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>Anthropic API Key</h2>
           <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
@@ -405,7 +395,7 @@ export default function ProfilePage() {
         </div>
 
         {hasKey && maskedKey && (
-          <div className="flex items-center justify-between rounded-xl px-4 py-3" style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)" }}>
+          <div className="flex items-center justify-between rounded-full px-4 py-3" style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)" }}>
             <div>
               <p className="text-xs uppercase tracking-wide font-semibold mb-0.5" style={{ color: "var(--text-muted)" }}>Current key</p>
               <p className="text-sm font-mono" style={{ color: "var(--text-primary)" }}>{maskedKey}</p>
@@ -441,7 +431,7 @@ export default function ProfilePage() {
           <button
             type="submit"
             disabled={savingKey || !keyInput.trim()}
-            className="rounded-xl bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-white shadow hover:opacity-90 disabled:opacity-50 transition"
+            className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-white shadow hover:opacity-90 disabled:opacity-50 transition"
           >
             {savingKey ? "Saving…" : "Save Key"}
           </button>

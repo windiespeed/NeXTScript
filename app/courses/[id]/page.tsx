@@ -12,7 +12,6 @@ import GenerateModal from "@/components/GenerateModal";
 type FileChoice = "slides" | "doc" | "quiz";
 type Destination = "drive" | "download";
 
-type Tab = "lessons" | "settings";
 
 const SECTION_LABEL_KEYS = [
   { key: "warmUp",                label: "Opening Activity" },
@@ -52,7 +51,7 @@ export default function CourseDetailPage() {
   const [course, setCourse] = useState<Course | null>(null);
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<Tab>("lessons");
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const [editSettings, setEditSettings] = useState<CourseSettings>(DEFAULT_COURSE_SETTINGS);
   const [editTitle, setEditTitle] = useState("");
@@ -119,7 +118,7 @@ export default function CourseDetailPage() {
       const updated = await res.json();
       setCourse(updated);
       setSaveMsg("Settings saved.");
-      setTimeout(() => setSaveMsg(""), 3000);
+      setTimeout(() => { setSaveMsg(""); setSettingsOpen(false); }, 1500);
     }
   }
 
@@ -300,16 +299,16 @@ export default function CourseDetailPage() {
           )}
           <div className="flex flex-wrap gap-2 mt-2">
             {course.settings?.subject && (
-              <span className="rounded-xl px-2.5 py-0.5 text-xs font-medium" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}>{course.settings.subject}</span>
+              <span className="rounded-full px-2.5 py-0.5 text-xs font-medium" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}>{course.settings.subject}</span>
             )}
             {course.gradeLevel && (
-              <span className="rounded-xl px-2.5 py-0.5 text-xs font-medium" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}>{course.gradeLevel}</span>
+              <span className="rounded-full px-2.5 py-0.5 text-xs font-medium" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}>{course.gradeLevel}</span>
             )}
             {course.term && (
-              <span className="rounded-xl px-2.5 py-0.5 text-xs font-medium" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}>{course.term}</span>
+              <span className="rounded-full px-2.5 py-0.5 text-xs font-medium" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}>{course.term}</span>
             )}
             {course.settings?.studentLevel && (
-              <span className="rounded-xl px-2.5 py-0.5 text-xs font-semibold text-[#0cc0df] capitalize" style={{ background: "var(--accent-bg)" }}>{course.settings.studentLevel}</span>
+              <span className="rounded-full px-2.5 py-0.5 text-xs font-semibold text-[#0cc0df] capitalize" style={{ background: "var(--accent-bg)" }}>{course.settings.studentLevel}</span>
             )}
           </div>
         </div>
@@ -332,27 +331,8 @@ export default function CourseDetailPage() {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 rounded-xl p-1" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
-        {(["lessons", "settings"] as Tab[]).map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`flex-1 rounded-lg py-2 text-sm font-semibold capitalize transition ${
-              tab === t
-                ? "bg-[#0cc0df] text-[#0a0b13]"
-                : "hover:bg-[var(--bg-card-hover)]"
-            }`}
-            style={tab !== t ? { color: "var(--text-secondary)" } : {}}
-          >
-            {t}
-          </button>
-        ))}
-      </div>
-
-      {/* ── Lessons Tab ──────────────────────────────────────────────── */}
-      {tab === "lessons" && (
-        <div className="space-y-3">
+      {/* ── Lessons ──────────────────────────────────────────────────── */}
+      <div className="space-y-3">
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold" style={{ color: "var(--text-secondary)" }}>
               {lessons.length} {lessons.length === 1 ? "lesson" : "lessons"} in this course
@@ -365,7 +345,7 @@ export default function CourseDetailPage() {
                 <>
                   <button
                     onClick={() => { setSelecting(false); setSelectedIds(new Set()); }}
-                    className="rounded-xl px-3 py-2 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)]"
+                    className="rounded-full px-3 py-2 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)]"
                     style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
                   >
                     Cancel
@@ -373,14 +353,14 @@ export default function CourseDetailPage() {
                   <button
                     onClick={handleBulkDuplicate}
                     disabled={selectedIds.size === 0 || duplicating || bulkDeleting}
-                    className="rounded-xl bg-[#6366f1] px-3 py-2 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50 transition"
+                    className="rounded-full bg-[#0cc0df] px-3 py-2 text-xs font-semibold text-[#0a0b13] hover:opacity-90 disabled:opacity-50 transition"
                   >
                     {duplicating ? "Duplicating…" : `Duplicate${selectedIds.size > 0 ? ` (${selectedIds.size})` : ""}`}
                   </button>
                   <button
                     onClick={handleBulkDelete}
                     disabled={selectedIds.size === 0 || duplicating || bulkDeleting}
-                    className="rounded-xl px-3 py-2 text-xs font-semibold text-red-500 hover:bg-red-500/10 disabled:opacity-50 transition"
+                    className="rounded-full px-3 py-2 text-xs font-semibold text-red-500 hover:bg-red-500/10 disabled:opacity-50 transition"
                     style={{ border: "1px solid var(--border)" }}
                   >
                     {bulkDeleting ? "Deleting…" : `Delete${selectedIds.size > 0 ? ` (${selectedIds.size})` : ""}`}
@@ -392,14 +372,14 @@ export default function CourseDetailPage() {
                     <>
                       <button
                         onClick={() => setSelecting(true)}
-                        className="rounded-xl px-3 py-2 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)]"
+                        className="rounded-full px-3 py-2 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)]"
                         style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
                       >
                         Select
                       </button>
                       <button
                         onClick={() => handleBulkRelease(!lessons.every(l => l.released))}
-                        className="rounded-xl px-3 py-2 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)]"
+                        className="rounded-full px-3 py-2 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)]"
                         style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
                       >
                         {lessons.every(l => l.released) ? "Unrelease All" : "Release All"}
@@ -408,7 +388,7 @@ export default function CourseDetailPage() {
                   )}
                   <button
                     onClick={handleCopyLink}
-                    className="rounded-xl px-3 py-2 text-xs font-semibold text-[#2dd4a0] hover:bg-[#2dd4a0]/10 transition"
+                    className="rounded-full px-3 py-2 text-xs font-semibold text-[#2dd4a0] hover:bg-[#2dd4a0]/10 transition"
                     style={{ border: "1px solid #2dd4a0" }}
                   >
                     {copied ? "Copied!" : "Copy Link"}
@@ -417,39 +397,49 @@ export default function CourseDetailPage() {
                     href={`/courses/${id}/student`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="rounded-xl px-3 py-2 text-xs font-semibold text-[#2dd4a0] hover:bg-[#2dd4a0]/10 transition"
+                    className="rounded-full px-3 py-2 text-xs font-semibold text-[#2dd4a0] hover:bg-[#2dd4a0]/10 transition"
                     style={{ border: "1px solid #2dd4a0" }}
                   >
                     Student View ↗
                   </a>
                   <Link
                     href={`/lessons/new?courseId=${id}`}
-                    className="rounded-xl bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-xs font-bold text-white hover:opacity-90 transition shadow"
+                    className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-xs font-bold text-white hover:opacity-90 transition shadow"
                   >
                     + New Lesson
                   </Link>
+                  <button
+                    onClick={() => setSettingsOpen(true)}
+                    title="Course settings"
+                    className="p-2 rounded-full transition hover:bg-[var(--bg-card-hover)]"
+                    style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                    </svg>
+                  </button>
                 </>
               )}
             </div>
           </div>
 
           {lessons.length === 0 ? (
-            <div className="text-center py-12 rounded-2xl" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
+            <div className="text-center py-12 rounded-3xl" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
               <p className="text-sm mb-4" style={{ color: "var(--text-muted)" }}>No lessons yet.</p>
               <Link
                 href={`/lessons/new?courseId=${id}`}
-                className="rounded-xl bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition"
+                className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition"
               >
                 Add first lesson
               </Link>
             </div>
           ) : (
-            <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+            <div className="rounded-3xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
               {lessons.map((lesson, i) => (
                 <div
                   key={lesson.id}
                   onClick={selecting ? () => toggleSelect(lesson.id) : undefined}
-                  className={`flex items-center gap-4 px-4 py-3 transition ${selecting ? "cursor-pointer" : "hover:bg-[var(--bg-card-hover)]"} ${selecting && selectedIds.has(lesson.id) ? "bg-[#6366f1]/10" : ""}`}
+                  className={`flex items-center gap-4 px-4 py-3 transition ${selecting ? "cursor-pointer" : "hover:bg-[var(--bg-card-hover)]"} ${selecting && selectedIds.has(lesson.id) ? "bg-[#0cc0df]/10" : ""}`}
                   style={{
                     background: selecting && selectedIds.has(lesson.id) ? undefined : "var(--bg-card)",
                     borderTop: i > 0 ? "1px solid var(--border)" : undefined,
@@ -457,11 +447,11 @@ export default function CourseDetailPage() {
                 >
                   {selecting ? (
                     <div
-                      className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition ${selectedIds.has(lesson.id) ? "bg-[#6366f1] border-[#6366f1]" : "border-[var(--border)]"}`}
+                      className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition ${selectedIds.has(lesson.id) ? "bg-[#0cc0df] border-[#0cc0df]" : "border-[var(--border)]"}`}
                       style={selectedIds.has(lesson.id) ? {} : { background: "var(--bg-body)" }}
                     >
                       {selectedIds.has(lesson.id) && (
-                        <svg xmlns="http://www.w3.org/2000/svg" className="w-2.5 h-2.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-2.5 h-2.5 text-[#0a0b13]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                       )}
                     </div>
                   ) : (
@@ -493,19 +483,19 @@ export default function CourseDetailPage() {
                     return (deck || form || lesson.folderUrl) ? (
                       <div className="flex items-center gap-1 shrink-0">
                         {deck && (
-                          <Link href={`/slides?lessonId=${lesson.id}`} className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-semibold transition hover:bg-[#0cc0df]/15 hover:text-[#0cc0df]" style={{ border: "1px solid var(--border)", color: "var(--text-muted)" }}>
+                          <Link href={`/slides?lessonId=${lesson.id}`} className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold transition hover:opacity-80" style={{ background: "rgba(12,192,223,0.12)", border: "1px solid rgba(12,192,223,0.35)", color: "#0cc0df" }}>
                             <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
                             Slides
                           </Link>
                         )}
                         {form && (
-                          <Link href={`/forms?lessonId=${lesson.id}`} className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-semibold transition hover:bg-[#ff8c4a]/15 hover:text-[#ff8c4a]" style={{ border: "1px solid var(--border)", color: "var(--text-muted)" }}>
+                          <Link href={`/forms?lessonId=${lesson.id}`} className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold transition hover:opacity-80" style={{ background: "rgba(255,140,74,0.12)", border: "1px solid rgba(255,140,74,0.35)", color: "#ff8c4a" }}>
                             <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
                             Quiz
                           </Link>
                         )}
                         {lesson.folderUrl && (
-                          <a href={lesson.folderUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-semibold transition hover:bg-[var(--bg-card-hover)] hover:text-[#0cc0df]" style={{ border: "1px solid var(--border)", color: "var(--text-muted)" }}>
+                          <a href={lesson.folderUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold transition hover:opacity-80" style={{ background: "rgba(45,212,160,0.12)", border: "1px solid rgba(45,212,160,0.35)", color: "#2dd4a0" }}>
                             <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
                             Drive ↗
                           </a>
@@ -519,7 +509,7 @@ export default function CourseDetailPage() {
                       <button
                         onClick={() => handleToggleReleased(lesson)}
                         title={lesson.released ? "Click to hide from students" : "Click to release to students"}
-                        className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition ${
+                        className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
                           lesson.released
                             ? "bg-[#2dd4a0]/15 text-[#2dd4a0] hover:bg-[#2dd4a0]/25"
                             : "hover:bg-[var(--bg-card-hover)]"
@@ -530,21 +520,21 @@ export default function CourseDetailPage() {
                       </button>
                       <Link
                         href={`/lessons/${lesson.id}`}
-                        className="rounded-xl bg-[#0cc0df] px-3 py-1.5 text-xs font-semibold text-[#0a0b13] hover:opacity-90 transition"
+                        className="rounded-full bg-[#0cc0df] px-3 py-1.5 text-xs font-semibold text-[#0a0b13] hover:opacity-90 transition"
                       >
                         Edit
                       </Link>
                       <button
                         onClick={() => setGenerateLesson(lesson)}
                         disabled={lesson.status === "generating" || lesson.status === "regenerating"}
-                        className="rounded-xl bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50 transition"
+                        className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50 transition"
                       >
                         {lesson.status === "generating" || lesson.status === "regenerating" ? "Running…" : "Generate"}
                       </button>
                       <button
                         onClick={() => handleDuplicateLesson(lesson)}
                         title="Duplicate lesson"
-                        className="p-1.5 rounded-lg transition hover:bg-[var(--bg-card-hover)]"
+                        className="p-1.5 rounded-full transition hover:bg-[var(--bg-card-hover)]"
                         style={{ color: "var(--text-muted)" }}
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
@@ -552,7 +542,7 @@ export default function CourseDetailPage() {
                       <button
                         onClick={() => handleRemoveLesson(lesson.id)}
                         title="Delete lesson"
-                        className="p-1.5 rounded-lg transition hover:text-red-500 hover:bg-red-500/10"
+                        className="p-1.5 rounded-full transition hover:text-red-500 hover:bg-red-500/10"
                         style={{ color: "var(--text-muted)" }}
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
@@ -563,8 +553,7 @@ export default function CourseDetailPage() {
               ))}
             </div>
           )}
-        </div>
-      )}
+      </div>
 
       <GenerateModal
         lesson={generateLesson}
@@ -572,12 +561,24 @@ export default function CourseDetailPage() {
         onGenerate={handleGenerate}
       />
 
-      {/* ── Settings Tab ─────────────────────────────────────────────── */}
-      {tab === "settings" && (
-        <form onSubmit={handleSaveSettings} className="space-y-6">
+      {/* ── Settings Modal ────────────────────────────────────────────── */}
+      {settingsOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setSettingsOpen(false)} />
+          <div className="relative w-full max-w-2xl max-h-[90vh] flex flex-col rounded-3xl overflow-hidden" style={{ background: "var(--bg-card)", boxShadow: "var(--shadow-float)" }}>
+            {/* Modal header */}
+            <div className="flex items-center justify-between px-6 py-4 shrink-0" style={{ borderBottom: "1px solid var(--border)" }}>
+              <h2 className="text-base font-bold" style={{ color: "var(--text-primary)" }}>Course Settings</h2>
+              <button onClick={() => setSettingsOpen(false)} className="p-1.5 rounded-full transition hover:bg-[var(--bg-card-hover)]" style={{ color: "var(--text-muted)" }}>
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            {/* Scrollable body */}
+            <div className="overflow-y-auto flex-1 px-6 py-5">
+              <form onSubmit={handleSaveSettings} className="space-y-6">
 
           {/* Course Info */}
-          <div className="rounded-2xl p-6 space-y-4" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
+          <div className="rounded-3xl p-6 space-y-4" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
             <p className="text-xs font-semibold uppercase tracking-widest text-[#0cc0df] mb-3">Course Info</p>
             <div>
               <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Title</label>
@@ -600,7 +601,7 @@ export default function CourseDetailPage() {
           </div>
 
           {/* Generation Settings */}
-          <div className="rounded-2xl p-6 space-y-4" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
+          <div className="rounded-3xl p-6 space-y-4" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
             <p className="text-xs font-semibold uppercase tracking-widest text-[#0cc0df] mb-1">Generation Settings</p>
             <p className="text-xs" style={{ color: "var(--text-muted)" }}>These override your global profile settings for every lesson in this course.</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -635,7 +636,7 @@ export default function CourseDetailPage() {
           </div>
 
           {/* Section Labels */}
-          <div className="rounded-2xl p-6 space-y-4" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
+          <div className="rounded-3xl p-6 space-y-4" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
             <div className="flex items-center justify-between">
               <p className="text-xs font-semibold uppercase tracking-widest text-[#0cc0df]">Section Labels</p>
               <button type="button" onClick={() => patchSettings({ sectionLabels: DEFAULT_COURSE_SETTINGS.sectionLabels })} className="text-xs text-[#0cc0df] hover:underline">
@@ -664,13 +665,16 @@ export default function CourseDetailPage() {
             <button
               type="submit"
               disabled={saving}
-              className="rounded-xl bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-6 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50 transition shadow"
+              className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-6 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50 transition shadow"
             >
               {saving ? "Saving…" : "Save Settings"}
             </button>
             {saveMsg && <p className="text-sm text-[#2dd4a0]">{saveMsg}</p>}
+              </div>
+              </form>
+            </div>
           </div>
-        </form>
+        </div>
       )}
     </div>
   );

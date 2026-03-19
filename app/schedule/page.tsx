@@ -80,7 +80,7 @@ export default function SchedulePage() {
           <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>Lesson deadlines across all courses.</p>
         </div>
         {!loading && (
-          <span className="rounded-xl px-3 py-1.5 text-sm font-semibold" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-primary)" }}>
+          <span className="rounded-full px-3 py-1.5 text-sm font-semibold" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-primary)" }}>
             {lessons.length} {lessons.length === 1 ? "deadline" : "deadlines"}
           </span>
         )}
@@ -91,16 +91,16 @@ export default function SchedulePage() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           {/* Calendar */}
-          <div className="lg:col-span-2 rounded-2xl p-5" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
+          <div className="lg:col-span-2 rounded-3xl p-5" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
             <div className="flex items-center justify-between mb-5">
-              <button onClick={prevMonth} className="p-2 rounded-xl transition hover:bg-[var(--bg-card-hover)]" style={{ color: "var(--text-secondary)" }}>
+              <button onClick={prevMonth} className="p-2 rounded-full transition hover:bg-[var(--bg-card-hover)]" style={{ color: "var(--text-secondary)" }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
               </button>
               <div className="flex items-center gap-3">
                 <h2 className="text-base font-bold" style={{ color: "var(--text-primary)" }}>{MONTHS[month]} {year}</h2>
-                <button onClick={goToday} className="text-xs px-2.5 py-1 rounded-xl font-semibold text-[#0cc0df] transition hover:bg-[#0cc0df]/10">Today</button>
+                <button onClick={goToday} className="text-xs px-2.5 py-1 rounded-full font-semibold text-[#0cc0df] transition hover:bg-[#0cc0df]/10">Today</button>
               </div>
-              <button onClick={nextMonth} className="p-2 rounded-xl transition hover:bg-[var(--bg-card-hover)]" style={{ color: "var(--text-secondary)" }}>
+              <button onClick={nextMonth} className="p-2 rounded-full transition hover:bg-[var(--bg-card-hover)]" style={{ color: "var(--text-secondary)" }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
               </button>
             </div>
@@ -121,7 +121,7 @@ export default function SchedulePage() {
                   <button
                     key={key}
                     onClick={() => setSelectedDay(isSelected ? null : cellDate)}
-                    className={`relative rounded-xl p-1.5 text-xs font-semibold text-center transition-all flex flex-col items-center gap-0.5 min-h-[44px]
+                    className={`relative rounded-full p-1.5 text-xs font-semibold text-center transition-all flex flex-col items-center gap-0.5 min-h-[44px]
                       ${isSelected ? "bg-[#0cc0df] text-[#0a0b13]" : isToday ? "bg-[#0cc0df]/15 text-[#0cc0df]" : "hover:bg-[var(--bg-card-hover)]"}`}
                     style={!isSelected && !isToday ? { color: "var(--text-primary)" } : {}}
                   >
@@ -142,7 +142,7 @@ export default function SchedulePage() {
           {/* Side panel */}
           <div className="space-y-4">
             {selectedDay && (
-              <div className="rounded-2xl p-5" style={{ background: "var(--bg-card)", border: "1px solid var(--border-accent, var(--border))" }}>
+              <div className="rounded-3xl p-5" style={{ background: "var(--bg-card)", border: "1px solid var(--border-accent, var(--border))" }}>
                 <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "var(--sidebar-label)" }}>
                   {selectedDay.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}
                 </p>
@@ -152,7 +152,7 @@ export default function SchedulePage() {
                   <div className="space-y-2">
                     {selectedLessons.map((lesson) => (
                       <Link key={lesson.id} href={`/lessons/${lesson.id}`}
-                        className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition hover:bg-[var(--bg-card-hover)] group"
+                        className="flex items-center gap-3 rounded-full px-3 py-2.5 transition hover:bg-[var(--bg-card-hover)] group"
                         style={{ border: "1px solid var(--border)" }}
                       >
                         <span className={`w-2 h-2 rounded-full shrink-0 ${STATUS_COLOR[lesson.status]}`} />
@@ -167,7 +167,7 @@ export default function SchedulePage() {
               </div>
             )}
 
-            <div className="rounded-2xl p-5" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
+            <div className="rounded-3xl p-5" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
               <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "var(--sidebar-label)" }}>Upcoming</p>
               {upcomingAll.length === 0 ? (
                 <p className="text-xs" style={{ color: "var(--text-muted)" }}>No upcoming deadlines.</p>
@@ -178,7 +178,7 @@ export default function SchedulePage() {
                     const isOverdue = d < new Date(today.getFullYear(), today.getMonth(), today.getDate());
                     return (
                       <Link key={lesson.id} href={`/lessons/${lesson.id}`}
-                        className="flex items-center gap-3 rounded-xl px-2.5 py-2 transition hover:bg-[var(--bg-card-hover)] group"
+                        className="flex items-center gap-3 rounded-full px-2.5 py-2 transition hover:bg-[var(--bg-card-hover)] group"
                       >
                         <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isOverdue ? "bg-red-500" : "bg-[#ff8c4a]"}`} />
                         <p className="flex-1 text-xs font-semibold truncate group-hover:text-[#0cc0df] transition" style={{ color: "var(--text-primary)" }}>{lesson.title}</p>

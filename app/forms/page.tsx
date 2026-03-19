@@ -46,12 +46,12 @@ function FormsInner() {
         </div>
         <div className="flex items-center gap-2">
           {lessonId && (
-            <Link href="/forms" className="rounded-xl px-3 py-1.5 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)]" style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
+            <Link href="/forms" className="rounded-full px-3 py-1.5 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)]" style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
               Show all
             </Link>
           )}
           {!loading && (
-            <span className="rounded-xl px-3 py-1.5 text-sm font-semibold" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-primary)" }}>
+            <span className="rounded-full px-3 py-1.5 text-sm font-semibold" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-primary)" }}>
               {filtered.length} {filtered.length === 1 ? "form" : "forms"}
             </span>
           )}
@@ -61,8 +61,8 @@ function FormsInner() {
       {loading ? (
         <p className="text-sm text-[#0cc0df]">Loading…</p>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-16 rounded-2xl" style={{ border: "1px solid var(--border)", background: "var(--bg-card)" }}>
-          <div className="w-12 h-12 rounded-xl bg-[#ff8c4a]/10 flex items-center justify-center mx-auto mb-4">
+        <div className="text-center py-16 rounded-3xl" style={{ border: "1px solid var(--border)", background: "var(--bg-card)" }}>
+          <div className="w-12 h-12 rounded-full bg-[#ff8c4a]/10 flex items-center justify-center mx-auto mb-4">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ff8c4a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
               <polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
@@ -74,7 +74,7 @@ function FormsInner() {
           <p className="text-xs mb-5" style={{ color: "var(--text-muted)" }}>
             Generate a bundle from a lesson to create a quiz form.
           </p>
-          <Link href="/" className="rounded-xl bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition">
+          <Link href="/" className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition">
             Go to Lessons
           </Link>
         </div>
