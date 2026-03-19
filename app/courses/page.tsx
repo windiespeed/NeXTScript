@@ -9,23 +9,32 @@ function fmt(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
-function CourseCard({ course, onDelete }: { course: Course; onDelete: (id: string) => void }) {
+function CourseCard({ course, onDelete, onDuplicate }: { course: Course; onDelete: (id: string) => void; onDuplicate: (course: Course) => void }) {
   return (
     <div
       className="h-full rounded-2xl flex flex-col overflow-hidden hover:-translate-y-1 hover:shadow-lg transition-all duration-200"
       style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}
     >
-      <div className="h-1 w-full bg-[#0cc0df] shrink-0" />
       <div className="flex flex-col gap-3 p-5 flex-1">
         <div className="flex items-start justify-between gap-3">
           <h2 className="font-semibold text-base leading-snug" style={{ color: "var(--text-primary)" }}>
             {course.title}
           </h2>
-          {course.settings?.studentLevel && (
-            <span className="shrink-0 rounded-xl px-2.5 py-0.5 text-[10px] font-semibold text-[#0cc0df] capitalize" style={{ background: "var(--accent-bg)" }}>
-              {course.settings.studentLevel}
-            </span>
-          )}
+          <div className="flex items-center gap-1.5 shrink-0">
+            {course.settings?.studentLevel && (
+              <span className="rounded-xl px-2.5 py-0.5 text-[10px] font-semibold text-[#0cc0df] capitalize" style={{ background: "var(--accent-bg)" }}>
+                {course.settings.studentLevel}
+              </span>
+            )}
+            <button
+              onClick={() => onDuplicate(course)}
+              title="Duplicate course"
+              className="p-1.5 rounded-lg transition hover:bg-[var(--bg-card-hover)]"
+              style={{ color: "var(--text-muted)" }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            </button>
+          </div>
         </div>
         {course.description && (
           <p className="text-xs leading-relaxed line-clamp-2" style={{ color: "var(--text-secondary)" }}>
@@ -86,6 +95,25 @@ export default function CoursesPage() {
     setCourses((prev) => prev.filter((c) => c.id !== id));
   }
 
+  async function handleDuplicate(course: Course) {
+    const res = await fetch("/api/courses", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: `Copy of ${course.title}`,
+        description: course.description,
+        gradeLevel: course.gradeLevel,
+        term: course.term,
+        settings: course.settings,
+        lessonIds: [],
+      }),
+    });
+    if (res.ok) {
+      const copy = await res.json();
+      setCourses((prev) => [copy, ...prev]);
+    }
+  }
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -116,7 +144,7 @@ export default function CoursesPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {courses.map((course) => <CourseCard key={course.id} course={course} onDelete={handleDelete} />)}
+          {courses.map((course) => <CourseCard key={course.id} course={course} onDelete={handleDelete} onDuplicate={handleDuplicate} />)}
         </div>
       )}
     </div>

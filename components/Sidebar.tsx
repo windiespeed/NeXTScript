@@ -1,20 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { useSession, signIn, signOut } from "next-auth/react";
-import { useEffect, useState } from "react";
-
-function initials(name?: string | null, email?: string | null): string {
-  if (name) {
-    const parts = name.trim().split(" ");
-    return parts.length >= 2
-      ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
-      : parts[0].slice(0, 2).toUpperCase();
-  }
-  return (email ?? "?")[0].toUpperCase();
-}
+import { useSession } from "next-auth/react";
+import { useMobileMenu } from "@/context/MobileMenu";
 
 interface NavItem {
   label: string;
@@ -28,51 +17,16 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
       href={item.href}
       className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-150 ${
         active
-          ? "bg-[#0cc0df] text-[#0a0b13] shadow-sm"
-          : "text-[var(--text-secondary)] hover:bg-[var(--bg-card-hover)] hover:text-[var(--text-primary)]"
+          ? "bg-[#6366f1] text-white shadow-sm"
+          : "hover:bg-[var(--bg-card-hover)]"
       }`}
+      style={active ? {} : { color: "var(--text-secondary)" }}
     >
-      <span className={`flex-shrink-0 ${active ? "text-[#0a0b13]" : "text-[var(--text-muted)]"}`}>
+      <span className={`flex-shrink-0 ${active ? "text-white" : ""}`} style={active ? {} : { color: "var(--text-muted)" }}>
         {item.icon}
       </span>
       {item.label}
     </Link>
-  );
-}
-
-function ThemeToggle() {
-  const [dark, setDark] = useState(false);
-
-  useEffect(() => {
-    setDark(document.documentElement.classList.contains("dark"));
-  }, []);
-
-  function toggle() {
-    const next = !dark;
-    setDark(next);
-    document.documentElement.classList.toggle("dark", next);
-    localStorage.setItem("theme", next ? "dark" : "light");
-  }
-
-  return (
-    <button
-      onClick={toggle}
-      className="p-2 rounded-lg text-[var(--text-secondary)] hover:bg-[var(--bg-card-hover)] hover:text-[var(--text-primary)] transition-colors"
-      title={dark ? "Switch to light mode" : "Switch to dark mode"}
-    >
-      {dark ? (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
-          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-          <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
-          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-        </svg>
-      ) : (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-        </svg>
-      )}
-    </button>
   );
 }
 
@@ -111,56 +65,34 @@ const Icons = {
       <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
     </svg>
   ),
-  settings: (
+  profile: (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="3"/>
       <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
     </svg>
   ),
-  signout: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
-    </svg>
-  ),
 };
 
 const MAIN_NAV: NavItem[] = [
-  { label: "Dashboard", href: "/", icon: Icons.dashboard },
-  { label: "Courses", href: "/courses", icon: Icons.courses },
-  { label: "Schedule", href: "/schedule", icon: Icons.schedule },
+  { label: "Dashboard", href: "/",         icon: Icons.dashboard },
+  { label: "Courses",   href: "/courses",  icon: Icons.courses   },
+  { label: "Schedule",  href: "/schedule", icon: Icons.schedule  },
 ];
 
 const ASSETS_NAV: NavItem[] = [
-  { label: "Slide Decks", href: "/slides", icon: Icons.slides },
-  { label: "Forms", href: "/forms", icon: Icons.forms },
-  { label: "Resources", href: "/resources", icon: Icons.resources },
+  { label: "Slide Decks", href: "/slides",    icon: Icons.slides    },
+  { label: "Forms",       href: "/forms",     icon: Icons.forms     },
+  { label: "Resources",   href: "/resources", icon: Icons.resources },
 ];
 
 const ACCOUNT_NAV: NavItem[] = [
-  { label: "Profile", href: "/profile", icon: Icons.settings },
+  { label: "Profile", href: "/profile", icon: Icons.profile },
 ];
 
 export default function Sidebar() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const pathname = usePathname();
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [mobileOpen, setMobileOpen] = useState(false);
-
-  useEffect(() => {
-    if (session?.user?.email) {
-      fetch("/api/user/settings")
-        .then((r) => r.json())
-        .then((data) => setAvatarUrl(data.avatarUrl ?? null))
-        .catch(() => {});
-    }
-  }, [session?.user?.email]);
-
-  // Close mobile menu on route change
-  useEffect(() => { setMobileOpen(false); }, [pathname]);
-
-  const displaySrc = avatarUrl ?? session?.user?.image ?? null;
-  const userInitials = initials(session?.user?.name, session?.user?.email);
-  const userName = session?.user?.name ?? session?.user?.email ?? "";
+  const { open, close } = useMobileMenu();
 
   function isActive(href: string) {
     if (href === "/") return pathname === "/";
@@ -168,124 +100,58 @@ export default function Sidebar() {
   }
 
   const sidebarContent = (
-    <div className="flex flex-col h-full">
-      {/* Logo */}
-      <div className="px-4 py-5 flex items-center justify-between border-b border-[var(--border)]">
-        <Link href="/" className="flex items-center">
-          <Image src="/logo.png" alt="NeXTScript" width={140} height={38} className="h-9 w-auto dark:brightness-0 dark:invert" priority />
-        </Link>
-        <ThemeToggle />
+    <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
+      <div>
+        <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-widest" style={{ color: "var(--sidebar-label)" }}>Main</p>
+        <div className="space-y-0.5">
+          {MAIN_NAV.map(item => <NavLink key={item.href} item={item} active={isActive(item.href)} />)}
+        </div>
       </div>
-
-      {/* Nav sections */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
-        {/* Main */}
-        <div>
-          <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-widest text-[var(--sidebar-label)]">Main</p>
-          <div className="space-y-0.5">
-            {MAIN_NAV.map((item) => (
-              <NavLink key={item.href} item={item} active={isActive(item.href)} />
-            ))}
-          </div>
+      <div>
+        <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-widest" style={{ color: "var(--sidebar-label)" }}>Assets</p>
+        <div className="space-y-0.5">
+          {ASSETS_NAV.map(item => <NavLink key={item.href} item={item} active={isActive(item.href)} />)}
         </div>
-
-        {/* Assets */}
-        <div>
-          <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-widest text-[var(--sidebar-label)]">Assets</p>
-          <div className="space-y-0.5">
-            {ASSETS_NAV.map((item) => (
-              <NavLink key={item.href} item={item} active={isActive(item.href)} />
-            ))}
-          </div>
-        </div>
-
-        {/* Account */}
-        <div>
-          <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-widest text-[var(--sidebar-label)]">Account</p>
-          <div className="space-y-0.5">
-            {ACCOUNT_NAV.map((item) => (
-              <NavLink key={item.href} item={item} active={isActive(item.href)} />
-            ))}
-          </div>
-        </div>
-      </nav>
-
-      {/* User block */}
-      <div className="border-t border-[var(--border)] px-3 py-4">
-        {status === "loading" ? null : session ? (
-          <div className="flex items-center gap-3">
-            {/* Avatar */}
-            <div className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0 bg-[var(--bg-card-hover)]">
-              {displaySrc ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={displaySrc} alt="Avatar" className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <span className="text-xs font-bold text-[var(--accent)]">{userInitials}</span>
-                </div>
-              )}
-            </div>
-            {/* Name + sign out */}
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-[var(--text-primary)] truncate">{userName}</p>
-            </div>
-            <button
-              onClick={() => signOut()}
-              className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-red-400 hover:bg-red-400/10 transition-colors flex-shrink-0"
-              title="Sign out"
-            >
-              {Icons.signout}
-            </button>
-          </div>
-        ) : (
-          <button
-            onClick={() => signIn("google")}
-            className="w-full rounded-lg bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition"
-          >
-            Sign in
-          </button>
-        )}
       </div>
-    </div>
+      {status === "authenticated" && (
+        <div>
+          <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-widest" style={{ color: "var(--sidebar-label)" }}>Account</p>
+          <div className="space-y-0.5">
+            {ACCOUNT_NAV.map(item => <NavLink key={item.href} item={item} active={isActive(item.href)} />)}
+          </div>
+        </div>
+      )}
+    </nav>
   );
 
   return (
     <>
-      {/* Desktop sidebar */}
-      <aside className="hidden lg:flex flex-col fixed inset-y-0 left-0 w-60 bg-[var(--bg-sidebar)] border-r border-[var(--border)] z-40">
+      {/* Desktop sidebar — starts below top bar */}
+      <aside
+        className="hidden lg:flex flex-col fixed left-0 w-60 z-40"
+        style={{
+          top: "64px",
+          height: "calc(100vh - 64px)",
+          background: "var(--bg-sidebar)",
+          borderRight: "1px solid var(--border)",
+        }}
+      >
         {sidebarContent}
       </aside>
 
-      {/* Mobile top bar */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-4 py-3 bg-[var(--bg-sidebar)] border-b border-[var(--border)]">
-        <Link href="/">
-          <Image src="/logo.png" alt="NeXTScript" width={120} height={33} className="h-8 w-auto dark:brightness-0 dark:invert" priority />
-        </Link>
-        <div className="flex items-center gap-2">
-          <ThemeToggle />
-          <button
-            onClick={() => setMobileOpen(!mobileOpen)}
-            className="p-2 rounded-lg text-[var(--text-secondary)] hover:bg-[var(--bg-card-hover)] transition-colors"
-            aria-label="Toggle menu"
-          >
-            {mobileOpen ? (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-              </svg>
-            ) : (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/>
-              </svg>
-            )}
-          </button>
-        </div>
-      </div>
-
       {/* Mobile drawer */}
-      {mobileOpen && (
+      {open && (
         <>
-          <div className="lg:hidden fixed inset-0 z-40 bg-black/50" onClick={() => setMobileOpen(false)} />
-          <aside className="lg:hidden fixed inset-y-0 left-0 z-50 w-60 bg-[var(--bg-sidebar)] border-r border-[var(--border)]">
+          <div className="lg:hidden fixed inset-0 z-40 bg-black/50" onClick={close} />
+          <aside
+            className="lg:hidden fixed left-0 z-50 w-60 flex flex-col"
+            style={{
+              top: "64px",
+              height: "calc(100vh - 64px)",
+              background: "var(--bg-sidebar)",
+              borderRight: "1px solid var(--border)",
+            }}
+          >
             {sidebarContent}
           </aside>
         </>

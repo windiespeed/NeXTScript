@@ -16,6 +16,8 @@
   --accent:         #0cc0df;
   --accent-bg:      rgba(12, 192, 223, 0.10);
   --accent-orange:  #ff8c4a;
+  --accent-purple:  #6366f1;
+  --accent-purple-bg: rgba(99, 102, 241, 0.10);
   --success:        #2dd4a0;
   --sidebar-label:  #a0aec8;
   --shadow-card:    0 2px 12px rgba(13, 21, 48, 0.07);
@@ -45,6 +47,8 @@
   --accent:         #0cc0df;
   --accent-bg:      rgba(12, 192, 223, 0.12);
   --accent-orange:  #ff8c4a;
+  --accent-purple:  #818cf8;
+  --accent-purple-bg: rgba(129, 140, 248, 0.12);
   --success:        #2dd4a0;
   --sidebar-label:  rgba(234, 236, 255, 0.22);
   --shadow-card:    0 4px 24px rgba(0, 0, 0, 0.50);

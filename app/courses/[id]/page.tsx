@@ -58,6 +58,10 @@ export default function CourseDetailPage() {
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState("");
   const [copied, setCopied] = useState(false);
+  const [selecting, setSelecting] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [duplicating, setDuplicating] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -137,6 +141,93 @@ export default function CourseDetailPage() {
         body: JSON.stringify({ released: release }),
       })
     ));
+  }
+
+  function toggleSelect(lessonId: string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      next.has(lessonId) ? next.delete(lessonId) : next.add(lessonId);
+      return next;
+    });
+  }
+
+  async function duplicateLesson(lesson: Lesson): Promise<Lesson | null> {
+    const full = await fetch(`/api/lessons/${lesson.id}`).then(r => r.json());
+    const body = {
+      title: `Copy of ${full.title}`,
+      topics: full.topics ?? "",
+      deadline: full.deadline ?? "",
+      tag: full.tag ?? "",
+      subtitle: full.subtitle ?? "",
+      overview: full.overview ?? "",
+      learningTargets: full.learningTargets ?? "",
+      vocabulary: full.vocabulary ?? "",
+      warmUp: full.warmUp ?? "",
+      slideContent: full.slideContent ?? "",
+      guidedLab: full.guidedLab ?? "",
+      selfPaced: full.selfPaced ?? "",
+      submissionChecklist: full.submissionChecklist ?? "",
+      checkpoint: full.checkpoint ?? "",
+      industryBestPractices: full.industryBestPractices ?? "",
+      devJournalPrompt: full.devJournalPrompt ?? "",
+      rubric: full.rubric ?? "",
+      sources: full.sources ?? "",
+      studentLevel: full.studentLevel,
+      quizQuestions: full.quizQuestions,
+      courseId: id,
+      released: false,
+      folder: full.folder ?? "",
+    };
+    const res = await fetch("/api/lessons", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) return null;
+    const copy = await res.json();
+    // Add to course lessonIds
+    await fetch(`/api/courses/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lessonIds: [...(course?.lessonIds ?? []), copy.id] }),
+    });
+    return copy;
+  }
+
+  async function handleDuplicateLesson(lesson: Lesson) {
+    const copy = await duplicateLesson(lesson);
+    if (copy) {
+      setLessons(prev => [...prev, copy]);
+      setCourse(prev => prev ? { ...prev, lessonIds: [...prev.lessonIds, copy.id] } : prev);
+    }
+  }
+
+  async function handleBulkDuplicate() {
+    if (selectedIds.size === 0) return;
+    setDuplicating(true);
+    const targets = lessons.filter(l => selectedIds.has(l.id));
+    const copies = await Promise.all(targets.map(duplicateLesson));
+    const valid = copies.filter(Boolean) as Lesson[];
+    if (valid.length) {
+      setLessons(prev => [...prev, ...valid]);
+      setCourse(prev => prev ? { ...prev, lessonIds: [...prev.lessonIds, ...valid.map(c => c.id)] } : prev);
+    }
+    setSelectedIds(new Set());
+    setSelecting(false);
+    setDuplicating(false);
+  }
+
+  async function handleBulkDelete() {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`Delete ${selectedIds.size} lesson${selectedIds.size > 1 ? "s" : ""}? This cannot be undone.`)) return;
+    setBulkDeleting(true);
+    const ids = [...selectedIds];
+    await Promise.all(ids.map(lid => fetch(`/api/lessons/${lid}`, { method: "DELETE" })));
+    setLessons(prev => prev.filter(l => !selectedIds.has(l.id)));
+    setCourse(prev => prev ? { ...prev, lessonIds: prev.lessonIds.filter(l => !selectedIds.has(l)) } : prev);
+    setSelectedIds(new Set());
+    setSelecting(false);
+    setBulkDeleting(false);
   }
 
   async function handleRemoveLesson(lessonId: string) {
@@ -231,37 +322,75 @@ export default function CourseDetailPage() {
               )}
             </p>
             <div className="flex items-center gap-2">
-              {lessons.length > 0 && (
-                <button
-                  onClick={() => handleBulkRelease(!lessons.every(l => l.released))}
-                  className="rounded-xl px-3 py-2 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)]"
-                  style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
-                >
-                  {lessons.every(l => l.released) ? "Unrelease All" : "Release All"}
-                </button>
+              {selecting ? (
+                <>
+                  <button
+                    onClick={() => { setSelecting(false); setSelectedIds(new Set()); }}
+                    className="rounded-xl px-3 py-2 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)]"
+                    style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleBulkDuplicate}
+                    disabled={selectedIds.size === 0 || duplicating || bulkDeleting}
+                    className="rounded-xl bg-[#6366f1] px-3 py-2 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50 transition"
+                  >
+                    {duplicating ? "Duplicating…" : `Duplicate${selectedIds.size > 0 ? ` (${selectedIds.size})` : ""}`}
+                  </button>
+                  <button
+                    onClick={handleBulkDelete}
+                    disabled={selectedIds.size === 0 || duplicating || bulkDeleting}
+                    className="rounded-xl px-3 py-2 text-xs font-semibold text-red-500 hover:bg-red-500/10 disabled:opacity-50 transition"
+                    style={{ border: "1px solid var(--border)" }}
+                  >
+                    {bulkDeleting ? "Deleting…" : `Delete${selectedIds.size > 0 ? ` (${selectedIds.size})` : ""}`}
+                  </button>
+                </>
+              ) : (
+                <>
+                  {lessons.length > 0 && (
+                    <>
+                      <button
+                        onClick={() => setSelecting(true)}
+                        className="rounded-xl px-3 py-2 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)]"
+                        style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+                      >
+                        Select
+                      </button>
+                      <button
+                        onClick={() => handleBulkRelease(!lessons.every(l => l.released))}
+                        className="rounded-xl px-3 py-2 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)]"
+                        style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+                      >
+                        {lessons.every(l => l.released) ? "Unrelease All" : "Release All"}
+                      </button>
+                    </>
+                  )}
+                  <button
+                    onClick={handleCopyLink}
+                    className="rounded-xl px-3 py-2 text-xs font-semibold text-[#2dd4a0] hover:bg-[#2dd4a0]/10 transition"
+                    style={{ border: "1px solid #2dd4a0" }}
+                  >
+                    {copied ? "Copied!" : "Copy Link"}
+                  </button>
+                  <a
+                    href={`/courses/${id}/student`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-xl px-3 py-2 text-xs font-semibold text-[#2dd4a0] hover:bg-[#2dd4a0]/10 transition"
+                    style={{ border: "1px solid #2dd4a0" }}
+                  >
+                    Student View ↗
+                  </a>
+                  <Link
+                    href={`/lessons/new?courseId=${id}`}
+                    className="rounded-xl bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-xs font-bold text-white hover:opacity-90 transition shadow"
+                  >
+                    + New Lesson
+                  </Link>
+                </>
               )}
-              <button
-                onClick={handleCopyLink}
-                className="rounded-xl px-3 py-2 text-xs font-semibold text-[#2dd4a0] hover:bg-[#2dd4a0]/10 transition"
-                style={{ border: "1px solid #2dd4a0" }}
-              >
-                {copied ? "Copied!" : "Copy Link"}
-              </button>
-              <a
-                href={`/courses/${id}/student`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="rounded-xl px-3 py-2 text-xs font-semibold text-[#2dd4a0] hover:bg-[#2dd4a0]/10 transition"
-                style={{ border: "1px solid #2dd4a0" }}
-              >
-                Student View ↗
-              </a>
-              <Link
-                href={`/lessons/new?courseId=${id}`}
-                className="rounded-xl bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-xs font-bold text-white hover:opacity-90 transition shadow"
-              >
-                + New Lesson
-              </Link>
             </div>
           </div>
 
@@ -280,13 +409,25 @@ export default function CourseDetailPage() {
               {lessons.map((lesson, i) => (
                 <div
                   key={lesson.id}
-                  className="flex items-center gap-4 px-4 py-3 transition hover:bg-[var(--bg-card-hover)]"
+                  onClick={selecting ? () => toggleSelect(lesson.id) : undefined}
+                  className={`flex items-center gap-4 px-4 py-3 transition ${selecting ? "cursor-pointer" : "hover:bg-[var(--bg-card-hover)]"} ${selecting && selectedIds.has(lesson.id) ? "bg-[#6366f1]/10" : ""}`}
                   style={{
-                    background: "var(--bg-card)",
+                    background: selecting && selectedIds.has(lesson.id) ? undefined : "var(--bg-card)",
                     borderTop: i > 0 ? "1px solid var(--border)" : undefined,
                   }}
                 >
-                  <span className={`w-2 h-2 rounded-full shrink-0 ${STATUS_COLOR[lesson.status]}`} />
+                  {selecting ? (
+                    <div
+                      className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition ${selectedIds.has(lesson.id) ? "bg-[#6366f1] border-[#6366f1]" : "border-[var(--border)]"}`}
+                      style={selectedIds.has(lesson.id) ? {} : { background: "var(--bg-body)" }}
+                    >
+                      {selectedIds.has(lesson.id) && (
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-2.5 h-2.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                      )}
+                    </div>
+                  ) : (
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${STATUS_COLOR[lesson.status]}`} />
+                  )}
 
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold truncate" style={{ color: "var(--text-primary)" }}>{lesson.title}</p>
@@ -303,33 +444,44 @@ export default function CourseDetailPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
-                    <button
-                      onClick={() => handleToggleReleased(lesson)}
-                      title={lesson.released ? "Click to hide from students" : "Click to release to students"}
-                      className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition ${
-                        lesson.released
-                          ? "bg-[#2dd4a0]/15 text-[#2dd4a0] hover:bg-[#2dd4a0]/25"
-                          : "hover:bg-[var(--bg-card-hover)]"
-                      }`}
-                      style={lesson.released ? {} : { border: "1px solid var(--border)", color: "var(--text-muted)" }}
-                    >
-                      {lesson.released ? "Released" : "Release"}
-                    </button>
-                    <Link
-                      href={`/lessons/${lesson.id}`}
-                      className="rounded-xl bg-[#0cc0df] px-3 py-1.5 text-xs font-semibold text-[#0a0b13] hover:opacity-90 transition"
-                    >
-                      Edit
-                    </Link>
-                    <button
-                      onClick={() => handleRemoveLesson(lesson.id)}
-                      className="rounded-xl px-3 py-1.5 text-xs font-semibold text-red-500 hover:bg-red-500/10 transition"
-                      style={{ border: "1px solid var(--border)" }}
-                    >
-                      Remove
-                    </button>
-                  </div>
+                  {!selecting && (
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        onClick={() => handleToggleReleased(lesson)}
+                        title={lesson.released ? "Click to hide from students" : "Click to release to students"}
+                        className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition ${
+                          lesson.released
+                            ? "bg-[#2dd4a0]/15 text-[#2dd4a0] hover:bg-[#2dd4a0]/25"
+                            : "hover:bg-[var(--bg-card-hover)]"
+                        }`}
+                        style={lesson.released ? {} : { border: "1px solid var(--border)", color: "var(--text-muted)" }}
+                      >
+                        {lesson.released ? "Released" : "Release"}
+                      </button>
+                      <Link
+                        href={`/lessons/${lesson.id}`}
+                        className="rounded-xl bg-[#0cc0df] px-3 py-1.5 text-xs font-semibold text-[#0a0b13] hover:opacity-90 transition"
+                      >
+                        Edit
+                      </Link>
+                      <button
+                        onClick={() => handleDuplicateLesson(lesson)}
+                        title="Duplicate lesson"
+                        className="p-1.5 rounded-lg transition hover:bg-[var(--bg-card-hover)]"
+                        style={{ color: "var(--text-muted)" }}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                      </button>
+                      <button
+                        onClick={() => handleRemoveLesson(lesson.id)}
+                        title="Delete lesson"
+                        className="p-1.5 rounded-lg transition hover:text-red-500 hover:bg-red-500/10"
+                        style={{ color: "var(--text-muted)" }}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

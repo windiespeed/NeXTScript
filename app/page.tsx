@@ -2,6 +2,7 @@
 
 import { useEffect, useState, Suspense, useMemo } from "react";
 import { useSession, signIn } from "next-auth/react";
+import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -30,35 +31,37 @@ type Destination = "drive" | "download";
 
 // ── Donut ring ────────────────────────────────────────────────────────────────
 function DonutRing({ value, total, color, label }: { value: number; total: number; color: string; label: string }) {
-  const r = 26;
+  const r = 34;
   const circ = 2 * Math.PI * r;
   const pct = total > 0 ? value / total : 0;
   const dash = pct * circ;
   return (
-    <div className="flex flex-col items-center gap-1.5">
-      <div className="relative w-[64px] h-[64px]">
-        <svg width="64" height="64" viewBox="0 0 64 64" style={{ transform: "rotate(-90deg)" }}>
-          <circle cx="32" cy="32" r={r} fill="none" stroke="var(--border)" strokeWidth="6" />
+    <div className="flex flex-col items-center gap-2">
+      <div className="relative w-[84px] h-[84px]">
+        <svg width="84" height="84" viewBox="0 0 84 84" style={{ transform: "rotate(-90deg)" }}>
+          <circle cx="42" cy="42" r={r} fill="none" stroke="var(--border)" strokeWidth="7" />
           <circle
-            cx="32" cy="32" r={r} fill="none" stroke={color} strokeWidth="6"
+            cx="42" cy="42" r={r} fill="none" stroke={color} strokeWidth="7"
             strokeDasharray={`${dash} ${circ}`} strokeLinecap="round"
             style={{ transition: "stroke-dasharray 0.6s ease" }}
           />
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-xs font-bold" style={{ color: "var(--text-primary)" }}>
+          <span className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>
             {Math.round(pct * 100)}%
           </span>
         </div>
       </div>
-      <p className="text-lg font-bold leading-none" style={{ color: "var(--text-primary)" }}>{value}</p>
-      <p className="text-[10px] text-center leading-tight" style={{ color: "var(--text-muted)" }}>{label}</p>
+      <p className="text-xl font-bold leading-none" style={{ color: "var(--text-primary)" }}>{value}</p>
+      <p className="text-[10px] text-center leading-tight" style={{ color }}>
+        {label}
+      </p>
     </div>
   );
 }
 
-// ── Weekly activity bars ───────────────────────────────────────────────────────
-function ActivityBars({ lessons }: { lessons: Lesson[] }) {
+// ── Area chart ────────────────────────────────────────────────────────────────
+function AreaChart({ lessons }: { lessons: Lesson[] }) {
   const weeks = useMemo(() => {
     const buckets = new Array(8).fill(0);
     const now = Date.now();
@@ -70,21 +73,50 @@ function ActivityBars({ lessons }: { lessons: Lesson[] }) {
     return buckets;
   }, [lessons]);
 
+  const W = 280, H = 80, pad = 10;
   const max = Math.max(...weeks, 1);
+  const pts = weeks.map((v, i) => ({
+    x: pad + (i / (weeks.length - 1)) * (W - pad * 2),
+    y: H - pad - (v / max) * (H - pad * 2),
+  }));
+
+  function buildPath(points: { x: number; y: number }[]) {
+    const d = [`M ${points[0].x.toFixed(1)} ${points[0].y.toFixed(1)}`];
+    for (let i = 1; i < points.length; i++) {
+      const p0 = points[Math.max(0, i - 2)];
+      const p1 = points[i - 1];
+      const p2 = points[i];
+      const p3 = points[Math.min(points.length - 1, i + 1)];
+      const cp1x = p1.x + (p2.x - p0.x) / 6;
+      const cp1y = p1.y + (p2.y - p0.y) / 6;
+      const cp2x = p2.x - (p3.x - p1.x) / 6;
+      const cp2y = p2.y - (p3.y - p1.y) / 6;
+      d.push(`C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`);
+    }
+    return d.join(" ");
+  }
+
+  const linePath = buildPath(pts);
+  const last = pts[pts.length - 1];
+  const areaPath = `${linePath} L ${last.x.toFixed(1)} ${H} L ${pts[0].x.toFixed(1)} ${H} Z`;
 
   return (
-    <div className="flex items-end gap-1 h-14 w-full">
-      {weeks.map((count, i) => (
-        <div
-          key={i}
-          className="flex-1 rounded-t-sm transition-all duration-500"
-          style={{
-            height: `${Math.max((count / max) * 100, count > 0 ? 6 : 2)}%`,
-            background: i === 7 ? "#0cc0df" : "rgba(12,192,223,0.25)",
-          }}
-        />
-      ))}
-    </div>
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 80, overflow: "visible" }}>
+      <defs>
+        <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#0cc0df" stopOpacity="0.25" />
+          <stop offset="100%" stopColor="#0cc0df" stopOpacity="0" />
+        </linearGradient>
+        <linearGradient id="areaGrad2" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#6366f1" stopOpacity="0.15" />
+          <stop offset="100%" stopColor="#6366f1" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={areaPath} fill="url(#areaGrad)" />
+      <path d={linePath} fill="none" stroke="#0cc0df" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={last.x} cy={last.y} r="4" fill="#0cc0df" />
+      <circle cx={last.x} cy={last.y} r="8" fill="none" stroke="#0cc0df" strokeWidth="1.5" strokeOpacity="0.35" />
+    </svg>
   );
 }
 
@@ -118,6 +150,8 @@ function SortableLessonCard({ lesson, ...props }: SortableCardProps) {
 // ── Main Dashboard ────────────────────────────────────────────────────────────
 function Dashboard() {
   const { data: session, status } = useSession();
+  const searchParams = useSearchParams();
+  const searchQuery = searchParams.get("q")?.toLowerCase().trim() ?? "";
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [projects, setProjects] = useState<SavedProject[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
@@ -163,8 +197,15 @@ function Dashboard() {
       .filter(l => !lessonOrder.includes(l.id))
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
     const ordered = orderedIds.map(id => lessons.find(l => l.id === id)!);
-    return [...unordered, ...ordered];
-  }, [lessons, lessonOrder]);
+    const all = [...unordered, ...ordered];
+    if (!searchQuery) return all;
+    return all.filter(l =>
+      l.title?.toLowerCase().includes(searchQuery) ||
+      l.subtitle?.toLowerCase().includes(searchQuery) ||
+      l.topics?.toLowerCase().includes(searchQuery) ||
+      l.tag?.toLowerCase().includes(searchQuery)
+    );
+  }, [lessons, lessonOrder, searchQuery]);
 
   // ── Handlers ───────────────────────────────────────────────────────────────
   function toggleSelect(id: string) {
@@ -340,7 +381,7 @@ function Dashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
           {/* ── Activity + By Course ── */}
-          <div className="rounded-2xl p-5 flex flex-col gap-4" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
+          <div className="rounded-2xl p-5 flex flex-col gap-4" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-card)" }}>
             <div className="flex items-center justify-between">
               <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Activity</p>
               <span className="text-[10px] px-2 py-0.5 rounded-md font-medium" style={{ background: "var(--bg-card-hover)", color: "var(--text-muted)" }}>
@@ -352,7 +393,7 @@ function Dashboard() {
               <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>total lessons created</p>
             </div>
             <div>
-              <ActivityBars lessons={lessons} />
+              <AreaChart lessons={lessons} />
               <div className="flex justify-between mt-1.5">
                 <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>8 wks ago</span>
                 <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>This week</span>
@@ -361,20 +402,39 @@ function Dashboard() {
 
             {/* By Course */}
             {courses.length > 0 && (
-              <div className="pt-3 flex flex-col gap-2" style={{ borderTop: "1px solid var(--border)" }}>
+              <div className="pt-3 flex flex-col gap-2.5" style={{ borderTop: "1px solid var(--border)" }}>
                 <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "var(--sidebar-label)" }}>
                   By Course
                 </p>
-                {courses.slice(0, 4).map(course => (
-                  <Link key={course.id} href={`/courses/${course.id}`} className="flex items-center justify-between group gap-2">
-                    <p className="text-xs truncate group-hover:text-[#0cc0df] transition" style={{ color: "var(--text-secondary)" }}>
-                      {course.title}
-                    </p>
-                    <span className="text-[10px] font-bold shrink-0 rounded px-1.5 py-0.5" style={{ background: "var(--accent-bg)", color: "var(--accent)" }}>
-                      {course.lessonIds.length}
-                    </span>
-                  </Link>
-                ))}
+                {(() => {
+                  const dotColors = ["#0cc0df", "#6366f1", "#ff8c4a", "#2dd4a0"];
+                  return courses.slice(0, 4).map((course, i) => {
+                    const total = lessons.filter(l => l.courseId === course.id).length;
+                    const done = lessons.filter(l => l.courseId === course.id && l.status === "done").length;
+                    const pct = total > 0 ? (done / total) * 100 : 0;
+                    const color = dotColors[i % dotColors.length];
+                    return (
+                      <Link key={course.id} href={`/courses/${course.id}`} className="flex items-center gap-2.5 group">
+                        <div className="w-7 h-7 rounded-lg shrink-0 flex items-center justify-center" style={{ background: `${color}22` }}>
+                          <div className="w-2 h-2 rounded-full" style={{ background: color }} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium truncate group-hover:text-[#0cc0df] transition" style={{ color: "var(--text-primary)" }}>
+                            {course.title}
+                          </p>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <div className="flex-1 h-1 rounded-full overflow-hidden" style={{ background: "var(--bg-card-hover)" }}>
+                              <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: color }} />
+                            </div>
+                            <span className="text-[10px] shrink-0 font-semibold" style={{ color: "var(--text-muted)" }}>
+                              {total}
+                            </span>
+                          </div>
+                        </div>
+                      </Link>
+                    );
+                  });
+                })()}
                 {courses.length > 4 && (
                   <Link href="/courses" className="text-[10px] text-[#0cc0df] hover:underline">
                     +{courses.length - 4} more courses →
@@ -385,7 +445,7 @@ function Dashboard() {
           </div>
 
           {/* ── Progress donuts ── */}
-          <div className="rounded-2xl p-5 flex flex-col gap-4" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
+          <div className="rounded-2xl p-5 flex flex-col gap-4" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-card)" }}>
             <div className="flex items-center justify-between">
               <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Progress</p>
             </div>
@@ -398,13 +458,13 @@ function Dashboard() {
             <div className="flex items-end justify-around pt-1">
               <DonutRing value={inProgressCount} total={Math.max(lessons.length, 1)} color="#ff8c4a" label="In Progress" />
               <DonutRing value={doneCount}        total={Math.max(lessons.length, 1)} color="#0cc0df"  label="Generated" />
-              <DonutRing value={draftCount}       total={Math.max(lessons.length, 1)} color="#2dd4a0"  label="Draft" />
+              <DonutRing value={draftCount}       total={Math.max(lessons.length, 1)} color="#6366f1"  label="Draft" />
             </div>
             <div className="grid grid-cols-3 gap-2 pt-3" style={{ borderTop: "1px solid var(--border)" }}>
               {[
                 { label: "In Progress", value: inProgressCount, color: "#ff8c4a" },
                 { label: "Generated",   value: doneCount,       color: "#0cc0df" },
-                { label: "Draft",       value: draftCount,      color: "#2dd4a0" },
+                { label: "Draft",       value: draftCount,      color: "#6366f1" },
               ].map(({ label, value, color }) => (
                 <div key={label} className="text-center">
                   <p className="text-base font-bold" style={{ color: "var(--text-primary)" }}>{value}</p>
@@ -415,7 +475,7 @@ function Dashboard() {
           </div>
 
           {/* ── Active Course ── */}
-          <div className="rounded-2xl p-5 flex flex-col gap-4" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
+          <div className="rounded-2xl p-5 flex flex-col gap-4" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-card)" }}>
             <div className="flex items-center justify-between">
               <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Active Course</p>
               <Link href="/courses" className="text-[10px] text-[#0cc0df] hover:underline">
@@ -461,8 +521,11 @@ function Dashboard() {
                     </div>
                     <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "var(--bg-card-hover)" }}>
                       <div
-                        className="h-full rounded-full bg-[#0cc0df] transition-all duration-700"
-                        style={{ width: `${activeCourseTotal > 0 ? (activeCourseProgress / activeCourseTotal) * 100 : 0}%` }}
+                        className="h-full rounded-full transition-all duration-700"
+                        style={{
+                          width: `${activeCourseTotal > 0 ? (activeCourseProgress / activeCourseTotal) * 100 : 0}%`,
+                          background: "linear-gradient(90deg, #6366f1, #818cf8)",
+                        }}
                       />
                     </div>
                   </div>
@@ -485,7 +548,8 @@ function Dashboard() {
 
                 <Link
                   href={`/courses/${activeCourse.id}`}
-                  className="flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold text-[#0a0b13] bg-[#0cc0df] hover:opacity-90 transition"
+                  className="flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold text-white hover:opacity-90 transition"
+                  style={{ background: "linear-gradient(135deg, #6366f1, #818cf8)" }}
                 >
                   Open Course
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -513,145 +577,42 @@ function Dashboard() {
 
       {/* ── Upcoming deadlines strip (if any) ───────────────────────────────── */}
       {!loading && upcoming.length > 0 && (
-        <div className="rounded-2xl p-4" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--sidebar-label)" }}>
-              Upcoming Deadlines
-            </p>
+        <div className="rounded-2xl p-5" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Schedule</p>
             <Link href="/schedule" className="text-[10px] text-[#0cc0df] hover:underline">
               Full schedule →
             </Link>
           </div>
           <div className="flex gap-3 overflow-x-auto pb-1">
-            {upcoming.map(lesson => (
-              <Link
-                key={lesson.id}
-                href={`/lessons/${lesson.id}`}
-                className="shrink-0 rounded-xl px-4 py-3 flex flex-col gap-1 min-w-[160px] transition hover:opacity-80"
-                style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)" }}
-              >
-                <div className="flex items-center gap-1.5 mb-0.5">
-                  <div className="w-1.5 h-1.5 rounded-full bg-[#ff8c4a] shrink-0" />
-                  <span className="text-[10px] font-bold" style={{ color: "#ff8c4a" }}>{lesson.deadline}</span>
-                </div>
-                <p className="text-xs font-semibold leading-snug line-clamp-2" style={{ color: "var(--text-primary)" }}>{lesson.title}</p>
-                {lesson.tag && (
-                  <span className="text-[10px] self-start px-1.5 py-0.5 rounded" style={{ background: "var(--accent-bg)", color: "var(--accent)" }}>
-                    {lesson.tag}
-                  </span>
-                )}
-              </Link>
-            ))}
+            {upcoming.map((lesson, i) => {
+              const accentColors = ["#6366f1", "#0cc0df", "#ff8c4a", "#2dd4a0", "#f59e0b"];
+              const color = accentColors[i % accentColors.length];
+              return (
+                <Link
+                  key={lesson.id}
+                  href={`/lessons/${lesson.id}`}
+                  className="shrink-0 rounded-2xl p-4 flex flex-col gap-2 min-w-[200px] max-w-[220px] transition hover:-translate-y-0.5 hover:shadow-md"
+                  style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)" }}
+                >
+                  <div className="h-0.5 rounded-full w-8" style={{ background: color }} />
+                  <p className="text-xs font-semibold leading-snug line-clamp-2" style={{ color: "var(--text-primary)" }}>{lesson.title}</p>
+                  <div className="flex items-center gap-2 mt-auto flex-wrap">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg" style={{ background: `${color}22`, color }}>
+                      Due {lesson.deadline}
+                    </span>
+                    {lesson.tag && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-lg" style={{ background: "var(--accent-bg)", color: "var(--accent)" }}>
+                        {lesson.tag}
+                      </span>
+                    )}
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         </div>
       )}
-
-      {/* ── All Lessons section ───────────────────────────────────────────────── */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--sidebar-label)" }}>
-            All Lessons
-            {lessons.filter(l => !l.courseId).length !== lessons.length && (
-              <span className="ml-2 normal-case font-normal" style={{ color: "var(--text-muted)" }}>
-                ({lessons.filter(l => !l.courseId).length} standalone)
-              </span>
-            )}
-          </p>
-          <div className="flex items-center gap-2">
-            {!loading && sorted.length > 0 && (
-              selecting ? (
-                <button onClick={exitSelecting} className="rounded-xl border px-3 py-1.5 text-xs font-semibold transition" style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
-                  Cancel
-                </button>
-              ) : (
-                <button onClick={() => setSelecting(true)} className="rounded-xl border px-3 py-1.5 text-xs font-semibold transition" style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
-                  Select
-                </button>
-              )
-            )}
-            <Link href="/lessons/new" className="rounded-xl bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-3 py-1.5 text-xs font-bold text-white hover:opacity-90 transition shadow">
-              + New Lesson
-            </Link>
-          </div>
-        </div>
-
-        {/* Bulk action bar */}
-        {selecting && (
-          <div className="flex items-center justify-between mb-4 rounded-2xl px-4 py-3 shadow-sm" style={{ border: "1px solid var(--border)", background: "var(--bg-card)" }}>
-            <div className="flex items-center gap-3">
-              <div
-                onClick={toggleSelectAll}
-                className={`w-5 h-5 rounded-md border-2 flex items-center justify-center cursor-pointer transition-all duration-150 ${
-                  selected.size === sorted.length && sorted.length > 0
-                    ? "bg-[#0cc0df] border-[#0cc0df]"
-                    : selected.size > 0
-                    ? "bg-[#0cc0df]/30 border-[#0cc0df]"
-                    : "border-[var(--border)]"
-                }`}
-                style={selected.size === 0 ? { background: "var(--bg-body)" } : {}}
-              >
-                {selected.size === sorted.length && sorted.length > 0 ? (
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 text-[#0d1c35]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                ) : selected.size > 0 ? (
-                  <div className="w-2 h-0.5 bg-[#0d1c35]" />
-                ) : null}
-              </div>
-              <span className="text-sm" style={{ color: "var(--text-secondary)" }}>
-                {selected.size === 0 ? "Select all" : `${selected.size} of ${sorted.length} selected`}
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleBulkDuplicate}
-                disabled={selected.size === 0 || bulkDuplicating}
-                className="rounded-xl px-4 py-1.5 text-sm font-semibold disabled:opacity-40 transition"
-                style={{ border: "1px solid var(--border)", color: "var(--text-primary)" }}
-              >
-                {bulkDuplicating ? "Duplicating…" : `Duplicate${selected.size > 0 ? ` (${selected.size})` : ""}`}
-              </button>
-              <button
-                onClick={handleBulkDelete}
-                disabled={selected.size === 0 || bulkDeleting}
-                className="rounded-xl bg-red-600 px-4 py-1.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-40 transition"
-              >
-                {bulkDeleting ? "Deleting…" : `Delete${selected.size > 0 ? ` (${selected.size})` : ""}`}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Lesson grid */}
-        {loading ? (
-          <p className="text-[#0cc0df] text-sm">Loading…</p>
-        ) : sorted.length === 0 ? (
-          <div className="text-center py-16 rounded-2xl" style={{ border: "1px solid var(--border)", background: "var(--bg-card)" }}>
-            <p className="text-sm mb-4" style={{ color: "var(--text-muted)" }}>No lessons yet.</p>
-            <Link href="/lessons/new" className="rounded-xl bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition">
-              Create your first lesson
-            </Link>
-          </div>
-        ) : (
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <SortableContext items={sorted.map(l => l.id)} strategy={rectSortingStrategy}>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 items-stretch">
-                {sorted.map(lesson => (
-                  <SortableLessonCard
-                    key={lesson.id}
-                    lesson={lesson}
-                    projects={projects.filter(p => p.lessonId === lesson.id)}
-                    onDelete={handleDelete}
-                    onDuplicate={handleDuplicate}
-                    onOpenModal={setModalLessonId}
-                    selecting={selecting}
-                    selected={selected.has(lesson.id)}
-                    onToggleSelect={toggleSelect}
-                  />
-                ))}
-              </div>
-            </SortableContext>
-          </DndContext>
-        )}
-      </div>
 
       <GenerateModal lesson={modalLesson} onClose={() => setModalLessonId(null)} onGenerate={handleGenerateWithOptions} />
 

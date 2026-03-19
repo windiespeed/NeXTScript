@@ -3,6 +3,8 @@ import { Geist } from "next/font/google";
 import "./globals.css";
 import Providers from "./providers";
 import Sidebar from "@/components/Sidebar";
+import TopBar from "@/components/TopBar";
+import { MobileMenuProvider } from "@/context/MobileMenu";
 
 const geist = Geist({ subsets: ["latin"] });
 
@@ -19,13 +21,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className={`${geist.className} min-h-screen antialiased`} style={{ backgroundColor: "var(--bg-body)", color: "var(--text-primary)" }}>
         <Providers>
-          <Sidebar />
-          {/* Desktop: offset for sidebar. Mobile: offset for top bar */}
-          <div className="lg:pl-60 pt-[57px] lg:pt-0 min-h-screen">
-            <main className="mx-auto max-w-5xl px-4 py-8">
-              {children}
-            </main>
-          </div>
+          <MobileMenuProvider>
+            <TopBar />
+            <Sidebar />
+            {/* Offset: top bar (64px) + left sidebar (240px on desktop) */}
+            <div className="lg:pl-60 pt-16 min-h-screen">
+              <main className="mx-auto max-w-5xl px-6 py-8">
+                {children}
+              </main>
+            </div>
+          </MobileMenuProvider>
         </Providers>
       </body>
     </html>

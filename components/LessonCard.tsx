@@ -53,8 +53,8 @@ export default function LessonCard({ lesson, projects = [], onDelete, onDuplicat
   return (
     <div
       onClick={selecting ? () => onToggleSelect?.(lesson.id) : undefined}
-      className={`relative h-full rounded-2xl flex flex-col overflow-hidden shadow-sm transition-all duration-200 ${selecting ? "cursor-pointer" : "hover:-translate-y-1 hover:shadow-md"} ${selected ? "ring-2 ring-[#0cc0df]/60 opacity-100" : selecting ? "opacity-50" : ""}`}
-      style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}
+      className={`relative h-full rounded-2xl flex flex-col overflow-hidden transition-all duration-200 ${selecting ? "cursor-pointer" : "hover:-translate-y-1 hover:shadow-lg"} ${selected ? "ring-2 ring-[#0cc0df]/60 opacity-100" : selecting ? "opacity-50" : ""}`}
+      style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-card)" }}
     >
       {selecting && (
         <div className="absolute top-3 right-3 z-10" onClick={e => e.stopPropagation()}>
@@ -82,18 +82,6 @@ export default function LessonCard({ lesson, projects = [], onDelete, onDuplicat
             )}
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            <button
-              onClick={() => onDuplicate(lesson.id)}
-              title="Duplicate"
-              className="p-1.5 rounded-lg transition"
-              style={{ color: "var(--text-muted)" }}
-              onMouseEnter={e => (e.currentTarget.style.background = "var(--bg-card-hover)")}
-              onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-              </svg>
-            </button>
             <button
               onClick={() => onDelete(lesson.id)}
               title="Delete"
@@ -186,8 +174,8 @@ export default function LessonCard({ lesson, projects = [], onDelete, onDuplicat
       )}
 
       {/* Topics + Dates shaded block */}
-      <div className="px-5 py-3 flex flex-col gap-2" style={{ background: "var(--accent-bg)" }}>
-        <p className="text-xs leading-relaxed line-clamp-3 h-[3.75rem] text-[#0cc0df]">
+      <div className="px-5 py-3 flex flex-col gap-2" style={{ background: "var(--bg-card-hover)", borderTop: "1px solid var(--border)" }}>
+        <p className="text-xs leading-relaxed line-clamp-3 h-[3.75rem]" style={{ color: "var(--text-secondary)" }}>
           {lesson.topics || ""}
         </p>
         <div className="flex gap-3 text-xs" style={{ color: "var(--text-muted)" }}>
@@ -200,6 +188,13 @@ export default function LessonCard({ lesson, projects = [], onDelete, onDuplicat
 
       {/* Primary actions */}
       <div className="flex gap-2 px-4 py-3" style={{ borderTop: "1px solid var(--border)" }}>
+        <button
+          onClick={() => onDuplicate(lesson.id)}
+          className="flex items-center justify-center rounded-xl px-3 py-2 text-xs font-semibold active:scale-95 transition-all duration-150 hover:bg-[var(--bg-card-hover)]"
+          style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+        >
+          Duplicate
+        </button>
         <Link
           href={`/lessons/${lesson.id}`}
           className="flex-1 flex items-center justify-center rounded-xl bg-[#0cc0df] px-3 py-2 text-xs font-semibold text-[#0a0b13] hover:opacity-90 active:scale-95 transition-all duration-150"
