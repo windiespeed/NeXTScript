@@ -17,7 +17,7 @@ const SECTION_LABEL_KEYS = [
   { key: "rubric",                label: "Assessment / Rubric" },
 ] as const;
 
-const inputClass = "w-full rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0cc0df] transition placeholder:text-[var(--text-muted)]";
+const inputClass = "w-full rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#0cc0df] transition placeholder:text-[var(--text-muted)]";
 const inputStyle = { background: "var(--bg-card-hover)", color: "var(--text-primary)", border: "1px solid var(--border)" };
 const sectionHeading = "text-xs font-semibold uppercase tracking-widest text-[#0cc0df] mb-3";
 

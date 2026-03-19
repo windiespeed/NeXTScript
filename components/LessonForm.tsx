@@ -43,6 +43,7 @@ const EMPTY: LessonInput = {
   topics: "",
   deadline: "",
   tag: "",
+  notes: "",
   overview: "",
   learningTargets: "",
   vocabulary: "",
@@ -300,7 +301,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
             value={form.title}
             onChange={(e) => set("title", e.target.value)}
             placeholder="e.g. Module 3, Lesson 2"
-            className="w-full rounded-md border border-[var(--border)] bg-[var(--bg-card)] px-3 py-2 text-sm text-[var(--text-primary)] shadow-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
+            className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-3 py-1.5 text-xs text-[var(--text-primary)] shadow-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
           />
         </div>
 
@@ -312,7 +313,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
             value={form.subtitle}
             onChange={(e) => set("subtitle", e.target.value)}
             placeholder="e.g. Introduction to CSS Flexbox"
-            className="w-full rounded-md border border-[var(--border)] bg-[var(--bg-card)] px-3 py-2 text-sm text-[var(--text-primary)] shadow-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
+            className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-3 py-1.5 text-xs text-[var(--text-primary)] shadow-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
           />
         </div>
 
@@ -324,28 +325,19 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
             value={form.topics}
             onChange={(e) => set("topics", e.target.value)}
             placeholder="e.g. Flexbox, CSS Layout"
-            className="w-full rounded-md border border-[var(--border)] bg-[var(--bg-card)] px-3 py-2 text-sm text-[var(--text-primary)] shadow-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
+            className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-3 py-1.5 text-xs text-[var(--text-primary)] shadow-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
           />
         </div>
 
         <div>
           <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Deadline</label>
           <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>The due date for this lesson's assignments.</p>
-          <div className="flex gap-2">
-            <input
-              type="date"
-              value={form.deadline}
-              onChange={(e) => set("deadline", e.target.value)}
-              className={`flex-1 rounded-md border border-[var(--border)] bg-[var(--bg-card)] px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-[#0cc0df] ${form.deadline ? "text-[var(--text-primary)]" : "text-[var(--text-muted)]"}`}
-            />
-            <input
-              type="text"
-              placeholder="Label (e.g. Sprint 3)"
-              value={form.tag}
-              onChange={(e) => set("tag", e.target.value)}
-              className="w-36 rounded-md border border-[var(--border)] bg-[var(--bg-card)] px-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] shadow-sm focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
-            />
-          </div>
+          <input
+            type="date"
+            value={form.deadline}
+            onChange={(e) => set("deadline", e.target.value)}
+            className={`w-full rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-3 py-1.5 text-xs shadow-sm focus:outline-none focus:ring-2 focus:ring-[#0cc0df] ${form.deadline ? "text-[var(--text-primary)]" : "text-[var(--text-muted)]"}`}
+          />
         </div>
 
         <div className="sm:col-span-2">
@@ -363,7 +355,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
             onChange={(e) => set("sources", e.target.value)}
             rows={4}
             placeholder={"https://www.w3.org/\nhttps://www.w3schools.com/\nhttps://www.wcag.com/"}
-            className="w-full rounded-md border border-[var(--border)] bg-[var(--bg-card)] px-3 py-2 text-sm text-[var(--text-primary)] font-mono shadow-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
+            className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-3 py-1.5 text-xs text-[var(--text-primary)] font-mono shadow-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
           />
         </div>
 
@@ -410,7 +402,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
               value={form[key] as string}
               onChange={(e) => { set(key, e.target.value); setAiFilledFields(prev => { const next = new Set(prev); next.delete(key); return next; }); }}
               rows={rows}
-              className={`w-full rounded-md border px-3 py-2 text-sm text-[var(--text-primary)] font-mono shadow-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[#0cc0df] bg-[var(--bg-card)] ${aiFilledFields.has(key) ? "border-[#0cc0df]/50" : "border-[var(--border)]"}`}
+              className={`w-full rounded-lg border px-3 py-1.5 text-xs text-[var(--text-primary)] font-mono shadow-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[#0cc0df] bg-[var(--bg-card)] ${aiFilledFields.has(key) ? "border-[#0cc0df]/50" : "border-[var(--border)]"}`}
             />
           </div>
         ))}
@@ -471,14 +463,14 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
                 value={slide.title}
                 onChange={(e) => setSlide(i, "title", e.target.value)}
                 placeholder="Slide title"
-                className="w-full rounded-md border border-[var(--border)] bg-[var(--bg-card)] px-3 py-2 text-sm text-[var(--text-primary)] shadow-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
+                className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-3 py-1.5 text-xs text-[var(--text-primary)] shadow-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
               />
               <textarea
                 value={slide.body}
                 onChange={(e) => setSlide(i, "body", e.target.value)}
                 rows={4}
                 placeholder="Slide content…"
-                className="w-full rounded-md border border-[var(--border)] bg-[var(--bg-card)] px-3 py-2 text-sm text-[var(--text-primary)] font-mono shadow-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
+                className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-3 py-1.5 text-xs text-[var(--text-primary)] font-mono shadow-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
               />
             </div>
           ))}
@@ -500,7 +492,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
               value={form[key] as string}
               onChange={(e) => { set(key, e.target.value); setAiFilledFields(prev => { const next = new Set(prev); next.delete(key); return next; }); }}
               rows={rows}
-              className={`w-full rounded-md border px-3 py-2 text-sm text-[var(--text-primary)] font-mono shadow-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[#0cc0df] bg-[var(--bg-card)] ${aiFilledFields.has(key) ? "border-[#0cc0df]/50" : "border-[var(--border)]"}`}
+              className={`w-full rounded-lg border px-3 py-1.5 text-xs text-[var(--text-primary)] font-mono shadow-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[#0cc0df] bg-[var(--bg-card)] ${aiFilledFields.has(key) ? "border-[#0cc0df]/50" : "border-[var(--border)]"}`}
             />
           </div>
         ))}
@@ -544,7 +536,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
                     value={q.text}
                     onChange={e => setQuizQuestions(prev => prev.map((x, idx) => idx === i ? { ...x, text: e.target.value } : x))}
                     placeholder="Enter question text"
-                    className="w-full rounded-md border border-[var(--border)] bg-[var(--bg-card)] px-3 py-2 text-sm text-[var(--text-primary)] shadow-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
+                    className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-3 py-1.5 text-xs text-[var(--text-primary)] shadow-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
                   />
                 </div>
                 <div>
@@ -552,7 +544,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
                   <select
                     value={q.type}
                     onChange={e => setQuizQuestions(prev => prev.map((x, idx) => idx === i ? { ...x, type: e.target.value as FormQuestion["type"] } : x))}
-                    className="rounded-md border border-[var(--border)] bg-[var(--bg-card)] px-3 py-2 text-sm text-[var(--text-primary)] shadow-sm focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
+                    className="rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-3 py-1.5 text-xs text-[var(--text-primary)] shadow-sm focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
                   >
                     <option value="multiple_choice">Multiple Choice</option>
                     <option value="short_answer">Short Answer</option>
@@ -574,7 +566,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
                           : x
                         ))}
                         placeholder={`Option ${oi + 1}`}
-                        className="flex-1 rounded-md border border-[var(--border)] bg-[var(--bg-card)] px-3 py-1.5 text-sm text-[var(--text-primary)] shadow-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
+                        className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-3 py-1.5 text-xs text-[var(--text-primary)] shadow-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
                       />
                       <button
                         type="button"
@@ -602,7 +594,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
                     <select
                       value={q.correctAnswer}
                       onChange={e => setQuizQuestions(prev => prev.map((x, idx) => idx === i ? { ...x, correctAnswer: e.target.value } : x))}
-                      className="w-full rounded-md border border-[var(--border)] bg-[var(--bg-card)] px-3 py-1.5 text-sm text-[var(--text-primary)] shadow-sm focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
+                      className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-3 py-1.5 text-xs text-[var(--text-primary)] shadow-sm focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
                     >
                       <option value="">— None —</option>
                       {q.options.filter(o => o.trim()).map((o, oi) => (
@@ -625,6 +617,21 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
             </div>
           ))}
         </div>
+      </div>
+
+      {/* ── Notes ───────────────────────────────────────────────────── */}
+      <div className="rounded-lg p-4 space-y-2" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
+        <div className="flex items-center gap-2 mb-1">
+          <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>Instructor Notes</p>
+          <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ background: "var(--bg-card-hover)", color: "var(--text-muted)" }}>Not included in generation</span>
+        </div>
+        <textarea
+          value={form.notes ?? ""}
+          onChange={(e) => set("notes", e.target.value)}
+          rows={4}
+          placeholder="Private notes, reminders, or context for this lesson…"
+          className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-card-hover)] px-3 py-1.5 text-xs text-[var(--text-primary)] shadow-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
+        />
       </div>
 
       <div className="space-y-2">

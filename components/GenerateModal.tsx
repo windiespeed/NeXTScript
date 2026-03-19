@@ -185,7 +185,7 @@ export default function GenerateModal({ lesson, onClose, onGenerate }: Props) {
               value={templateUrl}
               onChange={(e) => setTemplateUrl(e.target.value)}
               placeholder="https://docs.google.com/presentation/d/…"
-              className="flex-1 rounded-xl text-xs px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#0cc0df] placeholder:text-[var(--text-muted)]"
+              className="flex-1 rounded-lg text-xs px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#0cc0df] placeholder:text-[var(--text-muted)]"
               style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
             />
             {templateUrl.trim() && (

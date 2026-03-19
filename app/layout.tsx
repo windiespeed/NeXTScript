@@ -24,8 +24,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <MobileMenuProvider>
             <TopBar />
             <Sidebar />
-            {/* Offset: top bar (64px) + left sidebar (240px on desktop) */}
-            <div className="lg:pl-60 pt-16 min-h-screen">
+            {/* Offset: top bar (64px) + floating sidebar (224px + 12px margin = 236px) */}
+            <div className="lg:pl-[236px] pt-16 min-h-screen">
               <main className="mx-auto max-w-5xl px-6 py-8">
                 {children}
               </main>

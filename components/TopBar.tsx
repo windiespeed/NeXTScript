@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useSession, signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useMobileMenu } from "@/context/MobileMenu";
@@ -82,8 +82,8 @@ export default function TopBar() {
 
   return (
     <header
-      className="fixed top-0 left-0 right-0 z-50 h-16 flex items-center gap-4 px-4"
-      style={{ background: "var(--bg-sidebar)", borderBottom: "1px solid var(--border)" }}
+      className="fixed top-0 left-0 right-0 z-50 h-16 flex items-center px-4"
+      style={{ background: "var(--bg-sidebar)", boxShadow: "var(--shadow-card)" }}
     >
       {/* Logo — same width as sidebar so content aligns */}
       <div className="w-56 shrink-0">
@@ -91,19 +91,19 @@ export default function TopBar() {
           <Image
             src="/logo.png"
             alt="NeXTScript"
-            width={140}
-            height={38}
-            className="h-9 w-auto dark:brightness-0 dark:invert"
+            width={160}
+            height={44}
+            className="h-11 w-auto dark:brightness-0 dark:invert"
             priority
           />
         </Link>
       </div>
 
-      {/* Search bar */}
-      <form onSubmit={handleSearch} className="flex-1 max-w-lg">
+      {/* Search bar — absolutely centered */}
+      <form onSubmit={handleSearch} className="absolute left-1/2 -translate-x-1/2 w-full max-w-sm">
         <div className="relative">
           <svg
-            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
+            className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none"
             style={{ color: "var(--text-muted)" }}
             viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
             strokeLinecap="round" strokeLinejoin="round"
@@ -115,7 +115,7 @@ export default function TopBar() {
             value={query}
             onChange={e => setQuery(e.target.value)}
             placeholder="Search lessons, courses…"
-            className="w-full pl-9 pr-4 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0cc0df] transition placeholder:text-[var(--text-muted)]"
+            className="w-full pl-8 pr-3 py-1.5 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-[#0cc0df] transition placeholder:text-[var(--text-muted)]"
             style={{
               background: "var(--bg-card-hover)",
               border: "1px solid var(--border)",
@@ -153,18 +153,6 @@ export default function TopBar() {
               </span>
             </Link>
 
-            <button
-              onClick={() => signOut()}
-              className="p-2 rounded-xl transition-colors hover:text-red-400 hover:bg-red-400/10"
-              style={{ color: "var(--text-muted)" }}
-              title="Sign out"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-                <polyline points="16 17 21 12 16 7"/>
-                <line x1="21" y1="12" x2="9" y2="12"/>
-              </svg>
-            </button>
           </>
         )}
 

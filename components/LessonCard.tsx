@@ -117,11 +117,6 @@ export default function LessonCard({ lesson, projects = [], onDelete, onDuplicat
             <span className={`inline-block w-1.5 h-1.5 rounded-full ${STATUS_DOT[lesson.status]}`} />
             {STATUS_LABELS[lesson.status]}
           </span>
-          {lesson.tag && (
-            <span className="rounded-md px-2 py-0.5 text-[10px] font-semibold text-[#0cc0df]" style={{ background: "var(--accent-bg)" }}>
-              {lesson.tag}
-            </span>
-          )}
           {lesson.deadline && (
             <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
               Due <span className="font-medium" style={{ color: "var(--text-primary)" }}>{lesson.deadline}</span>

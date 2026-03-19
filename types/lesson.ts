@@ -33,6 +33,7 @@ export interface Lesson {
   sources: string;               // Reference URLs (one per line) used during generation
   studentLevel?: "beginner" | "intermediate" | "advanced"; // Target student experience level for AI generation
   quizQuestions?: FormQuestion[]; // Custom quiz questions — if set, used instead of auto-gen
+  notes?: string;                 // Private instructor notes — never used in generation
 }
 
 export type LessonInput = Omit<

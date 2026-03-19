@@ -2,32 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { useEffect, useRef, useState } from "react";
 import { useMobileMenu } from "@/context/MobileMenu";
 
 interface NavItem {
   label: string;
   href: string;
   icon: React.ReactNode;
-}
-
-function NavLink({ item, active }: { item: NavItem; active: boolean }) {
-  return (
-    <Link
-      href={item.href}
-      className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-150 ${
-        active
-          ? "bg-[#6366f1] text-white shadow-sm"
-          : "hover:bg-[var(--bg-card-hover)]"
-      }`}
-      style={active ? {} : { color: "var(--text-secondary)" }}
-    >
-      <span className={`flex-shrink-0 ${active ? "text-white" : ""}`} style={active ? {} : { color: "var(--text-muted)" }}>
-        {item.icon}
-      </span>
-      {item.label}
-    </Link>
-  );
 }
 
 // Icons
@@ -49,17 +30,6 @@ const Icons = {
       <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
     </svg>
   ),
-  slides: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
-    </svg>
-  ),
-  forms: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-      <polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
-    </svg>
-  ),
   resources: (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
@@ -73,67 +43,137 @@ const Icons = {
   ),
 };
 
-const MAIN_NAV: NavItem[] = [
-  { label: "Dashboard", href: "/",         icon: Icons.dashboard },
-  { label: "Courses",   href: "/courses",  icon: Icons.courses   },
-  { label: "Schedule",  href: "/schedule", icon: Icons.schedule  },
+const DEFAULT_NAV: NavItem[] = [
+  { label: "Dashboard", href: "/",          icon: Icons.dashboard },
+  { label: "Courses",   href: "/courses",   icon: Icons.courses   },
+  { label: "Schedule",  href: "/schedule",  icon: Icons.schedule  },
+  { label: "Resources", href: "/resources", icon: Icons.resources },
+  { label: "Profile",   href: "/profile",   icon: Icons.profile   },
 ];
 
-const ASSETS_NAV: NavItem[] = [
-  { label: "Slide Decks", href: "/slides",    icon: Icons.slides    },
-  { label: "Forms",       href: "/forms",     icon: Icons.forms     },
-  { label: "Resources",   href: "/resources", icon: Icons.resources },
-];
+const STORAGE_KEY = "sidebar-nav-order";
 
-const ACCOUNT_NAV: NavItem[] = [
-  { label: "Profile", href: "/profile", icon: Icons.profile },
-];
+function loadOrder(): string[] | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveOrder(hrefs: string[]) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(hrefs));
+  } catch {}
+}
+
+function applyOrder(saved: string[]): NavItem[] {
+  const map = Object.fromEntries(DEFAULT_NAV.map(n => [n.href, n]));
+  const ordered = saved.map(h => map[h]).filter(Boolean);
+  // Append any new items not yet in saved order
+  DEFAULT_NAV.forEach(n => { if (!saved.includes(n.href)) ordered.push(n); });
+  return ordered;
+}
 
 export default function Sidebar() {
-  const { status } = useSession();
   const pathname = usePathname();
   const { open, close } = useMobileMenu();
+
+  const [nav, setNav] = useState<NavItem[]>(DEFAULT_NAV);
+  const dragIndex = useRef<number | null>(null);
+  const [dragOver, setDragOver] = useState<number | null>(null);
+
+  useEffect(() => {
+    const saved = loadOrder();
+    if (saved) setNav(applyOrder(saved));
+  }, []);
 
   function isActive(href: string) {
     if (href === "/") return pathname === "/";
     return pathname.startsWith(href);
   }
 
+  function onDragStart(i: number) {
+    dragIndex.current = i;
+  }
+
+  function onDragOver(e: React.DragEvent, i: number) {
+    e.preventDefault();
+    setDragOver(i);
+  }
+
+  function onDrop(i: number) {
+    const from = dragIndex.current;
+    if (from === null || from === i) { setDragOver(null); return; }
+    const next = [...nav];
+    const [moved] = next.splice(from, 1);
+    next.splice(i, 0, moved);
+    setNav(next);
+    saveOrder(next.map(n => n.href));
+    dragIndex.current = null;
+    setDragOver(null);
+  }
+
+  function onDragEnd() {
+    dragIndex.current = null;
+    setDragOver(null);
+  }
+
   const sidebarContent = (
-    <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
-      <div>
-        <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-widest" style={{ color: "var(--sidebar-label)" }}>Main</p>
-        <div className="space-y-0.5">
-          {MAIN_NAV.map(item => <NavLink key={item.href} item={item} active={isActive(item.href)} />)}
-        </div>
-      </div>
-      <div>
-        <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-widest" style={{ color: "var(--sidebar-label)" }}>Assets</p>
-        <div className="space-y-0.5">
-          {ASSETS_NAV.map(item => <NavLink key={item.href} item={item} active={isActive(item.href)} />)}
-        </div>
-      </div>
-      {status === "authenticated" && (
-        <div>
-          <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-widest" style={{ color: "var(--sidebar-label)" }}>Account</p>
-          <div className="space-y-0.5">
-            {ACCOUNT_NAV.map(item => <NavLink key={item.href} item={item} active={isActive(item.href)} />)}
+    <nav className="flex-1 overflow-y-auto px-3 py-4">
+      <div className="space-y-0.5">
+        {nav.map((item, i) => (
+          <div
+            key={item.href}
+            draggable
+            onDragStart={() => onDragStart(i)}
+            onDragOver={(e) => onDragOver(e, i)}
+            onDrop={() => onDrop(i)}
+            onDragEnd={onDragEnd}
+            className={`group relative transition-all duration-150 ${dragOver === i ? "opacity-50" : ""}`}
+          >
+            <Link
+              href={item.href}
+              className={`flex items-center gap-3 pl-3 pr-8 py-2 rounded-xl text-sm font-medium transition-all duration-150 ${
+                isActive(item.href)
+                  ? "bg-[#6366f1] text-white shadow-sm"
+                  : "hover:bg-[var(--bg-card-hover)]"
+              }`}
+              style={isActive(item.href) ? {} : { color: "var(--text-secondary)" }}
+            >
+              <span className={`flex-shrink-0 ${isActive(item.href) ? "text-white" : ""}`} style={isActive(item.href) ? {} : { color: "var(--text-muted)" }}>
+                {item.icon}
+              </span>
+              {item.label}
+            </Link>
+            {/* Drag handle — visible on hover */}
+            <div
+              className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing"
+              style={{ color: "var(--text-muted)" }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/>
+                <circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/>
+                <circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/>
+              </svg>
+            </div>
           </div>
-        </div>
-      )}
+        ))}
+      </div>
     </nav>
   );
 
   return (
     <>
-      {/* Desktop sidebar — starts below top bar */}
+      {/* Desktop sidebar — floats below top bar with margin */}
       <aside
-        className="hidden lg:flex flex-col fixed left-0 w-60 z-40"
+        className="hidden lg:flex flex-col fixed left-3 z-40 rounded-2xl w-56"
         style={{
-          top: "64px",
-          height: "calc(100vh - 64px)",
+          top: "76px",
+          height: "calc(100vh - 88px)",
           background: "var(--bg-sidebar)",
-          borderRight: "1px solid var(--border)",
+          boxShadow: "var(--shadow-card)",
         }}
       >
         {sidebarContent}
@@ -144,12 +184,11 @@ export default function Sidebar() {
         <>
           <div className="lg:hidden fixed inset-0 z-40 bg-black/50" onClick={close} />
           <aside
-            className="lg:hidden fixed left-0 z-50 w-60 flex flex-col"
+            className="lg:hidden fixed left-3 z-50 w-56 flex flex-col rounded-2xl"
             style={{
-              top: "64px",
-              height: "calc(100vh - 64px)",
+              top: "76px",
+              height: "calc(100vh - 88px)",
               background: "var(--bg-sidebar)",
-              borderRight: "1px solid var(--border)",
             }}
           >
             {sidebarContent}
