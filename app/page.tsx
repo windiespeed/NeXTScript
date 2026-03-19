@@ -693,7 +693,7 @@ function Dashboard() {
     );
   }
 
-  function renderScheduleWidget() {
+  function renderScheduleWidget(_span: 1 | 2 | 3 = 3) {
     return (
       <div className="rounded-3xl p-5 h-full" style={{ background: "var(--bg-sidebar)", boxShadow: "var(--shadow-card)" }}>
         <div className="flex items-center justify-between mb-4">
@@ -724,7 +724,7 @@ function Dashboard() {
     );
   }
 
-  function renderLessonsWidget() {
+  function renderLessonsWidget(span: 1 | 2 | 3 = 3) {
     return (
       <div className="rounded-3xl p-5 space-y-4 h-full" style={{ background: "var(--bg-sidebar)", boxShadow: "var(--shadow-card)" }}>
         <div className="flex items-center justify-between">
@@ -759,7 +759,7 @@ function Dashboard() {
         ) : (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={sorted.map(l => l.id)} strategy={rectSortingStrategy}>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className={`grid grid-cols-1 gap-4 ${span >= 2 ? "sm:grid-cols-2" : ""} ${span === 3 ? "lg:grid-cols-3" : ""}`}>
                 {sorted.map(l => (
                   <SortableLessonCard key={l.id} lesson={l} projects={projects.filter(p => p.lessonId === l.id)} courses={courses}
                     onDelete={handleDelete} onDuplicate={handleDuplicate} onOpenModal={id => setModalLessonId(id)}
@@ -848,8 +848,8 @@ function Dashboard() {
                   {widgetId === "activity" && renderActivityWidget()}
                   {widgetId === "progress" && renderProgressWidget()}
                   {widgetId === "activeCourse" && renderActiveCourseWidget()}
-                  {widgetId === "schedule" && renderScheduleWidget()}
-                  {widgetId === "lessons" && renderLessonsWidget()}
+                  {widgetId === "schedule" && renderScheduleWidget(widgetSizes[widgetId])}
+                  {widgetId === "lessons" && renderLessonsWidget(widgetSizes[widgetId])}
                 </SortableWidget>
               ))}
             </div>
