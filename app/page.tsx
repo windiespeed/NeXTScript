@@ -65,6 +65,8 @@ function useDragScroll() {
   return ref;
 }
 
+
+
 // ── Donut ring ────────────────────────────────────────────────────────────────
 function DonutRing({ value, total, color, label }: { value: number; total: number; color: string; label: string }) {
   const r = 34;
@@ -204,6 +206,11 @@ function Dashboard() {
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [filterCourse, setFilterCourse] = useState<"all" | "unassigned" | string>("all");
 
+  // ── Widget sizes ─────────────────────────────────────────────────────────────
+  type WidgetId = "activity" | "progress" | "activeCourse";
+  const DEFAULT_WIDGET_SIZES: Record<WidgetId, 1 | 2 | 3> = { activity: 1, progress: 1, activeCourse: 1 };
+  const [widgetSizes, setWidgetSizes] = useState<Record<WidgetId, 1 | 2 | 3>>(DEFAULT_WIDGET_SIZES);
+
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   const modalLesson = lessons.find(l => l.id === modalLessonId) ?? null;
   const scheduleRef = useDragScroll();
@@ -307,6 +314,14 @@ function Dashboard() {
     saveOrder(newOrder);
   }
 
+  function cycleWidgetSize(id: WidgetId) {
+    setWidgetSizes(prev => {
+      const next = { ...prev, [id]: (prev[id] === 1 ? 2 : prev[id] === 2 ? 3 : 1) as 1 | 2 | 3 };
+      localStorage.setItem("dash-widget-sizes", JSON.stringify(next));
+      return next;
+    });
+  }
+
   async function handleBulkDuplicate() {
     setBulkDuplicating(true);
     for (const id of [...selected]) await handleDuplicate(id);
@@ -401,6 +416,217 @@ function Dashboard() {
     }
   }, [status]);
 
+  // ── Load persisted widget sizes from localStorage ────────────────────────────
+  useEffect(() => {
+    try {
+      const ws = localStorage.getItem("dash-widget-sizes");
+      if (ws) setWidgetSizes(JSON.parse(ws));
+    } catch {}
+  }, []);
+
+  // ── Widget render helpers ───────────────────────────────────────────────────
+  function renderActivityWidget() {
+    return (
+      <div className="rounded-3xl p-5 flex flex-col gap-4 h-full" style={{ background: "var(--bg-sidebar)", boxShadow: "var(--shadow-card)" }}>
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Activity</p>
+          <span className="text-[10px] px-2 py-0.5 rounded-md font-medium" style={{ background: "var(--bg-card-hover)", color: "var(--text-muted)" }}>
+            8 weeks
+          </span>
+        </div>
+        <div>
+          <p className="text-3xl font-bold" style={{ color: "var(--text-primary)" }}>{lessons.length}</p>
+          <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>total lessons created</p>
+        </div>
+        <div>
+          <AreaChart lessons={lessons} />
+          <div className="flex justify-between mt-1.5">
+            <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>8 wks ago</span>
+            <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>This week</span>
+          </div>
+        </div>
+
+        {/* By Course */}
+        {courses.length > 0 && (
+          <div className="pt-3 flex flex-col gap-2.5" style={{ borderTop: "1px solid var(--border)" }}>
+            <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "var(--sidebar-label)" }}>
+              By Course
+            </p>
+            {(() => {
+              const dotColors = ["#0cc0df", "#6366f1", "#ff8c4a", "#2dd4a0"];
+              return courses.slice(0, 4).map((course, i) => {
+                const total = lessons.filter(l => l.courseId === course.id).length;
+                const done = lessons.filter(l => l.courseId === course.id && l.status === "done").length;
+                const pct = total > 0 ? (done / total) * 100 : 0;
+                const color = dotColors[i % dotColors.length];
+                return (
+                  <Link key={course.id} href={`/courses/${course.id}`} className="flex items-center gap-2.5 group">
+                    <div className="w-7 h-7 rounded-lg shrink-0 flex items-center justify-center" style={{ background: `${color}22` }}>
+                      <div className="w-2 h-2 rounded-full" style={{ background: color }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium truncate group-hover:text-[#0cc0df] transition" style={{ color: "var(--text-primary)" }}>
+                        {course.title}
+                      </p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <div className="flex-1 h-1 rounded-full overflow-hidden" style={{ background: "var(--bg-card-hover)" }}>
+                          <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: color }} />
+                        </div>
+                        <span className="text-[10px] shrink-0 font-semibold" style={{ color: "var(--text-muted)" }}>
+                          {total}
+                        </span>
+                      </div>
+                    </div>
+                  </Link>
+                );
+              });
+            })()}
+            {courses.length > 4 && (
+              <Link href="/courses" className="text-[10px] text-[#0cc0df] hover:underline">
+                +{courses.length - 4} more courses →
+              </Link>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  function renderProgressWidget() {
+    return (
+      <div className="rounded-3xl p-5 flex flex-col gap-4 h-full" style={{ background: "var(--bg-sidebar)", boxShadow: "var(--shadow-card)" }}>
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Progress</p>
+        </div>
+        <div className="text-center">
+          <p className="text-4xl font-bold" style={{ color: "var(--text-primary)" }}>
+            {lessons.length > 0 ? Math.round((doneCount / lessons.length) * 100) : 0}%
+          </p>
+          <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>lessons generated</p>
+        </div>
+        <div className="flex items-end justify-around pt-1">
+          <DonutRing value={inProgressCount} total={Math.max(lessons.length, 1)} color="#ff8c4a" label="In Progress" />
+          <DonutRing value={doneCount}        total={Math.max(lessons.length, 1)} color="#0cc0df"  label="Generated" />
+          <DonutRing value={draftCount}       total={Math.max(lessons.length, 1)} color="#6366f1"  label="Draft" />
+        </div>
+        <div className="grid grid-cols-3 gap-2 pt-3" style={{ borderTop: "1px solid var(--border)" }}>
+          {[
+            { label: "In Progress", value: inProgressCount, color: "#ff8c4a" },
+            { label: "Generated",   value: doneCount,       color: "#0cc0df" },
+            { label: "Draft",       value: draftCount,      color: "#6366f1" },
+          ].map(({ label, value, color }) => (
+            <div key={label} className="text-center">
+              <p className="text-base font-bold" style={{ color: "var(--text-primary)" }}>{value}</p>
+              <p className="text-[10px]" style={{ color }}>{label}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  function renderActiveCourseWidget() {
+    return (
+      <div className="rounded-3xl p-5 flex flex-col gap-4 h-full" style={{ background: "var(--bg-sidebar)", boxShadow: "var(--shadow-card)" }}>
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Active Course</p>
+          <Link href="/courses" className="text-[10px] text-[#0cc0df] hover:underline">
+            View all →
+          </Link>
+        </div>
+
+        {activeCourse ? (
+          <>
+            <div className="flex-1">
+              <div className="flex flex-wrap gap-1.5 mb-3">
+                {activeCourse.settings?.subject && (
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md" style={{ background: "var(--accent-bg)", color: "var(--accent)" }}>
+                    {activeCourse.settings.subject}
+                  </span>
+                )}
+                {activeCourse.gradeLevel && (
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md" style={{ background: "var(--bg-card-hover)", color: "var(--text-secondary)" }}>
+                    {activeCourse.gradeLevel}
+                  </span>
+                )}
+                {activeCourse.settings?.studentLevel && (
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md capitalize" style={{ background: "rgba(45,212,160,0.12)", color: "#2dd4a0" }}>
+                    {activeCourse.settings.studentLevel}
+                  </span>
+                )}
+              </div>
+              <Link href={`/courses/${activeCourse.id}`} className="text-base font-bold leading-snug mb-1 hover:underline" style={{ color: "var(--text-primary)" }}>
+                {activeCourse.title}
+              </Link>
+              {activeCourse.description && (
+                <p className="text-xs line-clamp-2 mb-3" style={{ color: "var(--text-secondary)" }}>
+                  {activeCourse.description}
+                </p>
+              )}
+              {/* Progress bar */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>Lessons generated</p>
+                  <p className="text-[10px] font-semibold" style={{ color: "var(--text-primary)" }}>
+                    {activeCourseProgress} / {activeCourseTotal}
+                  </p>
+                </div>
+                <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "var(--bg-card-hover)" }}>
+                  <div
+                    className="h-full rounded-full transition-all duration-700"
+                    style={{
+                      width: `${activeCourseTotal > 0 ? (activeCourseProgress / activeCourseTotal) * 100 : 0}%`,
+                      background: "linear-gradient(90deg, #6366f1, #818cf8)",
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Upcoming deadlines in this course */}
+            {upcoming.filter(l => l.courseId === activeCourse.id).length > 0 && (
+              <div className="pt-3" style={{ borderTop: "1px solid var(--border)" }}>
+                <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: "var(--sidebar-label)" }}>
+                  Upcoming
+                </p>
+                {upcoming.filter(l => l.courseId === activeCourse.id).slice(0, 2).map(l => (
+                  <div key={l.id} className="flex items-center justify-between gap-2 py-1">
+                    <p className="text-xs truncate" style={{ color: "var(--text-secondary)" }}>{l.title}</p>
+                    <span className="text-[10px] font-semibold shrink-0" style={{ color: "#ff8c4a" }}>{l.deadline}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <Link
+              href="/courses"
+              className="flex items-center justify-center gap-2 rounded-full py-2.5 text-sm font-semibold text-white hover:opacity-90 transition"
+              style={{ background: "linear-gradient(135deg, #6366f1, #818cf8)" }}
+            >
+              Open Courses
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="9 18 15 12 9 6"/>
+              </svg>
+            </Link>
+          </>
+        ) : (
+          <div className="flex-1 flex flex-col items-center justify-center text-center py-4">
+            <div className="w-10 h-10 rounded-full bg-[#0cc0df]/10 flex items-center justify-center mb-3">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0cc0df" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+              </svg>
+            </div>
+            <p className="text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>No courses yet</p>
+            <p className="text-xs mb-4" style={{ color: "var(--text-muted)" }}>Organize your lessons into courses for better management.</p>
+            <Link href="/courses/new" className="rounded-full bg-[#0cc0df] px-4 py-2 text-xs font-semibold text-[#0a0b13] hover:opacity-90 transition">
+              Create a Course
+            </Link>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   // ── Sign-in screen ─────────────────────────────────────────────────────────
   if (status === "unauthenticated") {
     return (
@@ -466,206 +692,35 @@ function Dashboard() {
         </div>
       </div>
 
-      {/* ── 3-column widget row ───────────────────────────────────────────────── */}
+      {/* ── Widget row ───────────────────────────────────────────────────────── */}
       {!loading && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-
-          {/* ── Activity + By Course ── */}
-          <div className="rounded-3xl p-5 flex flex-col gap-4" style={{ background: "var(--bg-sidebar)", boxShadow: "var(--shadow-card)" }}>
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Activity</p>
-              <span className="text-[10px] px-2 py-0.5 rounded-md font-medium" style={{ background: "var(--bg-card-hover)", color: "var(--text-muted)" }}>
-                8 weeks
-              </span>
-            </div>
-            <div>
-              <p className="text-3xl font-bold" style={{ color: "var(--text-primary)" }}>{lessons.length}</p>
-              <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>total lessons created</p>
-            </div>
-            <div>
-              <AreaChart lessons={lessons} />
-              <div className="flex justify-between mt-1.5">
-                <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>8 wks ago</span>
-                <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>This week</span>
-              </div>
-            </div>
-
-            {/* By Course */}
-            {courses.length > 0 && (
-              <div className="pt-3 flex flex-col gap-2.5" style={{ borderTop: "1px solid var(--border)" }}>
-                <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "var(--sidebar-label)" }}>
-                  By Course
-                </p>
-                {(() => {
-                  const dotColors = ["#0cc0df", "#6366f1", "#ff8c4a", "#2dd4a0"];
-                  return courses.slice(0, 4).map((course, i) => {
-                    const total = lessons.filter(l => l.courseId === course.id).length;
-                    const done = lessons.filter(l => l.courseId === course.id && l.status === "done").length;
-                    const pct = total > 0 ? (done / total) * 100 : 0;
-                    const color = dotColors[i % dotColors.length];
-                    return (
-                      <Link key={course.id} href={`/courses/${course.id}`} className="flex items-center gap-2.5 group">
-                        <div className="w-7 h-7 rounded-lg shrink-0 flex items-center justify-center" style={{ background: `${color}22` }}>
-                          <div className="w-2 h-2 rounded-full" style={{ background: color }} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-medium truncate group-hover:text-[#0cc0df] transition" style={{ color: "var(--text-primary)" }}>
-                            {course.title}
-                          </p>
-                          <div className="flex items-center gap-1.5 mt-0.5">
-                            <div className="flex-1 h-1 rounded-full overflow-hidden" style={{ background: "var(--bg-card-hover)" }}>
-                              <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: color }} />
-                            </div>
-                            <span className="text-[10px] shrink-0 font-semibold" style={{ color: "var(--text-muted)" }}>
-                              {total}
-                            </span>
-                          </div>
-                        </div>
-                      </Link>
-                    );
-                  });
-                })()}
-                {courses.length > 4 && (
-                  <Link href="/courses" className="text-[10px] text-[#0cc0df] hover:underline">
-                    +{courses.length - 4} more courses →
-                  </Link>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* ── Progress donuts ── */}
-          <div className="rounded-3xl p-5 flex flex-col gap-4" style={{ background: "var(--bg-sidebar)", boxShadow: "var(--shadow-card)" }}>
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Progress</p>
-            </div>
-            <div className="text-center">
-              <p className="text-4xl font-bold" style={{ color: "var(--text-primary)" }}>
-                {lessons.length > 0 ? Math.round((doneCount / lessons.length) * 100) : 0}%
-              </p>
-              <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>lessons generated</p>
-            </div>
-            <div className="flex items-end justify-around pt-1">
-              <DonutRing value={inProgressCount} total={Math.max(lessons.length, 1)} color="#ff8c4a" label="In Progress" />
-              <DonutRing value={doneCount}        total={Math.max(lessons.length, 1)} color="#0cc0df"  label="Generated" />
-              <DonutRing value={draftCount}       total={Math.max(lessons.length, 1)} color="#6366f1"  label="Draft" />
-            </div>
-            <div className="grid grid-cols-3 gap-2 pt-3" style={{ borderTop: "1px solid var(--border)" }}>
-              {[
-                { label: "In Progress", value: inProgressCount, color: "#ff8c4a" },
-                { label: "Generated",   value: doneCount,       color: "#0cc0df" },
-                { label: "Draft",       value: draftCount,      color: "#6366f1" },
-              ].map(({ label, value, color }) => (
-                <div key={label} className="text-center">
-                  <p className="text-base font-bold" style={{ color: "var(--text-primary)" }}>{value}</p>
-                  <p className="text-[10px]" style={{ color }}>{label}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* ── Active Course ── */}
-          <div className="rounded-3xl p-5 flex flex-col gap-4" style={{ background: "var(--bg-sidebar)", boxShadow: "var(--shadow-card)" }}>
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Active Course</p>
-              <Link href="/courses" className="text-[10px] text-[#0cc0df] hover:underline">
-                View all →
-              </Link>
-            </div>
-
-            {activeCourse ? (
-              <>
-                <div className="flex-1">
-                  <div className="flex flex-wrap gap-1.5 mb-3">
-                    {activeCourse.settings?.subject && (
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md" style={{ background: "var(--accent-bg)", color: "var(--accent)" }}>
-                        {activeCourse.settings.subject}
-                      </span>
-                    )}
-                    {activeCourse.gradeLevel && (
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md" style={{ background: "var(--bg-card-hover)", color: "var(--text-secondary)" }}>
-                        {activeCourse.gradeLevel}
-                      </span>
-                    )}
-                    {activeCourse.settings?.studentLevel && (
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md capitalize" style={{ background: "rgba(45,212,160,0.12)", color: "#2dd4a0" }}>
-                        {activeCourse.settings.studentLevel}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-base font-bold leading-snug mb-1" style={{ color: "var(--text-primary)" }}>
-                    {activeCourse.title}
-                  </p>
-                  {activeCourse.description && (
-                    <p className="text-xs line-clamp-2 mb-3" style={{ color: "var(--text-secondary)" }}>
-                      {activeCourse.description}
-                    </p>
-                  )}
-                  {/* Progress bar */}
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>Lessons generated</p>
-                      <p className="text-[10px] font-semibold" style={{ color: "var(--text-primary)" }}>
-                        {activeCourseProgress} / {activeCourseTotal}
-                      </p>
-                    </div>
-                    <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "var(--bg-card-hover)" }}>
-                      <div
-                        className="h-full rounded-full transition-all duration-700"
-                        style={{
-                          width: `${activeCourseTotal > 0 ? (activeCourseProgress / activeCourseTotal) * 100 : 0}%`,
-                          background: "linear-gradient(90deg, #6366f1, #818cf8)",
-                        }}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Upcoming deadlines in this course */}
-                {upcoming.filter(l => l.courseId === activeCourse.id).length > 0 && (
-                  <div className="pt-3" style={{ borderTop: "1px solid var(--border)" }}>
-                    <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: "var(--sidebar-label)" }}>
-                      Upcoming
-                    </p>
-                    {upcoming.filter(l => l.courseId === activeCourse.id).slice(0, 2).map(l => (
-                      <div key={l.id} className="flex items-center justify-between gap-2 py-1">
-                        <p className="text-xs truncate" style={{ color: "var(--text-secondary)" }}>{l.title}</p>
-                        <span className="text-[10px] font-semibold shrink-0" style={{ color: "#ff8c4a" }}>{l.deadline}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                <Link
-                  href={`/courses/${activeCourse.id}`}
-                  className="flex items-center justify-center gap-2 rounded-full py-2.5 text-sm font-semibold text-white hover:opacity-90 transition"
-                  style={{ background: "linear-gradient(135deg, #6366f1, #818cf8)" }}
+          {(["activity", "progress", "activeCourse"] as WidgetId[]).map(widgetId => {
+            const span = widgetSizes[widgetId];
+            const spanClass = span === 3 ? "lg:col-span-3" : span === 2 ? "lg:col-span-2" : "lg:col-span-1";
+            return (
+              <div key={widgetId} className={`relative group/widget ${spanClass}`}>
+                <button
+                  onClick={() => cycleWidgetSize(widgetId)}
+                  title={`Resize (${span}/3 columns)`}
+                  className="absolute bottom-3 right-3 z-20 opacity-0 group-hover/widget:opacity-100 transition-opacity flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-semibold"
+                  style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)", color: "var(--text-secondary)" }}
                 >
-                  Open Course
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="9 18 15 12 9 6"/>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
                   </svg>
-                </Link>
-              </>
-            ) : (
-              <div className="flex-1 flex flex-col items-center justify-center text-center py-4">
-                <div className="w-10 h-10 rounded-full bg-[#0cc0df]/10 flex items-center justify-center mb-3">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0cc0df" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-                  </svg>
-                </div>
-                <p className="text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>No courses yet</p>
-                <p className="text-xs mb-4" style={{ color: "var(--text-muted)" }}>Organize your lessons into courses for better management.</p>
-                <Link href="/courses/new" className="rounded-full bg-[#0cc0df] px-4 py-2 text-xs font-semibold text-[#0a0b13] hover:opacity-90 transition">
-                  Create a Course
-                </Link>
+                  {span}/3
+                </button>
+                {widgetId === "activity" && renderActivityWidget()}
+                {widgetId === "progress" && renderProgressWidget()}
+                {widgetId === "activeCourse" && renderActiveCourseWidget()}
               </div>
-            )}
-          </div>
+            );
+          })}
         </div>
       )}
 
-      {/* ── Upcoming deadlines strip (if any) ───────────────────────────────── */}
+      {/* ── Schedule strip ───────────────────────────────────────────────────── */}
       {!loading && upcoming.length > 0 && (
         <div className="rounded-3xl p-5" style={{ background: "var(--bg-sidebar)", boxShadow: "var(--shadow-card)" }}>
           <div className="flex items-center justify-between mb-4">
@@ -679,14 +734,13 @@ function Dashboard() {
               const accentColors = ["#6366f1", "#0cc0df", "#ff8c4a", "#2dd4a0", "#f59e0b"];
               const color = accentColors[i % accentColors.length];
               return (
-                <Link
+                <div
                   key={lesson.id}
-                  href={`/lessons/${lesson.id}`}
                   className="shrink-0 rounded-3xl p-4 flex flex-col gap-2 min-w-[200px] max-w-[220px] transition hover:-translate-y-0.5 hover:shadow-md"
                   style={{ background: "var(--bg-card-hover)" }}
                 >
                   <div className="h-0.5 rounded-full w-8" style={{ background: color }} />
-                  <p className="text-xs font-semibold leading-snug line-clamp-2" style={{ color: "var(--text-primary)" }}>{lesson.title}</p>
+                  <Link href={`/lessons/${lesson.id}`} className="text-xs font-semibold leading-snug line-clamp-2 hover:underline" style={{ color: "var(--text-primary)" }}>{lesson.title}</Link>
                   <div className="flex items-center gap-2 mt-auto flex-wrap">
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg" style={{ background: `${color}22`, color }}>
                       Due {lesson.deadline}
@@ -697,7 +751,7 @@ function Dashboard() {
                       </span>
                     )}
                   </div>
-                </Link>
+                </div>
               );
             })}
           </div>

@@ -1,24 +1,25 @@
 "use client";
 
 import Link from "next/link";
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import type { Lesson } from "@/types/lesson";
 import type { SavedProject } from "@/types/project";
+import type { Course } from "@/types/course";
 
-const STATUS_DOT: Record<Lesson["status"], string> = {
-  draft:        "bg-[var(--text-muted)]",
-  generating:   "bg-[#ff8c4a] animate-pulse",
-  regenerating: "bg-[#0cc0df] animate-pulse",
-  done:         "bg-[#2dd4a0]",
-  error:        "bg-red-500",
+const STATUS_BG: Record<Lesson["status"], string> = {
+  draft:        "var(--bg-card-hover)",
+  generating:   "rgba(255,140,74,0.12)",
+  regenerating: "rgba(12,192,223,0.12)",
+  done:         "rgba(45,212,160,0.12)",
+  error:        "rgba(239,68,68,0.12)",
 };
 
-const STATUS_TEXT: Record<Lesson["status"], string> = {
-  draft:        "text-[var(--text-secondary)]",
-  generating:   "text-[#ff8c4a]",
-  regenerating: "text-[#0cc0df]",
-  done:         "text-[#2dd4a0]",
-  error:        "text-red-500",
+const STATUS_COLOR: Record<Lesson["status"], string> = {
+  draft:        "var(--text-muted)",
+  generating:   "#ff8c4a",
+  regenerating: "#0cc0df",
+  done:         "#2dd4a0",
+  error:        "#ef4444",
 };
 
 const STATUS_LABELS: Record<Lesson["status"], string> = {
@@ -32,9 +33,11 @@ const STATUS_LABELS: Record<Lesson["status"], string> = {
 interface Props {
   lesson: Lesson;
   projects?: SavedProject[];
+  courses?: Course[];
   onDelete: (id: string) => void;
   onDuplicate: (id: string) => void;
   onOpenModal: (id: string) => void;
+  onAssign?: (lessonId: string, courseId: string | null) => void;
   selecting?: boolean;
   selected?: boolean;
   onToggleSelect?: (id: string) => void;
@@ -45,17 +48,32 @@ function fmt(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
-export default function LessonCard({ lesson, projects = [], onDelete, onDuplicate, onOpenModal, selecting = false, selected = false, onToggleSelect, gripProps }: Props) {
+export default function LessonCard({ lesson, projects = [], courses, onDelete, onDuplicate, onOpenModal, onAssign, selecting = false, selected = false, onToggleSelect, gripProps }: Props) {
   const busy = lesson.status === "generating" || lesson.status === "regenerating";
   const deck = projects.find(p => p.type === "deck");
   const form = projects.find(p => p.type === "form");
+  const [showCourseMenu, setShowCourseMenu] = useState(false);
+  const courseMenuRef = useRef<HTMLDivElement>(null);
+  const assignedCourse = courses?.find(c => c.id === lesson.courseId);
+
+  useEffect(() => {
+    if (!showCourseMenu) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (courseMenuRef.current && !courseMenuRef.current.contains(e.target as Node)) {
+        setShowCourseMenu(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showCourseMenu]);
 
   return (
     <div
       onClick={selecting ? () => onToggleSelect?.(lesson.id) : undefined}
-      className={`relative h-full rounded-3xl flex flex-col overflow-hidden transition-all duration-200 ${selecting ? "cursor-pointer" : "hover:-translate-y-1 hover:shadow-lg"} ${selected ? "ring-2 ring-[#0cc0df]/60 opacity-100" : selecting ? "opacity-50" : ""}`}
-      style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-card)" }}
+      className={`group relative h-full rounded-3xl flex flex-col transition-all duration-200 ${selecting ? "cursor-pointer" : "hover:-translate-y-1 hover:shadow-lg"} ${selected ? "ring-2 ring-[#0cc0df]/60" : selecting ? "opacity-50" : ""}`}
+      style={{ background: "var(--bg-card-hover)", boxShadow: "var(--shadow-card)" }}
     >
+      {/* Selection checkbox */}
       {selecting && (
         <div className="absolute top-3 right-3 z-10" onClick={e => e.stopPropagation()}>
           <div
@@ -72,23 +90,39 @@ export default function LessonCard({ lesson, projects = [], onDelete, onDuplicat
         </div>
       )}
 
-      <div className="flex flex-col gap-3 p-5 flex-1">
-        {/* Title + icon actions row */}
+      <div className="p-5 flex flex-col gap-3 flex-1">
+        {/* Title + icon actions */}
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
-            <h2 className="font-semibold text-base leading-snug" style={{ color: "var(--text-primary)" }}>{lesson.title}</h2>
+            <Link
+              href={assignedCourse ? `/courses/${assignedCourse.id}` : `/lessons/${lesson.id}`}
+              className="font-semibold text-sm leading-snug hover:underline"
+              style={{ color: "var(--text-primary)" }}
+            >
+              {lesson.title}
+            </Link>
             {lesson.subtitle && (
-              <p className="text-xs mt-0.5 leading-snug" style={{ color: "var(--text-secondary)" }}>{lesson.subtitle}</p>
+              <p className="text-xs mt-0.5 leading-snug" style={{ color: "var(--text-muted)" }}>{lesson.subtitle}</p>
             )}
           </div>
-          <div className="flex items-center gap-1 shrink-0">
+          <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+            <button
+              onClick={() => onDuplicate(lesson.id)}
+              title="Duplicate"
+              className="p-1.5 rounded-full transition hover:bg-[var(--bg-card)]"
+              style={{ color: "var(--text-muted)" }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+              </svg>
+            </button>
             <button
               onClick={() => onDelete(lesson.id)}
               title="Delete"
               className="p-1.5 rounded-full transition hover:text-red-500 hover:bg-red-500/10"
               style={{ color: "var(--text-muted)" }}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
               </svg>
             </button>
@@ -101,7 +135,7 @@ export default function LessonCard({ lesson, projects = [], onDelete, onDuplicat
                 onMouseEnter={e => (e.currentTarget.style.background = "var(--bg-card-hover)")}
                 onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
                   <circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/>
                   <circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/>
                   <circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/>
@@ -111,17 +145,70 @@ export default function LessonCard({ lesson, projects = [], onDelete, onDuplicat
           </div>
         </div>
 
-        {/* Status row */}
-        <div className="flex items-center justify-between gap-3">
-          <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${STATUS_TEXT[lesson.status]}`}>
-            <span className={`inline-block w-1.5 h-1.5 rounded-full ${STATUS_DOT[lesson.status]}`} />
+        {/* Status + deadline + course dropdown */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span
+            className="text-[10px] font-semibold px-2 py-0.5 rounded-md"
+            style={{ background: STATUS_BG[lesson.status], color: STATUS_COLOR[lesson.status] }}
+          >
             {STATUS_LABELS[lesson.status]}
           </span>
           {lesson.deadline && (
-            <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
-              Due <span className="font-medium" style={{ color: "var(--text-primary)" }}>{lesson.deadline}</span>
+            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md" style={{ background: "rgba(255,140,74,0.12)", color: "#ff8c4a" }}>
+              Due {lesson.deadline}
             </span>
           )}
+          {courses && onAssign && !selecting && (
+            <div className="relative" ref={courseMenuRef}>
+              <button
+                onClick={() => setShowCourseMenu(v => !v)}
+                className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md transition hover:opacity-80"
+                style={assignedCourse
+                  ? { background: "var(--accent-purple-bg)", color: "var(--accent-purple)" }
+                  : { background: "var(--bg-card-hover)", color: "var(--text-muted)", border: "1px dashed var(--border)" }
+                }
+              >
+                {assignedCourse ? assignedCourse.title : "Unassigned"}
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              {showCourseMenu && (
+                <div className="absolute left-0 top-full mt-1 z-30 rounded-2xl overflow-hidden min-w-[180px]" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)" }}>
+                  <button
+                    onClick={() => { onAssign(lesson.id, null); setShowCourseMenu(false); }}
+                    className="w-full text-left px-3 py-2 text-xs hover:bg-[var(--bg-card-hover)] transition"
+                    style={{ color: "var(--text-muted)" }}
+                  >
+                    No course
+                  </button>
+                  {courses.map(c => (
+                    <button
+                      key={c.id}
+                      onClick={() => { onAssign(lesson.id, c.id); setShowCourseMenu(false); }}
+                      className="w-full text-left px-3 py-2 text-xs hover:bg-[var(--bg-card-hover)] transition"
+                      style={{ color: c.id === lesson.courseId ? "var(--accent-purple)" : "var(--text-primary)", fontWeight: c.id === lesson.courseId ? 600 : 400 }}
+                    >
+                      {c.id === lesson.courseId ? "✓ " : ""}{c.title}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Topics + dates */}
+        <div className="flex flex-col gap-1.5 mt-auto pt-3" style={{ borderTop: "1px solid var(--border)" }}>
+          {lesson.topics && (
+            <p className="text-xs leading-relaxed line-clamp-1" style={{ color: "var(--text-secondary)" }}>
+              {lesson.topics}
+            </p>
+          )}
+          <div className="flex gap-3 text-[10px]" style={{ color: "var(--text-muted)" }}>
+            <span>Created {fmt(lesson.createdAt)}</span>
+            {lesson.updatedAt !== lesson.createdAt && (
+              <span>· Modified {fmt(lesson.updatedAt)}</span>
+            )}
+          </div>
         </div>
 
         {/* Error message */}
@@ -132,12 +219,13 @@ export default function LessonCard({ lesson, projects = [], onDelete, onDuplicat
 
       {/* Asset pills */}
       {(deck || form || lesson.folderUrl) && (
-        <div className="px-4 pb-1 pt-1 flex flex-wrap gap-1.5" style={{ borderTop: "1px solid var(--border)" }}>
+        <div className="px-5 pt-3 pb-4 flex flex-wrap gap-1.5" style={{ borderTop: "1px solid var(--border)" }}>
+          <p className="w-full text-[10px] font-semibold uppercase tracking-widest mb-0.5" style={{ color: "var(--sidebar-label)" }}>Assets</p>
           {deck && (
             <Link
               href={`/slides?lessonId=${lesson.id}`}
-              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold transition hover:bg-[#0cc0df]/15 hover:text-[#0cc0df]"
-              style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold transition hover:opacity-80"
+              style={{ background: "rgba(12,192,223,0.10)", color: "#0cc0df" }}
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
               Slides
@@ -146,8 +234,8 @@ export default function LessonCard({ lesson, projects = [], onDelete, onDuplicat
           {form && (
             <Link
               href={`/forms?lessonId=${lesson.id}`}
-              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold transition hover:bg-[#ff8c4a]/15 hover:text-[#ff8c4a]"
-              style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold transition hover:opacity-80"
+              style={{ background: "rgba(255,140,74,0.10)", color: "#ff8c4a" }}
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
               Quiz
@@ -158,51 +246,32 @@ export default function LessonCard({ lesson, projects = [], onDelete, onDuplicat
               href={lesson.folderUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold transition hover:bg-[var(--bg-card-hover)] hover:text-[#0cc0df]"
-              style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold transition hover:opacity-80"
+              style={{ background: "rgba(45,212,160,0.10)", color: "#2dd4a0" }}
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-              Drive Folder ↗
+              Drive ↗
             </a>
           )}
         </div>
       )}
 
-      {/* Topics + Dates shaded block */}
-      <div className="px-5 py-3 flex flex-col gap-2" style={{ background: "var(--bg-card-hover)", borderTop: "1px solid var(--border)" }}>
-        <p className="text-xs leading-relaxed line-clamp-3 h-[3.75rem]" style={{ color: "var(--text-secondary)" }}>
-          {lesson.topics || ""}
-        </p>
-        <div className="flex gap-3 text-xs" style={{ color: "var(--text-muted)" }}>
-          <span>Created {fmt(lesson.createdAt)}</span>
-          {lesson.updatedAt !== lesson.createdAt && (
-            <span>· Modified {fmt(lesson.updatedAt)}</span>
-          )}
-        </div>
-      </div>
-
-      {/* Primary actions */}
-      <div className="flex gap-2 px-4 py-3" style={{ borderTop: "1px solid var(--border)" }}>
-        <button
-          onClick={() => onDuplicate(lesson.id)}
-          className="flex items-center justify-center rounded-full px-3 py-2 text-xs font-semibold active:scale-95 transition-all duration-150 hover:bg-[var(--bg-card-hover)]"
-          style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
-        >
-          Duplicate
-        </button>
-        <Link
-          href={`/lessons/${lesson.id}`}
-          className="flex-1 flex items-center justify-center rounded-full bg-[#0cc0df] px-3 py-2 text-xs font-semibold text-[#0a0b13] hover:opacity-90 active:scale-95 transition-all duration-150"
-        >
-          Edit
-        </Link>
+      {/* Actions */}
+      <div className="px-5 pt-3 pb-5 flex gap-2" style={{ borderTop: "1px solid var(--border)" }}>
         <button
           onClick={() => onOpenModal(lesson.id)}
           disabled={busy}
-          className="flex-1 flex items-center justify-center rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-3 py-2 text-xs font-semibold text-white hover:opacity-90 active:scale-95 disabled:opacity-50 transition-all duration-150"
+          className="flex-1 flex items-center justify-center rounded-full py-2 text-xs font-semibold text-white hover:opacity-90 active:scale-95 disabled:opacity-50 transition-all duration-150"
+          style={{ background: "linear-gradient(90deg, #ff8c4a, #e55a1e)" }}
         >
           {busy ? "Running…" : "Generate"}
         </button>
+        <Link
+          href={`/lessons/${lesson.id}`}
+          className="flex items-center justify-center rounded-full bg-[#0cc0df] px-3 py-2 text-xs font-semibold text-[#0a0b13] hover:opacity-90 active:scale-95 transition-all duration-150 shrink-0"
+        >
+          Edit
+        </Link>
       </div>
     </div>
   );

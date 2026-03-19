@@ -67,13 +67,20 @@ export default function CourseDetailPage() {
   const [duplicating, setDuplicating] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [projects, setProjects] = useState<SavedProject[]>([]);
+  const [addExistingOpen, setAddExistingOpen] = useState(false);
+  const [allLessons, setAllLessons] = useState<Lesson[]>([]);
+  const [toAdd, setToAdd] = useState<Set<string>>(new Set());
+  const [addingExisting, setAddingExisting] = useState(false);
+  const [movingLessonId, setMovingLessonId] = useState<string | null>(null);
+  const [allCourses, setAllCourses] = useState<import("@/types/course").Course[]>([]);
 
   useEffect(() => {
     Promise.all([
       fetch(`/api/courses/${id}`).then((r) => r.json()),
       fetch(`/api/lessons?courseId=${id}`).then((r) => r.json()),
       fetch("/api/projects").then((r) => r.json()),
-    ]).then(([courseData, lessonData, projectData]) => {
+      fetch("/api/courses").then((r) => r.json()),
+    ]).then(([courseData, lessonData, projectData, coursesData]) => {
       if (!courseData?.id) { setLoading(false); return; }
       setCourse(courseData);
       setEditTitle(courseData.title ?? "");
@@ -83,6 +90,7 @@ export default function CourseDetailPage() {
       setEditSettings({ ...DEFAULT_COURSE_SETTINGS, ...(courseData.settings ?? {}) });
       setProjects(Array.isArray(projectData) ? projectData : []);
       setLessons(Array.isArray(lessonData) ? lessonData : []);
+      setAllCourses(Array.isArray(coursesData) ? coursesData : []);
       setLoading(false);
     });
   }, [id]);
@@ -268,6 +276,69 @@ export default function CourseDetailPage() {
     setBulkDeleting(false);
   }
 
+  async function openAddExisting() {
+    const data = await fetch("/api/lessons").then(r => r.json());
+    setAllLessons(Array.isArray(data) ? data.filter((l: Lesson) => l.id !== id && !lessons.some(cl => cl.id === l.id)) : []);
+    setToAdd(new Set());
+    setAddExistingOpen(true);
+  }
+
+  async function handleAddExisting() {
+    if (toAdd.size === 0) return;
+    setAddingExisting(true);
+    const toLessons = allLessons.filter(l => toAdd.has(l.id));
+    for (const lesson of toLessons) {
+      // Remove from old course if needed
+      if (lesson.courseId && lesson.courseId !== id) {
+        const oldCourse = allCourses.find(c => c.id === lesson.courseId);
+        if (oldCourse) {
+          await fetch(`/api/courses/${lesson.courseId}`, {
+            method: "PUT", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ lessonIds: oldCourse.lessonIds.filter(lid => lid !== lesson.id) }),
+          });
+        }
+      }
+      await fetch(`/api/lessons/${lesson.id}`, {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ courseId: id }),
+      });
+    }
+    await fetch(`/api/courses/${id}`, {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lessonIds: [...(course?.lessonIds ?? []), ...toLessons.map(l => l.id)] }),
+    });
+    const added = toLessons.map(l => ({ ...l, courseId: id }));
+    setLessons(prev => [...prev, ...added]);
+    setCourse(prev => prev ? { ...prev, lessonIds: [...prev.lessonIds, ...added.map(l => l.id)] } : prev);
+    setAddExistingOpen(false);
+    setAddingExisting(false);
+  }
+
+  async function handleMoveLesson(lessonId: string, newCourseId: string) {
+    const lesson = lessons.find(l => l.id === lessonId);
+    if (!lesson) return;
+    // Remove from this course
+    await fetch(`/api/courses/${id}`, {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lessonIds: course!.lessonIds.filter(l => l !== lessonId) }),
+    });
+    // Add to new course
+    const newCourse = allCourses.find(c => c.id === newCourseId);
+    if (newCourse) {
+      await fetch(`/api/courses/${newCourseId}`, {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lessonIds: [...newCourse.lessonIds, lessonId] }),
+      });
+    }
+    await fetch(`/api/lessons/${lessonId}`, {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ courseId: newCourseId }),
+    });
+    setLessons(prev => prev.filter(l => l.id !== lessonId));
+    setCourse(prev => prev ? { ...prev, lessonIds: prev.lessonIds.filter(l => l !== lessonId) } : prev);
+    setMovingLessonId(null);
+  }
+
   async function handleRemoveLesson(lessonId: string) {
     if (!confirm("Remove this lesson from the course? The lesson itself won't be deleted.")) return;
     await fetch(`/api/courses/${id}`, {
@@ -402,6 +473,13 @@ export default function CourseDetailPage() {
                   >
                     Student View ↗
                   </a>
+                  <button
+                    onClick={openAddExisting}
+                    className="rounded-full px-3 py-2 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)]"
+                    style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+                  >
+                    Add Existing
+                  </button>
                   <Link
                     href={`/lessons/new?courseId=${id}`}
                     className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-xs font-bold text-white hover:opacity-90 transition shadow"
@@ -539,6 +617,34 @@ export default function CourseDetailPage() {
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                       </button>
+                      {/* Move to Course */}
+                      {allCourses.filter(c => c.id !== id).length > 0 && (
+                        <div className="relative">
+                          <button
+                            onClick={() => setMovingLessonId(movingLessonId === lesson.id ? null : lesson.id)}
+                            title="Move to course"
+                            className="p-1.5 rounded-full transition hover:bg-[var(--bg-card-hover)]"
+                            style={{ color: "var(--text-muted)" }}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                          </button>
+                          {movingLessonId === lesson.id && (
+                            <div className="absolute right-0 top-full mt-1 z-30 rounded-2xl overflow-hidden min-w-[180px]" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)" }}>
+                              <p className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Move to…</p>
+                              {allCourses.filter(c => c.id !== id).map(c => (
+                                <button
+                                  key={c.id}
+                                  onClick={() => handleMoveLesson(lesson.id, c.id)}
+                                  className="w-full text-left px-3 py-2 text-xs hover:bg-[var(--bg-card-hover)] transition"
+                                  style={{ color: "var(--text-primary)" }}
+                                >
+                                  {c.title}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
                       <button
                         onClick={() => handleRemoveLesson(lesson.id)}
                         title="Delete lesson"
@@ -560,6 +666,61 @@ export default function CourseDetailPage() {
         onClose={() => setGenerateLesson(null)}
         onGenerate={handleGenerate}
       />
+
+      {/* ── Add Existing Lesson Modal ─────────────────────────────────── */}
+      {addExistingOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setAddExistingOpen(false)} />
+          <div className="relative w-full max-w-lg max-h-[80vh] flex flex-col rounded-3xl overflow-hidden" style={{ background: "var(--bg-card)", boxShadow: "var(--shadow-float)" }}>
+            <div className="flex items-center justify-between px-6 py-4 shrink-0" style={{ borderBottom: "1px solid var(--border)" }}>
+              <h2 className="text-base font-bold" style={{ color: "var(--text-primary)" }}>Add Existing Lessons</h2>
+              <button onClick={() => setAddExistingOpen(false)} className="p-1.5 rounded-full transition hover:bg-[var(--bg-card-hover)]" style={{ color: "var(--text-muted)" }}>
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            <div className="overflow-y-auto flex-1 px-6 py-4">
+              {allLessons.length === 0 ? (
+                <p className="text-sm text-center py-8" style={{ color: "var(--text-muted)" }}>No other lessons available to add.</p>
+              ) : (
+                <div className="space-y-1">
+                  {allLessons.map(l => (
+                    <button
+                      key={l.id}
+                      onClick={() => setToAdd(prev => { const next = new Set(prev); next.has(l.id) ? next.delete(l.id) : next.add(l.id); return next; })}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-left transition hover:bg-[var(--bg-card-hover)]"
+                    >
+                      <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition ${toAdd.has(l.id) ? "bg-[#0cc0df] border-[#0cc0df]" : "border-[var(--border)]"}`}
+                        style={toAdd.has(l.id) ? {} : { background: "var(--bg-body)" }}>
+                        {toAdd.has(l.id) && <svg xmlns="http://www.w3.org/2000/svg" className="w-2.5 h-2.5 text-[#0a0b13]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate" style={{ color: "var(--text-primary)" }}>{l.title}</p>
+                        {l.courseId && (
+                          <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+                            Currently in: {allCourses.find(c => c.id === l.courseId)?.title ?? "another course"}
+                          </p>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="px-6 py-4 flex items-center gap-3 shrink-0" style={{ borderTop: "1px solid var(--border)" }}>
+              <button
+                onClick={handleAddExisting}
+                disabled={toAdd.size === 0 || addingExisting}
+                className="rounded-full bg-[#0cc0df] px-5 py-2 text-xs font-semibold text-[#0a0b13] hover:opacity-90 disabled:opacity-50 transition"
+              >
+                {addingExisting ? "Adding…" : `Add${toAdd.size > 0 ? ` (${toAdd.size})` : ""}`}
+              </button>
+              <button onClick={() => setAddExistingOpen(false)} className="rounded-full px-4 py-2 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)]" style={{ color: "var(--text-secondary)" }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Settings Modal ────────────────────────────────────────────── */}
       {settingsOpen && (
