@@ -28,8 +28,8 @@ import type { Course } from "@/types/course";
 
 type FileChoice = "slides" | "doc" | "quiz";
 type Destination = "drive" | "download";
-type WidgetId = "activity" | "progress" | "activeCourse";
-const DEFAULT_WIDGET_ORDER: WidgetId[] = ["activity", "progress", "activeCourse"];
+type WidgetId = "activity" | "progress" | "activeCourse" | "schedule" | "lessons";
+const DEFAULT_WIDGET_ORDER: WidgetId[] = ["activity", "progress", "activeCourse", "schedule", "lessons"];
 
 // ── Drag-to-scroll ────────────────────────────────────────────────────────────
 function useDragScroll() {
@@ -256,7 +256,7 @@ function Dashboard() {
   const [filterCourse, setFilterCourse] = useState<"all" | "unassigned" | string>("all");
 
   // ── Widget sizes + order ──────────────────────────────────────────────────────
-  const DEFAULT_WIDGET_SIZES: Record<WidgetId, 1 | 2 | 3> = { activity: 1, progress: 1, activeCourse: 1 };
+  const DEFAULT_WIDGET_SIZES: Record<WidgetId, 1 | 2 | 3> = { activity: 1, progress: 1, activeCourse: 1, schedule: 3, lessons: 3 };
   const [widgetSizes, setWidgetSizes] = useState<Record<WidgetId, 1 | 2 | 3>>(DEFAULT_WIDGET_SIZES);
   const [widgetOrder, setWidgetOrder] = useState<WidgetId[]>(DEFAULT_WIDGET_ORDER);
 
@@ -688,6 +688,86 @@ function Dashboard() {
     );
   }
 
+  function renderScheduleWidget() {
+    return (
+      <div className="rounded-3xl p-5 h-full" style={{ background: "var(--bg-sidebar)", boxShadow: "var(--shadow-card)" }}>
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Schedule</p>
+          <Link href="/schedule" className="text-[10px] text-[#0cc0df] hover:underline">Full schedule →</Link>
+        </div>
+        {upcoming.length === 0 ? (
+          <p className="text-sm text-center py-8" style={{ color: "var(--text-muted)" }}>No upcoming deadlines.</p>
+        ) : (
+          <div ref={scheduleRef} className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
+            {upcoming.map((lesson, i) => {
+              const accentColors = ["#6366f1", "#0cc0df", "#ff8c4a", "#2dd4a0", "#f59e0b"];
+              const color = accentColors[i % accentColors.length];
+              return (
+                <div key={lesson.id} className="shrink-0 rounded-3xl p-4 flex flex-col gap-2 min-w-[200px] max-w-[220px] transition hover:-translate-y-0.5 hover:shadow-md" style={{ background: "var(--bg-card-hover)" }}>
+                  <div className="h-0.5 rounded-full w-8" style={{ background: color }} />
+                  <Link href={`/lessons/${lesson.id}`} className="text-xs font-semibold leading-snug line-clamp-2 hover:underline" style={{ color: "var(--text-primary)" }}>{lesson.title}</Link>
+                  <div className="flex items-center gap-2 mt-auto flex-wrap">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg" style={{ background: `${color}22`, color }}>Due {lesson.deadline}</span>
+                    {lesson.tag && <span className="text-[10px] px-2 py-0.5 rounded-lg" style={{ background: "var(--accent-bg)", color: "var(--accent)" }}>{lesson.tag}</span>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  function renderLessonsWidget() {
+    return (
+      <div className="rounded-3xl p-5 space-y-4 h-full" style={{ background: "var(--bg-sidebar)", boxShadow: "var(--shadow-card)" }}>
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+            Lessons
+            {filterCourse === "unassigned" && <span className="ml-2 text-xs font-normal" style={{ color: "var(--text-muted)" }}>· Unassigned only</span>}
+          </p>
+          <Link href="/lessons/new" className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-3 py-1.5 text-xs font-bold text-white hover:opacity-90 transition">
+            + New Lesson
+          </Link>
+        </div>
+        {courses.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {(["all", "unassigned"] as const).map(f => (
+              <button key={f} onClick={() => setFilterCourse(f)} className="rounded-full px-3 py-1 text-xs font-medium transition"
+                style={filterCourse === f ? { background: "#0cc0df", color: "#0a0b13" } : { background: "var(--bg-card-hover)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}>
+                {f === "all" ? "All" : "Unassigned"}
+              </button>
+            ))}
+            {courses.map(c => (
+              <button key={c.id} onClick={() => setFilterCourse(c.id)} className="rounded-full px-3 py-1 text-xs font-medium transition"
+                style={filterCourse === c.id ? { background: "var(--accent-purple)", color: "#fff" } : { background: "var(--bg-card-hover)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}>
+                {c.title}
+              </button>
+            ))}
+          </div>
+        )}
+        {sorted.length === 0 ? (
+          <p className="text-sm text-center py-8" style={{ color: "var(--text-muted)" }}>
+            {filterCourse === "unassigned" ? "All lessons are assigned to a course." : "No lessons yet."}
+          </p>
+        ) : (
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={sorted.map(l => l.id)} strategy={rectSortingStrategy}>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {sorted.map(l => (
+                  <SortableLessonCard key={l.id} lesson={l} projects={projects.filter(p => p.lessonId === l.id)} courses={courses}
+                    onDelete={handleDelete} onDuplicate={handleDuplicate} onOpenModal={id => setModalLessonId(id)}
+                    onAssign={handleAssign} selecting={selecting} selected={selected.has(l.id)} onToggleSelect={toggleSelect} />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
+        )}
+      </div>
+    );
+  }
+
   // ── Sign-in screen ─────────────────────────────────────────────────────────
   if (status === "unauthenticated") {
     return (
@@ -763,6 +843,8 @@ function Dashboard() {
                   {widgetId === "activity" && renderActivityWidget()}
                   {widgetId === "progress" && renderProgressWidget()}
                   {widgetId === "activeCourse" && renderActiveCourseWidget()}
+                  {widgetId === "schedule" && renderScheduleWidget()}
+                  {widgetId === "lessons" && renderLessonsWidget()}
                 </SortableWidget>
               ))}
             </div>
@@ -770,118 +852,6 @@ function Dashboard() {
         </DndContext>
       )}
 
-      {/* ── Schedule strip ───────────────────────────────────────────────────── */}
-      {!loading && upcoming.length > 0 && (
-        <div className="rounded-3xl p-5" style={{ background: "var(--bg-sidebar)", boxShadow: "var(--shadow-card)" }}>
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Schedule</p>
-            <Link href="/schedule" className="text-[10px] text-[#0cc0df] hover:underline">
-              Full schedule →
-            </Link>
-          </div>
-          <div ref={scheduleRef} className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
-            {upcoming.map((lesson, i) => {
-              const accentColors = ["#6366f1", "#0cc0df", "#ff8c4a", "#2dd4a0", "#f59e0b"];
-              const color = accentColors[i % accentColors.length];
-              return (
-                <div
-                  key={lesson.id}
-                  className="shrink-0 rounded-3xl p-4 flex flex-col gap-2 min-w-[200px] max-w-[220px] transition hover:-translate-y-0.5 hover:shadow-md"
-                  style={{ background: "var(--bg-card-hover)" }}
-                >
-                  <div className="h-0.5 rounded-full w-8" style={{ background: color }} />
-                  <Link href={`/lessons/${lesson.id}`} className="text-xs font-semibold leading-snug line-clamp-2 hover:underline" style={{ color: "var(--text-primary)" }}>{lesson.title}</Link>
-                  <div className="flex items-center gap-2 mt-auto flex-wrap">
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg" style={{ background: `${color}22`, color }}>
-                      Due {lesson.deadline}
-                    </span>
-                    {lesson.tag && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-lg" style={{ background: "var(--accent-bg)", color: "var(--accent)" }}>
-                        {lesson.tag}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* ── Lessons grid ─────────────────────────────────────────────────────── */}
-      {!loading && (
-        <div className="rounded-3xl p-5 space-y-4" style={{ background: "var(--bg-sidebar)", boxShadow: "var(--shadow-card)" }}>
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-              Lessons
-              {filterCourse === "unassigned" && <span className="ml-2 text-xs font-normal" style={{ color: "var(--text-muted)" }}>· Unassigned only</span>}
-            </p>
-            <Link href="/lessons/new" className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-3 py-1.5 text-xs font-bold text-white hover:opacity-90 transition">
-              + New Lesson
-            </Link>
-          </div>
-
-          {/* Filter pills */}
-          {courses.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {(["all", "unassigned"] as const).map(f => (
-                <button
-                  key={f}
-                  onClick={() => setFilterCourse(f)}
-                  className="rounded-full px-3 py-1 text-xs font-medium transition"
-                  style={filterCourse === f
-                    ? { background: "#0cc0df", color: "#0a0b13" }
-                    : { background: "var(--bg-card-hover)", color: "var(--text-secondary)", border: "1px solid var(--border)" }
-                  }
-                >
-                  {f === "all" ? "All" : "Unassigned"}
-                </button>
-              ))}
-              {courses.map(c => (
-                <button
-                  key={c.id}
-                  onClick={() => setFilterCourse(c.id)}
-                  className="rounded-full px-3 py-1 text-xs font-medium transition"
-                  style={filterCourse === c.id
-                    ? { background: "var(--accent-purple)", color: "#fff" }
-                    : { background: "var(--bg-card-hover)", color: "var(--text-secondary)", border: "1px solid var(--border)" }
-                  }
-                >
-                  {c.title}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {sorted.length === 0 ? (
-            <p className="text-sm text-center py-8" style={{ color: "var(--text-muted)" }}>
-              {filterCourse === "unassigned" ? "All lessons are assigned to a course." : "No lessons yet."}
-            </p>
-          ) : (
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-              <SortableContext items={sorted.map(l => l.id)} strategy={rectSortingStrategy}>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {sorted.map(l => (
-                    <SortableLessonCard
-                      key={l.id}
-                      lesson={l}
-                      projects={projects.filter(p => p.lessonId === l.id)}
-                      courses={courses}
-                      onDelete={handleDelete}
-                      onDuplicate={handleDuplicate}
-                      onOpenModal={id => setModalLessonId(id)}
-                      onAssign={handleAssign}
-                      selecting={selecting}
-                      selected={selected.has(l.id)}
-                      onToggleSelect={toggleSelect}
-                    />
-                  ))}
-                </div>
-              </SortableContext>
-            </DndContext>
-          )}
-        </div>
-      )}
 
       <GenerateModal lesson={modalLesson} onClose={() => setModalLessonId(null)} onGenerate={handleGenerateWithOptions} />
 
