@@ -28,6 +28,8 @@ import type { Course } from "@/types/course";
 
 type FileChoice = "slides" | "doc" | "quiz";
 type Destination = "drive" | "download";
+type WidgetId = "activity" | "progress" | "activeCourse";
+const DEFAULT_WIDGET_ORDER: WidgetId[] = ["activity", "progress", "activeCourse"];
 
 // ── Drag-to-scroll ────────────────────────────────────────────────────────────
 function useDragScroll() {
@@ -187,6 +189,53 @@ function SortableLessonCard({ lesson, courses, onAssign, ...props }: SortableCar
   );
 }
 
+// ── Sortable widget wrapper ────────────────────────────────────────────────────
+function SortableWidget({ widgetId, span, onCycleSize, children }: {
+  widgetId: WidgetId;
+  span: 1 | 2 | 3;
+  onCycleSize: () => void;
+  children: React.ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: widgetId });
+  const spanClass = span === 3 ? "lg:col-span-3" : span === 2 ? "lg:col-span-2" : "lg:col-span-1";
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1, zIndex: isDragging ? 10 : undefined }}
+      className={`relative group/widget ${spanClass}`}
+    >
+      {/* Hover controls: drag handle + resize */}
+      <div className="absolute bottom-3 right-3 z-20 opacity-0 group-hover/widget:opacity-100 transition-opacity flex items-center gap-1">
+        <div
+          {...listeners}
+          {...attributes}
+          title="Drag to reorder"
+          className="flex items-center justify-center rounded-full p-1.5 cursor-grab active:cursor-grabbing"
+          style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)", color: "var(--text-secondary)" }}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
+            <circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/>
+            <circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/>
+            <circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/>
+          </svg>
+        </div>
+        <button
+          onClick={onCycleSize}
+          title={`Resize (${span}/3 columns)`}
+          className="flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-semibold"
+          style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)", color: "var(--text-secondary)" }}
+        >
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
+          </svg>
+          {span}/3
+        </button>
+      </div>
+      {children}
+    </div>
+  );
+}
+
 // ── Main Dashboard ────────────────────────────────────────────────────────────
 function Dashboard() {
   const { data: session, status } = useSession();
@@ -206,10 +255,10 @@ function Dashboard() {
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [filterCourse, setFilterCourse] = useState<"all" | "unassigned" | string>("all");
 
-  // ── Widget sizes ─────────────────────────────────────────────────────────────
-  type WidgetId = "activity" | "progress" | "activeCourse";
+  // ── Widget sizes + order ──────────────────────────────────────────────────────
   const DEFAULT_WIDGET_SIZES: Record<WidgetId, 1 | 2 | 3> = { activity: 1, progress: 1, activeCourse: 1 };
   const [widgetSizes, setWidgetSizes] = useState<Record<WidgetId, 1 | 2 | 3>>(DEFAULT_WIDGET_SIZES);
+  const [widgetOrder, setWidgetOrder] = useState<WidgetId[]>(DEFAULT_WIDGET_ORDER);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   const modalLesson = lessons.find(l => l.id === modalLessonId) ?? null;
@@ -322,6 +371,16 @@ function Dashboard() {
     });
   }
 
+  function handleWidgetDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    setWidgetOrder(prev => {
+      const next = arrayMove(prev, prev.indexOf(active.id as WidgetId), prev.indexOf(over.id as WidgetId));
+      localStorage.setItem("dash-widget-order", JSON.stringify(next));
+      return next;
+    });
+  }
+
   async function handleBulkDuplicate() {
     setBulkDuplicating(true);
     for (const id of [...selected]) await handleDuplicate(id);
@@ -416,11 +475,13 @@ function Dashboard() {
     }
   }, [status]);
 
-  // ── Load persisted widget sizes from localStorage ────────────────────────────
+  // ── Load persisted widget sizes + order from localStorage ────────────────────
   useEffect(() => {
     try {
       const ws = localStorage.getItem("dash-widget-sizes");
       if (ws) setWidgetSizes(JSON.parse(ws));
+      const wo = localStorage.getItem("dash-widget-order");
+      if (wo) setWidgetOrder(JSON.parse(wo));
     } catch {}
   }, []);
 
@@ -694,30 +755,19 @@ function Dashboard() {
 
       {/* ── Widget row ───────────────────────────────────────────────────────── */}
       {!loading && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {(["activity", "progress", "activeCourse"] as WidgetId[]).map(widgetId => {
-            const span = widgetSizes[widgetId];
-            const spanClass = span === 3 ? "lg:col-span-3" : span === 2 ? "lg:col-span-2" : "lg:col-span-1";
-            return (
-              <div key={widgetId} className={`relative group/widget ${spanClass}`}>
-                <button
-                  onClick={() => cycleWidgetSize(widgetId)}
-                  title={`Resize (${span}/3 columns)`}
-                  className="absolute bottom-3 right-3 z-20 opacity-0 group-hover/widget:opacity-100 transition-opacity flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-semibold"
-                  style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)", color: "var(--text-secondary)" }}
-                >
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
-                  </svg>
-                  {span}/3
-                </button>
-                {widgetId === "activity" && renderActivityWidget()}
-                {widgetId === "progress" && renderProgressWidget()}
-                {widgetId === "activeCourse" && renderActiveCourseWidget()}
-              </div>
-            );
-          })}
-        </div>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleWidgetDragEnd}>
+          <SortableContext items={widgetOrder} strategy={rectSortingStrategy}>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              {widgetOrder.map(widgetId => (
+                <SortableWidget key={widgetId} widgetId={widgetId} span={widgetSizes[widgetId]} onCycleSize={() => cycleWidgetSize(widgetId)}>
+                  {widgetId === "activity" && renderActivityWidget()}
+                  {widgetId === "progress" && renderProgressWidget()}
+                  {widgetId === "activeCourse" && renderActiveCourseWidget()}
+                </SortableWidget>
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
       )}
 
       {/* ── Schedule strip ───────────────────────────────────────────────────── */}
