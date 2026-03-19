@@ -481,7 +481,12 @@ function Dashboard() {
       const ws = localStorage.getItem("dash-widget-sizes");
       if (ws) setWidgetSizes(JSON.parse(ws));
       const wo = localStorage.getItem("dash-widget-order");
-      if (wo) setWidgetOrder(JSON.parse(wo));
+      if (wo) {
+        const saved: WidgetId[] = JSON.parse(wo);
+        // Append any new widgets not yet in the saved order
+        const merged = [...saved, ...DEFAULT_WIDGET_ORDER.filter(id => !saved.includes(id))];
+        setWidgetOrder(merged);
+      }
     } catch {}
   }, []);
 

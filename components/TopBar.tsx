@@ -113,6 +113,7 @@ export default function TopBar() {
             </svg>
             <input
               type="text"
+              name="q"
               value={query}
               onChange={e => setQuery(e.target.value)}
               placeholder="Search lessons, courses…"
@@ -198,6 +199,7 @@ export default function TopBar() {
               <input
                 ref={mobileInputRef}
                 type="text"
+                name="q"
                 value={query}
                 onChange={e => setQuery(e.target.value)}
                 placeholder="Search lessons, courses…"
