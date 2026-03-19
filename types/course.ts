@@ -23,14 +23,14 @@ export const DEFAULT_COURSE_SETTINGS: CourseSettings = {
   subject: "",
   studentLevel: "",
   sectionLabels: {
-    warmUp: "Warm-Up",
-    guidedLab: "Guided Lab",
-    selfPaced: "Self-Paced",
-    submissionChecklist: "Submission Checklist",
-    checkpoint: "Checkpoint",
-    industryBestPractices: "Industry Best Practices",
-    devJournalPrompt: "Dev Journal Prompt",
-    rubric: "Rubric",
+    warmUp: "Opening Activity",
+    guidedLab: "Guided Activity",
+    selfPaced: "Independent Activity",
+    submissionChecklist: "Requirements Checklist",
+    checkpoint: "Common Problems / FAQ",
+    industryBestPractices: "Best Practices",
+    devJournalPrompt: "Reflection Journal",
+    rubric: "Assessment / Rubric",
   },
 };
 
