@@ -693,7 +693,8 @@ function Dashboard() {
     );
   }
 
-  function renderScheduleWidget(_span: 1 | 2 | 3 = 3) {
+  function renderScheduleWidget(span: 1 | 2 | 3 = 3) {
+    const accentColors = ["#6366f1", "#0cc0df", "#ff8c4a", "#2dd4a0", "#f59e0b"];
     return (
       <div className="rounded-3xl p-5 h-full" style={{ background: "var(--bg-sidebar)", boxShadow: "var(--shadow-card)" }}>
         <div className="flex items-center justify-between mb-4">
@@ -702,10 +703,10 @@ function Dashboard() {
         </div>
         {upcoming.length === 0 ? (
           <p className="text-sm text-center py-8" style={{ color: "var(--text-muted)" }}>No upcoming deadlines.</p>
-        ) : (
+        ) : span === 3 ? (
+          /* Horizontal scroll strip — full width */
           <div ref={scheduleRef} className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
             {upcoming.map((lesson, i) => {
-              const accentColors = ["#6366f1", "#0cc0df", "#ff8c4a", "#2dd4a0", "#f59e0b"];
               const color = accentColors[i % accentColors.length];
               return (
                 <div key={lesson.id} className="shrink-0 rounded-3xl p-4 flex flex-col gap-2 min-w-[200px] max-w-[220px] transition hover:-translate-y-0.5 hover:shadow-md" style={{ background: "var(--bg-card-hover)" }}>
@@ -714,6 +715,25 @@ function Dashboard() {
                   <div className="flex items-center gap-2 mt-auto flex-wrap">
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg" style={{ background: `${color}22`, color }}>Due {lesson.deadline}</span>
                     {lesson.tag && <span className="text-[10px] px-2 py-0.5 rounded-lg" style={{ background: "var(--accent-bg)", color: "var(--accent)" }}>{lesson.tag}</span>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          /* Vertical list — narrow widths */
+          <div className="flex flex-col gap-2">
+            {upcoming.map((lesson, i) => {
+              const color = accentColors[i % accentColors.length];
+              return (
+                <div key={lesson.id} className="flex items-center gap-3 rounded-2xl px-3 py-2.5" style={{ background: "var(--bg-card-hover)" }}>
+                  <div className="w-1 self-stretch rounded-full shrink-0" style={{ background: color }} />
+                  <div className="flex-1 min-w-0">
+                    <Link href={`/lessons/${lesson.id}`} className="text-xs font-semibold leading-snug line-clamp-1 hover:underline" style={{ color: "var(--text-primary)" }}>{lesson.title}</Link>
+                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                      <span className="text-[10px] font-bold" style={{ color }}>Due {lesson.deadline}</span>
+                      {lesson.tag && <span className="text-[10px] px-1.5 py-0.5 rounded-md" style={{ background: "var(--accent-bg)", color: "var(--accent)" }}>{lesson.tag}</span>}
+                    </div>
                   </div>
                 </div>
               );
