@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, Suspense, useMemo } from "react";
+import { useCallback, useEffect, useRef, useState, Suspense, useMemo } from "react";
 import { useSession, signIn } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
@@ -28,6 +28,42 @@ import type { Course } from "@/types/course";
 
 type FileChoice = "slides" | "doc" | "quiz";
 type Destination = "drive" | "download";
+
+// ── Drag-to-scroll ────────────────────────────────────────────────────────────
+function useDragScroll() {
+  const dragging = useRef(false);
+  const startX = useRef(0);
+  const scrollLeft = useRef(0);
+
+  const ref = useCallback((el: HTMLDivElement | null) => {
+    if (!el) return;
+
+    const onMouseDown = (e: MouseEvent) => {
+      dragging.current = true;
+      startX.current = e.pageX;
+      scrollLeft.current = el.scrollLeft;
+      el.style.cursor = "grabbing";
+      el.style.userSelect = "none";
+    };
+    const onMouseMove = (e: MouseEvent) => {
+      if (!dragging.current) return;
+      e.preventDefault();
+      el.scrollLeft = scrollLeft.current - (e.pageX - startX.current);
+    };
+    const onMouseUp = () => {
+      dragging.current = false;
+      el.style.cursor = "grab";
+      el.style.userSelect = "";
+    };
+
+    el.style.cursor = "grab";
+    el.addEventListener("mousedown", onMouseDown);
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+  }, []);
+
+  return ref;
+}
 
 // ── Donut ring ────────────────────────────────────────────────────────────────
 function DonutRing({ value, total, color, label }: { value: number; total: number; color: string; label: string }) {
@@ -124,15 +160,17 @@ function AreaChart({ lessons }: { lessons: Lesson[] }) {
 interface SortableCardProps {
   lesson: Lesson;
   projects: SavedProject[];
+  courses: Course[];
   onDelete: (id: string) => void;
   onDuplicate: (id: string) => void;
   onOpenModal: (id: string) => void;
+  onAssign: (lessonId: string, courseId: string | null) => void;
   selecting: boolean;
   selected: boolean;
   onToggleSelect: (id: string) => void;
 }
 
-function SortableLessonCard({ lesson, ...props }: SortableCardProps) {
+function SortableLessonCard({ lesson, courses, onAssign, ...props }: SortableCardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: lesson.id });
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -142,7 +180,7 @@ function SortableLessonCard({ lesson, ...props }: SortableCardProps) {
   };
   return (
     <div ref={setNodeRef} style={style}>
-      <LessonCard lesson={lesson} {...props} gripProps={{ ...listeners, ...attributes }} />
+      <LessonCard lesson={lesson} courses={courses} onAssign={onAssign} {...props} gripProps={{ ...listeners, ...attributes }} />
     </div>
   );
 }
@@ -164,9 +202,11 @@ function Dashboard() {
   const [lessonOrder, setLessonOrder] = useState<string[]>([]);
   const [defaultSources, setDefaultSources] = useState("");
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [filterCourse, setFilterCourse] = useState<"all" | "unassigned" | string>("all");
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   const modalLesson = lessons.find(l => l.id === modalLessonId) ?? null;
+  const scheduleRef = useDragScroll();
 
   // ── Computed stats ──────────────────────────────────────────────────────────
   const doneCount = lessons.filter(l => l.status === "done").length;
@@ -197,15 +237,19 @@ function Dashboard() {
       .filter(l => !lessonOrder.includes(l.id))
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
     const ordered = orderedIds.map(id => lessons.find(l => l.id === id)!);
-    const all = [...unordered, ...ordered];
-    if (!searchQuery) return all;
-    return all.filter(l =>
-      l.title?.toLowerCase().includes(searchQuery) ||
-      l.subtitle?.toLowerCase().includes(searchQuery) ||
-      l.topics?.toLowerCase().includes(searchQuery) ||
-      l.tag?.toLowerCase().includes(searchQuery)
-    );
-  }, [lessons, lessonOrder, searchQuery]);
+    let all = [...unordered, ...ordered];
+    if (searchQuery) {
+      all = all.filter(l =>
+        l.title?.toLowerCase().includes(searchQuery) ||
+        l.subtitle?.toLowerCase().includes(searchQuery) ||
+        l.topics?.toLowerCase().includes(searchQuery) ||
+        l.tag?.toLowerCase().includes(searchQuery)
+      );
+    }
+    if (filterCourse === "unassigned") return all.filter(l => !l.courseId);
+    if (filterCourse !== "all") return all.filter(l => l.courseId === filterCourse);
+    return all;
+  }, [lessons, lessonOrder, searchQuery, filterCourse]);
 
   // ── Handlers ───────────────────────────────────────────────────────────────
   function toggleSelect(id: string) {
@@ -217,6 +261,36 @@ function Dashboard() {
   }
 
   function exitSelecting() { setSelecting(false); setSelected(new Set()); }
+
+  async function handleAssign(lessonId: string, courseId: string | null) {
+    const lesson = lessons.find(l => l.id === lessonId);
+    const oldCourseId = lesson?.courseId;
+    await fetch(`/api/lessons/${lessonId}`, {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ courseId: courseId ?? null }),
+    });
+    if (oldCourseId) {
+      const oldCourse = courses.find(c => c.id === oldCourseId);
+      if (oldCourse) {
+        await fetch(`/api/courses/${oldCourseId}`, {
+          method: "PUT", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ lessonIds: oldCourse.lessonIds.filter(id => id !== lessonId) }),
+        });
+        setCourses(prev => prev.map(c => c.id === oldCourseId ? { ...c, lessonIds: c.lessonIds.filter(id => id !== lessonId) } : c));
+      }
+    }
+    if (courseId) {
+      const newCourse = courses.find(c => c.id === courseId);
+      if (newCourse) {
+        await fetch(`/api/courses/${courseId}`, {
+          method: "PUT", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ lessonIds: [...newCourse.lessonIds, lessonId] }),
+        });
+        setCourses(prev => prev.map(c => c.id === courseId ? { ...c, lessonIds: [...c.lessonIds, lessonId] } : c));
+      }
+    }
+    setLessons(prev => prev.map(l => l.id === lessonId ? { ...l, courseId: courseId ?? undefined } : l));
+  }
 
   async function saveOrder(order: string[]) {
     await fetch("/api/user/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lessonOrder: order }) });
@@ -600,7 +674,7 @@ function Dashboard() {
               Full schedule →
             </Link>
           </div>
-          <div className="flex gap-3 overflow-x-auto pb-1">
+          <div ref={scheduleRef} className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
             {upcoming.map((lesson, i) => {
               const accentColors = ["#6366f1", "#0cc0df", "#ff8c4a", "#2dd4a0", "#f59e0b"];
               const color = accentColors[i % accentColors.length];
@@ -627,6 +701,81 @@ function Dashboard() {
               );
             })}
           </div>
+        </div>
+      )}
+
+      {/* ── Lessons grid ─────────────────────────────────────────────────────── */}
+      {!loading && (
+        <div className="rounded-3xl p-5 space-y-4" style={{ background: "var(--bg-sidebar)", boxShadow: "var(--shadow-card)" }}>
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+              Lessons
+              {filterCourse === "unassigned" && <span className="ml-2 text-xs font-normal" style={{ color: "var(--text-muted)" }}>· Unassigned only</span>}
+            </p>
+            <Link href="/lessons/new" className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-3 py-1.5 text-xs font-bold text-white hover:opacity-90 transition">
+              + New Lesson
+            </Link>
+          </div>
+
+          {/* Filter pills */}
+          {courses.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {(["all", "unassigned"] as const).map(f => (
+                <button
+                  key={f}
+                  onClick={() => setFilterCourse(f)}
+                  className="rounded-full px-3 py-1 text-xs font-medium transition"
+                  style={filterCourse === f
+                    ? { background: "#0cc0df", color: "#0a0b13" }
+                    : { background: "var(--bg-card-hover)", color: "var(--text-secondary)", border: "1px solid var(--border)" }
+                  }
+                >
+                  {f === "all" ? "All" : "Unassigned"}
+                </button>
+              ))}
+              {courses.map(c => (
+                <button
+                  key={c.id}
+                  onClick={() => setFilterCourse(c.id)}
+                  className="rounded-full px-3 py-1 text-xs font-medium transition"
+                  style={filterCourse === c.id
+                    ? { background: "var(--accent-purple)", color: "#fff" }
+                    : { background: "var(--bg-card-hover)", color: "var(--text-secondary)", border: "1px solid var(--border)" }
+                  }
+                >
+                  {c.title}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {sorted.length === 0 ? (
+            <p className="text-sm text-center py-8" style={{ color: "var(--text-muted)" }}>
+              {filterCourse === "unassigned" ? "All lessons are assigned to a course." : "No lessons yet."}
+            </p>
+          ) : (
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={sorted.map(l => l.id)} strategy={rectSortingStrategy}>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {sorted.map(l => (
+                    <SortableLessonCard
+                      key={l.id}
+                      lesson={l}
+                      projects={projects.filter(p => p.lessonId === l.id)}
+                      courses={courses}
+                      onDelete={handleDelete}
+                      onDuplicate={handleDuplicate}
+                      onOpenModal={id => setModalLessonId(id)}
+                      onAssign={handleAssign}
+                      selecting={selecting}
+                      selected={selected.has(l.id)}
+                      onToggleSelect={toggleSelect}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
+          )}
         </div>
       )}
 
