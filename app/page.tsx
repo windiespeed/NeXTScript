@@ -666,8 +666,8 @@ function Dashboard() {
 
             <Link
               href="/courses"
-              className="flex items-center justify-center gap-2 rounded-full py-2.5 text-sm font-semibold text-white hover:opacity-90 transition"
-              style={{ background: "linear-gradient(135deg, #6366f1, #818cf8)" }}
+              className="flex items-center justify-center gap-2 rounded-full py-2.5 text-sm font-semibold hover:opacity-90 transition"
+              style={{ background: "#0cc0df", color: "#0a0b13" }}
             >
               Open Courses
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
