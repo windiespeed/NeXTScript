@@ -9,6 +9,7 @@
 import { google } from "googleapis";
 import type { Lesson } from "@/types/lesson";
 import type { FormQuestion } from "@/types/form";
+import { DEFAULT_SECTION_LABELS, type SectionLabels } from "@/lib/userSettings";
 
 function getAuthClient(accessToken: string) {
   const auth = new google.auth.OAuth2();
@@ -163,7 +164,7 @@ function getRubric(lesson: Lesson): string {
   return lesson.rubric ?? (lesson as any).taChecklist ?? "";
 }
 
-export async function buildSlideDeck(lesson: Lesson, accessToken: string, templateId?: string): Promise<string> {
+export async function buildSlideDeck(lesson: Lesson, accessToken: string, templateId?: string, labels: SectionLabels = DEFAULT_SECTION_LABELS): Promise<string> {
   _idSeq = 0; // reset counter for each deck build
   const drive  = google.drive({ version: "v3", auth: getAuthClient(accessToken) });
   const slides = google.slides({ version: "v1", auth: getAuthClient(accessToken) });
@@ -220,10 +221,10 @@ export async function buildSlideDeck(lesson: Lesson, accessToken: string, templa
 
   // ── Section slides — matches Google Doc template order ──────────────────
   const contentRequests: any[] = [
-    ...slideRequests("LESSON OVERVIEW",   lesson.overview),
-    ...slideRequests("LEARNING TARGETS",  lesson.learningTargets),
+    ...slideRequests("LESSON OVERVIEW",              lesson.overview),
+    ...slideRequests("LEARNING TARGETS",             lesson.learningTargets),
     ...(lesson.vocabulary ? slideRequests("VOCABULARY", lesson.vocabulary) : []),
-    ...slideRequests("WARM-UP",           lesson.warmUp),
+    ...slideRequests(labels.warmUp.toUpperCase(),    lesson.warmUp),
   ];
 
   // ── Custom slide content blocks (--- = slide break, first line = title) ─
@@ -239,13 +240,13 @@ export async function buildSlideDeck(lesson: Lesson, accessToken: string, templa
 
   // ── Post-content section slides ─────────────────────────────────────────
   contentRequests.push(
-    ...slideRequests("GUIDED LAB",              lesson.guidedLab),
-    ...slideRequests("SELF-PACED",              lesson.selfPaced),
-    ...slideRequests("SUBMISSION CHECKLIST",    lesson.submissionChecklist),
-    ...slideRequests("CHECKPOINT",              lesson.checkpoint),
-    ...slideRequests("INDUSTRY BEST PRACTICES", lesson.industryBestPractices),
-    ...slideRequests("DEVELOPMENT JOURNAL",     lesson.devJournalPrompt),
-    ...slideRequests("RUBRIC",                  getRubric(lesson)),
+    ...slideRequests(labels.guidedLab.toUpperCase(),              lesson.guidedLab),
+    ...slideRequests(labels.selfPaced.toUpperCase(),              lesson.selfPaced),
+    ...slideRequests(labels.submissionChecklist.toUpperCase(),    lesson.submissionChecklist),
+    ...slideRequests(labels.checkpoint.toUpperCase(),             lesson.checkpoint),
+    ...slideRequests(labels.industryBestPractices.toUpperCase(),  lesson.industryBestPractices),
+    ...slideRequests(labels.devJournalPrompt.toUpperCase(),       lesson.devJournalPrompt),
+    ...slideRequests(labels.rubric.toUpperCase(),                 getRubric(lesson)),
   );
 
   // ── Success slide ───────────────────────────────────────────────────────
@@ -291,13 +292,17 @@ export async function buildSlideDeck(lesson: Lesson, accessToken: string, templa
 
 // ─── Docs (Assessment/Assignment Sheet) ──────────────────────────────────────
 
-export async function buildPosterDoc(lesson: Lesson, accessToken: string): Promise<string> {
+export async function buildPosterDoc(lesson: Lesson, accessToken: string, labels: SectionLabels = DEFAULT_SECTION_LABELS): Promise<string> {
   const docs  = google.docs({ version: "v1", auth: getAuthClient(accessToken) });
 
   const doc = await docs.documents.create({
-    requestBody: { title: `ASSESSMENT & ASSIGNMENT: ${lesson.title} — ${lesson.subtitle}` },
+    requestBody: { title: `OVERVIEW: ${lesson.title} — ${lesson.subtitle}` },
   });
   const docId = doc.data.documentId!;
+
+  function stripBullets(text: string): string {
+    return text.replace(/^[•\-\*]\s*/gm, "").trim();
+  }
 
   const text = [
     lesson.title,
@@ -305,16 +310,16 @@ export async function buildPosterDoc(lesson: Lesson, accessToken: string): Promi
     `Deadline: ${lesson.deadline}`,
     "",
     "VOCABULARY",
-    lesson.vocabulary ?? "",
+    stripBullets(lesson.vocabulary ?? ""),
     "",
     "LEARNING TARGETS",
-    lesson.learningTargets,
+    stripBullets(lesson.learningTargets),
     "",
-    "SUBMISSION CHECKLIST",
-    lesson.submissionChecklist,
+    labels.submissionChecklist.toUpperCase(),
+    stripBullets(lesson.submissionChecklist),
     "",
-    "DEV JOURNAL PROMPT",
-    lesson.devJournalPrompt,
+    labels.devJournalPrompt.toUpperCase(),
+    stripBullets(lesson.devJournalPrompt),
   ].join("\n");
 
   await docs.documents.batchUpdate({
@@ -398,7 +403,8 @@ export async function generateBundleSelective(
   lesson: Lesson,
   files: FileChoice[],
   accessToken: string,
-  templateId?: string
+  templateId?: string,
+  labels: SectionLabels = DEFAULT_SECTION_LABELS
 ): Promise<{ folderUrl: string; deckId?: string; formId?: string }> {
   const folder = await createFolder(
     `${lesson.title}: ${lesson.subtitle}`,
@@ -411,9 +417,9 @@ export async function generateBundleSelective(
   let formId: string | undefined;
 
   await Promise.all([
-    files.includes("slides") ? buildSlideDeck(lesson, accessToken, templateId).then(id => { deckId = id; }) : null,
-    files.includes("doc")    ? buildPosterDoc(lesson, accessToken).then(id => { docId = id; })             : null,
-    files.includes("quiz")   ? buildQuiz(lesson, accessToken).then(id => { formId = id; })                 : null,
+    files.includes("slides") ? buildSlideDeck(lesson, accessToken, templateId, labels).then(id => { deckId = id; }) : null,
+    files.includes("doc")    ? buildPosterDoc(lesson, accessToken, labels).then(id => { docId = id; })              : null,
+    files.includes("quiz")   ? buildQuiz(lesson, accessToken).then(id => { formId = id; })                          : null,
   ]);
 
   const fileIds = [deckId, docId, formId].filter(Boolean) as string[];
@@ -440,11 +446,12 @@ export async function generateBundleAsDownload(
   lesson: Lesson,
   files: Exclude<FileChoice, "quiz">[],
   accessToken: string,
-  templateId?: string
+  templateId?: string,
+  labels: SectionLabels = DEFAULT_SECTION_LABELS
 ): Promise<{ filename: string; data: string }[]> {
   const createTasks: { key: string; promise: Promise<string> }[] = [];
-  if (files.includes("slides")) createTasks.push({ key: "slides", promise: buildSlideDeck(lesson, accessToken, templateId) });
-  if (files.includes("doc"))    createTasks.push({ key: "doc",    promise: buildPosterDoc(lesson, accessToken) });
+  if (files.includes("slides")) createTasks.push({ key: "slides", promise: buildSlideDeck(lesson, accessToken, templateId, labels) });
+  if (files.includes("doc"))    createTasks.push({ key: "doc",    promise: buildPosterDoc(lesson, accessToken, labels) });
 
   const fileIds = await Promise.all(createTasks.map(t => t.promise));
 

@@ -79,7 +79,7 @@ export default function GenerateModal({ lesson, onClose, onGenerate }: Props) {
     if (e.target === e.currentTarget && modalStatus !== "loading") onClose();
   }
 
-  const labelClass = "flex items-center gap-2.5 text-sm text-white cursor-pointer select-none";
+  const labelClass = "flex items-center gap-2.5 text-sm cursor-pointer select-none";
   const sectionLabel = "text-xs font-semibold text-[#0cc0df] uppercase tracking-wide mb-2";
 
   return (
@@ -87,18 +87,22 @@ export default function GenerateModal({ lesson, onClose, onGenerate }: Props) {
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
       onClick={handleBackdropClick}
     >
-      <div className="w-full max-w-sm rounded-2xl bg-[#112543] border border-[#1e4a85]/60 shadow-2xl p-6 flex flex-col gap-5 mx-4">
+      <div
+        className="w-full max-w-sm rounded-2xl shadow-2xl p-6 flex flex-col gap-5 mx-4"
+        style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}
+      >
 
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="font-bold text-white text-base">Generate Bundle</h2>
+            <h2 className="font-bold text-base" style={{ color: "var(--text-primary)" }}>Generate Bundle</h2>
             <p className="text-xs text-[#0cc0df] mt-0.5 truncate max-w-[220px]">{lesson.title}</p>
           </div>
           <button
             onClick={onClose}
             disabled={modalStatus === "loading"}
-            className="text-gray-400 hover:text-white text-lg leading-none disabled:opacity-40 active:scale-95 transition-all duration-150"
+            className="text-lg leading-none disabled:opacity-40 active:scale-95 transition-all duration-150"
+            style={{ color: "var(--text-muted)" }}
             aria-label="Close"
           >
             ✕
@@ -109,25 +113,28 @@ export default function GenerateModal({ lesson, onClose, onGenerate }: Props) {
         <div>
           <p className={sectionLabel}>Output Files</p>
           <div className="flex flex-col gap-2.5">
-            <label className={labelClass}>
+            <label className={labelClass} style={{ color: "var(--text-primary)" }}>
               <input
                 type="checkbox"
                 checked={selectedFiles.includes("slides")}
                 onChange={() => toggleFile("slides")}
                 className="w-4 h-4 accent-[#0cc0df]"
               />
-              Slides <span className="text-gray-400 text-xs">(Google Slides)</span>
+              Slides <span className="text-xs" style={{ color: "var(--text-muted)" }}>(Google Slides)</span>
             </label>
-            <label className={labelClass}>
+            <label className={labelClass} style={{ color: "var(--text-primary)" }}>
               <input
                 type="checkbox"
                 checked={selectedFiles.includes("doc")}
                 onChange={() => toggleFile("doc")}
                 className="w-4 h-4 accent-[#0cc0df]"
               />
-              Assessment Doc <span className="text-gray-400 text-xs">(Google Doc)</span>
+              Assessment Doc <span className="text-xs" style={{ color: "var(--text-muted)" }}>(Google Doc)</span>
             </label>
-            <label className={`flex items-center gap-2.5 text-sm cursor-pointer select-none ${quizDisabled ? "opacity-40 cursor-not-allowed" : "text-white"}`}>
+            <label
+              className={`flex items-center gap-2.5 text-sm cursor-pointer select-none ${quizDisabled ? "opacity-40 cursor-not-allowed" : ""}`}
+              style={{ color: "var(--text-primary)" }}
+            >
               <input
                 type="checkbox"
                 checked={selectedFiles.includes("quiz")}
@@ -135,7 +142,7 @@ export default function GenerateModal({ lesson, onClose, onGenerate }: Props) {
                 disabled={quizDisabled}
                 className="w-4 h-4 accent-[#0cc0df]"
               />
-              Quiz <span className="text-xs text-gray-400">{quizDisabled ? "(not available as PDF)" : "(Google Forms)"}</span>
+              Quiz <span className="text-xs" style={{ color: "var(--text-muted)" }}>{quizDisabled ? "(not available as PDF)" : "(Google Forms)"}</span>
             </label>
           </div>
         </div>
@@ -144,7 +151,7 @@ export default function GenerateModal({ lesson, onClose, onGenerate }: Props) {
         <div>
           <p className={sectionLabel}>Destination</p>
           <div className="flex flex-col gap-2.5">
-            <label className={labelClass}>
+            <label className={labelClass} style={{ color: "var(--text-primary)" }}>
               <input
                 type="radio"
                 name="destination"
@@ -155,7 +162,7 @@ export default function GenerateModal({ lesson, onClose, onGenerate }: Props) {
               />
               Push to Google Drive
             </label>
-            <label className={labelClass}>
+            <label className={labelClass} style={{ color: "var(--text-primary)" }}>
               <input
                 type="radio"
                 name="destination"
@@ -171,19 +178,21 @@ export default function GenerateModal({ lesson, onClose, onGenerate }: Props) {
 
         {/* Template URL */}
         <div>
-          <p className={sectionLabel}>Slides Template <span className="normal-case font-normal text-gray-400">(optional)</span></p>
+          <p className={sectionLabel}>Slides Template <span className="normal-case font-normal" style={{ color: "var(--text-muted)" }}>(optional)</span></p>
           <div className="flex gap-2">
             <input
               type="url"
               value={templateUrl}
               onChange={(e) => setTemplateUrl(e.target.value)}
               placeholder="https://docs.google.com/presentation/d/…"
-              className="flex-1 rounded-lg bg-[#0d1c35] border border-[#1e4a85] text-white placeholder:text-gray-500 text-xs px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#0cc0df]"
+              className="flex-1 rounded-xl text-xs px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#0cc0df] placeholder:text-[var(--text-muted)]"
+              style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
             />
             {templateUrl.trim() && (
               <button
                 onClick={() => { setTemplateUrl(""); fetch("/api/user/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ defaultTemplateUrl: "" }) }).catch(() => {}); }}
-                className="rounded-lg bg-[#0d1c35] border border-[#1e4a85] px-2.5 text-gray-400 hover:text-white transition text-xs"
+                className="rounded-xl px-2.5 text-xs transition hover:opacity-80"
+                style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)", color: "var(--text-muted)" }}
                 title="Clear saved template"
               >
                 ✕
@@ -194,7 +203,7 @@ export default function GenerateModal({ lesson, onClose, onGenerate }: Props) {
             <p className="text-xs text-red-400 mt-1">Could not extract a presentation ID from that URL.</p>
           )}
           {!templateUrl.trim() && (
-            <p className="text-xs text-gray-400 mt-1">Leave blank to create a fresh presentation.</p>
+            <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>Leave blank to create a fresh presentation.</p>
           )}
         </div>
 
@@ -203,14 +212,15 @@ export default function GenerateModal({ lesson, onClose, onGenerate }: Props) {
           <button
             onClick={onClose}
             disabled={modalStatus === "loading"}
-            className="rounded-lg px-4 py-1.5 text-xs font-semibold bg-[#1e4a85] text-white hover:bg-[#2a5a9a] disabled:opacity-40 active:scale-95 transition-all duration-150"
+            className="rounded-xl px-4 py-1.5 text-xs font-semibold disabled:opacity-40 active:scale-95 transition-all duration-150 hover:bg-[var(--bg-card-hover)]"
+            style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
           >
             Cancel
           </button>
           <button
             onClick={handleGenerate}
             disabled={!canGenerate}
-            className="rounded-lg px-4 py-1.5 text-xs font-semibold bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] text-white hover:opacity-90 disabled:opacity-40 active:scale-95 transition-all duration-150"
+            className="rounded-xl px-4 py-1.5 text-xs font-semibold bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] text-white hover:opacity-90 disabled:opacity-40 active:scale-95 transition-all duration-150"
           >
             Generate
           </button>

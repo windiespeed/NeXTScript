@@ -2,14 +2,21 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { store } from "@/lib/store";
 import { projectStore } from "@/lib/projectStore";
-import { userSettings } from "@/lib/userSettings";
+import { courseStore } from "@/lib/courseStore";
+import { userSettings, getMergedLabels } from "@/lib/userSettings";
 import { generateBundleSelective, generateBundleAsDownload } from "@/lib/google";
 import { generateQuizQuestions } from "@/lib/ai";
+import { DEFAULT_SECTION_LABELS } from "@/lib/sectionLabels";
 
 export const dynamic = "force-dynamic";
 
 type FileChoice = "slides" | "doc" | "quiz";
 type Destination = "drive" | "download";
+
+function extractPresentationId(url: string): string | undefined {
+  const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  return match ? match[1] : undefined;
+}
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -49,13 +56,40 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const inProgressStatus = lesson.status === "done" ? "regenerating" : "generating";
   await store.update(id, { status: inProgressStatus });
 
+  // Load user settings and course settings (if lesson belongs to a course)
+  const [uSettings, course] = await Promise.all([
+    userSettings.get(session.user!.email!),
+    lesson.courseId ? courseStore.getById(lesson.courseId) : Promise.resolve(undefined),
+  ]);
+
+  // Course settings override user settings when non-empty
+  const industry = (course?.settings?.industry || uSettings.industry) ?? "";
+  const subject  = (course?.settings?.subject  || uSettings.subject)  ?? "";
+
+  // Merge section labels: defaults → user labels → course labels
+  const mergedLabels = {
+    ...DEFAULT_SECTION_LABELS,
+    ...uSettings.sectionLabels,
+    ...(course?.settings?.sectionLabels ?? {}),
+  };
+
+  // If no templateId from the request, fall back to the course's default template URL
+  if (!templateId && course?.settings?.defaultTemplateUrl) {
+    templateId = extractPresentationId(course.settings.defaultTemplateUrl);
+  }
+  // Then fall back to the user's saved default template URL
+  if (!templateId && uSettings.defaultTemplateUrl) {
+    templateId = extractPresentationId(uSettings.defaultTemplateUrl);
+  }
+
+  const curriculumCtx = { industry, subject, labels: mergedLabels };
+
   // Auto-generate quiz questions via AI if quiz is selected and none are defined
   let lessonToGenerate = lesson;
   if (files.includes("quiz") && (!lesson.quizQuestions || lesson.quizQuestions.length === 0)) {
-    const apiKey = await userSettings.getAnthropicKey(session.user!.email!);
-    if (apiKey) {
+    if (uSettings.anthropicKey) {
       try {
-        const aiQuestions = await generateQuizQuestions(apiKey, lesson);
+        const aiQuestions = await generateQuizQuestions(uSettings.anthropicKey, lesson, curriculumCtx);
         lessonToGenerate = { ...lesson, quizQuestions: aiQuestions };
       } catch {
         // If AI generation fails, proceed with empty quiz rather than blocking generation
@@ -65,7 +99,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   try {
     if (destination === "drive") {
-      const { folderUrl, deckId, formId } = await generateBundleSelective(lessonToGenerate, files, accessToken, templateId);
+      const { folderUrl, deckId, formId } = await generateBundleSelective(lessonToGenerate, files, accessToken, templateId, mergedLabels);
 
       // Save generated files to the projects collection so they appear in dashboard tabs
       await Promise.all([
@@ -77,7 +111,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json(updated);
     } else {
       const downloadFiles = files.filter(f => f !== "quiz") as ("slides" | "doc")[];
-      const downloads = await generateBundleAsDownload(lessonToGenerate, downloadFiles, accessToken, templateId);
+      const downloads = await generateBundleAsDownload(lessonToGenerate, downloadFiles, accessToken, templateId, mergedLabels);
       await store.update(id, { status: "done" });
       return NextResponse.json({ downloads });
     }

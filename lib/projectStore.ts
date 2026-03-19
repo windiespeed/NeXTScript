@@ -26,6 +26,11 @@ export const projectStore = {
     return project;
   },
 
+  async getById(id: string): Promise<SavedProject | null> {
+    const doc = await getDb().collection(COLLECTION).doc(id).get();
+    return doc.exists ? (doc.data() as SavedProject) : null;
+  },
+
   async delete(id: string): Promise<boolean> {
     const ref = getDb().collection(COLLECTION).doc(id);
     const doc = await ref.get();

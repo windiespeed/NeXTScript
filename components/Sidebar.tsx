@@ -26,13 +26,13 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
   return (
     <Link
       href={item.href}
-      className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+      className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-150 ${
         active
-          ? "bg-[var(--accent-bg)] text-[var(--accent)]"
+          ? "bg-[#0cc0df] text-[#0a0b13] shadow-sm"
           : "text-[var(--text-secondary)] hover:bg-[var(--bg-card-hover)] hover:text-[var(--text-primary)]"
       }`}
     >
-      <span className={`flex-shrink-0 ${active ? "text-[var(--accent)]" : "text-[var(--text-muted)]"}`}>
+      <span className={`flex-shrink-0 ${active ? "text-[#0a0b13]" : "text-[var(--text-muted)]"}`}>
         {item.icon}
       </span>
       {item.label}
@@ -137,7 +137,7 @@ const ASSETS_NAV: NavItem[] = [
 ];
 
 const ACCOUNT_NAV: NavItem[] = [
-  { label: "Settings", href: "/settings", icon: Icons.settings },
+  { label: "Profile", href: "/profile", icon: Icons.settings },
 ];
 
 export default function Sidebar() {
@@ -172,7 +172,7 @@ export default function Sidebar() {
       {/* Logo */}
       <div className="px-4 py-5 flex items-center justify-between border-b border-[var(--border)]">
         <Link href="/" className="flex items-center">
-          <Image src="/logo.png" alt="NeXTScript" width={140} height={38} className="h-9 w-auto brightness-0 invert dark:brightness-100 dark:invert-0" priority />
+          <Image src="/logo.png" alt="NeXTScript" width={140} height={38} className="h-9 w-auto dark:brightness-0 dark:invert" priority />
         </Link>
         <ThemeToggle />
       </div>
@@ -259,7 +259,7 @@ export default function Sidebar() {
       {/* Mobile top bar */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-4 py-3 bg-[var(--bg-sidebar)] border-b border-[var(--border)]">
         <Link href="/">
-          <Image src="/logo.png" alt="NeXTScript" width={120} height={33} className="h-8 w-auto brightness-0 invert dark:brightness-100 dark:invert-0" priority />
+          <Image src="/logo.png" alt="NeXTScript" width={120} height={33} className="h-8 w-auto dark:brightness-0 dark:invert" priority />
         </Link>
         <div className="flex items-center gap-2">
           <ThemeToggle />

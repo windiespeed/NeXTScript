@@ -18,6 +18,9 @@ export async function GET() {
       folders: s.folders ?? [],
       defaultTemplateUrl: s.defaultTemplateUrl ?? "",
       lessonOrder: s.lessonOrder ?? [],
+      industry: s.industry ?? "",
+      subject: s.subject ?? "",
+      sectionLabels: s.sectionLabels ?? {},
     });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
@@ -53,6 +56,18 @@ export async function PUT(req: Request) {
 
     if ("lessonOrder" in body) {
       update.lessonOrder = Array.isArray(body.lessonOrder) ? body.lessonOrder : [];
+    }
+
+    if ("industry" in body) {
+      update.industry = typeof body.industry === "string" ? body.industry : "";
+    }
+
+    if ("subject" in body) {
+      update.subject = typeof body.subject === "string" ? body.subject : "";
+    }
+
+    if ("sectionLabels" in body) {
+      update.sectionLabels = typeof body.sectionLabels === "object" ? body.sectionLabels : {};
     }
 
     await userSettings.save(session.user.email, update);

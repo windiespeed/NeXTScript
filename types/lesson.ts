@@ -27,6 +27,8 @@ export interface Lesson {
   industryBestPractices: string; // INDUSTRY BEST PRACTICES
   devJournalPrompt: string;      // DEVELOPMENT JOURNAL PROMPT
   rubric: string;                // RUBRIC — comprehension/objective checklist
+  courseId?: string;             // ID of the course this lesson belongs to (null = standalone)
+  released?: boolean;            // Whether this lesson is visible in the student view
   folder?: string;               // Optional folder name for grouping lessons on the dashboard
   sources: string;               // Reference URLs (one per line) used during generation
   studentLevel?: "beginner" | "intermediate" | "advanced"; // Target student experience level for AI generation

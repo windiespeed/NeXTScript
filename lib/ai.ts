@@ -190,5 +190,9 @@ Return ONLY a valid JSON array with no markdown, no explanation:
 
   const text = message.content[0].type === "text" ? message.content[0].text : "[]";
   const jsonStr = text.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
-  return JSON.parse(jsonStr) as FormQuestion[];
+  try {
+    return JSON.parse(jsonStr) as FormQuestion[];
+  } catch {
+    return [];
+  }
 }

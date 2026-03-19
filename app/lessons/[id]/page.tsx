@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import LessonForm from "@/components/LessonForm";
@@ -13,6 +13,7 @@ export default function EditLessonPage() {
   const [lesson, setLesson] = useState<Lesson | null>(null);
   const [loading, setLoading] = useState(true);
   const [hasAiKey, setHasAiKey] = useState(false);
+  const clearFormRef = useRef<(() => void) | undefined>(undefined);
 
   useEffect(() => {
     Promise.all([
@@ -21,9 +22,14 @@ export default function EditLessonPage() {
     ]).then(([lessonData, settings]) => {
       setLesson(lessonData);
       setHasAiKey(settings.hasKey ?? false);
+    }).catch(() => {
+      // Fetch failed — render form without AI key
+    }).finally(() => {
       setLoading(false);
     });
   }, [id]);
+
+  const backHref = lesson?.courseId ? `/courses/${lesson.courseId}` : "/";
 
   async function putLesson(data: LessonInput) {
     const res = await fetch(`/api/lessons/${id}`, {
@@ -39,7 +45,7 @@ export default function EditLessonPage() {
 
   async function handleSubmit(data: LessonInput) {
     await putLesson(data);
-    router.push("/");
+    router.push(backHref);
     router.refresh();
   }
 
@@ -47,17 +53,38 @@ export default function EditLessonPage() {
     await putLesson(data);
   }
 
-  if (loading) return <p className="text-sm text-gray-500">Loading…</p>;
-  if (!lesson) return <p className="text-sm text-red-500">Lesson not found.</p>;
+  if (loading) return <p className="text-sm text-[#0cc0df] mt-10">Loading…</p>;
+  if (!lesson) return <p className="text-sm text-red-500 mt-10">Lesson not found.</p>;
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-10">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-black dark:text-white">Edit Lesson</h1>
-        <p className="text-sm text-gray-500 mt-1">{lesson.title}</p>
+    <div className="max-w-3xl">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <button onClick={() => router.push(backHref)} className="text-sm text-[#0cc0df] hover:underline mb-2 block">
+            ← {lesson.courseId ? "Back to Course" : "Back to Dashboard"}
+          </button>
+          <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>Edit Lesson</h1>
+          <p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>{lesson.title}</p>
+        </div>
+        <button
+          onClick={() => clearFormRef.current?.()}
+          className="rounded-xl px-3 py-1.5 text-xs font-semibold text-red-500 hover:bg-red-500/10 transition"
+          style={{ border: "1px solid var(--border)" }}
+        >
+          Clear Form
+        </button>
       </div>
 
-      <LessonForm initial={lesson} onSubmit={handleSubmit} autoSave={handleAutoSave} onCancel={() => router.push("/")} submitLabel="Save Changes" hasAiKey={hasAiKey} isEditing />
-    </main>
+      <LessonForm
+        initial={lesson}
+        onSubmit={handleSubmit}
+        autoSave={handleAutoSave}
+        onCancel={() => router.push(backHref)}
+        onClearRef={(fn) => { clearFormRef.current = fn; }}
+        submitLabel="Save Changes"
+        hasAiKey={hasAiKey}
+        isEditing
+      />
+    </div>
   );
 }

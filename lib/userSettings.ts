@@ -1,14 +1,24 @@
 import { getDb } from "@/lib/firebase";
+import { DEFAULT_SECTION_LABELS, type SectionLabels } from "@/lib/sectionLabels";
+
+export { DEFAULT_SECTION_LABELS, type SectionLabels };
 
 const COLLECTION = "userSettings";
 
+export function getMergedLabels(settings: { sectionLabels?: Partial<SectionLabels> }): SectionLabels {
+  return { ...DEFAULT_SECTION_LABELS, ...settings.sectionLabels };
+}
+
 interface UserSettings {
   anthropicKey?: string;
-  avatarUrl?: string; // base64 data URL, resized to 200×200 client-side
-  defaultSources?: string; // newline-separated URLs pre-filled on new lessons
-  folders?: string[]; // named lesson folders on the dashboard
-  defaultTemplateUrl?: string; // Google Slides template URL pre-filled in Generate modal
-  lessonOrder?: string[];      // ordered lesson IDs; new/unordered lessons appear first
+  avatarUrl?: string;
+  defaultSources?: string;
+  folders?: string[];
+  defaultTemplateUrl?: string;
+  lessonOrder?: string[];
+  industry?: string;
+  subject?: string;
+  sectionLabels?: Partial<SectionLabels>;
 }
 
 export const userSettings = {

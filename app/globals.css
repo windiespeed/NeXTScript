@@ -3,21 +3,25 @@
 @variant dark (&:where(.dark, .dark *));
 
 :root {
-  /* Light theme */
-  --bg-body:        #f5f6fa;
+  /* ── Light theme ─────────────────────────────────────────────── */
+  --bg-body:        #f0f2f7;
   --bg-sidebar:     #ffffff;
   --bg-card:        #ffffff;
-  --bg-card-hover:  #f0f1f5;
-  --border:         rgba(0, 0, 0, 0.08);
-  --text-primary:   #111118;
-  --text-secondary: #6b7280;
-  --text-muted:     #9ca3af;
+  --bg-card-hover:  #eef0f7;
+  --border:         rgba(15, 20, 60, 0.09);
+  --border-accent:  rgba(12, 192, 223, 0.25);
+  --text-primary:   #0d1530;
+  --text-secondary: #4a5880;
+  --text-muted:     #8898bb;
   --accent:         #0cc0df;
   --accent-bg:      rgba(12, 192, 223, 0.10);
-  --sidebar-label:  #9ca3af;
+  --accent-orange:  #ff8c4a;
+  --success:        #2dd4a0;
+  --sidebar-label:  #a0aec8;
+  --shadow-card:    0 2px 12px rgba(13, 21, 48, 0.07);
 
-  --background: #f5f6fa;
-  --foreground: #111118;
+  --background: #f0f2f7;
+  --foreground: #0d1530;
 }
 
 @theme inline {
@@ -28,21 +32,25 @@
 }
 
 .dark {
-  /* Dark theme */
-  --bg-body:        #0f0f17;
-  --bg-sidebar:     #13131f;
-  --bg-card:        #1c1c2a;
-  --bg-card-hover:  #22222f;
+  /* ── Dark theme ──────────────────────────────────────────────── */
+  --bg-body:        #08090f;
+  --bg-sidebar:     #0a0b13;
+  --bg-card:        #0e1018;
+  --bg-card-hover:  #13151f;
   --border:         rgba(255, 255, 255, 0.06);
-  --text-primary:   #f0f0fa;
-  --text-secondary: rgba(255, 255, 255, 0.5);
-  --text-muted:     rgba(255, 255, 255, 0.3);
+  --border-accent:  rgba(12, 192, 223, 0.18);
+  --text-primary:   #eaecff;
+  --text-secondary: rgba(234, 236, 255, 0.50);
+  --text-muted:     rgba(234, 236, 255, 0.28);
   --accent:         #0cc0df;
   --accent-bg:      rgba(12, 192, 223, 0.12);
-  --sidebar-label:  rgba(255, 255, 255, 0.3);
+  --accent-orange:  #ff8c4a;
+  --success:        #2dd4a0;
+  --sidebar-label:  rgba(234, 236, 255, 0.22);
+  --shadow-card:    0 4px 24px rgba(0, 0, 0, 0.50);
 
-  --background: #0f0f17;
-  --foreground: #f0f0fa;
+  --background: #08090f;
+  --foreground: #eaecff;
 }
 
 html {
