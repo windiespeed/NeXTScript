@@ -188,7 +188,7 @@ export default function ProfilePage() {
   const userInitials = initials(session?.user?.name, session?.user?.email);
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="max-w-2xl mx-auto space-y-6">
       {/* Header */}
       <div className="mb-6">
         <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: "var(--text-muted)" }}>Account</p>
