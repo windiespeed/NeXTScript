@@ -19,16 +19,22 @@ function getAuthClient(accessToken: string) {
 
 // ─── Drive ─────────────────────────────────────────────────────────────────
 
-export async function createFolder(name: string, accessToken: string) {
+export async function createFolder(name: string, accessToken: string, parentFolderId?: string) {
   const drive = google.drive({ version: "v3", auth: getAuthClient(accessToken) });
   const res = await drive.files.create({
     requestBody: {
       name,
       mimeType: "application/vnd.google-apps.folder",
+      ...(parentFolderId ? { parents: [parentFolderId] } : {}),
     },
     fields: "id, webViewLink",
   });
   return res.data;
+}
+
+export async function createCourseFolder(name: string, accessToken: string): Promise<{ id: string; webViewLink: string }> {
+  const data = await createFolder(name, accessToken);
+  return { id: data.id!, webViewLink: data.webViewLink! };
 }
 
 async function moveFileToFolder(fileId: string, folderId: string, accessToken: string) {
@@ -404,11 +410,13 @@ export async function generateBundleSelective(
   files: FileChoice[],
   accessToken: string,
   templateId?: string,
-  labels: SectionLabels = DEFAULT_SECTION_LABELS
+  labels: SectionLabels = DEFAULT_SECTION_LABELS,
+  parentFolderId?: string
 ): Promise<{ folderUrl: string; deckId?: string; formId?: string }> {
   const folder = await createFolder(
     `${lesson.title}: ${lesson.subtitle}`,
-    accessToken
+    accessToken,
+    parentFolderId
   );
   const folderId = folder.id!;
 

@@ -99,7 +99,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   try {
     if (destination === "drive") {
-      const { folderUrl, deckId, formId } = await generateBundleSelective(lessonToGenerate, files, accessToken, templateId, mergedLabels);
+      const { folderUrl, deckId, formId } = await generateBundleSelective(lessonToGenerate, files, accessToken, templateId, mergedLabels, course?.driveFolderId ?? undefined);
 
       // Save generated files to the projects collection so they appear in dashboard tabs
       await Promise.all([

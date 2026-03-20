@@ -61,6 +61,8 @@ export default function NewCoursePage() {
       return;
     }
     const course = await res.json();
+    // Attempt to create Drive folder — non-blocking, failure won't prevent navigation
+    await fetch(`/api/courses/${course.id}/folder`, { method: "POST" }).catch(() => {});
     router.push(`/courses/${course.id}`);
   }
 

@@ -34,6 +34,12 @@ export const DEFAULT_COURSE_SETTINGS: CourseSettings = {
   },
 };
 
+export interface CourseResource {
+  id: string;     // client-generated uuid
+  label: string;  // e.g. "Syllabus", "Reference Sheet"
+  url: string;    // Google Drive or any URL
+}
+
 export interface Course {
   id: string;
   userId: string;
@@ -43,6 +49,9 @@ export interface Course {
   term: string;         // e.g. "Spring 2026", "Q1"
   settings: CourseSettings;
   lessonIds: string[];  // ordered list of lesson IDs belonging to this course
+  driveFolderId?: string;
+  driveFolderUrl?: string;
+  resources?: CourseResource[];
   createdAt: string;
   updatedAt: string;
 }

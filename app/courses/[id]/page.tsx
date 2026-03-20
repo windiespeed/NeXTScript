@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import type { Course, CourseSettings } from "@/types/course";
+import type { Course, CourseSettings, CourseResource } from "@/types/course";
 import { DEFAULT_COURSE_SETTINGS } from "@/types/course";
 import type { Lesson } from "@/types/lesson";
 import type { SavedProject } from "@/types/project";
@@ -73,6 +73,11 @@ export default function CourseDetailPage() {
   const [addingExisting, setAddingExisting] = useState(false);
   const [movingLessonId, setMovingLessonId] = useState<string | null>(null);
   const [allCourses, setAllCourses] = useState<import("@/types/course").Course[]>([]);
+  const [resources, setResources] = useState<CourseResource[]>([]);
+  const [creatingFolder, setCreatingFolder] = useState(false);
+  const [addResourceOpen, setAddResourceOpen] = useState(false);
+  const [newResourceLabel, setNewResourceLabel] = useState("");
+  const [newResourceUrl, setNewResourceUrl] = useState("");
 
   useEffect(() => {
     Promise.all([
@@ -91,6 +96,7 @@ export default function CourseDetailPage() {
       setProjects(Array.isArray(projectData) ? projectData : []);
       setLessons(Array.isArray(lessonData) ? lessonData : []);
       setAllCourses(Array.isArray(coursesData) ? coursesData : []);
+      setResources(Array.isArray(courseData.resources) ? courseData.resources : []);
       setLoading(false);
     });
   }, [id]);
@@ -350,6 +356,43 @@ export default function CourseDetailPage() {
     setCourse((prev) => prev ? { ...prev, lessonIds: prev.lessonIds.filter((l) => l !== lessonId) } : prev);
   }
 
+  async function handleCreateCourseFolder() {
+    setCreatingFolder(true);
+    const res = await fetch(`/api/courses/${id}/folder`, { method: "POST" });
+    setCreatingFolder(false);
+    if (res.ok) {
+      const updated = await res.json();
+      setCourse(updated);
+    }
+  }
+
+  async function handleAddResource() {
+    if (!newResourceLabel.trim() || !newResourceUrl.trim()) return;
+    const newResource: CourseResource = { id: crypto.randomUUID(), label: newResourceLabel.trim(), url: newResourceUrl.trim() };
+    const updated = [...resources, newResource];
+    setResources(updated);
+    setCourse(prev => prev ? { ...prev, resources: updated } : prev);
+    setNewResourceLabel("");
+    setNewResourceUrl("");
+    setAddResourceOpen(false);
+    await fetch(`/api/courses/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ resources: updated }),
+    });
+  }
+
+  async function handleRemoveResource(resourceId: string) {
+    const updated = resources.filter(r => r.id !== resourceId);
+    setResources(updated);
+    setCourse(prev => prev ? { ...prev, resources: updated } : prev);
+    await fetch(`/api/courses/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ resources: updated }),
+    });
+  }
+
   if (loading) return <p className="text-sm text-[#0cc0df] mt-10">Loading…</p>;
   if (!course) return <p className="text-sm text-red-500 mt-10">Course not found.</p>;
 
@@ -400,6 +443,62 @@ export default function CourseDetailPage() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* ── Drive Folder + Resources ─────────────────────────────────── */}
+      <div className="rounded-3xl p-5 space-y-3" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>Course Resources</p>
+          <div className="flex items-center gap-2">
+            {course.driveFolderUrl ? (
+              <a
+                href={course.driveFolderUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition hover:opacity-80"
+                style={{ background: "rgba(45,212,160,0.12)", border: "1px solid rgba(45,212,160,0.35)", color: "#2dd4a0" }}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                Course Folder ↗
+              </a>
+            ) : (
+              <button
+                onClick={handleCreateCourseFolder}
+                disabled={creatingFolder}
+                className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)] disabled:opacity-50"
+                style={{ border: "1px solid var(--border)", color: "var(--text-muted)" }}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                {creatingFolder ? "Creating…" : "Create Drive Folder"}
+              </button>
+            )}
+            <button
+              onClick={() => setAddResourceOpen(true)}
+              className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold transition hover:bg-[var(--accent-bg)]"
+              style={{ color: "#0cc0df" }}
+            >
+              + Add Resource
+            </button>
+          </div>
+        </div>
+        {resources.length === 0 ? (
+          <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+            No resources yet. Add Drive links, syllabi, or reference docs.
+          </p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {resources.map(r => (
+              <div key={r.id} className="group inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold" style={{ background: "var(--accent-purple-bg)", border: "1px solid rgba(99,102,241,0.30)", color: "var(--accent-purple)" }}>
+                <a href={r.url} target="_blank" rel="noopener noreferrer" className="hover:underline">{r.label} ↗</a>
+                <button
+                  onClick={() => handleRemoveResource(r.id)}
+                  title="Remove"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-500 leading-none"
+                >×</button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* ── Lessons ──────────────────────────────────────────────────── */}
@@ -715,6 +814,58 @@ export default function CourseDetailPage() {
                 {addingExisting ? "Adding…" : `Add${toAdd.size > 0 ? ` (${toAdd.size})` : ""}`}
               </button>
               <button onClick={() => setAddExistingOpen(false)} className="rounded-full px-4 py-2 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)]" style={{ color: "var(--text-secondary)" }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Add Resource Modal ───────────────────────────────────────── */}
+      {addResourceOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setAddResourceOpen(false)} />
+          <div className="relative w-full max-w-sm rounded-3xl overflow-hidden" style={{ background: "var(--bg-card)", boxShadow: "var(--shadow-float)" }}>
+            <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: "1px solid var(--border)" }}>
+              <h2 className="text-base font-bold" style={{ color: "var(--text-primary)" }}>Add Resource</h2>
+              <button onClick={() => setAddResourceOpen(false)} className="p-1.5 rounded-full transition hover:bg-[var(--bg-card-hover)]" style={{ color: "var(--text-muted)" }}>
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            <div className="px-6 py-5 space-y-4">
+              <div>
+                <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Label</label>
+                <input
+                  type="text"
+                  value={newResourceLabel}
+                  onChange={e => setNewResourceLabel(e.target.value)}
+                  placeholder="e.g. Syllabus, Reference Sheet"
+                  className={inputClass}
+                  style={inputStyle}
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>URL</label>
+                <input
+                  type="url"
+                  value={newResourceUrl}
+                  onChange={e => setNewResourceUrl(e.target.value)}
+                  placeholder="https://drive.google.com/…"
+                  className={inputClass}
+                  style={inputStyle}
+                />
+              </div>
+            </div>
+            <div className="px-6 py-4 flex gap-3" style={{ borderTop: "1px solid var(--border)" }}>
+              <button
+                onClick={handleAddResource}
+                disabled={!newResourceLabel.trim() || !newResourceUrl.trim()}
+                className="rounded-full bg-[#0cc0df] px-5 py-2 text-xs font-semibold text-[#0a0b13] hover:opacity-90 disabled:opacity-50 transition"
+              >
+                Add
+              </button>
+              <button onClick={() => setAddResourceOpen(false)} className="rounded-full px-4 py-2 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)]" style={{ color: "var(--text-secondary)" }}>
                 Cancel
               </button>
             </div>
