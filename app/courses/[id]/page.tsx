@@ -30,6 +30,14 @@ const SECTION_LABEL_KEYS = [
 const inputClass = "w-full rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#0cc0df] transition placeholder:text-[var(--text-muted)]";
 const inputStyle = { background: "var(--bg-card-hover)", color: "var(--text-primary)", border: "1px solid var(--border)" };
 
+const LESSON_TYPE_COLOR: Record<NonNullable<Lesson["lessonType"]>, { bg: string; text: string; label: string }> = {
+  lesson:     { bg: "rgba(12,192,223,0.12)",   text: "#0cc0df",  label: "Lesson" },
+  practice:   { bg: "var(--accent-purple-bg)", text: "var(--accent-purple)", label: "Practice" },
+  project:    { bg: "rgba(255,140,74,0.12)",   text: "#ff8c4a",  label: "Project" },
+  assessment: { bg: "rgba(45,212,160,0.12)",   text: "#2dd4a0",  label: "Assessment" },
+  review:     { bg: "var(--bg-card-hover)",    text: "var(--text-muted)", label: "Review" },
+};
+
 const STATUS_COLOR: Record<Lesson["status"], string> = {
   draft:        "bg-[var(--text-muted)]",
   generating:   "bg-[#ff8c4a] animate-pulse",
@@ -645,8 +653,16 @@ export default function CourseDetailPage() {
                         <p className="text-xs truncate" style={{ color: "var(--text-secondary)" }}>{lesson.subtitle}</p>
                       )}
                     </div>
-                    <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                       <span className="text-xs" style={{ color: "var(--text-muted)" }}>{STATUS_LABEL[lesson.status]}</span>
+                      {lesson.lessonType && lesson.lessonType !== "lesson" && (() => {
+                        const t = LESSON_TYPE_COLOR[lesson.lessonType];
+                        return (
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md" style={{ background: t.bg, color: t.text }}>
+                            {t.label}
+                          </span>
+                        );
+                      })()}
                       {lesson.deadline && (
                         <span className="text-xs" style={{ color: "var(--text-muted)" }}>Due {lesson.deadline}</span>
                       )}

@@ -368,7 +368,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
           />
         </div>
 
-        <div>
+        <div className="sm:col-span-2">
           <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Topics</label>
           <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>Enter topics comma-separated (e.g. HTML, CSS, Flexbox)</p>
           <input
@@ -389,6 +389,22 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
             onChange={(e) => set("deadline", e.target.value)}
             className={`w-full rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-3 py-1.5 text-xs shadow-sm focus:outline-none focus:ring-2 focus:ring-[#0cc0df] ${form.deadline ? "text-[var(--text-primary)]" : "text-[var(--text-muted)]"}`}
           />
+        </div>
+
+        <div>
+          <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Lesson Type</label>
+          <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>Classify the type of activity for this lesson.</p>
+          <select
+            value={form.lessonType ?? "lesson"}
+            onChange={(e) => set("lessonType", e.target.value)}
+            className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-3 py-1.5 text-xs text-[var(--text-primary)] shadow-sm focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
+          >
+            <option value="lesson">Lesson</option>
+            <option value="practice">Practice</option>
+            <option value="project">Project</option>
+            <option value="assessment">Assessment</option>
+            <option value="review">Review</option>
+          </select>
         </div>
 
         <div className="sm:col-span-2">

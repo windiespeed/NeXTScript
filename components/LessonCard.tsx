@@ -6,6 +6,14 @@ import type { Lesson } from "@/types/lesson";
 import type { SavedProject } from "@/types/project";
 import type { Course } from "@/types/course";
 
+const TYPE_COLOR: Record<NonNullable<Lesson["lessonType"]>, { bg: string; text: string; label: string }> = {
+  lesson:     { bg: "rgba(12,192,223,0.12)",   text: "#0cc0df",  label: "Lesson" },
+  practice:   { bg: "var(--accent-purple-bg)", text: "var(--accent-purple)", label: "Practice" },
+  project:    { bg: "rgba(255,140,74,0.12)",   text: "#ff8c4a",  label: "Project" },
+  assessment: { bg: "rgba(45,212,160,0.12)",   text: "#2dd4a0",  label: "Assessment" },
+  review:     { bg: "var(--bg-card-hover)",    text: "var(--text-muted)", label: "Review" },
+};
+
 const STATUS_BG: Record<Lesson["status"], string> = {
   draft:        "var(--bg-card-hover)",
   generating:   "rgba(255,140,74,0.12)",
@@ -133,6 +141,14 @@ export default function LessonCard({ lesson, projects = [], courses, onDelete, o
           >
             {STATUS_LABELS[lesson.status]}
           </span>
+          {lesson.lessonType && lesson.lessonType !== "lesson" && (() => {
+            const t = TYPE_COLOR[lesson.lessonType];
+            return (
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md" style={{ background: t.bg, color: t.text }}>
+                {t.label}
+              </span>
+            );
+          })()}
           {lesson.deadline && (
             <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md" style={{ background: "rgba(255,140,74,0.12)", color: "#ff8c4a" }}>
               Due {lesson.deadline}

@@ -36,6 +36,7 @@ export interface Lesson {
   notes?: string;                 // Private instructor notes — never used in generation
   slideCount?: number;            // Number of slides to generate with AI Fill (default 10)
   overviewSlides?: boolean[];     // Per-slide flag: true = include in Overview Doc generation
+  lessonType?: "lesson" | "practice" | "project" | "assessment" | "review"; // Activity classification
 }
 
 export type LessonInput = Omit<
