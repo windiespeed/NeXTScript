@@ -351,7 +351,7 @@ export default function EditQuizPage() {
                               type="radio"
                               name={`correct-${q.id}`}
                               checked={q.correctAnswer === opt && opt.trim() !== ""}
-                              onChange={() => updateOption(q.id, oi, opt) || updateQuestion(q.id, { correctAnswer: opt })}
+                              onChange={() => { updateOption(q.id, oi, opt); updateQuestion(q.id, { correctAnswer: opt }); }}
                               className="accent-[#0cc0df] shrink-0"
                               title="Mark as correct answer"
                             />
