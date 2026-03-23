@@ -31,6 +31,15 @@ export const projectStore = {
     return doc.exists ? (doc.data() as SavedProject) : null;
   },
 
+  async update(id: string, patch: Partial<SavedProject>): Promise<SavedProject | null> {
+    const ref = getDb().collection(COLLECTION).doc(id);
+    const doc = await ref.get();
+    if (!doc.exists) return null;
+    const updated = { ...(doc.data() as SavedProject), ...patch };
+    await ref.set(updated);
+    return updated;
+  },
+
   async delete(id: string): Promise<boolean> {
     const ref = getDb().collection(COLLECTION).doc(id);
     const doc = await ref.get();

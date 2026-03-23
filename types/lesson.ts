@@ -1,5 +1,14 @@
 import type { FormQuestion } from "./form";
 
+export interface LessonResource {
+  id: string;
+  type: "doc" | "sheet" | "slides" | "form" | "link" | "pdf" | "image" | "other";
+  label: string;
+  url: string;
+  driveId?: string;
+  createdAt: string;
+}
+
 export interface Lesson {
   id: string;
   userId: string;          // owner's Google email — used to scope lessons per user
@@ -37,6 +46,8 @@ export interface Lesson {
   slideCount?: number;            // Number of slides to generate with AI Fill (default 10)
   overviewSlides?: boolean[];     // Per-slide flag: true = include in Overview Doc generation
   lessonType?: "lesson" | "practice" | "project" | "assessment" | "review"; // Activity classification
+  resources?: LessonResource[];  // Attached links and blank docs for this lesson
+  overviewUrl?: string;           // URL of the generated Overview Doc (Google Doc)
 }
 
 export type LessonInput = Omit<

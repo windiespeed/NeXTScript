@@ -1,3 +1,5 @@
+import type { FormQuestion } from "./form";
+
 export interface SavedProject {
   id: string;
   userId: string;
@@ -10,6 +12,8 @@ export interface SavedProject {
   subtitle?: string;
   description?: string;
   isQuiz?: boolean;
-  url: string;
+  url: string;            // empty string for drafts; populated after generation
+  status?: "draft" | "generated"; // quiz drafts are saved without generating to Google
+  questions?: FormQuestion[];     // stored questions for quiz drafts
   createdAt: string;
 }

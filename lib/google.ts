@@ -37,6 +37,30 @@ export async function createCourseFolder(name: string, accessToken: string): Pro
   return { id: data.id!, webViewLink: data.webViewLink! };
 }
 
+const BLANK_MIME: Record<"doc" | "sheet" | "slides", string> = {
+  doc:    "application/vnd.google-apps.document",
+  sheet:  "application/vnd.google-apps.spreadsheet",
+  slides: "application/vnd.google-apps.presentation",
+};
+
+export async function createBlankFile(
+  name: string,
+  docType: "doc" | "sheet" | "slides",
+  accessToken: string,
+  parentFolderId?: string
+): Promise<{ id: string; url: string }> {
+  const drive = google.drive({ version: "v3", auth: getAuthClient(accessToken) });
+  const res = await drive.files.create({
+    requestBody: {
+      name,
+      mimeType: BLANK_MIME[docType],
+      ...(parentFolderId ? { parents: [parentFolderId] } : {}),
+    },
+    fields: "id, webViewLink",
+  });
+  return { id: res.data.id!, url: res.data.webViewLink! };
+}
+
 async function moveFileToFolder(fileId: string, folderId: string, accessToken: string) {
   const drive = google.drive({ version: "v3", auth: getAuthClient(accessToken) });
   const file = await drive.files.get({ fileId, fields: "parents" });
@@ -460,7 +484,7 @@ export async function generateBundleSelective(
   templateId?: string,
   labels: SectionLabels = DEFAULT_SECTION_LABELS,
   parentFolderId?: string
-): Promise<{ folderUrl: string; deckId?: string; formId?: string }> {
+): Promise<{ folderUrl: string; deckId?: string; docId?: string; formId?: string }> {
   const folder = await createFolder(
     `${lesson.title}: ${lesson.subtitle}`,
     accessToken,
@@ -481,7 +505,7 @@ export async function generateBundleSelective(
   const fileIds = [deckId, docId, formId].filter(Boolean) as string[];
   await Promise.all(fileIds.map(id => moveFileToFolder(id, folderId, accessToken)));
 
-  return { folderUrl: folder.webViewLink!, deckId, formId };
+  return { folderUrl: folder.webViewLink!, deckId, docId, formId };
 }
 
 async function exportFileAsPdf(fileId: string, accessToken: string): Promise<Buffer> {

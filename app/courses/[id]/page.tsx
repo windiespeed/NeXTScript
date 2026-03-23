@@ -8,9 +8,6 @@ import type { Course, CourseSettings, CourseResource, CourseModule } from "@/typ
 import { DEFAULT_COURSE_SETTINGS } from "@/types/course";
 import type { Lesson } from "@/types/lesson";
 import type { SavedProject } from "@/types/project";
-import GenerateModal from "@/components/GenerateModal";
-type FileChoice = "slides" | "doc" | "quiz";
-type Destination = "drive" | "download";
 
 
 const SECTION_LABEL_KEYS = [
@@ -72,7 +69,6 @@ export default function CourseDetailPage() {
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState("");
   const [copied, setCopied] = useState(false);
-  const [generateLesson, setGenerateLesson] = useState<Lesson | null>(null);
   const [selecting, setSelecting] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [duplicating, setDuplicating] = useState(false);
@@ -95,6 +91,9 @@ export default function CourseDetailPage() {
   const [editModuleTitle, setEditModuleTitle] = useState("");
   const [collapsedModules, setCollapsedModules] = useState<Set<string>>(new Set());
   const [assigningModuleForLesson, setAssigningModuleForLesson] = useState<string | null>(null);
+  const [genPanelId, setGenPanelId] = useState<string | null>(null);
+  const [genChecks, setGenChecks] = useState({ slides: true, overview: true, quiz: false });
+  const [generatingLessonId, setGeneratingLessonId] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -256,37 +255,6 @@ export default function CourseDetailPage() {
     setDuplicating(false);
   }
 
-  async function handleGenerate(lessonId: string, files: FileChoice[], destination: Destination, templateId?: string) {
-    const lesson = lessons.find(l => l.id === lessonId);
-    const inProgressStatus = lesson?.status === "done" ? "regenerating" : "generating";
-    setLessons(prev => prev.map(l => l.id === lessonId ? { ...l, status: inProgressStatus } : l));
-    setGenerateLesson(null);
-    const res = await fetch(`/api/generate/${lessonId}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ files, destination, templateId }),
-    });
-    if (!res.ok) {
-      const data = await res.json();
-      setLessons(prev => prev.map(l => l.id === lessonId ? { ...l, status: "error", errorMessage: data.error } : l));
-      return;
-    }
-    const data = await res.json();
-    if (destination === "drive") {
-      setLessons(prev => prev.map(l => l.id === lessonId ? { ...l, ...data } : l));
-    } else {
-      for (const file of data.downloads ?? []) {
-        const bytes = Uint8Array.from(atob(file.data), c => c.charCodeAt(0));
-        const blob = new Blob([bytes], { type: "application/pdf" });
-        const url = URL.createObjectURL(blob);
-        const a = Object.assign(document.createElement("a"), { href: url, download: file.filename });
-        document.body.appendChild(a); a.click(); document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-      }
-      setLessons(prev => prev.map(l => l.id === lessonId ? { ...l, status: "done" } : l));
-    }
-  }
-
   async function handleBulkDelete() {
     if (selectedIds.size === 0) return;
     if (!confirm(`Delete ${selectedIds.size} lesson${selectedIds.size > 1 ? "s" : ""}? This cannot be undone.`)) return;
@@ -364,12 +332,23 @@ export default function CourseDetailPage() {
   }
 
   async function handleRemoveLesson(lessonId: string) {
-    if (!confirm("Remove this lesson from the course? The lesson itself won't be deleted.")) return;
+    if (!confirm("Delete this lesson? This cannot be undone.")) return;
+    // Remove from course lessonIds
     await fetch(`/api/courses/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ lessonIds: course!.lessonIds.filter((l) => l !== lessonId) }),
     });
+    // Also remove from any module that references it
+    if (modules.some(m => m.lessonIds.includes(lessonId))) {
+      const updatedModules = modules.map(m => ({
+        ...m,
+        lessonIds: m.lessonIds.filter(lid => lid !== lessonId),
+      }));
+      setModules(updatedModules);
+    }
+    // Delete the lesson itself
+    await fetch(`/api/lessons/${lessonId}`, { method: "DELETE" });
     setLessons((prev) => prev.filter((l) => l.id !== lessonId));
     setCourse((prev) => prev ? { ...prev, lessonIds: prev.lessonIds.filter((l) => l !== lessonId) } : prev);
   }
@@ -463,6 +442,32 @@ export default function CourseDetailPage() {
       next.has(modId) ? next.delete(modId) : next.add(modId);
       return next;
     });
+  }
+
+  async function handleGenerateLesson(lessonId: string) {
+    setGenPanelId(null);
+    setGeneratingLessonId(lessonId);
+    const files: string[] = [];
+    if (genChecks.slides) files.push("slides");
+    if (genChecks.overview) files.push("doc");
+    if (genChecks.quiz) files.push("form");
+    setLessons(prev => prev.map(l => l.id === lessonId ? { ...l, status: "generating" } : l));
+    try {
+      const res = await fetch(`/api/generate/${lessonId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ files, destination: "drive" }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setLessons(prev => prev.map(l => l.id === lessonId ? { ...l, status: "done", folderUrl: data.folderUrl ?? l.folderUrl } : l));
+      } else {
+        setLessons(prev => prev.map(l => l.id === lessonId ? { ...l, status: "error" } : l));
+      }
+    } catch {
+      setLessons(prev => prev.map(l => l.id === lessonId ? { ...l, status: "error" } : l));
+    }
+    setGeneratingLessonId(null);
   }
 
   if (loading) return <p className="text-sm text-[#0cc0df] mt-10">Loading…</p>;
@@ -789,13 +794,13 @@ export default function CourseDetailPage() {
                     return (deck || form || lesson.folderUrl) ? (
                       <div className="flex items-center gap-1 shrink-0">
                         {deck && (
-                          <Link href={`/slides?lessonId=${lesson.id}`} className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold transition hover:opacity-80" style={{ background: "rgba(12,192,223,0.12)", border: "1px solid rgba(12,192,223,0.35)", color: "#0cc0df" }}>
+                          <Link href={`/slides/${lesson.id}`} className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold transition hover:opacity-80" style={{ background: "rgba(12,192,223,0.12)", border: "1px solid rgba(12,192,223,0.35)", color: "#0cc0df" }}>
                             <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
                             Slides
                           </Link>
                         )}
                         {form && (
-                          <Link href={`/forms?lessonId=${lesson.id}`} className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold transition hover:opacity-80" style={{ background: "rgba(255,140,74,0.12)", border: "1px solid rgba(255,140,74,0.35)", color: "#ff8c4a" }}>
+                          <Link href={`/quizzes`} className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold transition hover:opacity-80" style={{ background: "rgba(255,140,74,0.12)", border: "1px solid rgba(255,140,74,0.35)", color: "#ff8c4a" }}>
                             <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
                             Quiz
                           </Link>
@@ -828,15 +833,41 @@ export default function CourseDetailPage() {
                         href={`/lessons/${lesson.id}`}
                         className="rounded-full bg-[#0cc0df] px-3 py-1.5 text-xs font-semibold text-[#0a0b13] hover:opacity-90 transition"
                       >
-                        Edit
+                        View
                       </Link>
-                      <button
-                        onClick={() => setGenerateLesson(lesson)}
-                        disabled={lesson.status === "generating" || lesson.status === "regenerating"}
-                        className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50 transition"
-                      >
-                        {lesson.status === "generating" || lesson.status === "regenerating" ? "Running…" : "Generate"}
-                      </button>
+                      <div className="relative">
+                        <button
+                          onClick={e => { e.stopPropagation(); if (genPanelId === lesson.id) { setGenPanelId(null); } else { setGenPanelId(lesson.id); setGenChecks({ slides: true, overview: true, quiz: false }); } }}
+                          disabled={generatingLessonId === lesson.id}
+                          className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50 transition"
+                        >
+                          {generatingLessonId === lesson.id ? "Generating…" : "Generate"}
+                        </button>
+                        {genPanelId === lesson.id && (
+                          <div className="absolute right-0 top-full mt-1 z-30 rounded-2xl p-3 min-w-[190px]" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)" }}>
+                            <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: "var(--text-muted)" }}>What to generate</p>
+                            <label className="flex items-center gap-2 text-xs mb-1.5 cursor-pointer" style={{ color: "var(--text-primary)" }}>
+                              <input type="checkbox" checked={genChecks.slides} onChange={e => setGenChecks(c => ({ ...c, slides: e.target.checked }))} className="accent-[#0cc0df]" />
+                              Slides
+                            </label>
+                            <label className="flex items-center gap-2 text-xs mb-1.5 cursor-pointer" style={{ color: "var(--text-primary)" }}>
+                              <input type="checkbox" checked={genChecks.overview} onChange={e => setGenChecks(c => ({ ...c, overview: e.target.checked }))} className="accent-[#0cc0df]" />
+                              Overview Doc
+                            </label>
+                            <label className="flex items-center gap-2 text-xs mb-3 cursor-pointer" style={{ color: "var(--text-primary)" }}>
+                              <input type="checkbox" checked={genChecks.quiz} onChange={e => setGenChecks(c => ({ ...c, quiz: e.target.checked }))} className="accent-[#0cc0df]" />
+                              Quiz
+                            </label>
+                            <button
+                              onClick={() => handleGenerateLesson(lesson.id)}
+                              disabled={!genChecks.slides && !genChecks.overview && !genChecks.quiz}
+                              className="w-full rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50 transition"
+                            >
+                              Generate
+                            </button>
+                          </div>
+                        )}
+                      </div>
                       <button
                         onClick={() => handleDuplicateLesson(lesson)}
                         title="Duplicate lesson"
@@ -963,12 +994,6 @@ export default function CourseDetailPage() {
             );
           })()}
       </div>
-
-      <GenerateModal
-        lesson={generateLesson}
-        onClose={() => setGenerateLesson(null)}
-        onGenerate={handleGenerate}
-      />
 
       {/* ── Add Existing Lesson Modal ─────────────────────────────────── */}
       {addExistingOpen && (

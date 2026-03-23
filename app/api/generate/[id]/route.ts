@@ -4,7 +4,7 @@ import { store } from "@/lib/store";
 import { projectStore } from "@/lib/projectStore";
 import { courseStore } from "@/lib/courseStore";
 import { userSettings, getMergedLabels } from "@/lib/userSettings";
-import { generateBundleSelective, generateBundleAsDownload } from "@/lib/google";
+import { generateBundleSelective, generateBundleAsDownload, buildQuiz } from "@/lib/google";
 import { generateQuizQuestions } from "@/lib/ai";
 import { DEFAULT_SECTION_LABELS } from "@/lib/sectionLabels";
 
@@ -84,34 +84,75 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const curriculumCtx = { industry, subject, labels: mergedLabels };
 
-  // Auto-generate quiz questions via AI if quiz is selected and none are defined
-  let lessonToGenerate = lesson;
-  if (files.includes("quiz") && (!lesson.quizQuestions || lesson.quizQuestions.length === 0)) {
-    if (uSettings.anthropicKey) {
-      try {
-        const aiQuestions = await generateQuizQuestions(uSettings.anthropicKey, lesson, curriculumCtx);
-        lessonToGenerate = { ...lesson, quizQuestions: aiQuestions };
-      } catch {
-        // If AI generation fails, proceed with empty quiz rather than blocking generation
-      }
-    }
-  }
-
   try {
     if (destination === "drive") {
-      const { folderUrl, deckId, formId } = await generateBundleSelective(lessonToGenerate, files, accessToken, templateId, mergedLabels, course?.driveFolderId ?? undefined);
+      // ── Slides + Doc ─────────────────────────────────────────────────────
+      const bundleFiles = files.filter(f => f !== "quiz") as ("slides" | "doc")[];
+      const { folderUrl, deckId, docId } = await generateBundleSelective(
+        lesson,
+        bundleFiles,
+        accessToken,
+        templateId,
+        mergedLabels,
+        course?.driveFolderId ?? undefined
+      );
 
-      // Save generated files to the projects collection so they appear in dashboard tabs
+      // Save deck and overview doc as projects
+      const overviewUrl = docId ? `https://docs.google.com/document/d/${docId}/edit` : undefined;
       await Promise.all([
         deckId ? projectStore.create({ type: "deck", lessonId: id, title: lesson.title, subtitle: lesson.subtitle, url: `https://docs.google.com/presentation/d/${deckId}/edit` }, session.user!.email!) : null,
-        formId ? projectStore.create({ type: "form", lessonId: id, title: lesson.title, subtitle: lesson.subtitle, isQuiz: true, url: `https://docs.google.com/forms/d/${formId}/edit` }, session.user!.email!) : null,
       ]);
 
-      const updated = await store.update(id, { status: "done", folderUrl });
+      // ── Quiz ──────────────────────────────────────────────────────────────
+      if (files.includes("quiz")) {
+        const allProjects = await projectStore.getAll(session.user!.email!);
+        const quizDrafts = allProjects.filter(p =>
+          p.type === "form" && p.status === "draft" &&
+          (p.lessonId === id || (p.lessonIds?.includes(id) ?? false))
+        );
+
+        if (quizDrafts.length > 0) {
+          // Generate each saved quiz draft to a Google Form
+          for (const draft of quizDrafts) {
+            try {
+              const syntheticLesson = { ...lesson, quizQuestions: draft.questions ?? [] };
+              const formId = await buildQuiz(syntheticLesson, accessToken);
+              const formUrl = `https://docs.google.com/forms/d/${formId}/edit`;
+              await projectStore.update(draft.id, { status: "generated", url: formUrl });
+            } catch {
+              // Non-fatal — continue with other drafts
+            }
+          }
+        } else {
+          // No draft exists — fall back to lesson's inline questions or AI auto-gen
+          let lessonToGenerate = lesson;
+          if (!lesson.quizQuestions?.length && uSettings.anthropicKey) {
+            try {
+              const aiQuestions = await generateQuizQuestions(uSettings.anthropicKey, lesson, curriculumCtx);
+              lessonToGenerate = { ...lesson, quizQuestions: aiQuestions };
+            } catch {
+              // proceed with empty quiz
+            }
+          }
+          if (lessonToGenerate.quizQuestions?.length) {
+            try {
+              const formId = await buildQuiz(lessonToGenerate, accessToken);
+              const formUrl = `https://docs.google.com/forms/d/${formId}/edit`;
+              await projectStore.create({ type: "form", lessonId: id, title: lesson.title, subtitle: lesson.subtitle, isQuiz: true, status: "generated", url: formUrl }, session.user!.email!);
+            } catch {
+              // Non-fatal
+            }
+          }
+        }
+      }
+
+      const updatePatch: Record<string, any> = { status: "done", folderUrl };
+      if (overviewUrl) updatePatch.overviewUrl = overviewUrl;
+      const updated = await store.update(id, updatePatch);
       return NextResponse.json(updated);
     } else {
       const downloadFiles = files.filter(f => f !== "quiz") as ("slides" | "doc")[];
-      const downloads = await generateBundleAsDownload(lessonToGenerate, downloadFiles, accessToken, templateId, mergedLabels);
+      const downloads = await generateBundleAsDownload(lesson, downloadFiles, accessToken, templateId, mergedLabels);
       await store.update(id, { status: "done" });
       return NextResponse.json({ downloads });
     }

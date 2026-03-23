@@ -2,9 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { Lesson, LessonInput } from "@/types/lesson";
-import type { FormQuestion } from "@/types/form";
-import { emptyQuestion } from "@/types/form";
 import { DEFAULT_SECTION_LABELS, type SectionLabels } from "@/lib/sectionLabels";
+
+const cardClass = "rounded-3xl p-5 space-y-4";
+const cardStyle = { background: "var(--bg-card)", border: "1px solid var(--border)" };
+const sectionLabel = "text-xs font-semibold uppercase tracking-widest text-[#0cc0df]";
+const inputClass = "w-full rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#0cc0df] transition placeholder:text-[var(--text-muted)]";
+const inputStyle = { background: "var(--bg-card-hover)", color: "var(--text-primary)", border: "1px solid var(--border)" };
 
 interface Props {
   initial?: Partial<Lesson>;
@@ -93,18 +97,9 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
     if (saved && saved.length === count) return saved;
     return Array(count).fill(true);
   });
-  const [quizQuestions, setQuizQuestions] = useState<FormQuestion[]>(
-    () => (initial.quizQuestions && initial.quizQuestions.length > 0)
-      ? initial.quizQuestions
-      : []
-  );
   const [saving, setSaving] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
   const [aiFilling, setAiFilling] = useState(false);
-  const [aiQuizGenerating, setAiQuizGenerating] = useState(false);
-  const [aiQuizError, setAiQuizError] = useState("");
-  const [quizMcCount, setQuizMcCount] = useState(8);
-  const [quizSaCount, setQuizSaCount] = useState(2);
   const [aiFilledFields, setAiFilledFields] = useState<Set<string>>(new Set());
   const [error, setError] = useState("");
   const [autoSaveStatus, setAutoSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
@@ -116,7 +111,6 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
     setSlides([{ title: "", body: "" }]);
     setOverviewSlides([true]);
     setSlideCount(10);
-    setQuizQuestions([]);
     setAiFilledFields(new Set());
   }
 
@@ -149,7 +143,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
       if (!autoSaveRef.current) return;
       setAutoSaveStatus("saving");
       try {
-        await autoSaveRef.current({ ...form, slideContent: serializeSlides(slides), quizQuestions, slideCount, overviewSlides });
+        await autoSaveRef.current({ ...form, slideContent: serializeSlides(slides), slideCount, overviewSlides });
         setAutoSaveStatus("saved");
       } catch {
         setAutoSaveStatus("idle");
@@ -157,7 +151,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
     }, 3000);
     return () => clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form, slides, quizQuestions, slideCount, overviewSlides]);
+  }, [form, slides, slideCount, overviewSlides]);
 
   function set(key: keyof LessonInput, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -191,35 +185,6 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
       [next[index], next[swapWith]] = [next[swapWith], next[index]];
       return next;
     });
-  }
-
-  async function handleAiGenerateQuiz() {
-    setAiQuizGenerating(true);
-    setAiQuizError("");
-    try {
-      const res = await fetch("/api/ai/quiz", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          lesson: { ...form, slideContent: serializeSlides(slides) },
-          mcCount: quizMcCount,
-          saCount: quizSaCount,
-          courseId: form.courseId,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Quiz generation failed.");
-      // Append generated questions with fresh IDs to avoid key collisions
-      const stamped = (data as import("@/types/form").FormQuestion[]).map(q => ({
-        ...q,
-        id: `ai_${Date.now()}_${Math.random().toString(36).slice(2)}`,
-      }));
-      setQuizQuestions(prev => [...prev, ...stamped]);
-    } catch (err: any) {
-      setAiQuizError(err.message || "Quiz generation failed.");
-    } finally {
-      setAiQuizGenerating(false);
-    }
   }
 
   async function handleAiFill() {
@@ -264,7 +229,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
     setSavingDraft(true);
     setError("");
     try {
-      await onSaveDraft({ ...form, slideContent: serializeSlides(slides), quizQuestions, slideCount, overviewSlides });
+      await onSaveDraft({ ...form, slideContent: serializeSlides(slides), slideCount, overviewSlides });
     } catch (err: any) {
       setError(err.message || "Failed to save draft.");
     } finally {
@@ -277,7 +242,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
     setError("");
     setSaving(true);
     try {
-      await onSubmit({ ...form, slideContent: serializeSlides(slides), quizQuestions, slideCount, overviewSlides });
+      await onSubmit({ ...form, slideContent: serializeSlides(slides), slideCount, overviewSlides });
     } catch (err: any) {
       setError(err.message || "Something went wrong.");
     } finally {
@@ -287,16 +252,16 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
 
   return (
     <>
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-4">
       {error && (
-        <div className="rounded-md bg-red-50 border border-red-200 p-3 text-red-700 text-sm">
+        <div className="rounded-2xl bg-red-50 border border-red-200 p-4 text-red-700 text-sm">
           {error}
         </div>
       )}
 
       {/* ── AI Fill ──────────────────────────────────────────────────── */}
       {hasAiKey && (
-        <div className={`relative rounded-lg border px-4 py-3 transition-all ${aiFilling ? "border-[#0cc0df]" : "border-[var(--border)]"}`} style={{ background: aiFilling ? "var(--accent-bg)" : "var(--bg-card)" }}>
+        <div className={`relative rounded-3xl px-5 py-4 transition-all ${aiFilling ? "border-[#0cc0df]" : ""}`} style={{ background: aiFilling ? "var(--accent-bg)" : "var(--bg-card)", border: aiFilling ? "1px solid #0cc0df" : "1px solid var(--border)" }}>
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-sm font-semibold flex items-center gap-2" style={{ color: "var(--text-primary)" }}>
@@ -339,10 +304,12 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
         </div>
       )}
 
-      {/* ── Meta fields ──────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="sm:col-span-2">
-          <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
+      {/* ── Lesson Info ──────────────────────────────────────────────── */}
+      <div className={cardClass} style={cardStyle}>
+        <p className={sectionLabel}>Lesson Info</p>
+
+        <div>
+          <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
             Lesson Title <span className="text-red-500">*</span>
           </label>
           <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>Module number and lesson number (e.g. Module 3, Lesson 2)</p>
@@ -352,63 +319,70 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
             value={form.title}
             onChange={(e) => set("title", e.target.value)}
             placeholder="e.g. Module 3, Lesson 2"
-            className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-3 py-1.5 text-xs text-[var(--text-primary)] shadow-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
+            className={inputClass}
+            style={inputStyle}
           />
         </div>
 
-        <div className="sm:col-span-2">
-          <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Lesson Subtitle</label>
+        <div>
+          <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Lesson Subtitle</label>
           <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>Specific topic or subject covered in this lesson</p>
           <input
             type="text"
             value={form.subtitle}
             onChange={(e) => set("subtitle", e.target.value)}
             placeholder="e.g. Introduction to CSS Flexbox"
-            className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-3 py-1.5 text-xs text-[var(--text-primary)] shadow-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
+            className={inputClass}
+            style={inputStyle}
           />
         </div>
 
-        <div className="sm:col-span-2">
-          <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Topics</label>
+        <div>
+          <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Topics</label>
           <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>Enter topics comma-separated (e.g. HTML, CSS, Flexbox)</p>
           <input
             type="text"
             value={form.topics}
             onChange={(e) => set("topics", e.target.value)}
             placeholder="e.g. Flexbox, CSS Layout"
-            className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-3 py-1.5 text-xs text-[var(--text-primary)] shadow-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
+            className={inputClass}
+            style={inputStyle}
           />
         </div>
 
-        <div>
-          <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Deadline</label>
-          <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>The due date for this lesson's assignments.</p>
-          <input
-            type="date"
-            value={form.deadline}
-            onChange={(e) => set("deadline", e.target.value)}
-            className={`w-full rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-3 py-1.5 text-xs shadow-sm focus:outline-none focus:ring-2 focus:ring-[#0cc0df] ${form.deadline ? "text-[var(--text-primary)]" : "text-[var(--text-muted)]"}`}
-          />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Deadline</label>
+            <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>The due date for this lesson's assignments.</p>
+            <input
+              type="date"
+              value={form.deadline}
+              onChange={(e) => set("deadline", e.target.value)}
+              className={`${inputClass} ${form.deadline ? "" : "text-[var(--text-muted)]"}`}
+              style={inputStyle}
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Lesson Type</label>
+            <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>Classify the type of activity for this lesson.</p>
+            <select
+              value={form.lessonType ?? "lesson"}
+              onChange={(e) => set("lessonType", e.target.value)}
+              className={inputClass}
+              style={inputStyle}
+            >
+              <option value="lesson">Lesson</option>
+              <option value="practice">Practice</option>
+              <option value="project">Project</option>
+              <option value="assessment">Assessment</option>
+              <option value="review">Review</option>
+            </select>
+          </div>
         </div>
 
         <div>
-          <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Lesson Type</label>
-          <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>Classify the type of activity for this lesson.</p>
-          <select
-            value={form.lessonType ?? "lesson"}
-            onChange={(e) => set("lessonType", e.target.value)}
-            className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-3 py-1.5 text-xs text-[var(--text-primary)] shadow-sm focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
-          >
-            <option value="lesson">Lesson</option>
-            <option value="practice">Practice</option>
-            <option value="project">Project</option>
-            <option value="assessment">Assessment</option>
-            <option value="review">Review</option>
-          </select>
-        </div>
-
-        <div className="sm:col-span-2">
-          <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Sources</label>
+          <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Sources</label>
           <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>
             One URL per line. These are passed to the AI as reference material when generating lesson content.
             {form.sources
@@ -422,43 +396,47 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
             onChange={(e) => set("sources", e.target.value)}
             rows={4}
             placeholder={"https://www.w3.org/\nhttps://www.w3schools.com/\nhttps://www.wcag.com/"}
-            className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-3 py-1.5 text-xs text-[var(--text-primary)] font-mono shadow-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
+            className={`${inputClass} font-mono`}
+            style={inputStyle}
           />
         </div>
 
-        {hasAiKey && <div className="sm:col-span-2">
-          <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Student Level</label>
-          <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>
-            Adjusts the tone and complexity of AI-generated content to match your students&apos; experience.
-          </p>
-          <div className="flex gap-3">
-            {(["beginner", "intermediate", "advanced"] as const).map((level) => (
-              <label key={level} className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="studentLevel"
-                  value={level}
-                  checked={(form.studentLevel ?? "beginner") === level}
-                  onChange={() => set("studentLevel", level)}
-                  className="accent-[#0cc0df]"
-                />
-                <span className="text-sm capitalize" style={{ color: "var(--text-primary)" }}>{level}</span>
-              </label>
-            ))}
+        {hasAiKey && (
+          <div>
+            <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Student Level</label>
+            <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>
+              Adjusts the tone and complexity of AI-generated content to match your students&apos; experience.
+            </p>
+            <div className="flex gap-3">
+              {(["beginner", "intermediate", "advanced"] as const).map((level) => (
+                <label key={level} className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="studentLevel"
+                    value={level}
+                    checked={(form.studentLevel ?? "beginner") === level}
+                    onChange={() => set("studentLevel", level)}
+                    className="accent-[#0cc0df]"
+                  />
+                  <span className="text-xs capitalize" style={{ color: "var(--text-primary)" }}>{level}</span>
+                </label>
+              ))}
+            </div>
+            <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
+              {(form.studentLevel ?? "beginner") === "beginner" && "No coding experience — simple language, extra explanation, no assumed knowledge."}
+              {form.studentLevel === "intermediate" && "Some coding experience — moderate complexity, references prior knowledge."}
+              {form.studentLevel === "advanced" && "Strong coding background — technical depth, industry terminology."}
+            </p>
           </div>
-          <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
-            {(form.studentLevel ?? "beginner") === "beginner" && "No coding experience — simple language, extra explanation, no assumed knowledge."}
-            {form.studentLevel === "intermediate" && "Some coding experience — moderate complexity, references prior knowledge."}
-            {form.studentLevel === "advanced" && "Strong coding background — technical depth, industry terminology."}
-          </p>
-        </div>}
+        )}
       </div>
 
-      {/* ── Pre-slide content sections ────────────────────────────────── */}
-      <div className="space-y-5">
+      {/* ── Content Overview ─────────────────────────────────────────── */}
+      <div className={cardClass} style={cardStyle}>
+        <p className={sectionLabel}>Content Overview</p>
         {PRE_SLIDE_FIELDS.map(({ key, label, hint, rows }) => (
           <div key={key}>
-            <label className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)] mb-1">
+            <label className="flex items-center gap-2 text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
               {label}
               {aiFilledFields.has(key) && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-[#0cc0df] px-2 py-0.5 text-[10px] font-bold text-[#0a0b13] shadow-sm">✦ AI</span>
@@ -469,19 +447,17 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
               value={form[key] as string}
               onChange={(e) => { set(key, e.target.value); setAiFilledFields(prev => { const next = new Set(prev); next.delete(key); return next; }); }}
               rows={rows}
-              className={`w-full rounded-lg border px-3 py-1.5 text-xs text-[var(--text-primary)] font-mono shadow-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[#0cc0df] bg-[var(--bg-card)] ${aiFilledFields.has(key) ? "border-[#0cc0df]/50" : "border-[var(--border)]"}`}
+              className={`${inputClass} font-mono ${aiFilledFields.has(key) ? "ring-1 ring-[#0cc0df]/50" : ""}`}
+              style={{ ...inputStyle, borderColor: aiFilledFields.has(key) ? "rgba(12,192,223,0.4)" : "var(--border)" }}
             />
           </div>
         ))}
       </div>
 
       {/* ── Slides ───────────────────────────────────────────────────── */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <p className="text-sm font-semibold text-[var(--text-primary)]">Slide Content</p>
-            <p className="text-xs text-[var(--text-secondary)]">Each card is one slide. The title becomes the slide heading.</p>
-          </div>
+      <div className={cardClass} style={cardStyle}>
+        <div className="flex items-center justify-between">
+          <p className={sectionLabel}>Slides</p>
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1.5">
               <label className="text-xs font-medium" style={{ color: "var(--text-muted)" }}>AI slides:</label>
@@ -499,53 +475,37 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
             <button
               type="button"
               onClick={addSlide}
-              className="rounded-md px-3 py-1.5 text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--bg-card-hover)] border border-[var(--border)] transition"
+              className="rounded-full px-3 py-1.5 text-xs font-semibold transition"
+              style={{ background: "var(--bg-card-hover)", color: "var(--text-primary)", border: "1px solid var(--border)" }}
             >
               + Add Slide
             </button>
           </div>
         </div>
+        <p className="text-xs -mt-2" style={{ color: "var(--text-secondary)" }}>Each card is one slide. The title becomes the slide heading.</p>
 
         <div className="space-y-3">
           {slides.map((slide, i) => (
-            <div key={i} className="rounded-lg border border-[var(--border)] bg-[var(--bg-card)] p-4 space-y-2">
+            <div key={i} className="rounded-2xl p-4 space-y-2" style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)" }}>
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>Slide {i + 1}</span>
                 <div className="flex items-center gap-1">
-                  {/* Overview Doc toggle */}
                   <button
                     type="button"
                     onClick={() => setOverviewSlides(prev => prev.map((v, idx) => idx === i ? !v : v))}
                     title={overviewSlides[i] ? "Included in Overview Doc — click to exclude" : "Excluded from Overview Doc — click to include"}
-                    className={`rounded-full px-2 py-0.5 text-[10px] font-semibold transition ${overviewSlides[i] ? "bg-[#0cc0df]/15 text-[#0cc0df]" : "text-[var(--text-muted)] hover:bg-[var(--bg-card-hover)]"}`}
+                    className={`rounded-full px-2 py-0.5 text-[10px] font-semibold transition ${overviewSlides[i] ? "bg-[#0cc0df]/15 text-[#0cc0df]" : "text-[var(--text-muted)] hover:bg-[var(--bg-card)]"}`}
                     style={overviewSlides[i] ? {} : { border: "1px solid var(--border)" }}
                   >
                     Overview
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => moveSlide(i, "up")}
-                    disabled={i === 0}
-                    title="Move up"
-                    className="p-1 rounded text-[var(--text-muted)] hover:text-[#0cc0df] disabled:opacity-20 transition"
-                  >
+                  <button type="button" onClick={() => moveSlide(i, "up")} disabled={i === 0} title="Move up" className="p-1 rounded text-[var(--text-muted)] hover:text-[#0cc0df] disabled:opacity-20 transition">
                     <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => moveSlide(i, "down")}
-                    disabled={i === slides.length - 1}
-                    title="Move down"
-                    className="p-1 rounded text-[var(--text-muted)] hover:text-[#0cc0df] disabled:opacity-20 transition"
-                  >
+                  <button type="button" onClick={() => moveSlide(i, "down")} disabled={i === slides.length - 1} title="Move down" className="p-1 rounded text-[var(--text-muted)] hover:text-[#0cc0df] disabled:opacity-20 transition">
                     <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => removeSlide(i)}
-                    disabled={slides.length === 1}
-                    className="text-xs text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 disabled:opacity-30 transition ml-1"
-                  >
+                  <button type="button" onClick={() => removeSlide(i)} disabled={slides.length === 1} className="text-xs text-red-500 hover:text-red-700 disabled:opacity-30 transition ml-1">
                     Remove
                   </button>
                 </div>
@@ -555,25 +515,28 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
                 value={slide.title}
                 onChange={(e) => setSlide(i, "title", e.target.value)}
                 placeholder="Slide title"
-                className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-3 py-1.5 text-xs text-[var(--text-primary)] shadow-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
+                className={inputClass}
+                style={{ background: "var(--bg-card)", color: "var(--text-primary)", border: "1px solid var(--border)" }}
               />
               <textarea
                 value={slide.body}
                 onChange={(e) => setSlide(i, "body", e.target.value)}
                 rows={4}
                 placeholder="Slide content…"
-                className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-3 py-1.5 text-xs text-[var(--text-primary)] font-mono shadow-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
+                className={`${inputClass} font-mono`}
+                style={{ background: "var(--bg-card)", color: "var(--text-primary)", border: "1px solid var(--border)" }}
               />
             </div>
           ))}
         </div>
       </div>
 
-      {/* ── Post-slide content sections ───────────────────────────────── */}
-      <div className="space-y-5">
+      {/* ── Activities & Assessment ───────────────────────────────────── */}
+      <div className={cardClass} style={cardStyle}>
+        <p className={sectionLabel}>Activities & Assessment</p>
         {POST_SLIDE_FIELDS.map(({ key, label, hint, rows }) => (
           <div key={key}>
-            <label className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)] mb-1">
+            <label className="flex items-center gap-2 text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
               {label}
               {aiFilledFields.has(key) && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-[#0cc0df] px-2 py-0.5 text-[10px] font-bold text-[#0a0b13] shadow-sm">✦ AI</span>
@@ -584,179 +547,17 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
               value={form[key] as string}
               onChange={(e) => { set(key, e.target.value); setAiFilledFields(prev => { const next = new Set(prev); next.delete(key); return next; }); }}
               rows={rows}
-              className={`w-full rounded-lg border px-3 py-1.5 text-xs text-[var(--text-primary)] font-mono shadow-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[#0cc0df] bg-[var(--bg-card)] ${aiFilledFields.has(key) ? "border-[#0cc0df]/50" : "border-[var(--border)]"}`}
+              className={`${inputClass} font-mono ${aiFilledFields.has(key) ? "ring-1 ring-[#0cc0df]/50" : ""}`}
+              style={{ ...inputStyle, borderColor: aiFilledFields.has(key) ? "rgba(12,192,223,0.4)" : "var(--border)" }}
             />
           </div>
         ))}
       </div>
 
-      {/* ── Quiz Questions ────────────────────────────────────────────── */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <p className="text-sm font-semibold text-[var(--text-primary)]">Quiz Questions</p>
-            <p className="text-xs text-[var(--text-secondary)]">Optional — define custom questions for the quiz form.</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setQuizQuestions(prev => [...prev, emptyQuestion(`q_${Date.now()}`)])}
-            className="rounded-md px-3 py-1.5 text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--bg-card-hover)] border border-[var(--border)] transition"
-          >
-            + Add Question
-          </button>
-        </div>
-
-        {/* AI Generate row */}
-        {hasAiKey && (
-          <div className="flex items-center gap-2 mb-4 p-3 rounded-lg" style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)" }}>
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 shrink-0" style={{ color: "#0cc0df" }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
-            </svg>
-            <span className="text-xs font-semibold shrink-0" style={{ color: "var(--text-secondary)" }}>AI Generate</span>
-            <div className="flex items-center gap-1.5 shrink-0">
-              <input
-                type="number"
-                min={0}
-                max={50}
-                value={quizMcCount}
-                onChange={e => setQuizMcCount(Math.min(50, Math.max(0, Number(e.target.value))))}
-                className="w-12 rounded-lg px-2 py-1 text-xs text-center focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
-                style={{ background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
-              />
-              <span className="text-xs" style={{ color: "var(--text-muted)" }}>MC</span>
-              <input
-                type="number"
-                min={0}
-                max={50}
-                value={quizSaCount}
-                onChange={e => setQuizSaCount(Math.min(50, Math.max(0, Number(e.target.value))))}
-                className="w-12 rounded-lg px-2 py-1 text-xs text-center focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
-                style={{ background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
-              />
-              <span className="text-xs" style={{ color: "var(--text-muted)" }}>SA</span>
-            </div>
-            <button
-              type="button"
-              onClick={handleAiGenerateQuiz}
-              disabled={aiQuizGenerating}
-              className="ml-auto rounded-full px-3 py-1.5 text-xs font-semibold text-[#0a0b13] hover:opacity-90 disabled:opacity-50 transition"
-              style={{ background: "#0cc0df" }}
-            >
-              {aiQuizGenerating ? "Generating…" : "Generate & Append"}
-            </button>
-            {aiQuizError && <p className="text-xs text-red-500 ml-2">{aiQuizError}</p>}
-          </div>
-        )}
-
-        <div className="space-y-4">
-          {quizQuestions.map((q, i) => (
-            <div key={q.id} className="rounded-lg border border-[var(--border)] bg-[var(--bg-card)] p-4 space-y-3">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>Question {i + 1}</span>
-                <button
-                  type="button"
-                  onClick={() => setQuizQuestions(prev => prev.filter((_, idx) => idx !== i))}
-                  className="text-xs text-red-500 hover:text-red-700 transition"
-                >
-                  Remove
-                </button>
-              </div>
-
-              <div className="flex gap-3">
-                <div className="flex-1">
-                  <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">Question</label>
-                  <input
-                    type="text"
-                    value={q.text}
-                    onChange={e => setQuizQuestions(prev => prev.map((x, idx) => idx === i ? { ...x, text: e.target.value } : x))}
-                    placeholder="Enter question text"
-                    className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-3 py-1.5 text-xs text-[var(--text-primary)] shadow-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">Type</label>
-                  <select
-                    value={q.type}
-                    onChange={e => setQuizQuestions(prev => prev.map((x, idx) => idx === i ? { ...x, type: e.target.value as FormQuestion["type"] } : x))}
-                    className="rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-3 py-1.5 text-xs text-[var(--text-primary)] shadow-sm focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
-                  >
-                    <option value="multiple_choice">Multiple Choice</option>
-                    <option value="short_answer">Short Answer</option>
-                    <option value="paragraph">Paragraph</option>
-                  </select>
-                </div>
-              </div>
-
-              {q.type === "multiple_choice" && (
-                <div className="space-y-2">
-                  <label className="block text-xs font-semibold text-[var(--text-primary)]">Answer Options</label>
-                  {q.options.map((opt, oi) => (
-                    <div key={oi} className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        value={opt}
-                        onChange={e => setQuizQuestions(prev => prev.map((x, idx) => idx === i
-                          ? { ...x, options: x.options.map((o, oIdx) => oIdx === oi ? e.target.value : o) }
-                          : x
-                        ))}
-                        placeholder={`Option ${oi + 1}`}
-                        className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-3 py-1.5 text-xs text-[var(--text-primary)] shadow-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setQuizQuestions(prev => prev.map((x, idx) => idx === i
-                          ? { ...x, options: x.options.filter((_, oIdx) => oIdx !== oi) }
-                          : x
-                        ))}
-                        disabled={q.options.length <= 2}
-                        className="text-xs text-red-400 hover:text-red-600 disabled:opacity-30 transition"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => setQuizQuestions(prev => prev.map((x, idx) => idx === i ? { ...x, options: [...x.options, ""] } : x))}
-                    className="text-xs text-[#0cc0df] hover:opacity-70 transition"
-                  >
-                    + Add option
-                  </button>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-[var(--text-primary)] mt-2 mb-1">Correct Answer (optional — for grading)</label>
-                    <select
-                      value={q.correctAnswer}
-                      onChange={e => setQuizQuestions(prev => prev.map((x, idx) => idx === i ? { ...x, correctAnswer: e.target.value } : x))}
-                      className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-3 py-1.5 text-xs text-[var(--text-primary)] shadow-sm focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
-                    >
-                      <option value="">— None —</option>
-                      {q.options.filter(o => o.trim()).map((o, oi) => (
-                        <option key={oi} value={o}>{o}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              )}
-
-              <label className="flex items-center gap-2 text-xs text-[var(--text-primary)] cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={q.required}
-                  onChange={e => setQuizQuestions(prev => prev.map((x, idx) => idx === i ? { ...x, required: e.target.checked } : x))}
-                  className="rounded"
-                />
-                Required
-              </label>
-            </div>
-          ))}
-        </div>
-      </div>
-
       {/* ── Notes ───────────────────────────────────────────────────── */}
-      <div className="rounded-lg p-4 space-y-2" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
-        <div className="flex items-center gap-2 mb-1">
-          <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>Instructor Notes</p>
+      <div className={cardClass} style={cardStyle}>
+        <div className="flex items-center gap-2">
+          <p className={sectionLabel}>Instructor Notes</p>
           <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ background: "var(--bg-card-hover)", color: "var(--text-muted)" }}>Not included in generation</span>
         </div>
         <textarea
@@ -764,7 +565,8 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
           onChange={(e) => set("notes", e.target.value)}
           rows={4}
           placeholder="Private notes, reminders, or context for this lesson…"
-          className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-card-hover)] px-3 py-1.5 text-xs text-[var(--text-primary)] shadow-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
+          className={inputClass}
+          style={inputStyle}
         />
       </div>
 
@@ -774,7 +576,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
             type="button"
             onClick={clearForm}
             disabled={saving || savingDraft}
-            className="rounded-md border border-red-500/40 px-4 py-2.5 text-sm font-semibold text-red-500 hover:bg-red-500/10 disabled:opacity-50 transition"
+            className="rounded-full border border-red-500/40 px-4 py-2.5 text-sm font-semibold text-red-500 hover:bg-red-500/10 disabled:opacity-50 transition"
           >
             Clear
           </button>
@@ -783,7 +585,8 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
               type="button"
               onClick={onCancel}
               disabled={saving || savingDraft}
-              className="flex-1 rounded-md border border-[var(--border)] px-4 py-2.5 text-sm font-semibold text-[var(--text-primary)] hover:bg-[var(--bg-card-hover)] disabled:opacity-50 transition"
+              className="flex-1 rounded-full px-4 py-2.5 text-sm font-semibold disabled:opacity-50 transition"
+              style={{ border: "1px solid var(--border)", color: "var(--text-primary)" }}
             >
               Cancel
             </button>
@@ -793,7 +596,8 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
               type="button"
               onClick={handleSaveDraft}
               disabled={saving || savingDraft}
-              className="flex-1 rounded-md border border-[var(--border)] bg-[var(--bg-card-hover)] px-4 py-2.5 text-sm font-semibold text-[var(--text-primary)] hover:opacity-80 disabled:opacity-50 transition"
+              className="flex-1 rounded-full px-4 py-2.5 text-sm font-semibold hover:opacity-80 disabled:opacity-50 transition"
+              style={{ border: "1px solid var(--border)", background: "var(--bg-card-hover)", color: "var(--text-primary)" }}
             >
               {savingDraft ? "Saving…" : "Save Draft"}
             </button>
@@ -801,7 +605,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
           <button
             type="submit"
             disabled={saving || savingDraft}
-            className={`rounded-md bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2.5 text-sm font-semibold text-white shadow hover:opacity-90 disabled:opacity-50 transition ${onCancel || onSaveDraft ? "flex-1" : "w-full"}`}
+            className={`rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2.5 text-sm font-semibold text-white shadow hover:opacity-90 disabled:opacity-50 transition ${onCancel || onSaveDraft ? "flex-1" : "w-full"}`}
           >
             {saving ? "Saving…" : submitLabel}
           </button>

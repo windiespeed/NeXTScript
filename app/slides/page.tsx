@@ -1,95 +1,196 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import AssetCard from "@/components/AssetCard";
-import type { SavedProject } from "@/types/project";
+import type { Lesson } from "@/types/lesson";
+import type { Course } from "@/types/course";
 
-function SlidesInner() {
-  useSession({ required: true });
-  const searchParams = useSearchParams();
-  const lessonId = searchParams.get("lessonId");
+const STATUS_COLOR: Record<Lesson["status"], { bg: string; text: string; label: string }> = {
+  draft:        { bg: "var(--bg-card-hover)",  text: "var(--text-muted)", label: "Draft" },
+  generating:   { bg: "rgba(255,140,74,0.12)", text: "#ff8c4a",           label: "Generating…" },
+  regenerating: { bg: "rgba(12,192,223,0.12)", text: "#0cc0df",           label: "Regenerating…" },
+  done:         { bg: "rgba(45,212,160,0.12)", text: "#2dd4a0",           label: "Done" },
+  error:        { bg: "rgba(239,68,68,0.12)",  text: "#ef4444",           label: "Error" },
+};
 
-  const [decks, setDecks] = useState<SavedProject[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetch("/api/projects")
-      .then((r) => r.json())
-      .then((data: SavedProject[]) => {
-        setDecks(Array.isArray(data) ? data.filter((p) => p.type === "deck") : []);
-        setLoading(false);
-      });
-  }, []);
-
-  async function handleDelete(id: string) {
-    if (!confirm("Delete this slide deck record? This will not delete the file from Google Drive.")) return;
-    await fetch(`/api/projects/${id}`, { method: "DELETE" });
-    setDecks((prev) => prev.filter((p) => p.id !== id));
-  }
-
-  const filtered = lessonId ? decks.filter((d) => d.lessonId === lessonId) : decks;
-
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: "var(--text-muted)" }}>Assets</p>
-          <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>Slide Decks</h1>
-          <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>
-            {lessonId ? "Filtered by lesson." : "All generated Google Slides presentations."}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {lessonId && (
-            <Link href="/slides" className="rounded-full px-3 py-1.5 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)]" style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
-              Show all
-            </Link>
-          )}
-          {!loading && (
-            <span className="rounded-full px-3 py-1.5 text-sm font-semibold" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-primary)" }}>
-              {filtered.length} {filtered.length === 1 ? "deck" : "decks"}
-            </span>
-          )}
-        </div>
-      </div>
-
-      {loading ? (
-        <p className="text-sm text-[#0cc0df]">Loading…</p>
-      ) : filtered.length === 0 ? (
-        <div className="text-center py-16 rounded-3xl" style={{ border: "1px solid var(--border)", background: "var(--bg-card)" }}>
-          <div className="w-12 h-12 rounded-full bg-[#0cc0df]/10 flex items-center justify-center mx-auto mb-4">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0cc0df" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
-            </svg>
-          </div>
-          <p className="text-sm mb-2 font-semibold" style={{ color: "var(--text-primary)" }}>
-            {lessonId ? "No slide deck for this lesson yet" : "No slide decks yet"}
-          </p>
-          <p className="text-xs mb-5" style={{ color: "var(--text-muted)" }}>
-            Generate a bundle from any lesson to create a Google Slides deck.
-          </p>
-          <Link href="/" className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition">
-            Go to Lessons
-          </Link>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((deck) => (
-            <AssetCard key={deck.id} project={deck} onDelete={handleDelete} />
-          ))}
-        </div>
-      )}
-    </div>
-  );
+function fmt(iso: string) {
+  return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
 export default function SlidesPage() {
+  useSession({ required: true });
+  const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filterCourse, setFilterCourse] = useState("all");
+  const [filterStatus, setFilterStatus] = useState<"all" | "draft" | "done">("all");
+
+  useEffect(() => {
+    Promise.all([
+      fetch("/api/lessons").then(r => r.json()),
+      fetch("/api/courses").then(r => r.json()),
+    ]).then(([l, c]) => {
+      setLessons(Array.isArray(l) ? l : []);
+      setCourses(Array.isArray(c) ? c : []);
+      setLoading(false);
+    });
+  }, []);
+
+  const filtered = lessons.filter(l => {
+    if (filterCourse === "unassigned" && l.courseId) return false;
+    if (filterCourse !== "all" && filterCourse !== "unassigned" && l.courseId !== filterCourse) return false;
+    if (filterStatus === "draft" && l.status !== "draft") return false;
+    if (filterStatus === "done" && l.status !== "done") return false;
+    return true;
+  });
+
   return (
-    <Suspense>
-      <SlidesInner />
-    </Suspense>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: "var(--text-muted)" }}>Content</p>
+          <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>Slides</h1>
+          <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>
+            Create and edit slide content for your lessons.
+          </p>
+        </div>
+        <Link
+          href="/slides/new"
+          className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-bold text-white hover:opacity-90 transition shadow"
+        >
+          + New Slides
+        </Link>
+      </div>
+
+      {/* Filter pills */}
+      {!loading && (
+        <div className="flex flex-wrap gap-2">
+          {/* Status filters */}
+          {(["all", "draft", "done"] as const).map(f => (
+            <button
+              key={f}
+              onClick={() => setFilterStatus(f)}
+              className="rounded-full px-3 py-1 text-xs font-medium transition"
+              style={filterStatus === f
+                ? { background: "#0cc0df", color: "#0a0b13" }
+                : { background: "var(--bg-card-hover)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}
+            >
+              {f === "all" ? "All" : f === "draft" ? "Draft" : "Done"}
+            </button>
+          ))}
+
+          {/* Course filters */}
+          {courses.length > 0 && (
+            <>
+              <span className="self-center text-xs" style={{ color: "var(--border)" }}>|</span>
+              <button
+                onClick={() => setFilterCourse("all")}
+                className="rounded-full px-3 py-1 text-xs font-medium transition"
+                style={filterCourse === "all"
+                  ? { background: "var(--accent-purple)", color: "#fff" }
+                  : { background: "var(--bg-card-hover)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}
+              >
+                All Courses
+              </button>
+              <button
+                onClick={() => setFilterCourse("unassigned")}
+                className="rounded-full px-3 py-1 text-xs font-medium transition"
+                style={filterCourse === "unassigned"
+                  ? { background: "var(--accent-purple)", color: "#fff" }
+                  : { background: "var(--bg-card-hover)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}
+              >
+                Unassigned
+              </button>
+              {courses.map(c => (
+                <button
+                  key={c.id}
+                  onClick={() => setFilterCourse(c.id)}
+                  className="rounded-full px-3 py-1 text-xs font-medium transition"
+                  style={filterCourse === c.id
+                    ? { background: "var(--accent-purple)", color: "#fff" }
+                    : { background: "var(--bg-card-hover)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}
+                >
+                  {c.title}
+                </button>
+              ))}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* List */}
+      {loading ? (
+        <p className="text-sm text-[#0cc0df]">Loading…</p>
+      ) : filtered.length === 0 ? (
+        <div className="text-center py-20 rounded-3xl" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
+          <p className="text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>No slides yet</p>
+          <p className="text-xs mb-5" style={{ color: "var(--text-muted)" }}>Create a slide deck to get started.</p>
+          <Link
+            href="/slides/new"
+            className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition"
+          >
+            Create your first slides
+          </Link>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {filtered.map(lesson => {
+            const course = courses.find(c => c.id === lesson.courseId);
+            const s = STATUS_COLOR[lesson.status];
+            return (
+              <div
+                key={lesson.id}
+                className="rounded-3xl p-5 space-y-3 hover:-translate-y-1 transition-all duration-200"
+                style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-card)" }}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm leading-snug truncate" style={{ color: "var(--text-primary)" }}>
+                      {lesson.title}
+                    </p>
+                    {lesson.subtitle && (
+                      <p className="text-xs mt-0.5 truncate" style={{ color: "var(--text-muted)" }}>{lesson.subtitle}</p>
+                    )}
+                  </div>
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0" style={{ background: s.bg, color: s.text }}>
+                    {s.label}
+                  </span>
+                </div>
+
+                {course && (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background: "var(--accent-purple-bg)", color: "var(--accent-purple)" }}>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                    {course.title}
+                  </span>
+                )}
+
+                <div className="flex items-center justify-between pt-2" style={{ borderTop: "1px solid var(--border)" }}>
+                  <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+                    Updated {fmt(lesson.updatedAt)}
+                  </span>
+                  <div className="flex gap-2">
+                    <Link
+                      href={`/lessons/${lesson.id}`}
+                      className="rounded-full px-3 py-1 text-xs font-semibold transition"
+                      style={{ background: "var(--bg-card-hover)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}
+                    >
+                      View Lesson
+                    </Link>
+                    <Link
+                      href={`/slides/${lesson.id}`}
+                      className="rounded-full bg-[#0cc0df] px-3 py-1 text-xs font-semibold text-[#0a0b13] hover:opacity-90 transition"
+                    >
+                      Edit
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }

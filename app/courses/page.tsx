@@ -109,6 +109,7 @@ export default function CoursesPage() {
   const [projects, setProjects] = useState<SavedProject[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterCourse, setFilterCourse] = useState<string>("all");
+  const [filterStatus, setFilterStatus] = useState<"all" | "draft" | "done">("all");
 
   useEffect(() => {
     Promise.all([
@@ -167,11 +168,13 @@ export default function CoursesPage() {
     }
   }
 
-  const filteredLessons = filterCourse === "all"
-    ? lessons
-    : filterCourse === "unassigned"
-    ? lessons.filter(l => !l.courseId)
-    : lessons.filter(l => l.courseId === filterCourse);
+  const filteredLessons = lessons.filter(l => {
+    if (filterCourse === "unassigned" && l.courseId) return false;
+    if (filterCourse !== "all" && filterCourse !== "unassigned" && l.courseId !== filterCourse) return false;
+    if (filterStatus === "draft" && l.status !== "draft") return false;
+    if (filterStatus === "done" && l.status !== "done") return false;
+    return true;
+  });
 
   return (
     <div className="space-y-8">
@@ -229,34 +232,58 @@ export default function CoursesPage() {
           </div>
 
           {/* Filter pills */}
-          {courses.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-4">
-              {(["all", "unassigned"] as const).map(f => (
+          <div className="flex flex-wrap gap-2 mb-4">
+            {/* Status filters */}
+            {(["all", "draft", "done"] as const).map(f => (
+              <button
+                key={f}
+                onClick={() => setFilterStatus(f)}
+                className="rounded-full px-3 py-1 text-xs font-medium transition"
+                style={filterStatus === f
+                  ? { background: "#0cc0df", color: "#0a0b13" }
+                  : { background: "var(--bg-card-hover)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}
+              >
+                {f === "all" ? "All" : f === "draft" ? "Draft" : "Done"}
+              </button>
+            ))}
+
+            {/* Course filters */}
+            {courses.length > 0 && (
+              <>
+                <span className="self-center text-xs" style={{ color: "var(--border)" }}>|</span>
                 <button
-                  key={f}
-                  onClick={() => setFilterCourse(f)}
+                  onClick={() => setFilterCourse("all")}
                   className="rounded-full px-3 py-1 text-xs font-medium transition"
-                  style={filterCourse === f
-                    ? { background: "#0cc0df", color: "#0a0b13" }
-                    : { background: "var(--bg-card-hover)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}
-                >
-                  {f === "all" ? "All" : "Unassigned"}
-                </button>
-              ))}
-              {courses.map(c => (
-                <button
-                  key={c.id}
-                  onClick={() => setFilterCourse(c.id)}
-                  className="rounded-full px-3 py-1 text-xs font-medium transition"
-                  style={filterCourse === c.id
+                  style={filterCourse === "all"
                     ? { background: "var(--accent-purple)", color: "#fff" }
                     : { background: "var(--bg-card-hover)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}
                 >
-                  {c.title}
+                  All Courses
                 </button>
-              ))}
-            </div>
-          )}
+                <button
+                  onClick={() => setFilterCourse("unassigned")}
+                  className="rounded-full px-3 py-1 text-xs font-medium transition"
+                  style={filterCourse === "unassigned"
+                    ? { background: "var(--accent-purple)", color: "#fff" }
+                    : { background: "var(--bg-card-hover)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}
+                >
+                  Unassigned
+                </button>
+                {courses.map(c => (
+                  <button
+                    key={c.id}
+                    onClick={() => setFilterCourse(c.id)}
+                    className="rounded-full px-3 py-1 text-xs font-medium transition"
+                    style={filterCourse === c.id
+                      ? { background: "var(--accent-purple)", color: "#fff" }
+                      : { background: "var(--bg-card-hover)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}
+                  >
+                    {c.title}
+                  </button>
+                ))}
+              </>
+            )}
+          </div>
 
           {filteredLessons.length === 0 ? (
             <div className="text-center py-12 rounded-3xl" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
