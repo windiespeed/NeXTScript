@@ -4,6 +4,21 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  useSortable,
+  rectSortingStrategy,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import type { Course } from "@/types/course";
 import type { Lesson } from "@/types/lesson";
 import type { SavedProject } from "@/types/project";
@@ -13,12 +28,42 @@ function fmt(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
-function CourseCard({ course, onDelete, onDuplicate }: { course: Course; onDelete: (id: string) => void; onDuplicate: (course: Course) => void }) {
+const gripSVG = (
+  <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+    <circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/>
+    <circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/>
+    <circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/>
+  </svg>
+);
+
+function CourseCard({
+  course,
+  onDelete,
+  onDuplicate,
+  gripProps,
+}: {
+  course: Course;
+  onDelete: (id: string) => void;
+  onDuplicate: (course: Course) => void;
+  gripProps?: React.HTMLAttributes<HTMLDivElement>;
+}) {
   return (
     <div
       className="group h-full rounded-3xl flex flex-col hover:-translate-y-1 transition-all duration-200"
       style={{ background: "var(--bg-card)", boxShadow: "var(--shadow-card)" }}
     >
+      {/* Drag handle */}
+      {gripProps && (
+        <div
+          {...gripProps}
+          title="Drag to reorder"
+          className="absolute top-3 right-3 p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition cursor-grab active:cursor-grabbing"
+          style={{ color: "var(--text-muted)", background: "var(--bg-card-hover)" }}
+        >
+          {gripSVG}
+        </div>
+      )}
+
       <div className="flex flex-col gap-3 p-5 flex-1">
         {/* Title row */}
         <div className="flex items-start justify-between gap-2">
@@ -101,6 +146,67 @@ function CourseCard({ course, onDelete, onDuplicate }: { course: Course; onDelet
   );
 }
 
+function SortableCourseCard({ course, onDelete, onDuplicate }: { course: Course; onDelete: (id: string) => void; onDuplicate: (course: Course) => void }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: course.id });
+  return (
+    <div
+      ref={setNodeRef}
+      className="relative"
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+      }}
+    >
+      <CourseCard
+        course={course}
+        onDelete={onDelete}
+        onDuplicate={onDuplicate}
+        gripProps={{ ...listeners, ...attributes } as React.HTMLAttributes<HTMLDivElement>}
+      />
+    </div>
+  );
+}
+
+function SortableLessonCard({
+  lesson,
+  projects,
+  courses,
+  onDelete,
+  onDuplicate,
+  onOpenModal,
+}: {
+  lesson: Lesson;
+  projects: SavedProject[];
+  courses: Course[];
+  onDelete: (id: string) => void;
+  onDuplicate: (id: string) => void;
+  onOpenModal: (id: string) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: lesson.id });
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+        zIndex: isDragging ? 10 : undefined,
+      }}
+    >
+      <LessonCard
+        lesson={lesson}
+        projects={projects}
+        courses={courses}
+        onDelete={onDelete}
+        onDuplicate={onDuplicate}
+        onOpenModal={onOpenModal}
+        gripProps={{ ...listeners, ...attributes } as React.HTMLAttributes<HTMLDivElement>}
+      />
+    </div>
+  );
+}
+
 export default function CoursesPage() {
   useSession({ required: true });
   const router = useRouter();
@@ -110,6 +216,19 @@ export default function CoursesPage() {
   const [loading, setLoading] = useState(true);
   const [filterCourse, setFilterCourse] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<"all" | "draft" | "done">("all");
+  const [courseOrder, setCourseOrder] = useState<string[]>([]);
+  const [lessonOrder, setLessonOrder] = useState<string[]>([]);
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
+
+  useEffect(() => {
+    try {
+      const sc = localStorage.getItem("sort-courses");
+      if (sc) setCourseOrder(JSON.parse(sc));
+      const sl = localStorage.getItem("sort-lessons-cp");
+      if (sl) setLessonOrder(JSON.parse(sl));
+    } catch {}
+  }, []);
 
   useEffect(() => {
     Promise.all([
@@ -168,13 +287,53 @@ export default function CoursesPage() {
     }
   }
 
-  const filteredLessons = lessons.filter(l => {
+  // ── Sorted courses ──────────────────────────────────────────────────────────
+  const sortedCourses: Course[] = (() => {
+    const orderedIds = courseOrder.filter(id => courses.some(c => c.id === id));
+    const unordered = courses.filter(c => !courseOrder.includes(c.id));
+    const ordered = orderedIds.map(id => courses.find(c => c.id === id)!);
+    return [...ordered, ...unordered];
+  })();
+
+  // ── Sorted lessons ──────────────────────────────────────────────────────────
+  const sortedLessons: Lesson[] = (() => {
+    const orderedIds = lessonOrder.filter(id => lessons.some(l => l.id === id));
+    const unordered = lessons.filter(l => !lessonOrder.includes(l.id));
+    const ordered = orderedIds.map(id => lessons.find(l => l.id === id)!);
+    return [...ordered, ...unordered];
+  })();
+
+  const filteredLessons = sortedLessons.filter(l => {
     if (filterCourse === "unassigned" && l.courseId) return false;
     if (filterCourse !== "all" && filterCourse !== "unassigned" && l.courseId !== filterCourse) return false;
     if (filterStatus === "draft" && l.status !== "draft") return false;
     if (filterStatus === "done" && l.status !== "done") return false;
     return true;
   });
+
+  function handleCourseDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = sortedCourses.findIndex(c => c.id === active.id);
+    const newIndex = sortedCourses.findIndex(c => c.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    const newSorted = arrayMove(sortedCourses, oldIndex, newIndex);
+    const newOrder = newSorted.map(c => c.id);
+    setCourseOrder(newOrder);
+    localStorage.setItem("sort-courses", JSON.stringify(newOrder));
+  }
+
+  function handleLessonDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = sortedLessons.findIndex(l => l.id === active.id);
+    const newIndex = sortedLessons.findIndex(l => l.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    const newSorted = arrayMove(sortedLessons, oldIndex, newIndex);
+    const newOrder = newSorted.map(l => l.id);
+    setLessonOrder(newOrder);
+    localStorage.setItem("sort-lessons-cp", JSON.stringify(newOrder));
+  }
 
   return (
     <div className="space-y-8">
@@ -207,9 +366,15 @@ export default function CoursesPage() {
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {courses.map((course) => <CourseCard key={course.id} course={course} onDelete={handleDelete} onDuplicate={handleDuplicate} />)}
-          </div>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleCourseDragEnd}>
+            <SortableContext items={sortedCourses.map(c => c.id)} strategy={rectSortingStrategy}>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {sortedCourses.map((course) => (
+                  <SortableCourseCard key={course.id} course={course} onDelete={handleDelete} onDuplicate={handleDuplicate} />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
         )}
       </div>
 
@@ -292,19 +457,23 @@ export default function CoursesPage() {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {filteredLessons.map(lesson => (
-                <LessonCard
-                  key={lesson.id}
-                  lesson={lesson}
-                  projects={projects.filter(p => p.lessonId === lesson.id || p.lessonIds?.includes(lesson.id))}
-                  courses={courses}
-                  onDelete={handleDeleteLesson}
-                  onDuplicate={handleDuplicateLesson}
-                  onOpenModal={() => router.push(`/lessons/${lesson.id}`)}
-                />
-              ))}
-            </div>
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleLessonDragEnd}>
+              <SortableContext items={sortedLessons.map(l => l.id)} strategy={rectSortingStrategy}>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {filteredLessons.map(lesson => (
+                    <SortableLessonCard
+                      key={lesson.id}
+                      lesson={lesson}
+                      projects={projects.filter(p => p.lessonId === lesson.id || p.lessonIds?.includes(lesson.id))}
+                      courses={courses}
+                      onDelete={handleDeleteLesson}
+                      onDuplicate={handleDuplicateLesson}
+                      onOpenModal={() => router.push(`/lessons/${lesson.id}`)}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
           )}
         </div>
       )}
