@@ -7,6 +7,9 @@ import { DEFAULT_COURSE_SETTINGS } from "@/types/course";
 import type { CourseSettings } from "@/types/course";
 
 const SECTION_LABEL_KEYS = [
+  { key: "lessonOverview",        label: "Lesson Overview" },
+  { key: "learningTargets",       label: "Learning Targets" },
+  { key: "vocabulary",            label: "Vocabulary" },
   { key: "warmUp",                label: "Opening Activity" },
   { key: "guidedLab",             label: "Guided Activity" },
   { key: "selfPaced",             label: "Independent Activity" },
