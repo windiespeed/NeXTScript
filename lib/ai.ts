@@ -68,7 +68,7 @@ Return ONLY a valid JSON object with these exact keys (no markdown, no explanati
   "vocabulary": "8-12 key terms with concise definitions, formatted as 'Term: Definition' (one per line)",
   "warmUp": "3-5 questions (numbered) to engage students at the start of class — label this section '${labels.warmUp}'",
   "slides": [
-    { "title": "Slide title", "body": "Slide content — use short bullet points or relevant examples. Wrap inline code in backticks." }
+    { "title": "Slide title", "body": "Slide content — write as plain concise sentences or relevant examples. Do NOT use bullet characters (•, -, *) or any list symbols. Wrap inline code in backticks." }
   ],
   "guidedLab": "Step-by-step instructor-led exercise (numbered steps) — label this section '${labels.guidedLab}'",
   "selfPaced": "Step-by-step independent exercise (numbered steps) — label this section '${labels.selfPaced}'",
@@ -79,7 +79,7 @@ Return ONLY a valid JSON object with these exact keys (no markdown, no explanati
   "rubric": "Comprehension and objective checklist (bullet points with point values) — label this section '${labels.rubric}'"
 }
 
-For "slides": generate exactly ${slideCount} slides that cover the lesson's main concepts in a logical teaching sequence. Each slide should have a concise title and a body with 3-5 short bullet points or a brief example. The first slide should be an intro/agenda slide.`;
+For "slides": generate exactly ${slideCount} slides that cover the lesson's main concepts in a logical teaching sequence. Each slide should have a concise title and a body with 3-5 plain-text sentences or a brief example. Do NOT use bullet characters (•, -, *) or list symbols anywhere in slide bodies. The first slide should be an intro/agenda slide.`;
 
   const message = await client.messages.create({
     model: "claude-haiku-4-5-20251001",

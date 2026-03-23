@@ -141,8 +141,10 @@ function stripBullets(text: string): string {
 
 /**
  * Build one slide's worth of API requests.
- * Uses TITLE_ONLY layout + a free-form text box for the body so that
- * Google Slides never auto-applies bullet formatting to the body text.
+ * Uses TITLE_AND_BODY layout so the template's placeholder styling is preserved.
+ * Bullet formatting is suppressed via deleteParagraphBullets after text insertion
+ * (the AI is instructed not to produce bullet characters, but the BODY placeholder
+ * can apply list style by default — this removes it).
  * Body text wrapped in backticks is rendered in blue (code examples).
  * All other body text is rendered in black.
  */
@@ -150,15 +152,16 @@ function slideRequests(title: string, body: string | undefined): any[] {
   const sId = uid("s");
   const tId = uid("t");
   const bId = uid("b");
-  const { plain: bodyPlain, codeRanges } = parseCodeSegments(stripBullets(body ?? ""));
+  const { plain: bodyPlain, codeRanges } = parseCodeSegments(body ?? "");
 
   const requests: any[] = [
     {
       createSlide: {
         objectId: sId,
-        slideLayoutReference: { predefinedLayout: "TITLE_ONLY" },
+        slideLayoutReference: { predefinedLayout: "TITLE_AND_BODY" },
         placeholderIdMappings: [
           { layoutPlaceholder: { type: "TITLE" }, objectId: tId },
+          { layoutPlaceholder: { type: "BODY" }, objectId: bId },
         ],
       },
     },
@@ -167,19 +170,9 @@ function slideRequests(title: string, body: string | undefined): any[] {
 
   if (bodyPlain.length > 0) {
     requests.push(
-      // Free-form text box — no inherited bullet style from the layout
-      {
-        createShape: {
-          objectId: bId,
-          shapeType: "TEXT_BOX",
-          elementProperties: {
-            pageObjectId: sId,
-            size: { width: { magnitude: 612, unit: "PT" }, height: { magnitude: 270, unit: "PT" } },
-            transform: { scaleX: 1, scaleY: 1, translateX: 54, translateY: 115, unit: "PT" },
-          },
-        },
-      },
       { insertText: { objectId: bId, insertionIndex: 0, text: bodyPlain } },
+      // Remove bullet/list formatting the layout may apply automatically
+      { deleteParagraphBullets: { objectId: bId, textRange: { type: "ALL" } } },
       // Default all body text to black
       {
         updateTextStyle: {
