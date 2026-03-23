@@ -8,7 +8,58 @@ import type { Course, CourseSettings, CourseResource, CourseModule } from "@/typ
 import { DEFAULT_COURSE_SETTINGS } from "@/types/course";
 import type { Lesson } from "@/types/lesson";
 import type { SavedProject } from "@/types/project";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
+
+const gripSVG = (
+  <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+    <circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/>
+    <circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/>
+    <circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/>
+  </svg>
+);
+
+type SortableProps = {
+  ref: (el: HTMLElement | null) => void;
+  style: React.CSSProperties;
+  grip: React.ReactNode;
+};
+
+function SortableLessonItem({ id, render }: { id: string; render: (s: SortableProps) => React.ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  return (
+    <>
+      {render({
+        ref: setNodeRef,
+        style: { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 },
+        grip: (
+          <div
+            {...listeners} {...attributes}
+            title="Drag to reorder"
+            className="p-1 rounded-full cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition shrink-0"
+            style={{ color: "var(--text-muted)" }}
+          >
+            {gripSVG}
+          </div>
+        ),
+      })}
+    </>
+  );
+}
 
 const SECTION_LABEL_KEYS = [
   { key: "lessonOverview",        label: "Lesson Overview" },
@@ -94,6 +145,16 @@ export default function CourseDetailPage() {
   const [genPanelId, setGenPanelId] = useState<string | null>(null);
   const [genChecks, setGenChecks] = useState({ slides: true, overview: true, quiz: false });
   const [generatingLessonId, setGeneratingLessonId] = useState<string | null>(null);
+  const [unassignedOrder, setUnassignedOrder] = useState<string[]>([]);
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(`sort-unassigned-${id}`);
+      if (saved) setUnassignedOrder(JSON.parse(saved));
+    } catch {}
+  }, [id]);
 
   useEffect(() => {
     Promise.all([
@@ -444,6 +505,34 @@ export default function CourseDetailPage() {
     });
   }
 
+  function handleModuleDragEnd(modId: string, event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const mod = modules.find(m => m.id === modId);
+    if (!mod) return;
+    const oldIndex = mod.lessonIds.indexOf(active.id as string);
+    const newIndex = mod.lessonIds.indexOf(over.id as string);
+    if (oldIndex === -1 || newIndex === -1) return;
+    const newIds = arrayMove(mod.lessonIds, oldIndex, newIndex);
+    saveModules(modules.map(m => m.id === modId ? { ...m, lessonIds: newIds } : m));
+  }
+
+  function handleUnassignedDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const assignedIds = new Set(modules.flatMap(m => m.lessonIds));
+    const unassignedBase = lessons.filter(l => !assignedIds.has(l.id));
+    const orderedIds = unassignedOrder.filter(uid => unassignedBase.some(l => l.id === uid));
+    const unordered = unassignedBase.filter(l => !unassignedOrder.includes(l.id));
+    const sorted = [...orderedIds.map(uid => unassignedBase.find(l => l.id === uid)!), ...unordered];
+    const oldIndex = sorted.findIndex(l => l.id === active.id);
+    const newIndex = sorted.findIndex(l => l.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    const newOrder = arrayMove(sorted, oldIndex, newIndex).map(l => l.id);
+    setUnassignedOrder(newOrder);
+    localStorage.setItem(`sort-unassigned-${id}`, JSON.stringify(newOrder));
+  }
+
   async function handleGenerateLesson(lessonId: string) {
     setGenPanelId(null);
     setGeneratingLessonId(lessonId);
@@ -696,19 +785,26 @@ export default function CourseDetailPage() {
             </div>
           ) : (() => {
             const assignedIds = new Set(modules.flatMap(m => m.lessonIds));
-            const unassigned = lessons.filter(l => !assignedIds.has(l.id));
+            const unassignedBase = lessons.filter(l => !assignedIds.has(l.id));
+            const unassigned = [
+              ...unassignedOrder.filter(uid => unassignedBase.some(l => l.id === uid)).map(uid => unassignedBase.find(l => l.id === uid)!),
+              ...unassignedBase.filter(l => !unassignedOrder.includes(l.id)),
+            ];
 
-            function renderLessonRow(lesson: Lesson, i: number, isFirst: boolean, isLast = false, roundTop = false) {
+            function renderLessonRow(lesson: Lesson, i: number, isFirst: boolean, isLast = false, roundTop = false, sortable?: SortableProps) {
               return (
                 <div
                   key={lesson.id}
+                  ref={sortable?.ref}
                   onClick={selecting ? () => toggleSelect(lesson.id) : undefined}
-                  className={`flex items-center gap-4 px-4 py-3 transition ${roundTop && isFirst ? "rounded-t-3xl" : ""} ${isLast ? "rounded-b-3xl" : ""} ${selecting ? "cursor-pointer" : "hover:bg-[var(--bg-card-hover)]"} ${selecting && selectedIds.has(lesson.id) ? "bg-[#0cc0df]/10" : ""}`}
+                  className={`group flex items-center gap-4 px-4 py-3 transition ${roundTop && isFirst ? "rounded-t-3xl" : ""} ${isLast ? "rounded-b-3xl" : ""} ${selecting ? "cursor-pointer" : "hover:bg-[var(--bg-card-hover)]"} ${selecting && selectedIds.has(lesson.id) ? "bg-[#0cc0df]/10" : ""}`}
                   style={{
                     background: selecting && selectedIds.has(lesson.id) ? undefined : "var(--bg-card)",
                     borderTop: !isFirst ? "1px solid var(--border)" : undefined,
+                    ...sortable?.style,
                   }}
                 >
+                  {sortable?.grip}
                   {selecting ? (
                     <div
                       className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition ${selectedIds.has(lesson.id) ? "bg-[#0cc0df] border-[#0cc0df]" : "border-[var(--border)]"}`}
@@ -972,7 +1068,17 @@ export default function CourseDetailPage() {
                             No lessons assigned — use the module dropdown on each lesson row.
                           </div>
                         ) : (
-                          modLessons.map((lesson, i) => renderLessonRow(lesson, i, i === 0, i === modLessons.length - 1))
+                          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(e) => handleModuleDragEnd(mod.id, e)}>
+                            <SortableContext items={mod.lessonIds} strategy={verticalListSortingStrategy}>
+                              {modLessons.map((lesson, i) => (
+                                <SortableLessonItem
+                                  key={lesson.id}
+                                  id={lesson.id}
+                                  render={(s) => renderLessonRow(lesson, i, i === 0, i === modLessons.length - 1, false, s)}
+                                />
+                              ))}
+                            </SortableContext>
+                          </DndContext>
                         )
                       )}
                     </div>
@@ -987,7 +1093,17 @@ export default function CourseDetailPage() {
                         <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{unassigned.length} {unassigned.length === 1 ? "lesson" : "lessons"}</span>
                       </div>
                     )}
-                    {unassigned.map((lesson, i) => renderLessonRow(lesson, i, i === 0, i === unassigned.length - 1, modules.length === 0))}
+                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleUnassignedDragEnd}>
+                      <SortableContext items={unassigned.map(l => l.id)} strategy={verticalListSortingStrategy}>
+                        {unassigned.map((lesson, i) => (
+                          <SortableLessonItem
+                            key={lesson.id}
+                            id={lesson.id}
+                            render={(s) => renderLessonRow(lesson, i, i === 0, i === unassigned.length - 1, modules.length === 0, s)}
+                          />
+                        ))}
+                      </SortableContext>
+                    </DndContext>
                   </div>
                 )}
               </div>
