@@ -270,7 +270,7 @@ export default function CoursesPage() {
                 <LessonCard
                   key={lesson.id}
                   lesson={lesson}
-                  projects={projects.filter(p => p.lessonId === lesson.id)}
+                  projects={projects.filter(p => p.lessonId === lesson.id || p.lessonIds?.includes(lesson.id))}
                   courses={courses}
                   onDelete={handleDeleteLesson}
                   onDuplicate={handleDuplicateLesson}

@@ -781,7 +781,7 @@ function Dashboard() {
             <SortableContext items={sorted.map(l => l.id)} strategy={rectSortingStrategy}>
               <div className={`grid grid-cols-1 gap-4 ${span >= 2 ? "sm:grid-cols-2" : ""} ${span === 3 ? "lg:grid-cols-3" : ""}`}>
                 {sorted.map(l => (
-                  <SortableLessonCard key={l.id} lesson={l} projects={projects.filter(p => p.lessonId === l.id)} courses={courses}
+                  <SortableLessonCard key={l.id} lesson={l} projects={projects.filter(p => p.lessonId === l.id || p.lessonIds?.includes(l.id))} courses={courses}
                     onDelete={handleDelete} onDuplicate={handleDuplicate} onOpenModal={id => setModalLessonId(id)}
                     onAssign={handleAssign} selecting={selecting} selected={selected.has(l.id)} onToggleSelect={toggleSelect} />
                 ))}

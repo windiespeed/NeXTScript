@@ -784,8 +784,8 @@ export default function CourseDetailPage() {
                   </div>
 
                   {!selecting && (() => {
-                    const deck = projects.find(p => p.lessonId === lesson.id && p.type === "deck");
-                    const form = projects.find(p => p.lessonId === lesson.id && p.type === "form");
+                    const deck = projects.find(p => p.type === "deck" && (p.lessonId === lesson.id || p.lessonIds?.includes(lesson.id)));
+                    const form = projects.find(p => p.type === "form" && (p.lessonId === lesson.id || p.lessonIds?.includes(lesson.id)));
                     return (deck || form || lesson.folderUrl) ? (
                       <div className="flex items-center gap-1 shrink-0">
                         {deck && (
