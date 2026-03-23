@@ -34,6 +34,8 @@ export interface Lesson {
   studentLevel?: "beginner" | "intermediate" | "advanced"; // Target student experience level for AI generation
   quizQuestions?: FormQuestion[]; // Custom quiz questions — if set, used instead of auto-gen
   notes?: string;                 // Private instructor notes — never used in generation
+  slideCount?: number;            // Number of slides to generate with AI Fill (default 10)
+  overviewSlides?: boolean[];     // Per-slide flag: true = include in Overview Doc generation
 }
 
 export type LessonInput = Omit<

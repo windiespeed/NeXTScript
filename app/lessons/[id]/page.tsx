@@ -15,6 +15,10 @@ export default function EditLessonPage() {
   const [hasAiKey, setHasAiKey] = useState(false);
   const [courseTitle, setCourseTitle] = useState<string | null>(null);
   const clearFormRef = useRef<(() => void) | undefined>(undefined);
+  const [generating, setGenerating] = useState(false);
+  const [generateStatus, setGenerateStatus] = useState<"idle" | "done" | "error">("idle");
+  const [generateMsg, setGenerateMsg] = useState("");
+  const [includeOverview, setIncludeOverview] = useState(true);
 
   useEffect(() => {
     Promise.all([
@@ -59,12 +63,37 @@ export default function EditLessonPage() {
     await putLesson(data);
   }
 
+  async function handleGenerate() {
+    if (!lesson) return;
+    setGenerating(true);
+    setGenerateStatus("idle");
+    setGenerateMsg("");
+    const files = includeOverview ? ["slides", "doc"] : ["slides"];
+    try {
+      const res = await fetch(`/api/generate/${id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ files, destination: "drive" }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Generation failed.");
+      setLesson(prev => prev ? { ...prev, ...data } : prev);
+      setGenerateStatus("done");
+      setGenerateMsg(data.folderUrl ? "Generated! Files saved to Drive." : "Generated successfully.");
+    } catch (err: any) {
+      setGenerateStatus("error");
+      setGenerateMsg(err.message || "Generation failed.");
+    } finally {
+      setGenerating(false);
+    }
+  }
+
   if (loading) return <p className="text-sm text-[#0cc0df] mt-10">Loading…</p>;
   if (!lesson) return <p className="text-sm text-red-500 mt-10">Lesson not found.</p>;
 
   return (
     <div className="max-w-3xl">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-start justify-between mb-6 gap-4">
         <div>
           <button onClick={() => router.push(backHref)} className="text-sm text-[#0cc0df] hover:underline mb-2 block">
             ← {lesson.courseId ? "Back to Course" : "Back to Dashboard"}
@@ -77,13 +106,44 @@ export default function EditLessonPage() {
             </span>
           )}
         </div>
-        <button
-          onClick={() => clearFormRef.current?.()}
-          className="rounded-full px-3 py-1.5 text-xs font-semibold text-red-500 hover:bg-red-500/10 transition"
-          style={{ border: "1px solid var(--border)" }}
-        >
-          Clear Form
-        </button>
+        <div className="flex flex-col items-end gap-2 shrink-0">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => clearFormRef.current?.()}
+              className="rounded-full px-3 py-1.5 text-xs font-semibold text-red-500 hover:bg-red-500/10 transition"
+              style={{ border: "1px solid var(--border)" }}
+            >
+              Clear Form
+            </button>
+            <button
+              onClick={handleGenerate}
+              disabled={generating}
+              className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-1.5 text-xs font-bold text-white hover:opacity-90 disabled:opacity-50 transition shadow"
+            >
+              {generating ? "Generating…" : lesson.status === "done" ? "Regenerate Slides" : "Generate Slides"}
+            </button>
+          </div>
+          <label className="flex items-center gap-1.5 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={includeOverview}
+              onChange={e => setIncludeOverview(e.target.checked)}
+              className="w-3 h-3 accent-[#0cc0df]"
+            />
+            <span className="text-xs" style={{ color: "var(--text-muted)" }}>Include Overview Doc</span>
+          </label>
+          {generateStatus === "done" && (
+            <p className="text-xs text-[#2dd4a0]">{generateMsg}</p>
+          )}
+          {generateStatus === "error" && (
+            <p className="text-xs text-red-500">{generateMsg}</p>
+          )}
+          {lesson.folderUrl && generateStatus === "idle" && (
+            <a href={lesson.folderUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-[#0cc0df] hover:underline">
+              View in Drive ↗
+            </a>
+          )}
+        </div>
       </div>
 
       <LessonForm

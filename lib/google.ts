@@ -227,10 +227,10 @@ export async function buildSlideDeck(lesson: Lesson, accessToken: string, templa
 
   // ── Section slides — matches Google Doc template order ──────────────────
   const contentRequests: any[] = [
-    ...slideRequests("LESSON OVERVIEW",              lesson.overview),
-    ...slideRequests("LEARNING TARGETS",             lesson.learningTargets),
-    ...(lesson.vocabulary ? slideRequests("VOCABULARY", lesson.vocabulary) : []),
-    ...slideRequests(labels.warmUp.toUpperCase(),    lesson.warmUp),
+    ...slideRequests(labels.lessonOverview.toUpperCase(),  lesson.overview),
+    ...slideRequests(labels.learningTargets.toUpperCase(), lesson.learningTargets),
+    ...(lesson.vocabulary ? slideRequests(labels.vocabulary.toUpperCase(), lesson.vocabulary) : []),
+    ...slideRequests(labels.warmUp.toUpperCase(),          lesson.warmUp),
   ];
 
   // ── Custom slide content blocks (--- = slide break, first line = title) ─
@@ -340,6 +340,54 @@ export async function buildPosterDoc(lesson: Lesson, accessToken: string, labels
   return docId;
 }
 
+export async function buildOverviewDoc(lesson: Lesson, accessToken: string, labels: SectionLabels = DEFAULT_SECTION_LABELS): Promise<string> {
+  const docs = google.docs({ version: "v1", auth: getAuthClient(accessToken) });
+
+  const doc = await docs.documents.create({
+    requestBody: { title: `${labels.lessonOverview.toUpperCase()}: ${lesson.title} — ${lesson.subtitle}` },
+  });
+  const docId = doc.data.documentId!;
+
+  // Parse slides from slideContent and filter by overviewSlides mask
+  const sep = /\n---\n/;
+  const raw = lesson.slideContent ?? "";
+  const blocks = sep.test(raw) ? raw.split(sep) : raw.split(/\n\n+/);
+  const allSlides = blocks.map(block => {
+    const lines = block.trim().split("\n");
+    return { title: lines[0] ?? "", body: lines.slice(1).join("\n").trim() };
+  }).filter(s => s.title);
+
+  const mask = lesson.overviewSlides;
+  const selectedSlides = mask
+    ? allSlides.filter((_, i) => mask[i] !== false)
+    : allSlides;
+
+  const lines: string[] = [
+    lesson.title,
+    ...(lesson.subtitle ? [lesson.subtitle] : []),
+    ...(lesson.deadline ? [`Deadline: ${lesson.deadline}`] : []),
+    "",
+    labels.learningTargets.toUpperCase(),
+    lesson.learningTargets ?? "",
+    "",
+    "LESSON SUMMARY",
+    ...selectedSlides.flatMap(slide => [
+      slide.title,
+      slide.body,
+      "",
+    ]),
+  ];
+
+  await docs.documents.batchUpdate({
+    documentId: docId,
+    requestBody: {
+      requests: [{ insertText: { location: { index: 1 }, text: lines.join("\n") } }],
+    },
+  });
+
+  return docId;
+}
+
 // ─── Forms (Quiz) ────────────────────────────────────────────────────────────
 
 export async function buildQuiz(lesson: Lesson, accessToken: string): Promise<string> {
@@ -426,7 +474,7 @@ export async function generateBundleSelective(
 
   await Promise.all([
     files.includes("slides") ? buildSlideDeck(lesson, accessToken, templateId, labels).then(id => { deckId = id; }) : null,
-    files.includes("doc")    ? buildPosterDoc(lesson, accessToken, labels).then(id => { docId = id; })              : null,
+    files.includes("doc")    ? buildOverviewDoc(lesson, accessToken, labels).then(id => { docId = id; })              : null,
     files.includes("quiz")   ? buildQuiz(lesson, accessToken).then(id => { formId = id; })                          : null,
   ]);
 
@@ -459,7 +507,7 @@ export async function generateBundleAsDownload(
 ): Promise<{ filename: string; data: string }[]> {
   const createTasks: { key: string; promise: Promise<string> }[] = [];
   if (files.includes("slides")) createTasks.push({ key: "slides", promise: buildSlideDeck(lesson, accessToken, templateId, labels) });
-  if (files.includes("doc"))    createTasks.push({ key: "doc",    promise: buildPosterDoc(lesson, accessToken, labels) });
+  if (files.includes("doc"))    createTasks.push({ key: "doc",    promise: buildOverviewDoc(lesson, accessToken, labels) });
 
   const fileIds = await Promise.all(createTasks.map(t => t.promise));
 
@@ -496,7 +544,7 @@ export async function generateBundle(
 
   const [deckId, docId, formId] = await Promise.all([
     buildSlideDeck(lesson, accessToken),
-    buildPosterDoc(lesson, accessToken),
+    buildOverviewDoc(lesson, accessToken),
     buildQuiz(lesson, accessToken),
   ]);
 

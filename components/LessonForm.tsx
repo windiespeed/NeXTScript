@@ -86,6 +86,13 @@ function buildPostSlideFields(l: SectionLabels): SectionField[] {
 export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSave, onCancel, onClearRef, submitLabel = "Save Lesson", hasAiKey = false, isEditing = false }: Props) {
   const [form, setForm] = useState<LessonInput>({ ...EMPTY, ...initial });
   const [slides, setSlides] = useState<Slide[]>(() => parseSlides(initial.slideContent ?? ""));
+  const [slideCount, setSlideCount] = useState<number>(initial.slideCount ?? 10);
+  const [overviewSlides, setOverviewSlides] = useState<boolean[]>(() => {
+    const count = parseSlides(initial.slideContent ?? "").length;
+    const saved = initial.overviewSlides;
+    if (saved && saved.length === count) return saved;
+    return Array(count).fill(true);
+  });
   const [quizQuestions, setQuizQuestions] = useState<FormQuestion[]>(
     () => (initial.quizQuestions && initial.quizQuestions.length > 0)
       ? initial.quizQuestions
@@ -107,6 +114,8 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
     if (!confirm("Clear all fields? This cannot be undone.")) return;
     setForm({ ...EMPTY });
     setSlides([{ title: "", body: "" }]);
+    setOverviewSlides([true]);
+    setSlideCount(10);
     setQuizQuestions([]);
     setAiFilledFields(new Set());
   }
@@ -140,7 +149,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
       if (!autoSaveRef.current) return;
       setAutoSaveStatus("saving");
       try {
-        await autoSaveRef.current({ ...form, slideContent: serializeSlides(slides), quizQuestions });
+        await autoSaveRef.current({ ...form, slideContent: serializeSlides(slides), quizQuestions, slideCount, overviewSlides });
         setAutoSaveStatus("saved");
       } catch {
         setAutoSaveStatus("idle");
@@ -148,7 +157,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
     }, 3000);
     return () => clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form, slides, quizQuestions]);
+  }, [form, slides, quizQuestions, slideCount, overviewSlides]);
 
   function set(key: keyof LessonInput, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -160,16 +169,24 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
 
   function addSlide() {
     setSlides((prev) => [...prev, { title: "", body: "" }]);
+    setOverviewSlides((prev) => [...prev, true]);
   }
 
   function removeSlide(index: number) {
     setSlides((prev) => prev.length > 1 ? prev.filter((_, i) => i !== index) : prev);
+    setOverviewSlides((prev) => prev.length > 1 ? prev.filter((_, i) => i !== index) : prev);
   }
 
   function moveSlide(index: number, direction: "up" | "down") {
+    const swapWith = direction === "up" ? index - 1 : index + 1;
     setSlides((prev) => {
       const next = [...prev];
-      const swapWith = direction === "up" ? index - 1 : index + 1;
+      if (swapWith < 0 || swapWith >= next.length) return prev;
+      [next[index], next[swapWith]] = [next[swapWith], next[index]];
+      return next;
+    });
+    setOverviewSlides((prev) => {
+      const next = [...prev];
       if (swapWith < 0 || swapWith >= next.length) return prev;
       [next[index], next[swapWith]] = [next[swapWith], next[index]];
       return next;
@@ -212,7 +229,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
       const res = await fetch("/api/ai/lesson", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, slideContent: serializeSlides(slides) }),
+        body: JSON.stringify({ ...form, slideContent: serializeSlides(slides), slideCount }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "AI fill failed.");
@@ -231,6 +248,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
       const currentSlideContent = serializeSlides(slides).trim();
       if (aiSlides?.length && !currentSlideContent) {
         setSlides(aiSlides);
+        setOverviewSlides(Array(aiSlides.length).fill(true));
         filled.add("slideContent");
       }
       setAiFilledFields(prev => new Set([...prev, ...filled]));
@@ -246,7 +264,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
     setSavingDraft(true);
     setError("");
     try {
-      await onSaveDraft({ ...form, slideContent: serializeSlides(slides), quizQuestions });
+      await onSaveDraft({ ...form, slideContent: serializeSlides(slides), quizQuestions, slideCount, overviewSlides });
     } catch (err: any) {
       setError(err.message || "Failed to save draft.");
     } finally {
@@ -259,7 +277,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
     setError("");
     setSaving(true);
     try {
-      await onSubmit({ ...form, slideContent: serializeSlides(slides), quizQuestions });
+      await onSubmit({ ...form, slideContent: serializeSlides(slides), quizQuestions, slideCount, overviewSlides });
     } catch (err: any) {
       setError(err.message || "Something went wrong.");
     } finally {
@@ -448,13 +466,28 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
             <p className="text-sm font-semibold text-[var(--text-primary)]">Slide Content</p>
             <p className="text-xs text-[var(--text-secondary)]">Each card is one slide. The title becomes the slide heading.</p>
           </div>
-          <button
-            type="button"
-            onClick={addSlide}
-            className="rounded-md px-3 py-1.5 text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--bg-card-hover)] border border-[var(--border)] transition"
-          >
-            + Add Slide
-          </button>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
+              <label className="text-xs font-medium" style={{ color: "var(--text-muted)" }}>AI slides:</label>
+              <input
+                type="number"
+                min={1}
+                max={20}
+                value={slideCount}
+                onChange={e => setSlideCount(Math.min(20, Math.max(1, Number(e.target.value))))}
+                className="w-14 rounded-lg px-2 py-1 text-xs text-center focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
+                style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
+                title="Number of slides AI will generate"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={addSlide}
+              className="rounded-md px-3 py-1.5 text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--bg-card-hover)] border border-[var(--border)] transition"
+            >
+              + Add Slide
+            </button>
+          </div>
         </div>
 
         <div className="space-y-3">
@@ -463,6 +496,16 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>Slide {i + 1}</span>
                 <div className="flex items-center gap-1">
+                  {/* Overview Doc toggle */}
+                  <button
+                    type="button"
+                    onClick={() => setOverviewSlides(prev => prev.map((v, idx) => idx === i ? !v : v))}
+                    title={overviewSlides[i] ? "Included in Overview Doc — click to exclude" : "Excluded from Overview Doc — click to include"}
+                    className={`rounded-full px-2 py-0.5 text-[10px] font-semibold transition ${overviewSlides[i] ? "bg-[#0cc0df]/15 text-[#0cc0df]" : "text-[var(--text-muted)] hover:bg-[var(--bg-card-hover)]"}`}
+                    style={overviewSlides[i] ? {} : { border: "1px solid var(--border)" }}
+                  >
+                    Overview
+                  </button>
                   <button
                     type="button"
                     onClick={() => moveSlide(i, "up")}

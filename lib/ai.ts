@@ -35,7 +35,8 @@ const LEVEL_INSTRUCTIONS: Record<string, string> = {
 export async function fillLesson(
   apiKey: string,
   lesson: Partial<LessonInput>,
-  ctx: CurriculumContext = {}
+  ctx: CurriculumContext = {},
+  slideCount = 10
 ): Promise<AiFillResult> {
   const client = new Anthropic({ apiKey });
 
@@ -78,7 +79,7 @@ Return ONLY a valid JSON object with these exact keys (no markdown, no explanati
   "rubric": "Comprehension and objective checklist (bullet points with point values) — label this section '${labels.rubric}'"
 }
 
-For "slides": generate 10-12 slides that cover the lesson's main concepts in a logical teaching sequence. Each slide should have a concise title and a body with 3-5 short bullet points or a brief example. The first slide should be an intro/agenda slide.`;
+For "slides": generate exactly ${slideCount} slides that cover the lesson's main concepts in a logical teaching sequence. Each slide should have a concise title and a body with 3-5 short bullet points or a brief example. The first slide should be an intro/agenda slide.`;
 
   const message = await client.messages.create({
     model: "claude-haiku-4-5-20251001",

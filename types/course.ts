@@ -5,6 +5,9 @@ export interface CourseSettings {
   subject: string;                // e.g. "JavaScript", "Nursing 101"
   studentLevel: "beginner" | "intermediate" | "advanced" | "";
   sectionLabels: {
+    lessonOverview: string;
+    learningTargets: string;
+    vocabulary: string;
     warmUp: string;
     guidedLab: string;
     selfPaced: string;
@@ -23,6 +26,9 @@ export const DEFAULT_COURSE_SETTINGS: CourseSettings = {
   subject: "",
   studentLevel: "",
   sectionLabels: {
+    lessonOverview: "Lesson Overview",
+    learningTargets: "Learning Targets",
+    vocabulary: "Vocabulary",
     warmUp: "Opening Activity",
     guidedLab: "Guided Activity",
     selfPaced: "Independent Activity",

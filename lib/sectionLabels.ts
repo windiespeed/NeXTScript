@@ -1,4 +1,7 @@
 export interface SectionLabels {
+  lessonOverview: string;
+  learningTargets: string;
+  vocabulary: string;
   warmUp: string;
   guidedLab: string;
   selfPaced: string;
@@ -10,6 +13,9 @@ export interface SectionLabels {
 }
 
 export const DEFAULT_SECTION_LABELS: SectionLabels = {
+  lessonOverview: "Lesson Overview",
+  learningTargets: "Learning Targets",
+  vocabulary: "Vocabulary",
   warmUp: "Opening Activity",
   guidedLab: "Guided Activity",
   selfPaced: "Independent Activity",

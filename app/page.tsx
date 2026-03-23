@@ -28,8 +28,8 @@ import type { Course } from "@/types/course";
 
 type FileChoice = "slides" | "doc" | "quiz";
 type Destination = "drive" | "download";
-type WidgetId = "activity" | "progress" | "activeCourse" | "schedule" | "lessons";
-const DEFAULT_WIDGET_ORDER: WidgetId[] = ["activity", "progress", "activeCourse", "schedule", "lessons"];
+type WidgetId = "activity" | "progress" | "activeCourse" | "schedule";
+const DEFAULT_WIDGET_ORDER: WidgetId[] = ["activity", "progress", "activeCourse", "schedule"];
 
 // ── Drag-to-scroll ────────────────────────────────────────────────────────────
 function useDragScroll() {
@@ -256,7 +256,7 @@ function Dashboard() {
   const [filterCourse, setFilterCourse] = useState<"all" | "unassigned" | string>("all");
 
   // ── Widget sizes + order ──────────────────────────────────────────────────────
-  const DEFAULT_WIDGET_SIZES: Record<WidgetId, 1 | 2 | 3> = { activity: 1, progress: 1, activeCourse: 1, schedule: 3, lessons: 3 };
+  const DEFAULT_WIDGET_SIZES: Record<WidgetId, 1 | 2 | 3> = { activity: 1, progress: 1, activeCourse: 1, schedule: 3 };
   const [widgetSizes, setWidgetSizes] = useState<Record<WidgetId, 1 | 2 | 3>>(DEFAULT_WIDGET_SIZES);
   const [widgetOrder, setWidgetOrder] = useState<WidgetId[]>(DEFAULT_WIDGET_ORDER);
 
@@ -869,7 +869,6 @@ function Dashboard() {
                   {widgetId === "progress" && renderProgressWidget()}
                   {widgetId === "activeCourse" && renderActiveCourseWidget()}
                   {widgetId === "schedule" && renderScheduleWidget(widgetSizes[widgetId])}
-                  {widgetId === "lessons" && renderLessonsWidget(widgetSizes[widgetId])}
                 </SortableWidget>
               ))}
             </div>

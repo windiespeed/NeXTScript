@@ -32,7 +32,8 @@ export async function POST(req: Request) {
       ...(course?.settings?.sectionLabels ?? {}),
     };
 
-    const result = await fillLesson(apiKey, lesson, { industry, subject, labels });
+    const count = typeof lesson.slideCount === "number" ? Math.min(20, Math.max(1, lesson.slideCount)) : 10;
+    const result = await fillLesson(apiKey, lesson, { industry, subject, labels }, count);
     return NextResponse.json(result);
   } catch (err: any) {
     // Surface Anthropic billing/auth errors clearly

@@ -1,9 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import type { Course } from "@/types/course";
+import type { Lesson } from "@/types/lesson";
+import type { SavedProject } from "@/types/project";
+import LessonCard from "@/components/LessonCard";
 
 function fmt(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
@@ -99,12 +103,22 @@ function CourseCard({ course, onDelete, onDuplicate }: { course: Course; onDelet
 
 export default function CoursesPage() {
   useSession({ required: true });
+  const router = useRouter();
   const [courses, setCourses] = useState<Course[]>([]);
+  const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [projects, setProjects] = useState<SavedProject[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filterCourse, setFilterCourse] = useState<string>("all");
 
   useEffect(() => {
-    fetch("/api/courses").then((r) => r.json()).then((data) => {
-      setCourses(Array.isArray(data) ? data : []);
+    Promise.all([
+      fetch("/api/courses").then(r => r.json()),
+      fetch("/api/lessons").then(r => r.json()),
+      fetch("/api/projects").then(r => r.json()),
+    ]).then(([courseData, lessonData, projectData]) => {
+      setCourses(Array.isArray(courseData) ? courseData : []);
+      setLessons(Array.isArray(lessonData) ? lessonData : []);
+      setProjects(Array.isArray(projectData) ? projectData : []);
       setLoading(false);
     });
   }, []);
@@ -134,37 +148,137 @@ export default function CoursesPage() {
     }
   }
 
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: "var(--text-muted)" }}>Curriculum</p>
-          <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>Courses</h1>
-          <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>Organize lessons into courses with independent settings.</p>
-        </div>
-        <Link href="/courses/new" className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-bold text-white hover:opacity-90 transition shadow">
-          + New Course
-        </Link>
-      </div>
+  async function handleDeleteLesson(lessonId: string) {
+    if (!confirm("Delete this lesson? This cannot be undone.")) return;
+    await fetch(`/api/lessons/${lessonId}`, { method: "DELETE" });
+    setLessons(prev => prev.filter(l => l.id !== lessonId));
+  }
 
-      {loading ? (
-        <p className="text-sm text-[#0cc0df]">Loading…</p>
-      ) : courses.length === 0 ? (
-        <div className="text-center py-20 rounded-3xl" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
-          <div className="w-12 h-12 rounded-3xl bg-[#0cc0df]/10 flex items-center justify-center mx-auto mb-4">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0cc0df" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-            </svg>
+  async function handleDuplicateLesson(lessonId: string) {
+    const lesson = await fetch(`/api/lessons/${lessonId}`).then(r => r.json());
+    const res = await fetch("/api/lessons", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...lesson, title: `Copy of ${lesson.title}`, id: undefined, status: "draft" }),
+    });
+    if (res.ok) {
+      const copy = await res.json();
+      setLessons(prev => [copy, ...prev]);
+    }
+  }
+
+  const filteredLessons = filterCourse === "all"
+    ? lessons
+    : filterCourse === "unassigned"
+    ? lessons.filter(l => !l.courseId)
+    : lessons.filter(l => l.courseId === filterCourse);
+
+  return (
+    <div className="space-y-8">
+      {/* ── Courses ──────────────────────────────────────────────────────────── */}
+      <div>
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: "var(--text-muted)" }}>Curriculum</p>
+            <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>Courses</h1>
+            <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>Organize lessons into courses with independent settings.</p>
           </div>
-          <p className="text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>No courses yet</p>
-          <p className="text-xs mb-5" style={{ color: "var(--text-muted)" }}>Create a course to organize lessons with shared settings.</p>
-          <Link href="/courses/new" className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition">
-            Create your first course
+          <Link href="/courses/new" className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-bold text-white hover:opacity-90 transition shadow">
+            + New Course
           </Link>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {courses.map((course) => <CourseCard key={course.id} course={course} onDelete={handleDelete} onDuplicate={handleDuplicate} />)}
+
+        {loading ? (
+          <p className="text-sm text-[#0cc0df]">Loading…</p>
+        ) : courses.length === 0 ? (
+          <div className="text-center py-20 rounded-3xl" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
+            <div className="w-12 h-12 rounded-3xl bg-[#0cc0df]/10 flex items-center justify-center mx-auto mb-4">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0cc0df" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+              </svg>
+            </div>
+            <p className="text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>No courses yet</p>
+            <p className="text-xs mb-5" style={{ color: "var(--text-muted)" }}>Create a course to organize lessons with shared settings.</p>
+            <Link href="/courses/new" className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition">
+              Create your first course
+            </Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {courses.map((course) => <CourseCard key={course.id} course={course} onDelete={handleDelete} onDuplicate={handleDuplicate} />)}
+          </div>
+        )}
+      </div>
+
+      {/* ── Lessons ──────────────────────────────────────────────────────────── */}
+      {!loading && (
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: "var(--text-muted)" }}>All Lessons</p>
+              <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+                {lessons.length} {lessons.length === 1 ? "lesson" : "lessons"}
+              </p>
+            </div>
+            <Link
+              href="/lessons/new"
+              className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-xs font-bold text-white hover:opacity-90 transition shadow"
+            >
+              + New Lesson
+            </Link>
+          </div>
+
+          {/* Filter pills */}
+          {courses.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-4">
+              {(["all", "unassigned"] as const).map(f => (
+                <button
+                  key={f}
+                  onClick={() => setFilterCourse(f)}
+                  className="rounded-full px-3 py-1 text-xs font-medium transition"
+                  style={filterCourse === f
+                    ? { background: "#0cc0df", color: "#0a0b13" }
+                    : { background: "var(--bg-card-hover)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}
+                >
+                  {f === "all" ? "All" : "Unassigned"}
+                </button>
+              ))}
+              {courses.map(c => (
+                <button
+                  key={c.id}
+                  onClick={() => setFilterCourse(c.id)}
+                  className="rounded-full px-3 py-1 text-xs font-medium transition"
+                  style={filterCourse === c.id
+                    ? { background: "var(--accent-purple)", color: "#fff" }
+                    : { background: "var(--bg-card-hover)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}
+                >
+                  {c.title}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {filteredLessons.length === 0 ? (
+            <div className="text-center py-12 rounded-3xl" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
+              <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+                {filterCourse === "unassigned" ? "All lessons are assigned to a course." : "No lessons yet."}
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {filteredLessons.map(lesson => (
+                <LessonCard
+                  key={lesson.id}
+                  lesson={lesson}
+                  projects={projects.filter(p => p.lessonId === lesson.id)}
+                  courses={courses}
+                  onDelete={handleDeleteLesson}
+                  onDuplicate={handleDuplicateLesson}
+                  onOpenModal={() => router.push(`/lessons/${lesson.id}`)}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

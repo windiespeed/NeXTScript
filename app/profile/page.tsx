@@ -345,6 +345,9 @@ export default function ProfilePage() {
                 <div key={key}>
                   <label className="block text-xs mb-1" style={{ color: "var(--text-muted)" }}>
                     {{
+                      lessonOverview:        "Lesson Overview",
+                      learningTargets:       "Learning Targets",
+                      vocabulary:            "Vocabulary",
                       warmUp:                "Opening Activity",
                       guidedLab:             "Guided Activity",
                       selfPaced:             "Independent Activity",

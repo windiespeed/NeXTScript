@@ -14,6 +14,9 @@ type Destination = "drive" | "download";
 
 
 const SECTION_LABEL_KEYS = [
+  { key: "lessonOverview",        label: "Lesson Overview" },
+  { key: "learningTargets",       label: "Learning Targets" },
+  { key: "vocabulary",            label: "Vocabulary" },
   { key: "warmUp",                label: "Opening Activity" },
   { key: "guidedLab",             label: "Guided Activity" },
   { key: "selfPaced",             label: "Independent Activity" },
