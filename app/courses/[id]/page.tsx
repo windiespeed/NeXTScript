@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import type { Course, CourseSettings, CourseResource } from "@/types/course";
+import type { Course, CourseSettings, CourseResource, CourseModule } from "@/types/course";
 import { DEFAULT_COURSE_SETTINGS } from "@/types/course";
 import type { Lesson } from "@/types/lesson";
 import type { SavedProject } from "@/types/project";
@@ -89,6 +89,12 @@ export default function CourseDetailPage() {
   const [addResourceOpen, setAddResourceOpen] = useState(false);
   const [newResourceLabel, setNewResourceLabel] = useState("");
   const [newResourceUrl, setNewResourceUrl] = useState("");
+  // Modules
+  const [modules, setModules] = useState<CourseModule[]>([]);
+  const [editingModuleId, setEditingModuleId] = useState<string | null>(null);
+  const [editModuleTitle, setEditModuleTitle] = useState("");
+  const [collapsedModules, setCollapsedModules] = useState<Set<string>>(new Set());
+  const [assigningModuleForLesson, setAssigningModuleForLesson] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -108,6 +114,7 @@ export default function CourseDetailPage() {
       setLessons(Array.isArray(lessonData) ? lessonData : []);
       setAllCourses(Array.isArray(coursesData) ? coursesData : []);
       setResources(Array.isArray(courseData.resources) ? courseData.resources : []);
+      setModules(Array.isArray(courseData.modules) ? courseData.modules : []);
       setLoading(false);
     });
   }, [id]);
@@ -404,6 +411,60 @@ export default function CourseDetailPage() {
     });
   }
 
+  async function saveModules(updated: CourseModule[]) {
+    setModules(updated);
+    setCourse(prev => prev ? { ...prev, modules: updated } : prev);
+    await fetch(`/api/courses/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ modules: updated }),
+    });
+  }
+
+  function handleAddModule() {
+    const newModule: CourseModule = { id: crypto.randomUUID(), title: `Module ${modules.length + 1}`, lessonIds: [] };
+    const updated = [...modules, newModule];
+    saveModules(updated);
+    setEditingModuleId(newModule.id);
+    setEditModuleTitle(newModule.title);
+  }
+
+  function handleStartRenameModule(mod: CourseModule) {
+    setEditingModuleId(mod.id);
+    setEditModuleTitle(mod.title);
+  }
+
+  function handleSaveModuleTitle(modId: string) {
+    if (!editModuleTitle.trim()) { setEditingModuleId(null); return; }
+    const updated = modules.map(m => m.id === modId ? { ...m, title: editModuleTitle.trim() } : m);
+    saveModules(updated);
+    setEditingModuleId(null);
+  }
+
+  function handleDeleteModule(modId: string) {
+    if (!confirm("Delete this module? Lessons will become unassigned.")) return;
+    saveModules(modules.filter(m => m.id !== modId));
+  }
+
+  function handleAssignToModule(lessonId: string, moduleId: string | null) {
+    const updated = modules.map(m => ({
+      ...m,
+      lessonIds: m.id === moduleId
+        ? m.lessonIds.includes(lessonId) ? m.lessonIds : [...m.lessonIds, lessonId]
+        : m.lessonIds.filter(lid => lid !== lessonId),
+    }));
+    saveModules(updated);
+    setAssigningModuleForLesson(null);
+  }
+
+  function toggleModuleCollapse(modId: string) {
+    setCollapsedModules(prev => {
+      const next = new Set(prev);
+      next.has(modId) ? next.delete(modId) : next.add(modId);
+      return next;
+    });
+  }
+
   if (loading) return <p className="text-sm text-[#0cc0df] mt-10">Loading…</p>;
   if (!course) return <p className="text-sm text-red-500 mt-10">Course not found.</p>;
 
@@ -590,6 +651,13 @@ export default function CourseDetailPage() {
                   >
                     Add Existing
                   </button>
+                  <button
+                    onClick={handleAddModule}
+                    className="rounded-full px-3 py-2 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)]"
+                    style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+                  >
+                    + Module
+                  </button>
                   <Link
                     href={`/lessons/new?courseId=${id}`}
                     className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-xs font-bold text-white hover:opacity-90 transition shadow"
@@ -621,16 +689,19 @@ export default function CourseDetailPage() {
                 Add first lesson
               </Link>
             </div>
-          ) : (
-            <div className="rounded-3xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
-              {lessons.map((lesson, i) => (
+          ) : (() => {
+            const assignedIds = new Set(modules.flatMap(m => m.lessonIds));
+            const unassigned = lessons.filter(l => !assignedIds.has(l.id));
+
+            function renderLessonRow(lesson: Lesson, i: number, isFirst: boolean) {
+              return (
                 <div
                   key={lesson.id}
                   onClick={selecting ? () => toggleSelect(lesson.id) : undefined}
                   className={`flex items-center gap-4 px-4 py-3 transition ${selecting ? "cursor-pointer" : "hover:bg-[var(--bg-card-hover)]"} ${selecting && selectedIds.has(lesson.id) ? "bg-[#0cc0df]/10" : ""}`}
                   style={{
                     background: selecting && selectedIds.has(lesson.id) ? undefined : "var(--bg-card)",
-                    borderTop: i > 0 ? "1px solid var(--border)" : undefined,
+                    borderTop: !isFirst ? "1px solid var(--border)" : undefined,
                   }}
                 >
                   {selecting ? (
@@ -661,6 +732,45 @@ export default function CourseDetailPage() {
                           <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md" style={{ background: t.bg, color: t.text }}>
                             {t.label}
                           </span>
+                        );
+                      })()}
+                      {modules.length > 0 && !selecting && (() => {
+                        const currentModule = modules.find(m => m.lessonIds.includes(lesson.id));
+                        return (
+                          <div className="relative">
+                            <button
+                              onClick={e => { e.stopPropagation(); setAssigningModuleForLesson(assigningModuleForLesson === lesson.id ? null : lesson.id); }}
+                              className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md transition hover:opacity-80"
+                              style={currentModule
+                                ? { background: "var(--accent-purple-bg)", color: "var(--accent-purple)" }
+                                : { background: "var(--bg-card-hover)", color: "var(--text-muted)", border: "1px dashed var(--border)" }
+                              }
+                            >
+                              {currentModule ? currentModule.title : "Unassigned"}
+                              <svg xmlns="http://www.w3.org/2000/svg" className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                            </button>
+                            {assigningModuleForLesson === lesson.id && (
+                              <div className="absolute left-0 top-full mt-1 z-30 rounded-2xl overflow-hidden min-w-[200px]" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)" }}>
+                                <button
+                                  onClick={() => handleAssignToModule(lesson.id, null)}
+                                  className="w-full text-left px-3 py-2 text-xs hover:bg-[var(--bg-card-hover)] transition"
+                                  style={{ color: "var(--text-muted)" }}
+                                >
+                                  No module
+                                </button>
+                                {modules.map(m => (
+                                  <button
+                                    key={m.id}
+                                    onClick={() => handleAssignToModule(lesson.id, m.id)}
+                                    className="w-full text-left px-3 py-2 text-xs hover:bg-[var(--bg-card-hover)] transition"
+                                    style={{ color: m.id === currentModule?.id ? "var(--accent-purple)" : "var(--text-primary)", fontWeight: m.id === currentModule?.id ? 600 : 400 }}
+                                  >
+                                    {m.id === currentModule?.id ? "✓ " : ""}{m.title}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         );
                       })()}
                       {lesson.deadline && (
@@ -774,9 +884,84 @@ export default function CourseDetailPage() {
                     </div>
                   )}
                 </div>
-              ))}
-            </div>
-          )}
+              );
+            }
+
+            return (
+              <div className="space-y-3">
+                {modules.map((mod) => {
+                  const modLessons = mod.lessonIds.map(lid => lessons.find(l => l.id === lid)).filter(Boolean) as Lesson[];
+                  const collapsed = collapsedModules.has(mod.id);
+                  return (
+                    <div key={mod.id} className="rounded-3xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+                      {/* Module header */}
+                      <div className="flex items-center gap-2 px-4 py-2.5" style={{ background: "var(--bg-card-hover)", borderBottom: collapsed ? undefined : "1px solid var(--border)" }}>
+                        <button
+                          onClick={() => toggleModuleCollapse(mod.id)}
+                          className="p-0.5 rounded transition hover:bg-[var(--bg-card)]"
+                          style={{ color: "var(--text-muted)" }}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className={`w-3.5 h-3.5 transition-transform ${collapsed ? "-rotate-90" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                        </button>
+                        {editingModuleId === mod.id ? (
+                          <input
+                            autoFocus
+                            value={editModuleTitle}
+                            onChange={e => setEditModuleTitle(e.target.value)}
+                            onBlur={() => handleSaveModuleTitle(mod.id)}
+                            onKeyDown={e => { if (e.key === "Enter") handleSaveModuleTitle(mod.id); if (e.key === "Escape") setEditingModuleId(null); }}
+                            className="flex-1 rounded-md px-2 py-0.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
+                            style={{ background: "var(--bg-card)", color: "var(--text-primary)", border: "1px solid var(--border)" }}
+                          />
+                        ) : (
+                          <span className="flex-1 text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{mod.title}</span>
+                        )}
+                        <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{modLessons.length} {modLessons.length === 1 ? "lesson" : "lessons"}</span>
+                        <button
+                          onClick={() => handleStartRenameModule(mod)}
+                          title="Rename module"
+                          className="p-1 rounded transition hover:bg-[var(--bg-card)]"
+                          style={{ color: "var(--text-muted)" }}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        </button>
+                        <button
+                          onClick={() => handleDeleteModule(mod.id)}
+                          title="Delete module"
+                          className="p-1 rounded transition hover:text-red-500 hover:bg-red-500/10"
+                          style={{ color: "var(--text-muted)" }}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                        </button>
+                      </div>
+                      {/* Module lessons */}
+                      {!collapsed && (
+                        modLessons.length === 0 ? (
+                          <div className="px-4 py-4 text-xs text-center" style={{ color: "var(--text-muted)", background: "var(--bg-card)" }}>
+                            No lessons assigned — use the module dropdown on each lesson row.
+                          </div>
+                        ) : (
+                          modLessons.map((lesson, i) => renderLessonRow(lesson, i, i === 0))
+                        )
+                      )}
+                    </div>
+                  );
+                })}
+                {/* Unassigned lessons */}
+                {(unassigned.length > 0 || modules.length === 0) && (
+                  <div className="rounded-3xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+                    {modules.length > 0 && (
+                      <div className="flex items-center gap-2 px-4 py-2.5" style={{ background: "var(--bg-card-hover)", borderBottom: "1px solid var(--border)" }}>
+                        <span className="text-sm font-semibold" style={{ color: "var(--text-muted)" }}>Unassigned</span>
+                        <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{unassigned.length} {unassigned.length === 1 ? "lesson" : "lessons"}</span>
+                      </div>
+                    )}
+                    {unassigned.map((lesson, i) => renderLessonRow(lesson, i, i === 0))}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
       </div>
 
       <GenerateModal

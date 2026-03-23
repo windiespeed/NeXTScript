@@ -46,6 +46,12 @@ export interface CourseResource {
   url: string;    // Google Drive or any URL
 }
 
+export interface CourseModule {
+  id: string;        // client-generated uuid
+  title: string;     // e.g. "Module 1: The Basics"
+  lessonIds: string[]; // ordered subset of course.lessonIds belonging to this module
+}
+
 export interface Course {
   id: string;
   userId: string;
@@ -58,6 +64,7 @@ export interface Course {
   driveFolderId?: string;
   driveFolderUrl?: string;
   resources?: CourseResource[];
+  modules?: CourseModule[];  // ordered list of modules grouping lessons within this course
   createdAt: string;
   updatedAt: string;
 }

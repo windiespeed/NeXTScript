@@ -5,6 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import LessonForm from "@/components/LessonForm";
 import type { Lesson, LessonInput } from "@/types/lesson";
+import type { CourseModule } from "@/types/course";
 
 export default function EditLessonPage() {
   useSession({ required: true });
@@ -14,6 +15,8 @@ export default function EditLessonPage() {
   const [loading, setLoading] = useState(true);
   const [hasAiKey, setHasAiKey] = useState(false);
   const [courseTitle, setCourseTitle] = useState<string | null>(null);
+  const [courseModules, setCourseModules] = useState<CourseModule[]>([]);
+  const [showModuleMenu, setShowModuleMenu] = useState(false);
   const clearFormRef = useRef<(() => void) | undefined>(undefined);
   const [generating, setGenerating] = useState(false);
   const [generateStatus, setGenerateStatus] = useState<"idle" | "done" | "error">("idle");
@@ -30,6 +33,7 @@ export default function EditLessonPage() {
       if (lessonData?.courseId) {
         fetch(`/api/courses/${lessonData.courseId}`).then(r => r.json()).then(c => {
           if (c?.title) setCourseTitle(c.title);
+          if (Array.isArray(c?.modules)) setCourseModules(c.modules);
         }).catch(() => {});
       }
     }).catch(() => {
@@ -88,6 +92,23 @@ export default function EditLessonPage() {
     }
   }
 
+  async function handleAssignModule(moduleId: string | null) {
+    if (!lesson?.courseId) return;
+    const updated = courseModules.map(m => ({
+      ...m,
+      lessonIds: m.id === moduleId
+        ? m.lessonIds.includes(id) ? m.lessonIds : [...m.lessonIds, id]
+        : m.lessonIds.filter(lid => lid !== id),
+    }));
+    setCourseModules(updated);
+    setShowModuleMenu(false);
+    await fetch(`/api/courses/${lesson.courseId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ modules: updated }),
+    });
+  }
+
   if (loading) return <p className="text-sm text-[#0cc0df] mt-10">Loading…</p>;
   if (!lesson) return <p className="text-sm text-red-500 mt-10">Lesson not found.</p>;
 
@@ -100,10 +121,51 @@ export default function EditLessonPage() {
           </button>
           <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>Edit Lesson</h1>
           {courseTitle && (
-            <span className="inline-flex items-center gap-1.5 mt-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold" style={{ background: "var(--accent-purple-bg)", color: "var(--accent-purple)" }}>
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-              {courseTitle}
-            </span>
+            <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+              <span className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold" style={{ background: "var(--accent-purple-bg)", color: "var(--accent-purple)" }}>
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                {courseTitle}
+              </span>
+              {courseModules.length > 0 && (() => {
+                const currentModule = courseModules.find(m => m.lessonIds.includes(id));
+                return (
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowModuleMenu(v => !v)}
+                      className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold transition hover:opacity-80"
+                      style={currentModule
+                        ? { background: "var(--accent-purple-bg)", color: "var(--accent-purple)" }
+                        : { background: "var(--bg-card-hover)", color: "var(--text-muted)", border: "1px dashed var(--border)" }
+                      }
+                    >
+                      {currentModule ? currentModule.title : "No module"}
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                    {showModuleMenu && (
+                      <div className="absolute left-0 top-full mt-1 z-30 rounded-2xl overflow-hidden min-w-[200px]" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)" }}>
+                        <button
+                          onClick={() => handleAssignModule(null)}
+                          className="w-full text-left px-3 py-2 text-xs hover:bg-[var(--bg-card-hover)] transition"
+                          style={{ color: "var(--text-muted)" }}
+                        >
+                          No module
+                        </button>
+                        {courseModules.map(m => (
+                          <button
+                            key={m.id}
+                            onClick={() => handleAssignModule(m.id)}
+                            className="w-full text-left px-3 py-2 text-xs hover:bg-[var(--bg-card-hover)] transition"
+                            style={{ color: m.id === currentModule?.id ? "var(--accent-purple)" : "var(--text-primary)", fontWeight: m.id === currentModule?.id ? 600 : 400 }}
+                          >
+                            {m.id === currentModule?.id ? "✓ " : ""}{m.title}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
           )}
         </div>
         <div className="flex flex-col items-end gap-2 shrink-0">
