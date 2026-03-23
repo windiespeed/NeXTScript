@@ -247,6 +247,8 @@ export default function CoursesPage() {
     if (!confirm("Delete this course? This will not delete its lessons.")) return;
     await fetch(`/api/courses/${id}`, { method: "DELETE" });
     setCourses((prev) => prev.filter((c) => c.id !== id));
+    // Clear stale courseId from any lessons that belonged to this course
+    setLessons((prev) => prev.map((l) => l.courseId === id ? { ...l, courseId: undefined } : l));
   }
 
   async function handleDuplicate(course: Course) {
