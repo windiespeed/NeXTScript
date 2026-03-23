@@ -110,7 +110,8 @@ For "slides": generate 10-12 slides that cover the lesson's main concepts in a l
 export async function generateQuizQuestions(
   apiKey: string,
   lesson: Partial<LessonInput>,
-  ctx: CurriculumContext = {}
+  ctx: CurriculumContext = {},
+  numQuestions = 10
 ): Promise<FormQuestion[]> {
   const client = new Anthropic({ apiKey });
 
@@ -118,16 +119,14 @@ export async function generateQuizQuestions(
   const levelInstruction = LEVEL_INSTRUCTIONS[level] ?? LEVEL_INSTRUCTIONS.beginner;
   const programDesc = [ctx.industry, ctx.subject].filter(Boolean).join(" — ") || "an educational program";
 
-  const prompt = `You are a curriculum designer for ${programDesc}. Generate a quiz based strictly on the lesson content provided below.
+  // Determine how many MC vs short answer based on total count
+  const mcCount = Math.max(1, Math.round(numQuestions * 0.8));
+  const saCount = numQuestions - mcCount;
 
-Title: ${lesson.title || "Untitled"}
-Subtitle: ${lesson.subtitle || ""}
-Topics: ${lesson.topics || ""}
-Student Level: ${level}
-
-IMPORTANT — Student Level Guidance: ${levelInstruction}
-
---- LESSON CONTENT ---
+  // Build content block — works with just topics if full lesson content isn't available
+  const hasFullContent = !!(lesson.learningTargets || lesson.overview || lesson.slideContent);
+  const contentBlock = hasFullContent
+    ? `--- LESSON CONTENT ---
 Learning Targets:
 ${lesson.learningTargets || ""}
 
@@ -137,30 +136,31 @@ ${lesson.vocabulary || ""}
 Overview:
 ${lesson.overview || ""}
 
-Warm-Up:
-${lesson.warmUp || ""}
-
 Slide Content:
 ${lesson.slideContent || ""}
 
 Guided Lab:
 ${lesson.guidedLab || ""}
 
-Self-Paced:
-${lesson.selfPaced || ""}
-
-Checkpoint (Common Problems):
-${lesson.checkpoint || ""}
-
 Industry Best Practices:
 ${lesson.industryBestPractices || ""}
-
-Rubric:
-${lesson.rubric || ""}
 --- END LESSON CONTENT ---
 
-Generate exactly 10 quiz questions drawn directly from the lesson content above — not general knowledge about the topic.
-8 must be multiple choice and 2 must be short answer, in that order (multiple choice first, then short answer).
+Generate questions drawn directly from the lesson content above.`
+    : `Generate questions based on the following topics: ${lesson.topics || lesson.title || "the subject matter"}.`;
+
+  const prompt = `You are a curriculum designer for ${programDesc}. Generate a quiz for the following lesson.
+
+Title: ${lesson.title || "Untitled"}
+Subtitle: ${lesson.subtitle || ""}
+Topics: ${lesson.topics || ""}
+Student Level: ${level}
+
+IMPORTANT — Student Level Guidance: ${levelInstruction}
+
+${contentBlock}
+
+Generate exactly ${numQuestions} quiz questions: ${mcCount} multiple choice and ${saCount} short answer, in that order.
 For multiple choice, always include exactly 4 options and specify the correct answer.
 For short answer, leave correctAnswer as an empty string.
 
@@ -184,7 +184,7 @@ Return ONLY a valid JSON array with no markdown, no explanation:
 
   const message = await client.messages.create({
     model: "claude-haiku-4-5-20251001",
-    max_tokens: 3072,
+    max_tokens: Math.max(2048, numQuestions * 300),
     messages: [{ role: "user", content: prompt }],
   });
 

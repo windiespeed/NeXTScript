@@ -94,6 +94,9 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
   const [saving, setSaving] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
   const [aiFilling, setAiFilling] = useState(false);
+  const [aiQuizGenerating, setAiQuizGenerating] = useState(false);
+  const [aiQuizError, setAiQuizError] = useState("");
+  const [quizNumQuestions, setQuizNumQuestions] = useState(10);
   const [aiFilledFields, setAiFilledFields] = useState<Set<string>>(new Set());
   const [error, setError] = useState("");
   const [autoSaveStatus, setAutoSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
@@ -170,6 +173,34 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
       [next[index], next[swapWith]] = [next[swapWith], next[index]];
       return next;
     });
+  }
+
+  async function handleAiGenerateQuiz() {
+    setAiQuizGenerating(true);
+    setAiQuizError("");
+    try {
+      const res = await fetch("/api/ai/quiz", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lesson: { ...form, slideContent: serializeSlides(slides) },
+          numQuestions: quizNumQuestions,
+          courseId: form.courseId,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Quiz generation failed.");
+      // Append generated questions with fresh IDs to avoid key collisions
+      const stamped = (data as import("@/types/form").FormQuestion[]).map(q => ({
+        ...q,
+        id: `ai_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+      }));
+      setQuizQuestions(prev => [...prev, ...stamped]);
+    } catch (err: any) {
+      setAiQuizError(err.message || "Quiz generation failed.");
+    } finally {
+      setAiQuizGenerating(false);
+    }
   }
 
   async function handleAiFill() {
@@ -513,6 +544,38 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
             + Add Question
           </button>
         </div>
+
+        {/* AI Generate row */}
+        {hasAiKey && (
+          <div className="flex items-center gap-2 mb-4 p-3 rounded-lg" style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)" }}>
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 shrink-0" style={{ color: "#0cc0df" }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+            </svg>
+            <span className="text-xs font-semibold shrink-0" style={{ color: "var(--text-secondary)" }}>AI Generate</span>
+            <div className="flex items-center gap-1 shrink-0">
+              <input
+                type="number"
+                min={1}
+                max={30}
+                value={quizNumQuestions}
+                onChange={e => setQuizNumQuestions(Math.min(30, Math.max(1, Number(e.target.value))))}
+                className="w-14 rounded-lg px-2 py-1 text-xs text-center focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
+                style={{ background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
+              />
+              <span className="text-xs" style={{ color: "var(--text-muted)" }}>questions</span>
+            </div>
+            <button
+              type="button"
+              onClick={handleAiGenerateQuiz}
+              disabled={aiQuizGenerating}
+              className="ml-auto rounded-full px-3 py-1.5 text-xs font-semibold text-[#0a0b13] hover:opacity-90 disabled:opacity-50 transition"
+              style={{ background: "#0cc0df" }}
+            >
+              {aiQuizGenerating ? "Generating…" : "Generate & Append"}
+            </button>
+            {aiQuizError && <p className="text-xs text-red-500 ml-2">{aiQuizError}</p>}
+          </div>
+        )}
 
         <div className="space-y-4">
           {quizQuestions.map((q, i) => (
