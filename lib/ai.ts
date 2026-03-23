@@ -120,8 +120,8 @@ export async function generateQuizQuestions(
   const programDesc = [ctx.industry, ctx.subject].filter(Boolean).join(" — ") || "an educational program";
 
   // Determine how many MC vs short answer based on total count
-  const mcCount = Math.max(1, Math.round(numQuestions * 0.8));
-  const saCount = numQuestions - mcCount;
+  const saCount = Math.max(1, Math.round(numQuestions * 0.1));
+  const mcCount = numQuestions - saCount;
 
   // Build content block — works with just topics if full lesson content isn't available
   const hasFullContent = !!(lesson.learningTargets || lesson.overview || lesson.slideContent);

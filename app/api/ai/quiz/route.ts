@@ -33,7 +33,7 @@ export async function POST(req: Request) {
       ...(course?.settings?.sectionLabels ?? {}),
     };
 
-    const count = Math.min(Math.max(1, numQuestions ?? 10), 30);
+    const count = Math.min(Math.max(1, numQuestions ?? 10), 50);
     const questions = await generateQuizQuestions(settings.anthropicKey, lesson, { industry, subject, labels }, count);
 
     if (questions.length === 0)

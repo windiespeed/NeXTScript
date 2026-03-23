@@ -556,9 +556,9 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
               <input
                 type="number"
                 min={1}
-                max={30}
+                max={50}
                 value={quizNumQuestions}
-                onChange={e => setQuizNumQuestions(Math.min(30, Math.max(1, Number(e.target.value))))}
+                onChange={e => setQuizNumQuestions(Math.min(50, Math.max(1, Number(e.target.value))))}
                 className="w-14 rounded-lg px-2 py-1 text-xs text-center focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
                 style={{ background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
               />
