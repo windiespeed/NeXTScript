@@ -107,7 +107,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
 
   function clearForm() {
     if (!confirm("Clear all fields? This cannot be undone.")) return;
-    setForm({ ...EMPTY });
+    setForm({ ...EMPTY, sources: form.sources });
     setSlides([{ title: "", body: "" }]);
     setOverviewSlides([true]);
     setSlideCount(10);
