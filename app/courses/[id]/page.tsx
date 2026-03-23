@@ -693,12 +693,12 @@ export default function CourseDetailPage() {
             const assignedIds = new Set(modules.flatMap(m => m.lessonIds));
             const unassigned = lessons.filter(l => !assignedIds.has(l.id));
 
-            function renderLessonRow(lesson: Lesson, i: number, isFirst: boolean) {
+            function renderLessonRow(lesson: Lesson, i: number, isFirst: boolean, isLast = false, roundTop = false) {
               return (
                 <div
                   key={lesson.id}
                   onClick={selecting ? () => toggleSelect(lesson.id) : undefined}
-                  className={`flex items-center gap-4 px-4 py-3 transition ${selecting ? "cursor-pointer" : "hover:bg-[var(--bg-card-hover)]"} ${selecting && selectedIds.has(lesson.id) ? "bg-[#0cc0df]/10" : ""}`}
+                  className={`flex items-center gap-4 px-4 py-3 transition ${roundTop && isFirst ? "rounded-t-3xl" : ""} ${isLast ? "rounded-b-3xl" : ""} ${selecting ? "cursor-pointer" : "hover:bg-[var(--bg-card-hover)]"} ${selecting && selectedIds.has(lesson.id) ? "bg-[#0cc0df]/10" : ""}`}
                   style={{
                     background: selecting && selectedIds.has(lesson.id) ? undefined : "var(--bg-card)",
                     borderTop: !isFirst ? "1px solid var(--border)" : undefined,
@@ -893,9 +893,9 @@ export default function CourseDetailPage() {
                   const modLessons = mod.lessonIds.map(lid => lessons.find(l => l.id === lid)).filter(Boolean) as Lesson[];
                   const collapsed = collapsedModules.has(mod.id);
                   return (
-                    <div key={mod.id} className="rounded-3xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+                    <div key={mod.id} className="rounded-3xl" style={{ border: "1px solid var(--border)" }}>
                       {/* Module header */}
-                      <div className="flex items-center gap-2 px-4 py-2.5" style={{ background: "var(--bg-card-hover)", borderBottom: collapsed ? undefined : "1px solid var(--border)" }}>
+                      <div className={`flex items-center gap-2 px-4 py-2.5 rounded-t-3xl ${collapsed ? "rounded-b-3xl" : ""}`} style={{ background: "var(--bg-card-hover)", borderBottom: collapsed ? undefined : "1px solid var(--border)" }}>
                         <button
                           onClick={() => toggleModuleCollapse(mod.id)}
                           className="p-0.5 rounded transition hover:bg-[var(--bg-card)]"
@@ -937,11 +937,11 @@ export default function CourseDetailPage() {
                       {/* Module lessons */}
                       {!collapsed && (
                         modLessons.length === 0 ? (
-                          <div className="px-4 py-4 text-xs text-center" style={{ color: "var(--text-muted)", background: "var(--bg-card)" }}>
+                          <div className="px-4 py-4 text-xs text-center rounded-b-3xl" style={{ color: "var(--text-muted)", background: "var(--bg-card)" }}>
                             No lessons assigned — use the module dropdown on each lesson row.
                           </div>
                         ) : (
-                          modLessons.map((lesson, i) => renderLessonRow(lesson, i, i === 0))
+                          modLessons.map((lesson, i) => renderLessonRow(lesson, i, i === 0, i === modLessons.length - 1))
                         )
                       )}
                     </div>
@@ -949,14 +949,14 @@ export default function CourseDetailPage() {
                 })}
                 {/* Unassigned lessons */}
                 {(unassigned.length > 0 || modules.length === 0) && (
-                  <div className="rounded-3xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+                  <div className="rounded-3xl" style={{ border: "1px solid var(--border)" }}>
                     {modules.length > 0 && (
-                      <div className="flex items-center gap-2 px-4 py-2.5" style={{ background: "var(--bg-card-hover)", borderBottom: "1px solid var(--border)" }}>
+                      <div className="flex items-center gap-2 px-4 py-2.5 rounded-t-3xl" style={{ background: "var(--bg-card-hover)", borderBottom: "1px solid var(--border)" }}>
                         <span className="text-sm font-semibold" style={{ color: "var(--text-muted)" }}>Unassigned</span>
                         <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{unassigned.length} {unassigned.length === 1 ? "lesson" : "lessons"}</span>
                       </div>
                     )}
-                    {unassigned.map((lesson, i) => renderLessonRow(lesson, i, i === 0))}
+                    {unassigned.map((lesson, i) => renderLessonRow(lesson, i, i === 0, i === unassigned.length - 1, modules.length === 0))}
                   </div>
                 )}
               </div>
