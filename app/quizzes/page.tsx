@@ -152,11 +152,11 @@ export default function QuizzesPage() {
                     <p className="font-semibold text-sm leading-snug truncate" style={{ color: "var(--text-primary)" }}>
                       {quiz.title}
                     </p>
-                    {(quiz.lessonIds?.length > 0 || quiz.questions?.length > 0) && (
+                    {((quiz.lessonIds?.length ?? 0) > 0 || (quiz.questions?.length ?? 0) > 0) && (
                       <p className="text-xs mt-0.5 truncate" style={{ color: "var(--text-muted)" }}>
                         {[
-                          quiz.lessonIds?.length > 0 ? `${quiz.lessonIds.length} lesson${quiz.lessonIds.length !== 1 ? "s" : ""}` : null,
-                          quiz.questions?.length > 0 ? `${quiz.questions.length} question${quiz.questions.length !== 1 ? "s" : ""}` : null,
+                          (quiz.lessonIds?.length ?? 0) > 0 ? `${quiz.lessonIds!.length} lesson${quiz.lessonIds!.length !== 1 ? "s" : ""}` : null,
+                          (quiz.questions?.length ?? 0) > 0 ? `${quiz.questions!.length} question${quiz.questions!.length !== 1 ? "s" : ""}` : null,
                         ].filter(Boolean).join(" · ")}
                       </p>
                     )}
