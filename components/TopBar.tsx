@@ -100,9 +100,9 @@ export default function TopBar() {
           </Link>
         </div>
 
-        {/* Search bar — absolutely centered, desktop only */}
-        <form onSubmit={handleSearch} className="hidden sm:block absolute left-1/2 -translate-x-1/2 w-full max-w-sm">
-          <div className="relative">
+        {/* Search bar — flex-centered between logo and actions */}
+        <form onSubmit={handleSearch} className="hidden sm:flex flex-1 justify-center px-4 min-w-0">
+          <div className="relative w-full max-w-sm">
             <svg
               className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none"
               style={{ color: "var(--text-muted)" }}
