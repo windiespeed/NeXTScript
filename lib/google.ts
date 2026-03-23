@@ -152,7 +152,7 @@ function slideRequests(title: string, body: string | undefined): any[] {
   const sId = uid("s");
   const tId = uid("t");
   const bId = uid("b");
-  const { plain: bodyPlain, codeRanges } = parseCodeSegments(body ?? "");
+  const { plain: bodyPlain, codeRanges } = parseCodeSegments(stripBullets(body ?? ""));
 
   const requests: any[] = [
     {
