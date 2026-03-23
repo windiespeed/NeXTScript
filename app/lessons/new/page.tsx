@@ -67,7 +67,7 @@ function NewLessonInner() {
 
   return (
     <div className="max-w-3xl">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-start justify-between mb-6 gap-4">
         <div>
           <button onClick={() => router.push(backHref)} className="text-sm text-[#0cc0df] hover:underline mb-2 block">
             ← {courseId ? "Back to Course" : "Back to Dashboard"}
@@ -80,13 +80,25 @@ function NewLessonInner() {
             </span>
           )}
         </div>
-        <button
-          onClick={() => clearFormRef.current?.()}
-          className="rounded-full px-3 py-1.5 text-xs font-semibold text-red-500 hover:bg-red-500/10 transition"
-          style={{ border: "1px solid var(--border)" }}
-        >
-          Clear Form
-        </button>
+        <div className="flex flex-col items-end gap-2 shrink-0">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => clearFormRef.current?.()}
+              className="rounded-full px-3 py-1.5 text-xs font-semibold text-red-500 hover:bg-red-500/10 transition"
+              style={{ border: "1px solid var(--border)" }}
+            >
+              Clear Form
+            </button>
+            <button
+              disabled
+              title="Save as draft first to enable generation"
+              className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-1.5 text-xs font-bold text-white opacity-40 cursor-not-allowed"
+            >
+              Generate Slides
+            </button>
+          </div>
+          <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>Save draft first to generate</p>
+        </div>
       </div>
       {settingsLoaded && (
         <LessonForm
