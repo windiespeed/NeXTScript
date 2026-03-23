@@ -134,8 +134,15 @@ function parseCodeSegments(text: string): {
 const CODE_BLUE = { red: 0.067, green: 0.435, blue: 0.855 };
 const TEXT_BLACK = { red: 0, green: 0, blue: 0 };
 
+/** Strip leading bullet characters from every line. */
+function stripBullets(text: string): string {
+  return text.replace(/^[•\-\*]\s*/gm, "").trim();
+}
+
 /**
- * Build one TITLE_AND_BODY slide's worth of API requests.
+ * Build one slide's worth of API requests.
+ * Uses TITLE_ONLY layout + a free-form text box for the body so that
+ * Google Slides never auto-applies bullet formatting to the body text.
  * Body text wrapped in backticks is rendered in blue (code examples).
  * All other body text is rendered in black.
  */
@@ -143,16 +150,15 @@ function slideRequests(title: string, body: string | undefined): any[] {
   const sId = uid("s");
   const tId = uid("t");
   const bId = uid("b");
-  const { plain: bodyPlain, codeRanges } = parseCodeSegments(body ?? "");
+  const { plain: bodyPlain, codeRanges } = parseCodeSegments(stripBullets(body ?? ""));
 
   const requests: any[] = [
     {
       createSlide: {
         objectId: sId,
-        slideLayoutReference: { predefinedLayout: "TITLE_AND_BODY" },
+        slideLayoutReference: { predefinedLayout: "TITLE_ONLY" },
         placeholderIdMappings: [
           { layoutPlaceholder: { type: "TITLE" }, objectId: tId },
-          { layoutPlaceholder: { type: "BODY"  }, objectId: bId },
         ],
       },
     },
@@ -161,6 +167,18 @@ function slideRequests(title: string, body: string | undefined): any[] {
 
   if (bodyPlain.length > 0) {
     requests.push(
+      // Free-form text box — no inherited bullet style from the layout
+      {
+        createShape: {
+          objectId: bId,
+          shapeType: "TEXT_BOX",
+          elementProperties: {
+            pageObjectId: sId,
+            size: { width: { magnitude: 612, unit: "PT" }, height: { magnitude: 270, unit: "PT" } },
+            transform: { scaleX: 1, scaleY: 1, translateX: 54, translateY: 115, unit: "PT" },
+          },
+        },
+      },
       { insertText: { objectId: bId, insertionIndex: 0, text: bodyPlain } },
       // Default all body text to black
       {
@@ -329,10 +347,6 @@ export async function buildPosterDoc(lesson: Lesson, accessToken: string, labels
     requestBody: { title: `OVERVIEW: ${lesson.title} — ${lesson.subtitle}` },
   });
   const docId = doc.data.documentId!;
-
-  function stripBullets(text: string): string {
-    return text.replace(/^[•\-\*]\s*/gm, "").trim();
-  }
 
   const text = [
     lesson.title,
