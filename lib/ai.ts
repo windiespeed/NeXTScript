@@ -111,17 +111,15 @@ export async function generateQuizQuestions(
   apiKey: string,
   lesson: Partial<LessonInput>,
   ctx: CurriculumContext = {},
-  numQuestions = 10
+  mcCount = 8,
+  saCount = 2
 ): Promise<FormQuestion[]> {
   const client = new Anthropic({ apiKey });
+  const numQuestions = mcCount + saCount;
 
   const level = lesson.studentLevel ?? "beginner";
   const levelInstruction = LEVEL_INSTRUCTIONS[level] ?? LEVEL_INSTRUCTIONS.beginner;
   const programDesc = [ctx.industry, ctx.subject].filter(Boolean).join(" — ") || "an educational program";
-
-  // Determine how many MC vs short answer based on total count
-  const saCount = Math.max(1, Math.round(numQuestions * 0.1));
-  const mcCount = numQuestions - saCount;
 
   // Build content block — works with just topics if full lesson content isn't available
   const hasFullContent = !!(lesson.learningTargets || lesson.overview || lesson.slideContent);

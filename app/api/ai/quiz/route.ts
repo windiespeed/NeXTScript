@@ -18,9 +18,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "No Anthropic API key configured. Add your key in Profile." }, { status: 402 });
 
     const body = await req.json();
-    const { lesson, numQuestions, courseId } = body as {
+    const { lesson, mcCount, saCount, courseId } = body as {
       lesson: Record<string, any>;
-      numQuestions?: number;
+      mcCount?: number;
+      saCount?: number;
       courseId?: string;
     };
 
@@ -33,8 +34,11 @@ export async function POST(req: Request) {
       ...(course?.settings?.sectionLabels ?? {}),
     };
 
-    const count = Math.min(Math.max(1, numQuestions ?? 10), 50);
-    const questions = await generateQuizQuestions(settings.anthropicKey, lesson, { industry, subject, labels }, count);
+    const mc = Math.min(50, Math.max(0, mcCount ?? 8));
+    const sa = Math.min(50, Math.max(0, saCount ?? 2));
+    if (mc + sa === 0)
+      return NextResponse.json({ error: "Please set at least 1 question." }, { status: 400 });
+    const questions = await generateQuizQuestions(settings.anthropicKey, lesson, { industry, subject, labels }, mc, sa);
 
     if (questions.length === 0)
       return NextResponse.json({ error: "AI failed to generate questions. Try adding more topic detail." }, { status: 500 });

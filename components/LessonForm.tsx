@@ -96,7 +96,8 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
   const [aiFilling, setAiFilling] = useState(false);
   const [aiQuizGenerating, setAiQuizGenerating] = useState(false);
   const [aiQuizError, setAiQuizError] = useState("");
-  const [quizNumQuestions, setQuizNumQuestions] = useState(10);
+  const [quizMcCount, setQuizMcCount] = useState(8);
+  const [quizSaCount, setQuizSaCount] = useState(2);
   const [aiFilledFields, setAiFilledFields] = useState<Set<string>>(new Set());
   const [error, setError] = useState("");
   const [autoSaveStatus, setAutoSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
@@ -184,7 +185,8 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           lesson: { ...form, slideContent: serializeSlides(slides) },
-          numQuestions: quizNumQuestions,
+          mcCount: quizMcCount,
+          saCount: quizSaCount,
           courseId: form.courseId,
         }),
       });
@@ -552,17 +554,27 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
               <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
             </svg>
             <span className="text-xs font-semibold shrink-0" style={{ color: "var(--text-secondary)" }}>AI Generate</span>
-            <div className="flex items-center gap-1 shrink-0">
+            <div className="flex items-center gap-1.5 shrink-0">
               <input
                 type="number"
-                min={1}
+                min={0}
                 max={50}
-                value={quizNumQuestions}
-                onChange={e => setQuizNumQuestions(Math.min(50, Math.max(1, Number(e.target.value))))}
-                className="w-14 rounded-lg px-2 py-1 text-xs text-center focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
+                value={quizMcCount}
+                onChange={e => setQuizMcCount(Math.min(50, Math.max(0, Number(e.target.value))))}
+                className="w-12 rounded-lg px-2 py-1 text-xs text-center focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
                 style={{ background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
               />
-              <span className="text-xs" style={{ color: "var(--text-muted)" }}>questions</span>
+              <span className="text-xs" style={{ color: "var(--text-muted)" }}>MC</span>
+              <input
+                type="number"
+                min={0}
+                max={50}
+                value={quizSaCount}
+                onChange={e => setQuizSaCount(Math.min(50, Math.max(0, Number(e.target.value))))}
+                className="w-12 rounded-lg px-2 py-1 text-xs text-center focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
+                style={{ background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
+              />
+              <span className="text-xs" style={{ color: "var(--text-muted)" }}>SA</span>
             </div>
             <button
               type="button"
