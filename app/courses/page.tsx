@@ -16,17 +16,29 @@ import {
   SortableContext,
   useSortable,
   rectSortingStrategy,
+  verticalListSortingStrategy,
   arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { Course } from "@/types/course";
 import type { Lesson } from "@/types/lesson";
 import type { SavedProject } from "@/types/project";
-import LessonCard from "@/components/LessonCard";
 
 function fmt(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
+
+const STATUS_COLOR: Record<Lesson["status"], string> = {
+  draft:        "bg-[var(--text-muted)]",
+  generating:   "bg-[#ff8c4a] animate-pulse",
+  regenerating: "bg-[#0cc0df] animate-pulse",
+  done:         "bg-[#2dd4a0]",
+  error:        "bg-red-500",
+};
+
+const STATUS_LABEL: Record<Lesson["status"], string> = {
+  draft: "Draft", generating: "Generating…", regenerating: "Regenerating…", done: "Done", error: "Error",
+};
 
 const gripSVG = (
   <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
@@ -168,41 +180,123 @@ function SortableCourseCard({ course, onDelete, onDuplicate }: { course: Course;
   );
 }
 
-function SortableLessonCard({
+function SortableLessonRow({
   lesson,
   projects,
   courses,
+  isFirst,
+  isLast,
   onDelete,
   onDuplicate,
-  onOpenModal,
 }: {
   lesson: Lesson;
   projects: SavedProject[];
   courses: Course[];
+  isFirst: boolean;
+  isLast: boolean;
   onDelete: (id: string) => void;
   onDuplicate: (id: string) => void;
-  onOpenModal: (id: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: lesson.id });
+  const course = courses.find(c => c.id === lesson.courseId);
+  const deck = projects.find(p => p.type === "deck");
+  const form = projects.find(p => p.type === "form");
+
   return (
     <div
       ref={setNodeRef}
+      className={`group flex items-center gap-3 px-4 py-3 transition hover:bg-[var(--bg-card-hover)] ${isFirst ? "rounded-t-3xl" : ""} ${isLast ? "rounded-b-3xl" : ""}`}
       style={{
+        background: "var(--bg-card)",
+        borderTop: !isFirst ? "1px solid var(--border)" : undefined,
         transform: CSS.Transform.toString(transform),
         transition,
         opacity: isDragging ? 0.5 : 1,
-        zIndex: isDragging ? 10 : undefined,
       }}
     >
-      <LessonCard
-        lesson={lesson}
-        projects={projects}
-        courses={courses}
-        onDelete={onDelete}
-        onDuplicate={onDuplicate}
-        onOpenModal={onOpenModal}
-        gripProps={{ ...listeners, ...attributes } as React.HTMLAttributes<HTMLDivElement>}
-      />
+      {/* Drag handle */}
+      <div
+        {...listeners} {...attributes}
+        title="Drag to reorder"
+        className="p-1 rounded-full cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition shrink-0"
+        style={{ color: "var(--text-muted)" }}
+      >
+        {gripSVG}
+      </div>
+
+      {/* Status dot */}
+      <span className={`w-2 h-2 rounded-full shrink-0 ${STATUS_COLOR[lesson.status]}`} />
+
+      {/* Title + meta */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-baseline gap-2 min-w-0">
+          <p className="text-sm font-semibold truncate shrink-0" style={{ color: "var(--text-primary)" }}>{lesson.title}</p>
+          {lesson.subtitle && (
+            <p className="text-xs truncate" style={{ color: "var(--text-secondary)" }}>{lesson.subtitle}</p>
+          )}
+        </div>
+        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+          <span className="text-xs" style={{ color: "var(--text-muted)" }}>{STATUS_LABEL[lesson.status]}</span>
+          {course && (
+            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background: "var(--accent-purple-bg)", color: "var(--accent-purple)" }}>
+              {course.title}
+            </span>
+          )}
+          <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>
+            {fmt(lesson.createdAt)}
+          </span>
+        </div>
+      </div>
+
+      {/* Asset pills */}
+      {(deck || form || lesson.folderUrl) && (
+        <div className="flex items-center gap-1 shrink-0">
+          {deck && (
+            <Link href={`/slides/${lesson.id}`} className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold transition hover:opacity-80" style={{ background: "rgba(12,192,223,0.12)", border: "1px solid rgba(12,192,223,0.35)", color: "#0cc0df" }}>
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+              Slides
+            </Link>
+          )}
+          {form && (
+            <Link href="/quizzes" className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold transition hover:opacity-80" style={{ background: "rgba(255,140,74,0.12)", border: "1px solid rgba(255,140,74,0.35)", color: "#ff8c4a" }}>
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+              Quiz
+            </Link>
+          )}
+          {lesson.folderUrl && (
+            <a href={lesson.folderUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold transition hover:opacity-80" style={{ background: "rgba(45,212,160,0.12)", border: "1px solid rgba(45,212,160,0.35)", color: "#2dd4a0" }}>
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+              Drive ↗
+            </a>
+          )}
+        </div>
+      )}
+
+      {/* Actions */}
+      <div className="flex items-center gap-2 shrink-0">
+        <Link
+          href={`/lessons/${lesson.id}`}
+          className="rounded-full bg-[#0cc0df] px-3 py-1.5 text-xs font-semibold text-[#0a0b13] hover:opacity-90 transition"
+        >
+          View
+        </Link>
+        <button
+          onClick={() => onDuplicate(lesson.id)}
+          title="Duplicate lesson"
+          className="p-1.5 rounded-full transition hover:bg-[var(--bg-card-hover)]"
+          style={{ color: "var(--text-muted)" }}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        </button>
+        <button
+          onClick={() => onDelete(lesson.id)}
+          title="Delete lesson"
+          className="p-1.5 rounded-full transition hover:text-red-500 hover:bg-red-500/10"
+          style={{ color: "var(--text-muted)" }}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+        </button>
+      </div>
     </div>
   );
 }
@@ -460,17 +554,18 @@ export default function CoursesPage() {
             </div>
           ) : (
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleLessonDragEnd}>
-              <SortableContext items={sortedLessons.map(l => l.id)} strategy={rectSortingStrategy}>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {filteredLessons.map(lesson => (
-                    <SortableLessonCard
+              <SortableContext items={sortedLessons.map(l => l.id)} strategy={verticalListSortingStrategy}>
+                <div className="rounded-3xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+                  {filteredLessons.map((lesson, i) => (
+                    <SortableLessonRow
                       key={lesson.id}
                       lesson={lesson}
                       projects={projects.filter(p => p.lessonId === lesson.id || p.lessonIds?.includes(lesson.id))}
                       courses={courses}
+                      isFirst={i === 0}
+                      isLast={i === filteredLessons.length - 1}
                       onDelete={handleDeleteLesson}
                       onDuplicate={handleDuplicateLesson}
-                      onOpenModal={() => router.push(`/lessons/${lesson.id}`)}
                     />
                   ))}
                 </div>
