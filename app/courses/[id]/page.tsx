@@ -687,6 +687,19 @@ export default function CourseDetailPage() {
                     Cancel
                   </button>
                   <button
+                    onClick={() => {
+                      if (selectedIds.size === lessons.length) {
+                        setSelectedIds(new Set());
+                      } else {
+                        setSelectedIds(new Set(lessons.map(l => l.id)));
+                      }
+                    }}
+                    className="rounded-full px-3 py-2 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)]"
+                    style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+                  >
+                    {selectedIds.size === lessons.length ? "Unselect All" : "Select All"}
+                  </button>
+                  <button
                     onClick={handleBulkDuplicate}
                     disabled={selectedIds.size === 0 || duplicating || bulkDeleting}
                     className="rounded-full bg-[#0cc0df] px-3 py-2 text-xs font-semibold text-[#0a0b13] hover:opacity-90 disabled:opacity-50 transition"
