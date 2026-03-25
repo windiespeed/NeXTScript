@@ -41,7 +41,19 @@ const gripSVG = (
   </svg>
 );
 
-function SortableSlideCard({ lesson, courses }: { lesson: Lesson; courses: Course[] }) {
+function SortableSlideCard({
+  lesson,
+  courses,
+  assigningOpen,
+  onToggleAssign,
+  onAssign,
+}: {
+  lesson: Lesson;
+  courses: Course[];
+  assigningOpen: boolean;
+  onToggleAssign: (id: string) => void;
+  onAssign: (lessonId: string, courseId: string | null) => void;
+}) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: lesson.id });
   const course = courses.find(c => c.id === lesson.courseId);
   const s = STATUS_COLOR[lesson.status];
@@ -83,12 +95,46 @@ function SortableSlideCard({ lesson, courses }: { lesson: Lesson; courses: Cours
         </span>
       </div>
 
-      {course && (
-        <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background: "var(--accent-purple-bg)", color: "var(--accent-purple)" }}>
-          <svg xmlns="http://www.w3.org/2000/svg" className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-          {course.title}
-        </span>
-      )}
+      {/* Course assignment badge / dropdown */}
+      <div className="relative">
+        <button
+          onClick={e => { e.stopPropagation(); onToggleAssign(lesson.id); }}
+          className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full transition hover:opacity-80"
+          style={course
+            ? { background: "var(--accent-purple-bg)", color: "var(--accent-purple)" }
+            : { background: "var(--bg-card-hover)", color: "var(--text-muted)", border: "1px dashed var(--border)" }
+          }
+        >
+          {course ? (
+            <>
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+              {course.title}
+            </>
+          ) : "Unassigned"}
+          <svg xmlns="http://www.w3.org/2000/svg" className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        {assigningOpen && (
+          <div className="absolute left-0 top-full mt-1 z-30 rounded-2xl overflow-hidden min-w-[180px]" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)" }}>
+            <button
+              onClick={() => onAssign(lesson.id, null)}
+              className="w-full text-left px-3 py-2 text-xs hover:bg-[var(--bg-card-hover)] transition"
+              style={{ color: !lesson.courseId ? "var(--accent-purple)" : "var(--text-muted)", fontWeight: !lesson.courseId ? 600 : 400 }}
+            >
+              {!lesson.courseId ? "✓ " : ""}No course
+            </button>
+            {courses.map(c => (
+              <button
+                key={c.id}
+                onClick={() => onAssign(lesson.id, c.id)}
+                className="w-full text-left px-3 py-2 text-xs hover:bg-[var(--bg-card-hover)] transition"
+                style={{ color: lesson.courseId === c.id ? "var(--accent-purple)" : "var(--text-primary)", fontWeight: lesson.courseId === c.id ? 600 : 400 }}
+              >
+                {lesson.courseId === c.id ? "✓ " : ""}{c.title}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
 
       <div className="flex items-center justify-between pt-2" style={{ borderTop: "1px solid var(--border)" }}>
         <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
@@ -122,6 +168,7 @@ export default function SlidesPage() {
   const [filterCourse, setFilterCourse] = useState("all");
   const [filterStatus, setFilterStatus] = useState<"all" | "draft" | "done">("all");
   const [order, setOrder] = useState<string[]>([]);
+  const [assigningLessonId, setAssigningLessonId] = useState<string | null>(null);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
@@ -158,6 +205,46 @@ export default function SlidesPage() {
     if (filterStatus === "done" && l.status !== "done") return false;
     return true;
   });
+
+  async function handleAssignLesson(lessonId: string, newCourseId: string | null) {
+    setAssigningLessonId(null);
+    const lesson = lessons.find(l => l.id === lessonId);
+    if (!lesson) return;
+    const oldCourseId = lesson.courseId;
+    if (oldCourseId === (newCourseId ?? undefined)) return;
+
+    await fetch(`/api/lessons/${lessonId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ courseId: newCourseId ?? null }),
+    });
+
+    if (oldCourseId) {
+      const oldCourse = courses.find(c => c.id === oldCourseId);
+      if (oldCourse) {
+        await fetch(`/api/courses/${oldCourseId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ lessonIds: oldCourse.lessonIds.filter(id => id !== lessonId) }),
+        });
+        setCourses(prev => prev.map(c => c.id === oldCourseId ? { ...c, lessonIds: c.lessonIds.filter(id => id !== lessonId) } : c));
+      }
+    }
+
+    if (newCourseId) {
+      const newCourse = courses.find(c => c.id === newCourseId);
+      if (newCourse && !newCourse.lessonIds.includes(lessonId)) {
+        await fetch(`/api/courses/${newCourseId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ lessonIds: [...newCourse.lessonIds, lessonId] }),
+        });
+        setCourses(prev => prev.map(c => c.id === newCourseId ? { ...c, lessonIds: [...c.lessonIds, lessonId] } : c));
+      }
+    }
+
+    setLessons(prev => prev.map(l => l.id === lessonId ? { ...l, courseId: newCourseId ?? undefined } : l));
+  }
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
@@ -263,9 +350,16 @@ export default function SlidesPage() {
       ) : (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={sorted.map(l => l.id)} strategy={rectSortingStrategy}>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3" onClick={() => setAssigningLessonId(null)}>
               {filtered.map(lesson => (
-                <SortableSlideCard key={lesson.id} lesson={lesson} courses={courses} />
+                <SortableSlideCard
+                  key={lesson.id}
+                  lesson={lesson}
+                  courses={courses}
+                  assigningOpen={assigningLessonId === lesson.id}
+                  onToggleAssign={id => setAssigningLessonId(prev => prev === id ? null : id)}
+                  onAssign={handleAssignLesson}
+                />
               ))}
             </div>
           </SortableContext>
