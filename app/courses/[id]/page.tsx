@@ -10,11 +10,14 @@ import type { Lesson } from "@/types/lesson";
 import type { SavedProject } from "@/types/project";
 import {
   DndContext,
+  DragOverlay,
   closestCenter,
   PointerSensor,
   useSensor,
   useSensors,
+  useDroppable,
   type DragEndEvent,
+  type DragStartEvent,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -58,6 +61,24 @@ function SortableLessonItem({ id, render }: { id: string; render: (s: SortablePr
         ),
       })}
     </>
+  );
+}
+
+function DroppableEmptySlot({ id, isOver }: { id: string; isOver: boolean }) {
+  const { setNodeRef } = useDroppable({ id });
+  return (
+    <div
+      ref={setNodeRef}
+      className="px-4 py-4 text-xs text-center rounded-b-3xl transition"
+      style={{
+        color: isOver ? "var(--accent)" : "var(--text-muted)",
+        background: isOver ? "var(--accent-bg)" : "var(--bg-card)",
+        outline: isOver ? "2px dashed var(--accent)" : undefined,
+        outlineOffset: isOver ? "-2px" : undefined,
+      }}
+    >
+      {isOver ? "Drop here" : "No lessons assigned — drag a lesson here or use the module dropdown."}
+    </div>
   );
 }
 
@@ -148,6 +169,9 @@ export default function CourseDetailPage() {
   const [genChecks, setGenChecks] = useState({ slides: true, overview: true, quiz: false });
   const [generatingLessonId, setGeneratingLessonId] = useState<string | null>(null);
   const [unassignedOrder, setUnassignedOrder] = useState<string[]>([]);
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const [overContainerId, setOverContainerId] = useState<string | null>(null);
+  const [moreOpen, setMoreOpen] = useState(false);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
@@ -541,32 +565,78 @@ export default function CourseDetailPage() {
     });
   }
 
-  function handleModuleDragEnd(modId: string, event: DragEndEvent) {
+  function handleGlobalDragEnd(event: DragEndEvent) {
     const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    const mod = modules.find(m => m.id === modId);
-    if (!mod) return;
-    const oldIndex = mod.lessonIds.indexOf(active.id as string);
-    const newIndex = mod.lessonIds.indexOf(over.id as string);
-    if (oldIndex === -1 || newIndex === -1) return;
-    const newIds = arrayMove(mod.lessonIds, oldIndex, newIndex);
-    saveModules(modules.map(m => m.id === modId ? { ...m, lessonIds: newIds } : m));
-  }
+    setActiveDragId(null);
+    setOverContainerId(null);
+    if (!over) return;
 
-  function handleUnassignedDragEnd(event: DragEndEvent) {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    const assignedIds = new Set(modules.flatMap(m => m.lessonIds));
-    const unassignedBase = lessons.filter(l => !assignedIds.has(l.id));
-    const orderedIds = unassignedOrder.filter(uid => unassignedBase.some(l => l.id === uid));
-    const unordered = unassignedBase.filter(l => !unassignedOrder.includes(l.id));
-    const sorted = [...orderedIds.map(uid => unassignedBase.find(l => l.id === uid)!), ...unordered];
-    const oldIndex = sorted.findIndex(l => l.id === active.id);
-    const newIndex = sorted.findIndex(l => l.id === over.id);
-    if (oldIndex === -1 || newIndex === -1) return;
-    const newOrder = arrayMove(sorted, oldIndex, newIndex).map(l => l.id);
-    setUnassignedOrder(newOrder);
-    localStorage.setItem(`sort-unassigned-${id}`, JSON.stringify(newOrder));
+    const activeId = active.id as string;
+    const overId = over.id as string;
+    const sourceContainerId = active.data.current?.sortable?.containerId as string | undefined;
+    // over could be a sortable item (has containerId) or a droppable container (id is the container)
+    const targetContainerId = (over.data.current?.sortable?.containerId ?? overId) as string;
+
+    if (!sourceContainerId) return;
+
+    if (sourceContainerId === targetContainerId) {
+      // Same container — reorder
+      if (sourceContainerId === "unassigned") {
+        if (activeId === overId) return;
+        const assignedIds = new Set(modules.flatMap(m => m.lessonIds));
+        const unassignedBase = lessons.filter(l => !assignedIds.has(l.id));
+        const orderedIds = unassignedOrder.filter(uid => unassignedBase.some(l => l.id === uid));
+        const unordered = unassignedBase.filter(l => !unassignedOrder.includes(l.id));
+        const sorted = [...orderedIds.map(uid => unassignedBase.find(l => l.id === uid)!), ...unordered];
+        const oldIndex = sorted.findIndex(l => l.id === activeId);
+        const newIndex = sorted.findIndex(l => l.id === overId);
+        if (oldIndex === -1 || newIndex === -1) return;
+        const newOrder = arrayMove(sorted, oldIndex, newIndex).map(l => l.id);
+        setUnassignedOrder(newOrder);
+        localStorage.setItem(`sort-unassigned-${id}`, JSON.stringify(newOrder));
+      } else {
+        if (activeId === overId) return;
+        const modId = sourceContainerId.replace("module-", "");
+        const mod = modules.find(m => m.id === modId);
+        if (!mod) return;
+        const oldIndex = mod.lessonIds.indexOf(activeId);
+        const newIndex = mod.lessonIds.indexOf(overId);
+        if (oldIndex === -1 || newIndex === -1) return;
+        saveModules(modules.map(m => m.id === modId ? { ...m, lessonIds: arrayMove(mod.lessonIds, oldIndex, newIndex) } : m));
+      }
+    } else {
+      // Cross-container move
+      const targetModId = targetContainerId === "unassigned" ? null : targetContainerId.replace("module-", "");
+      const updated = modules.map(m => {
+        if (`module-${m.id}` === sourceContainerId) {
+          // Remove from source module
+          return { ...m, lessonIds: m.lessonIds.filter(lid => lid !== activeId) };
+        }
+        if (targetModId && m.id === targetModId) {
+          // Insert at over position (or end if dropping on container)
+          const overIndex = m.lessonIds.indexOf(overId);
+          if (overIndex === -1) return { ...m, lessonIds: [...m.lessonIds, activeId] };
+          const newIds = [...m.lessonIds];
+          newIds.splice(overIndex, 0, activeId);
+          return { ...m, lessonIds: newIds };
+        }
+        return m;
+      });
+      // If moving to unassigned, update order
+      if (targetModId === null) {
+        const newOrder = [...unassignedOrder.filter(uid => uid !== activeId), activeId];
+        setUnassignedOrder(newOrder);
+        localStorage.setItem(`sort-unassigned-${id}`, JSON.stringify(newOrder));
+      }
+      // If source was unassigned, remove from order tracking
+      if (sourceContainerId === "unassigned") {
+        const newOrder = unassignedOrder.filter(uid => uid !== activeId);
+        setUnassignedOrder(newOrder);
+        localStorage.setItem(`sort-unassigned-${id}`, JSON.stringify(newOrder));
+      }
+      saveModules(updated);
+      setAssigningModuleForLesson(null);
+    }
   }
 
   async function handleGenerateLesson(lessonId: string) {
@@ -747,6 +817,8 @@ export default function CourseDetailPage() {
                       {bulkMoving ? "Moving…" : `Move To${selectedIds.size > 0 ? ` (${selectedIds.size})` : ""}`}
                     </button>
                     {bulkMoveOpen && (
+                      <>
+                      <div className="fixed inset-0 z-20" onClick={() => setBulkMoveOpen(false)} />
                       <div className="absolute left-0 top-full mt-1 z-30 rounded-2xl overflow-hidden min-w-[180px]" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)" }}>
                         <p className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Move to…</p>
                         {allCourses.filter(c => c.id !== id).map(c => (
@@ -760,6 +832,7 @@ export default function CourseDetailPage() {
                           </button>
                         ))}
                       </div>
+                      </>
                     )}
                   </div>
                   <button
@@ -781,53 +854,88 @@ export default function CourseDetailPage() {
               ) : (
                 <>
                   {lessons.length > 0 && (
-                    <>
-                      <button
-                        onClick={() => setSelecting(true)}
-                        className="rounded-full px-3 py-2 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)]"
-                        style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
-                      >
-                        Select
-                      </button>
-                      <button
-                        onClick={() => handleBulkRelease(!lessons.every(l => l.released))}
-                        className="rounded-full px-3 py-2 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)]"
-                        style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
-                      >
-                        {lessons.every(l => l.released) ? "Unrelease All" : "Release All"}
-                      </button>
-                    </>
+                    <button
+                      onClick={() => setSelecting(true)}
+                      className="rounded-full px-3 py-2 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)]"
+                      style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+                    >
+                      Select
+                    </button>
                   )}
-                  <button
-                    onClick={handleCopyLink}
-                    className="rounded-full px-3 py-2 text-xs font-semibold text-[#2dd4a0] hover:bg-[#2dd4a0]/10 transition"
-                    style={{ border: "1px solid #2dd4a0" }}
-                  >
-                    {copied ? "Copied!" : "Copy Link"}
-                  </button>
-                  <a
-                    href={`/courses/${id}/student`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="rounded-full px-3 py-2 text-xs font-semibold text-[#2dd4a0] hover:bg-[#2dd4a0]/10 transition"
-                    style={{ border: "1px solid #2dd4a0" }}
-                  >
-                    Student View ↗
-                  </a>
-                  <button
-                    onClick={openAddExisting}
-                    className="rounded-full px-3 py-2 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)]"
-                    style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
-                  >
-                    Add Existing
-                  </button>
-                  <button
-                    onClick={handleAddModule}
-                    className="rounded-full px-3 py-2 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)]"
-                    style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
-                  >
-                    + Module
-                  </button>
+                  {modules.length > 0 && (
+                    <button
+                      onClick={() => {
+                        if (collapsedModules.size === modules.length) {
+                          setCollapsedModules(new Set());
+                        } else {
+                          setCollapsedModules(new Set(modules.map(m => m.id)));
+                        }
+                      }}
+                      className="rounded-full px-3 py-2 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)]"
+                      style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+                    >
+                      {collapsedModules.size === modules.length ? "Expand All" : "Collapse All"}
+                    </button>
+                  )}
+                  {/* ⋯ More menu */}
+                  <div className="relative">
+                    <button
+                      onClick={() => setMoreOpen(v => !v)}
+                      title="More options"
+                      className="p-2 rounded-full transition hover:bg-[var(--bg-card-hover)]"
+                      style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>
+                    </button>
+                    {moreOpen && (
+                      <>
+                      <div className="fixed inset-0 z-20" onClick={() => setMoreOpen(false)} />
+                      <div className="absolute right-0 top-full mt-1 z-30 rounded-2xl overflow-hidden min-w-[180px]" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)" }} onClick={() => setMoreOpen(false)}>
+                        <button
+                          onClick={handleAddModule}
+                          className="w-full text-left px-4 py-2.5 text-xs hover:bg-[var(--bg-card-hover)] transition"
+                          style={{ color: "var(--text-primary)" }}
+                        >
+                          + Add Module
+                        </button>
+                        <button
+                          onClick={openAddExisting}
+                          className="w-full text-left px-4 py-2.5 text-xs hover:bg-[var(--bg-card-hover)] transition"
+                          style={{ color: "var(--text-primary)" }}
+                        >
+                          Add Existing Lesson
+                        </button>
+                        {lessons.length > 0 && (
+                          <button
+                            onClick={() => handleBulkRelease(!lessons.every(l => l.released))}
+                            className="w-full text-left px-4 py-2.5 text-xs hover:bg-[var(--bg-card-hover)] transition"
+                            style={{ color: "var(--text-primary)" }}
+                          >
+                            {lessons.every(l => l.released) ? "Unrelease All" : "Release All"}
+                          </button>
+                        )}
+                        <div style={{ borderTop: "1px solid var(--border)" }}>
+                          <button
+                            onClick={handleCopyLink}
+                            className="w-full text-left px-4 py-2.5 text-xs hover:bg-[var(--bg-card-hover)] transition"
+                            style={{ color: "#2dd4a0" }}
+                          >
+                            {copied ? "Link Copied!" : "Copy Student Link"}
+                          </button>
+                          <a
+                            href={`/courses/${id}/student`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block w-full text-left px-4 py-2.5 text-xs hover:bg-[var(--bg-card-hover)] transition"
+                            style={{ color: "#2dd4a0" }}
+                          >
+                            Student View ↗
+                          </a>
+                        </div>
+                      </div>
+                      </>
+                    )}
+                  </div>
                   <Link
                     href={`/lessons/new?courseId=${id}`}
                     className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-xs font-bold text-white hover:opacity-90 transition shadow"
@@ -927,6 +1035,8 @@ export default function CourseDetailPage() {
                               <svg xmlns="http://www.w3.org/2000/svg" className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
                             </button>
                             {assigningModuleForLesson === lesson.id && (
+                              <>
+                              <div className="fixed inset-0 z-20" onClick={() => setAssigningModuleForLesson(null)} />
                               <div className="absolute left-0 top-full mt-1 z-30 rounded-2xl overflow-hidden min-w-[200px]" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)" }}>
                                 <button
                                   onClick={() => handleAssignToModule(lesson.id, null)}
@@ -946,6 +1056,7 @@ export default function CourseDetailPage() {
                                   </button>
                                 ))}
                               </div>
+                              </>
                             )}
                           </div>
                         );
@@ -960,32 +1071,12 @@ export default function CourseDetailPage() {
                     </div>
                   </div>
 
-                  {!selecting && (() => {
-                    const deck = projects.find(p => p.type === "deck" && (p.lessonId === lesson.id || p.lessonIds?.includes(lesson.id)));
-                    const form = projects.find(p => p.type === "form" && (p.lessonId === lesson.id || p.lessonIds?.includes(lesson.id)));
-                    return (deck || form || lesson.folderUrl) ? (
-                      <div className="flex items-center gap-1 shrink-0">
-                        {deck && (
-                          <Link href={`/slides/${lesson.id}`} className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold transition hover:opacity-80" style={{ background: "rgba(12,192,223,0.12)", border: "1px solid rgba(12,192,223,0.35)", color: "#0cc0df" }}>
-                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-                            Slides
-                          </Link>
-                        )}
-                        {form && (
-                          <Link href={`/quizzes`} className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold transition hover:opacity-80" style={{ background: "rgba(255,140,74,0.12)", border: "1px solid rgba(255,140,74,0.35)", color: "#ff8c4a" }}>
-                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-                            Quiz
-                          </Link>
-                        )}
-                        {lesson.folderUrl && (
-                          <a href={lesson.folderUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold transition hover:opacity-80" style={{ background: "rgba(45,212,160,0.12)", border: "1px solid rgba(45,212,160,0.35)", color: "#2dd4a0" }}>
-                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-                            Drive ↗
-                          </a>
-                        )}
-                      </div>
-                    ) : null;
-                  })()}
+                  {!selecting && lesson.folderUrl && (
+                    <a href={lesson.folderUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold transition hover:opacity-80 shrink-0" style={{ background: "rgba(45,212,160,0.12)", border: "1px solid rgba(45,212,160,0.35)", color: "#2dd4a0" }}>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                      Drive ↗
+                    </a>
+                  )}
 
                   {!selecting && (
                     <div className="flex items-center gap-2 shrink-0">
@@ -1016,6 +1107,8 @@ export default function CourseDetailPage() {
                           {generatingLessonId === lesson.id ? "Generating…" : "Generate"}
                         </button>
                         {genPanelId === lesson.id && (
+                          <>
+                          <div className="fixed inset-0 z-20" onClick={() => setGenPanelId(null)} />
                           <div className="absolute right-0 top-full mt-1 z-30 rounded-2xl p-3 min-w-[190px]" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)" }}>
                             <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: "var(--text-muted)" }}>What to generate</p>
                             <label className="flex items-center gap-2 text-xs mb-1.5 cursor-pointer" style={{ color: "var(--text-primary)" }}>
@@ -1038,6 +1131,7 @@ export default function CourseDetailPage() {
                               Generate
                             </button>
                           </div>
+                          </>
                         )}
                       </div>
                       <button
@@ -1060,6 +1154,8 @@ export default function CourseDetailPage() {
                             <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
                           </button>
                           {movingLessonId === lesson.id && (
+                            <>
+                            <div className="fixed inset-0 z-20" onClick={() => setMovingLessonId(null)} />
                             <div className="absolute right-0 top-full mt-1 z-30 rounded-2xl overflow-hidden min-w-[180px]" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)" }}>
                               <p className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Move to…</p>
                               {allCourses.filter(c => c.id !== id).map(c => (
@@ -1073,6 +1169,7 @@ export default function CourseDetailPage() {
                                 </button>
                               ))}
                             </div>
+                            </>
                           )}
                         </div>
                       )}
@@ -1091,61 +1188,66 @@ export default function CourseDetailPage() {
             }
 
             return (
-              <div className="space-y-3">
-                {modules.map((mod) => {
-                  const modLessons = mod.lessonIds.map(lid => lessons.find(l => l.id === lid)).filter(Boolean) as Lesson[];
-                  const collapsed = collapsedModules.has(mod.id);
-                  return (
-                    <div key={mod.id} className="rounded-3xl" style={{ border: "1px solid var(--border)" }}>
-                      {/* Module header */}
-                      <div className={`flex items-center gap-2 px-4 py-2.5 rounded-t-3xl ${collapsed ? "rounded-b-3xl" : ""}`} style={{ background: "var(--bg-card-hover)", borderBottom: collapsed ? undefined : "1px solid var(--border)" }}>
-                        <button
-                          onClick={() => toggleModuleCollapse(mod.id)}
-                          className="p-0.5 rounded transition hover:bg-[var(--bg-card)]"
-                          style={{ color: "var(--text-muted)" }}
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className={`w-3.5 h-3.5 transition-transform ${collapsed ? "-rotate-90" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-                        </button>
-                        {editingModuleId === mod.id ? (
-                          <input
-                            autoFocus
-                            value={editModuleTitle}
-                            onChange={e => setEditModuleTitle(e.target.value)}
-                            onBlur={() => handleSaveModuleTitle(mod.id)}
-                            onKeyDown={e => { if (e.key === "Enter") handleSaveModuleTitle(mod.id); if (e.key === "Escape") setEditingModuleId(null); }}
-                            className="flex-1 rounded-md px-2 py-0.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
-                            style={{ background: "var(--bg-card)", color: "var(--text-primary)", border: "1px solid var(--border)" }}
-                          />
-                        ) : (
-                          <span className="flex-1 text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{mod.title}</span>
-                        )}
-                        <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{modLessons.length} {modLessons.length === 1 ? "lesson" : "lessons"}</span>
-                        <button
-                          onClick={() => handleStartRenameModule(mod)}
-                          title="Rename module"
-                          className="p-1 rounded transition hover:bg-[var(--bg-card)]"
-                          style={{ color: "var(--text-muted)" }}
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                        </button>
-                        <button
-                          onClick={() => handleDeleteModule(mod.id)}
-                          title="Delete module"
-                          className="p-1 rounded transition hover:text-red-500 hover:bg-red-500/10"
-                          style={{ color: "var(--text-muted)" }}
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-                        </button>
-                      </div>
-                      {/* Module lessons */}
-                      {!collapsed && (
-                        modLessons.length === 0 ? (
-                          <div className="px-4 py-4 text-xs text-center rounded-b-3xl" style={{ color: "var(--text-muted)", background: "var(--bg-card)" }}>
-                            No lessons assigned — use the module dropdown on each lesson row.
-                          </div>
-                        ) : (
-                          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(e) => handleModuleDragEnd(mod.id, e)}>
-                            <SortableContext items={mod.lessonIds} strategy={verticalListSortingStrategy}>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragStart={({ active }: DragStartEvent) => setActiveDragId(active.id as string)}
+                onDragOver={({ over }) => setOverContainerId(over ? ((over.data.current?.sortable?.containerId ?? over.id) as string) : null)}
+                onDragEnd={handleGlobalDragEnd}
+              >
+                <div className="space-y-3">
+                  {modules.map((mod) => {
+                    const modLessons = mod.lessonIds.map(lid => lessons.find(l => l.id === lid)).filter(Boolean) as Lesson[];
+                    const collapsed = collapsedModules.has(mod.id);
+                    const containerKey = `module-${mod.id}`;
+                    return (
+                      <div key={mod.id} className="rounded-3xl" style={{ border: "1px solid var(--border)" }}>
+                        {/* Module header */}
+                        <div className={`flex items-center gap-2 px-4 py-2.5 rounded-t-3xl ${collapsed ? "rounded-b-3xl" : ""}`} style={{ background: "var(--bg-card-hover)", borderBottom: collapsed ? undefined : "1px solid var(--border)" }}>
+                          <button
+                            onClick={() => toggleModuleCollapse(mod.id)}
+                            className="p-0.5 rounded transition hover:bg-[var(--bg-card)]"
+                            style={{ color: "var(--text-muted)" }}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className={`w-3.5 h-3.5 transition-transform ${collapsed ? "-rotate-90" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                          </button>
+                          {editingModuleId === mod.id ? (
+                            <input
+                              autoFocus
+                              value={editModuleTitle}
+                              onChange={e => setEditModuleTitle(e.target.value)}
+                              onBlur={() => handleSaveModuleTitle(mod.id)}
+                              onKeyDown={e => { if (e.key === "Enter") handleSaveModuleTitle(mod.id); if (e.key === "Escape") setEditingModuleId(null); }}
+                              className="flex-1 rounded-md px-2 py-0.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
+                              style={{ background: "var(--bg-card)", color: "var(--text-primary)", border: "1px solid var(--border)" }}
+                            />
+                          ) : (
+                            <span className="flex-1 text-sm font-semibold" style={{ color: "var(--accent)" }}>{mod.title}</span>
+                          )}
+                          <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{modLessons.length} {modLessons.length === 1 ? "lesson" : "lessons"}</span>
+                          <button
+                            onClick={() => handleStartRenameModule(mod)}
+                            title="Rename module"
+                            className="p-1 rounded transition hover:bg-[var(--bg-card)]"
+                            style={{ color: "var(--text-muted)" }}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                          </button>
+                          <button
+                            onClick={() => handleDeleteModule(mod.id)}
+                            title="Delete module"
+                            className="p-1 rounded transition hover:text-red-500 hover:bg-red-500/10"
+                            style={{ color: "var(--text-muted)" }}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                          </button>
+                        </div>
+                        {/* Module lessons */}
+                        {!collapsed && (
+                          modLessons.length === 0 ? (
+                            <DroppableEmptySlot id={containerKey} isOver={overContainerId === containerKey} />
+                          ) : (
+                            <SortableContext id={containerKey} items={mod.lessonIds} strategy={verticalListSortingStrategy}>
                               {modLessons.map((lesson, i) => (
                                 <SortableLessonItem
                                   key={lesson.id}
@@ -1154,23 +1256,21 @@ export default function CourseDetailPage() {
                                 />
                               ))}
                             </SortableContext>
-                          </DndContext>
-                        )
-                      )}
-                    </div>
-                  );
-                })}
-                {/* Unassigned lessons */}
-                {(unassigned.length > 0 || modules.length === 0) && (
-                  <div className="rounded-3xl" style={{ border: "1px solid var(--border)" }}>
-                    {modules.length > 0 && (
-                      <div className="flex items-center gap-2 px-4 py-2.5 rounded-t-3xl" style={{ background: "var(--bg-card-hover)", borderBottom: "1px solid var(--border)" }}>
-                        <span className="text-sm font-semibold" style={{ color: "var(--text-muted)" }}>Unassigned</span>
-                        <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{unassigned.length} {unassigned.length === 1 ? "lesson" : "lessons"}</span>
+                          )
+                        )}
                       </div>
-                    )}
-                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleUnassignedDragEnd}>
-                      <SortableContext items={unassigned.map(l => l.id)} strategy={verticalListSortingStrategy}>
+                    );
+                  })}
+                  {/* Unassigned lessons */}
+                  {(unassigned.length > 0 || modules.length === 0) && (
+                    <div className="rounded-3xl" style={{ border: "1px solid var(--border)" }}>
+                      {modules.length > 0 && (
+                        <div className="flex items-center gap-2 px-4 py-2.5 rounded-t-3xl" style={{ background: "var(--bg-card-hover)", borderBottom: "1px solid var(--border)" }}>
+                          <span className="text-sm font-semibold" style={{ color: "var(--text-muted)" }}>Unassigned</span>
+                          <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{unassigned.length} {unassigned.length === 1 ? "lesson" : "lessons"}</span>
+                        </div>
+                      )}
+                      <SortableContext id="unassigned" items={unassigned.map(l => l.id)} strategy={verticalListSortingStrategy}>
                         {unassigned.map((lesson, i) => (
                           <SortableLessonItem
                             key={lesson.id}
@@ -1179,10 +1279,21 @@ export default function CourseDetailPage() {
                           />
                         ))}
                       </SortableContext>
-                    </DndContext>
-                  </div>
-                )}
-              </div>
+                    </div>
+                  )}
+                </div>
+                <DragOverlay>
+                  {activeDragId ? (() => {
+                    const lesson = lessons.find(l => l.id === activeDragId);
+                    return lesson ? (
+                      <div className="flex items-center gap-3 px-4 py-3 rounded-2xl shadow-lg" style={{ background: "var(--bg-card)", border: "1px solid var(--accent)", opacity: 0.95 }}>
+                        <span className={`w-2 h-2 rounded-full shrink-0 ${STATUS_COLOR[lesson.status]}`} />
+                        <p className="text-sm font-semibold truncate" style={{ color: "var(--text-primary)" }}>{lesson.title}</p>
+                      </div>
+                    ) : null;
+                  })() : null}
+                </DragOverlay>
+              </DndContext>
             );
           })()}
       </div>
