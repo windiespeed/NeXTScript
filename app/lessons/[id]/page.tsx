@@ -48,6 +48,8 @@ export default function LessonHubPage() {
   const [projects, setProjects] = useState<SavedProject[]>([]);
   const [course, setCourse] = useState<Course | null>(null);
   const [courseModules, setCourseModules] = useState<CourseModule[]>([]);
+  const [allCourses, setAllCourses] = useState<Course[]>([]);
+  const [assigningCourse, setAssigningCourse] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // Generate state
@@ -83,7 +85,9 @@ export default function LessonHubPage() {
     Promise.all([
       fetch(`/api/lessons/${id}`).then(r => r.json()),
       fetch("/api/projects").then(r => r.json()),
-    ]).then(([lessonData, projectData]) => {
+      fetch("/api/courses").then(r => r.json()),
+    ]).then(([lessonData, projectData, coursesData]) => {
+      setAllCourses(Array.isArray(coursesData) ? coursesData : []);
       setLesson(lessonData);
       setProjects(Array.isArray(projectData) ? projectData : []);
       // Set quiz checkbox on if drafts exist for this lesson
@@ -196,6 +200,49 @@ export default function LessonHubPage() {
     }
   }
 
+  async function handleAssignCourse(newCourseId: string | null) {
+    setAssigningCourse(false);
+    if (!lesson) return;
+    const oldCourseId = lesson.courseId;
+    if (oldCourseId === (newCourseId ?? undefined)) return;
+
+    await fetch(`/api/lessons/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ courseId: newCourseId ?? null }),
+    });
+
+    if (oldCourseId) {
+      const oldCourse = allCourses.find(c => c.id === oldCourseId);
+      if (oldCourse) {
+        await fetch(`/api/courses/${oldCourseId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ lessonIds: oldCourse.lessonIds.filter(lid => lid !== id) }),
+        });
+      }
+    }
+
+    if (newCourseId) {
+      const newCourse = allCourses.find(c => c.id === newCourseId);
+      if (newCourse && !newCourse.lessonIds.includes(id)) {
+        await fetch(`/api/courses/${newCourseId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ lessonIds: [...newCourse.lessonIds, id] }),
+        });
+      }
+      const fetchedCourse = await fetch(`/api/courses/${newCourseId}`).then(r => r.json());
+      setCourse(fetchedCourse);
+      setCourseModules(Array.isArray(fetchedCourse?.modules) ? fetchedCourse.modules : []);
+    } else {
+      setCourse(null);
+      setCourseModules([]);
+    }
+
+    setLesson(prev => prev ? { ...prev, courseId: newCourseId ?? undefined } : prev);
+  }
+
   async function handleDeleteResource(rid: string) {
     await fetch(`/api/lessons/${id}/resources/${rid}`, { method: "DELETE" });
     setLesson(prev => prev ? { ...prev, resources: (prev.resources ?? []).filter(r => r.id !== rid) } : prev);
@@ -224,12 +271,46 @@ export default function LessonHubPage() {
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
             <div className="flex flex-wrap items-center gap-2 mb-1">
-              {course && (
-                <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-lg" style={{ background: "var(--accent-purple-bg)", color: "var(--accent-purple)" }}>
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-                  {course.title}
-                </span>
-              )}
+              {/* Course assignment badge / dropdown */}
+              <div className="relative">
+                <button
+                  onClick={() => setAssigningCourse(v => !v)}
+                  className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-lg transition hover:opacity-80"
+                  style={course
+                    ? { background: "var(--accent-purple-bg)", color: "var(--accent-purple)" }
+                    : { background: "var(--bg-card-hover)", color: "var(--text-muted)", border: "1px dashed var(--border)" }
+                  }
+                >
+                  {course ? (
+                    <>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                      {course.title}
+                    </>
+                  ) : "Unassigned"}
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                {assigningCourse && (
+                  <div className="absolute left-0 top-full mt-1 z-30 rounded-2xl overflow-hidden min-w-[200px]" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)" }}>
+                    <button
+                      onClick={() => handleAssignCourse(null)}
+                      className="w-full text-left px-3 py-2 text-xs hover:bg-[var(--bg-card-hover)] transition"
+                      style={{ color: !lesson.courseId ? "var(--accent-purple)" : "var(--text-muted)", fontWeight: !lesson.courseId ? 600 : 400 }}
+                    >
+                      {!lesson.courseId ? "✓ " : ""}No course
+                    </button>
+                    {allCourses.map(c => (
+                      <button
+                        key={c.id}
+                        onClick={() => handleAssignCourse(c.id)}
+                        className="w-full text-left px-3 py-2 text-xs hover:bg-[var(--bg-card-hover)] transition"
+                        style={{ color: lesson.courseId === c.id ? "var(--accent-purple)" : "var(--text-primary)", fontWeight: lesson.courseId === c.id ? 600 : 400 }}
+                      >
+                        {lesson.courseId === c.id ? "✓ " : ""}{c.title}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
               {currentModule && (
                 <span className="text-xs font-semibold px-2 py-0.5 rounded-lg" style={{ background: "var(--accent-purple-bg)", color: "var(--accent-purple)" }}>
                   {currentModule.title}
