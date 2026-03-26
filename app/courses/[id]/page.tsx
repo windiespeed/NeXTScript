@@ -124,6 +124,8 @@ export default function CourseDetailPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [duplicating, setDuplicating] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [bulkMoveOpen, setBulkMoveOpen] = useState(false);
+  const [bulkMoving, setBulkMoving] = useState(false);
   const [projects, setProjects] = useState<SavedProject[]>([]);
   const [addExistingOpen, setAddExistingOpen] = useState(false);
   const [allLessons, setAllLessons] = useState<Lesson[]>([]);
@@ -327,6 +329,40 @@ export default function CourseDetailPage() {
     setSelectedIds(new Set());
     setSelecting(false);
     setBulkDeleting(false);
+  }
+
+  async function handleBulkMove(targetCourseId: string) {
+    if (selectedIds.size === 0) return;
+    setBulkMoving(true);
+    setBulkMoveOpen(false);
+    const ids = [...selectedIds];
+    const targetCourse = allCourses.find(c => c.id === targetCourseId);
+
+    // Remove from this course
+    await fetch(`/api/courses/${id}`, {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lessonIds: course!.lessonIds.filter(l => !selectedIds.has(l)) }),
+    });
+
+    // Add to target course
+    if (targetCourse) {
+      await fetch(`/api/courses/${targetCourseId}`, {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lessonIds: [...targetCourse.lessonIds, ...ids.filter(l => !targetCourse.lessonIds.includes(l))] }),
+      });
+    }
+
+    // Update each lesson's courseId
+    await Promise.all(ids.map(lid => fetch(`/api/lessons/${lid}`, {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ courseId: targetCourseId }),
+    })));
+
+    setLessons(prev => prev.filter(l => !selectedIds.has(l.id)));
+    setCourse(prev => prev ? { ...prev, lessonIds: prev.lessonIds.filter(l => !selectedIds.has(l)) } : prev);
+    setSelectedIds(new Set());
+    setSelecting(false);
+    setBulkMoving(false);
   }
 
   async function openAddExisting() {
@@ -699,16 +735,44 @@ export default function CourseDetailPage() {
                   >
                     {selectedIds.size === lessons.length ? "Unselect All" : "Select All"}
                   </button>
+                  {/* Move To dropdown */}
+                  {allCourses.filter(c => c.id !== id).length > 0 && (
+                    <div className="relative">
+                      <button
+                        onClick={() => setBulkMoveOpen(v => !v)}
+                        disabled={selectedIds.size === 0 || duplicating || bulkDeleting || bulkMoving}
+                        className="rounded-full px-3 py-2 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)] disabled:opacity-50"
+                        style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+                      >
+                        {bulkMoving ? "Moving…" : `Move To${selectedIds.size > 0 ? ` (${selectedIds.size})` : ""}`}
+                      </button>
+                      {bulkMoveOpen && (
+                        <div className="absolute left-0 top-full mt-1 z-30 rounded-2xl overflow-hidden min-w-[180px]" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)" }}>
+                          <p className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Move to…</p>
+                          {allCourses.filter(c => c.id !== id).map(c => (
+                            <button
+                              key={c.id}
+                              onClick={() => handleBulkMove(c.id)}
+                              className="w-full text-left px-3 py-2 text-xs hover:bg-[var(--bg-card-hover)] transition"
+                              style={{ color: "var(--text-primary)" }}
+                            >
+                              {c.title}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                   <button
                     onClick={handleBulkDuplicate}
-                    disabled={selectedIds.size === 0 || duplicating || bulkDeleting}
+                    disabled={selectedIds.size === 0 || duplicating || bulkDeleting || bulkMoving}
                     className="rounded-full bg-[#0cc0df] px-3 py-2 text-xs font-semibold text-[#0a0b13] hover:opacity-90 disabled:opacity-50 transition"
                   >
                     {duplicating ? "Duplicating…" : `Duplicate${selectedIds.size > 0 ? ` (${selectedIds.size})` : ""}`}
                   </button>
                   <button
                     onClick={handleBulkDelete}
-                    disabled={selectedIds.size === 0 || duplicating || bulkDeleting}
+                    disabled={selectedIds.size === 0 || duplicating || bulkDeleting || bulkMoving}
                     className="rounded-full px-3 py-2 text-xs font-semibold text-red-500 hover:bg-red-500/10 disabled:opacity-50 transition"
                     style={{ border: "1px solid var(--border)" }}
                   >
