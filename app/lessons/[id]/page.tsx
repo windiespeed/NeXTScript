@@ -209,7 +209,7 @@ export default function LessonHubPage() {
     await fetch(`/api/lessons/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ courseId: newCourseId ?? null }),
+      body: JSON.stringify({ courseId: newCourseId ?? null, released: false }),
     });
 
     if (oldCourseId) {
@@ -240,7 +240,7 @@ export default function LessonHubPage() {
       setCourseModules([]);
     }
 
-    setLesson(prev => prev ? { ...prev, courseId: newCourseId ?? undefined } : prev);
+    setLesson(prev => prev ? { ...prev, courseId: newCourseId ?? undefined, released: false } : prev);
   }
 
   async function handleDeleteResource(rid: string) {

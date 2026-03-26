@@ -412,7 +412,7 @@ export default function CoursesPage() {
     await fetch(`/api/lessons/${lessonId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ courseId: newCourseId ?? null }),
+      body: JSON.stringify({ courseId: newCourseId ?? null, released: false }),
     });
 
     // Remove from old course lessonIds
@@ -441,7 +441,7 @@ export default function CoursesPage() {
       }
     }
 
-    setLessons(prev => prev.map(l => l.id === lessonId ? { ...l, courseId: newCourseId ?? undefined } : l));
+    setLessons(prev => prev.map(l => l.id === lessonId ? { ...l, courseId: newCourseId ?? undefined, released: false } : l));
   }
 
   async function handleDeleteLesson(lessonId: string) {

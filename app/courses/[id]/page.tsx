@@ -355,7 +355,7 @@ export default function CourseDetailPage() {
     // Update each lesson's courseId
     await Promise.all(ids.map(lid => fetch(`/api/lessons/${lid}`, {
       method: "PUT", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ courseId: targetCourseId }),
+      body: JSON.stringify({ courseId: targetCourseId, released: false }),
     })));
 
     setLessons(prev => prev.filter(l => !selectedIds.has(l.id)));
@@ -421,7 +421,7 @@ export default function CourseDetailPage() {
     }
     await fetch(`/api/lessons/${lessonId}`, {
       method: "PUT", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ courseId: newCourseId }),
+      body: JSON.stringify({ courseId: newCourseId, released: false }),
     });
     setLessons(prev => prev.filter(l => l.id !== lessonId));
     setCourse(prev => prev ? { ...prev, lessonIds: prev.lessonIds.filter(l => l !== lessonId) } : prev);

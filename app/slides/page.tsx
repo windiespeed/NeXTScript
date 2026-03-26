@@ -216,7 +216,7 @@ export default function SlidesPage() {
     await fetch(`/api/lessons/${lessonId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ courseId: newCourseId ?? null }),
+      body: JSON.stringify({ courseId: newCourseId ?? null, released: false }),
     });
 
     if (oldCourseId) {
@@ -243,7 +243,7 @@ export default function SlidesPage() {
       }
     }
 
-    setLessons(prev => prev.map(l => l.id === lessonId ? { ...l, courseId: newCourseId ?? undefined } : l));
+    setLessons(prev => prev.map(l => l.id === lessonId ? { ...l, courseId: newCourseId ?? undefined, released: false } : l));
   }
 
   function handleDragEnd(event: DragEndEvent) {
