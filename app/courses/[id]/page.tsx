@@ -736,33 +736,32 @@ export default function CourseDetailPage() {
                     {selectedIds.size === lessons.length ? "Unselect All" : "Select All"}
                   </button>
                   {/* Move To dropdown */}
-                  {allCourses.filter(c => c.id !== id).length > 0 && (
-                    <div className="relative">
-                      <button
-                        onClick={() => setBulkMoveOpen(v => !v)}
-                        disabled={selectedIds.size === 0 || duplicating || bulkDeleting || bulkMoving}
-                        className="rounded-full px-3 py-2 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)] disabled:opacity-50"
-                        style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
-                      >
-                        {bulkMoving ? "Moving…" : `Move To${selectedIds.size > 0 ? ` (${selectedIds.size})` : ""}`}
-                      </button>
-                      {bulkMoveOpen && (
-                        <div className="absolute left-0 top-full mt-1 z-30 rounded-2xl overflow-hidden min-w-[180px]" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)" }}>
-                          <p className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Move to…</p>
-                          {allCourses.filter(c => c.id !== id).map(c => (
-                            <button
-                              key={c.id}
-                              onClick={() => handleBulkMove(c.id)}
-                              className="w-full text-left px-3 py-2 text-xs hover:bg-[var(--bg-card-hover)] transition"
-                              style={{ color: "var(--text-primary)" }}
-                            >
-                              {c.title}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  <div className="relative">
+                    <button
+                      onClick={() => allCourses.filter(c => c.id !== id).length > 0 && setBulkMoveOpen(v => !v)}
+                      disabled={selectedIds.size === 0 || duplicating || bulkDeleting || bulkMoving}
+                      title={allCourses.filter(c => c.id !== id).length === 0 ? "No other courses available" : undefined}
+                      className="rounded-full px-3 py-2 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)] disabled:opacity-50"
+                      style={{ border: "1px solid var(--border)", color: allCourses.filter(c => c.id !== id).length === 0 ? "var(--text-muted)" : "var(--text-secondary)" }}
+                    >
+                      {bulkMoving ? "Moving…" : `Move To${selectedIds.size > 0 ? ` (${selectedIds.size})` : ""}`}
+                    </button>
+                    {bulkMoveOpen && (
+                      <div className="absolute left-0 top-full mt-1 z-30 rounded-2xl overflow-hidden min-w-[180px]" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)" }}>
+                        <p className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Move to…</p>
+                        {allCourses.filter(c => c.id !== id).map(c => (
+                          <button
+                            key={c.id}
+                            onClick={() => handleBulkMove(c.id)}
+                            className="w-full text-left px-3 py-2 text-xs hover:bg-[var(--bg-card-hover)] transition"
+                            style={{ color: "var(--text-primary)" }}
+                          >
+                            {c.title}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                   <button
                     onClick={handleBulkDuplicate}
                     disabled={selectedIds.size === 0 || duplicating || bulkDeleting || bulkMoving}
