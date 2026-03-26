@@ -54,6 +54,7 @@ function NewLessonInner() {
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim()) { setError("Title is required."); return; }
+    if (!selectedCourseId) { setError("Please assign this lesson to a course."); return; }
     setCreating(true);
     setError("");
     try {
@@ -120,14 +121,14 @@ function NewLessonInner() {
           <p className={sectionLabel}>Assignment</p>
 
           <div>
-            <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Course</label>
+            <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Course <span className="text-red-500">*</span></label>
             <select
               value={selectedCourseId}
               onChange={e => setSelectedCourseId(e.target.value)}
               className={inputClass}
               style={inputStyle}
             >
-              <option value="">— No course —</option>
+              <option value="">— Select a course —</option>
               {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
             </select>
           </div>
@@ -220,7 +221,7 @@ function NewLessonInner() {
         <div className="flex items-center gap-3">
           <button
             type="submit"
-            disabled={creating || !title.trim()}
+            disabled={creating || !title.trim() || !selectedCourseId}
             className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-6 py-2.5 text-sm font-bold text-white hover:opacity-90 disabled:opacity-50 transition shadow"
           >
             {creating ? "Creating…" : "Create Lesson"}
