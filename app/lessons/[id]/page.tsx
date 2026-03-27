@@ -518,60 +518,60 @@ export default function LessonHubPage() {
             {hubOrder.map(wid => (
               <SortableHubWidget key={wid} widgetId={wid} span={hubSizes[wid]} onCycleSize={() => cycleHubSize(wid)}>
                 {wid === "generate" && (
-      <div className={cardClass} style={cardStyle}>
-        <p className={sectionLabel}>Generate</p>
-        <p className="text-xs -mt-1" style={{ color: "var(--text-muted)" }}>
-          Select what to generate and send to Google Drive.
-        </p>
-        <div className="flex flex-wrap gap-3">
-          {([
-            { key: "slides", label: "Slide Deck", state: genSlides, set: setGenSlides },
-            { key: "overview", label: "Overview Doc", state: genOverview, set: setGenOverview },
-            { key: "quiz", label: `Quiz${quizDrafts.length > 0 ? ` (${quizDrafts.length} draft${quizDrafts.length > 1 ? "s" : ""})` : ""}`, state: genQuiz, set: setGenQuiz },
-          ] as const).map(({ key, label, state, set }) => (
-            <button
-              key={key}
-              onClick={() => set(!state)}
-              className="flex items-center gap-2 rounded-2xl px-4 py-2.5 text-xs font-semibold transition"
-              style={state
-                ? { background: "var(--accent-bg)", border: "2px solid #0cc0df", color: "var(--text-primary)" }
-                : { background: "var(--bg-card-hover)", border: "2px solid transparent", color: "var(--text-secondary)" }
-              }
-            >
-              <div className={`w-3.5 h-3.5 rounded border-2 flex items-center justify-center ${state ? "bg-[#0cc0df] border-[#0cc0df]" : "border-current"}`}>
-                {state && <svg xmlns="http://www.w3.org/2000/svg" className="w-2.5 h-2.5 text-[#0a0b13]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
-              </div>
-              {label}
-            </button>
-          ))}
-        </div>
-        {generateError && <p className="text-xs text-red-500">{generateError}</p>}
-        <div className="flex flex-col gap-2">
-          <button
-            onClick={handleGenerate}
-            disabled={generating || (!genSlides && !genOverview && !genQuiz)}
-            className="w-full rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-6 py-2.5 text-sm font-bold text-white hover:opacity-90 disabled:opacity-50 transition shadow"
-          >
-            {generating ? (
-              <span className="flex items-center justify-center gap-2">
-                <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
-                Generating…
-              </span>
-            ) : "Generate to Drive"}
-          </button>
-          {lesson.folderUrl && (
-            <a
-              href={lesson.folderUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full text-center rounded-full px-5 py-2.5 text-sm font-semibold transition hover:opacity-80"
-              style={{ background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.35)", color: "var(--accent-purple)" }}
-            >
-              Open Drive Folder ↗
-            </a>
-          )}
-        </div>
-      </div>
+                  <div className={cardClass} style={cardStyle}>
+                    <p className={sectionLabel}>Generate</p>
+                    <p className="text-xs -mt-1" style={{ color: "var(--text-muted)" }}>
+                      Select what to generate and send to Google Drive.
+                    </p>
+                    {/* span=2: pills + buttons inline on sm+; span=1: always stacked */}
+                    <div className={`flex flex-col gap-2 ${hubSizes["generate"] >= 2 ? "sm:flex-row sm:flex-wrap sm:items-center" : ""}`}>
+                      <div className={`flex flex-wrap gap-2 ${hubSizes["generate"] >= 2 ? "justify-center sm:justify-start sm:flex-1" : "justify-center"}`}>
+                        {([
+                          { key: "slides", label: "Slide Deck", state: genSlides, set: setGenSlides },
+                          { key: "overview", label: "Overview Doc", state: genOverview, set: setGenOverview },
+                          { key: "quiz", label: `Quiz${quizDrafts.length > 0 ? ` (${quizDrafts.length} draft${quizDrafts.length > 1 ? "s" : ""})` : ""}`, state: genQuiz, set: setGenQuiz },
+                        ] as const).map(({ key, label, state, set }) => (
+                          <button
+                            key={key}
+                            onClick={() => set(!state)}
+                            className="rounded-full px-3 py-1.5 text-xs font-semibold transition"
+                            style={state
+                              ? { background: "#0cc0df", color: "#0a0b13" }
+                              : { background: "var(--bg-card-hover)", border: "1px solid var(--border)", color: "var(--text-secondary)" }
+                            }
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                      <div className={`flex flex-col gap-2 ${hubSizes["generate"] >= 2 ? "sm:flex-row sm:shrink-0" : ""}`}>
+                        <button
+                          onClick={handleGenerate}
+                          disabled={generating || (!genSlides && !genOverview && !genQuiz)}
+                          className="w-full sm:w-auto rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-6 py-2.5 text-sm font-bold text-white hover:opacity-90 disabled:opacity-50 transition shadow"
+                        >
+                          {generating ? (
+                            <span className="flex items-center justify-center gap-2">
+                              <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
+                              Generating…
+                            </span>
+                          ) : "Generate to Drive"}
+                        </button>
+                        {lesson.folderUrl && (
+                          <a
+                            href={lesson.folderUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-full sm:w-auto text-center rounded-full px-5 py-2.5 text-sm font-semibold transition hover:opacity-80"
+                            style={{ background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.35)", color: "var(--accent-purple)" }}
+                          >
+                            Open Drive Folder ↗
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                    {generateError && <p className="text-xs text-red-500">{generateError}</p>}
+                  </div>
                 )}
                 {wid === "resources" && (
       <div className={cardClass} style={cardStyle}>
