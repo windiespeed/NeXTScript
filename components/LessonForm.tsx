@@ -16,7 +16,6 @@ interface Props {
   onSaveDraft?: (data: LessonInput) => Promise<void>;
   autoSave?: (data: LessonInput) => Promise<void>;
   onCancel?: () => void;
-  onClearRef?: (clearFn: () => void) => void;
   submitLabel?: string;
   hasAiKey?: boolean;
   isEditing?: boolean;
@@ -87,7 +86,7 @@ function buildPostSlideFields(l: SectionLabels): SectionField[] {
   ];
 }
 
-export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSave, onCancel, onClearRef, submitLabel = "Save Lesson", hasAiKey = false, isEditing = false }: Props) {
+export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSave, onCancel, submitLabel = "Save Lesson", hasAiKey = false, isEditing = false }: Props) {
   const [form, setForm] = useState<LessonInput>({ ...EMPTY, ...initial });
   const [slides, setSlides] = useState<Slide[]>(() => parseSlides(initial.slideContent ?? ""));
   const [slideCount, setSlideCount] = useState<number>(initial.slideCount ?? 10);
@@ -140,11 +139,6 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
       </button>
     );
   }
-
-  useEffect(() => {
-    onClearRef?.(clearForm);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   useEffect(() => {
     fetch("/api/user/settings")
@@ -491,7 +485,6 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
       <div className={cardClass} style={cardStyle}>
         <div className="flex items-center justify-between">
           <p className={sectionLabel}>Slides</p>
-          <SectionClearBtn onClick={() => { setSlides([{ title: "", body: "" }]); setOverviewSlides([true]); setAiFilledFields(prev => { const next = new Set(prev); next.delete("slideContent"); return next; }); }} />
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1.5">
               <label className="text-xs font-medium" style={{ color: "var(--text-muted)" }}>AI slides:</label>
@@ -506,6 +499,14 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
                 title="Number of slides AI will generate"
               />
             </div>
+            <button
+              type="button"
+              onClick={() => { setSlides([{ title: "", body: "" }]); setOverviewSlides([true]); setAiFilledFields(prev => { const next = new Set(prev); next.delete("slideContent"); return next; }); }}
+              className="rounded-full px-3 py-1.5 text-xs font-semibold transition hover:bg-red-500/10 hover:text-red-500 text-[var(--text-muted)]"
+              style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)" }}
+            >
+              Clear
+            </button>
             <button
               type="button"
               onClick={addSlide}
@@ -612,14 +613,6 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
 
       <div className="space-y-2">
         <div className="flex gap-3">
-          <button
-            type="button"
-            onClick={clearForm}
-            disabled={saving || savingDraft}
-            className="rounded-full border border-red-500/40 px-4 py-2.5 text-sm font-semibold text-red-500 hover:bg-red-500/10 disabled:opacity-50 transition"
-          >
-            Clear
-          </button>
           {onCancel && (
             <button
               type="button"

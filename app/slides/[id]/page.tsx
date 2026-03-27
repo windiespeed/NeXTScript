@@ -21,8 +21,6 @@ export default function EditSlidesPage() {
   const [lesson, setLesson] = useState<Lesson | null>(null);
   const [loading, setLoading] = useState(true);
   const [hasAiKey, setHasAiKey] = useState(false);
-  const clearFormRef = useRef<(() => void) | undefined>(undefined);
-
   // Assignment state
   const [courses, setCourses] = useState<Course[]>([]);
   const [selectedCourseId, setSelectedCourseId] = useState("");
@@ -164,13 +162,6 @@ export default function EditSlidesPage() {
             Edit content fields. Generate from the lesson hub.
           </p>
         </div>
-        <button
-          onClick={() => clearFormRef.current?.()}
-          className="rounded-full px-3 py-1.5 text-xs font-semibold text-red-500 hover:bg-red-500/10 transition shrink-0"
-          style={{ border: "1px solid var(--border)" }}
-        >
-          Clear Form
-        </button>
       </div>
 
       {/* ── Assignment ── */}
@@ -239,7 +230,6 @@ export default function EditSlidesPage() {
         onSubmit={handleSubmit}
         autoSave={handleAutoSave}
         onCancel={() => router.push(backHref)}
-        onClearRef={(fn) => { clearFormRef.current = fn; }}
         submitLabel="Save Changes"
         hasAiKey={hasAiKey}
         isEditing

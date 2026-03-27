@@ -22,8 +22,6 @@ function NewSlidesInner() {
   const [hasAiKey, setHasAiKey] = useState(false);
   const [defaultSources, setDefaultSources] = useState("");
   const [settingsLoaded, setSettingsLoaded] = useState(false);
-  const clearFormRef = useRef<(() => void) | undefined>(undefined);
-
   // Assignment state
   const [courses, setCourses] = useState<Course[]>([]);
   const [selectedCourseId, setSelectedCourseId] = useState(courseIdParam);
@@ -121,13 +119,6 @@ function NewSlidesInner() {
             Add content for AI generation. Generate from the lesson hub.
           </p>
         </div>
-        <button
-          onClick={() => clearFormRef.current?.()}
-          className="rounded-full px-3 py-1.5 text-xs font-semibold text-red-500 hover:bg-red-500/10 transition shrink-0"
-          style={{ border: "1px solid var(--border)" }}
-        >
-          Clear Form
-        </button>
       </div>
 
       {/* ── Assignment ── */}
@@ -184,7 +175,6 @@ function NewSlidesInner() {
           onSubmit={handleSubmit}
           onSaveDraft={handleSaveDraft}
           onCancel={() => router.push(backHref)}
-          onClearRef={(fn) => { clearFormRef.current = fn; }}
           submitLabel="Save & View Lesson"
           hasAiKey={hasAiKey}
           initial={{ sources: defaultSources, ...(selectedCourseId ? { courseId: selectedCourseId } : {}) }}
