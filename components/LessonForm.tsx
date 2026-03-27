@@ -114,6 +114,33 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
     setAiFilledFields(new Set());
   }
 
+  function clearSection(keys: (keyof LessonInput)[], extra?: () => void) {
+    setForm(f => {
+      const next = { ...f };
+      for (const k of keys) (next as any)[k] = EMPTY[k];
+      return next;
+    });
+    setAiFilledFields(prev => {
+      const next = new Set(prev);
+      keys.forEach(k => next.delete(k as string));
+      return next;
+    });
+    extra?.();
+  }
+
+  function SectionClearBtn({ onClick }: { onClick: () => void }) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className="text-[10px] font-semibold rounded-full px-2 py-0.5 transition hover:bg-red-500/10 hover:text-red-500"
+        style={{ color: "var(--text-muted)", border: "1px solid var(--border)" }}
+      >
+        Clear
+      </button>
+    );
+  }
+
   useEffect(() => {
     onClearRef?.(clearForm);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -306,7 +333,10 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
 
       {/* ── Lesson Info ──────────────────────────────────────────────── */}
       <div className={cardClass} style={cardStyle}>
-        <p className={sectionLabel}>Lesson Info</p>
+        <div className="flex items-center justify-between">
+          <p className={sectionLabel}>Lesson Info</p>
+          <SectionClearBtn onClick={() => clearSection(["title","subtitle","topics","deadline","lessonType","sources","studentLevel"])} />
+        </div>
 
         <div>
           <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
@@ -433,7 +463,10 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
 
       {/* ── Content Overview ─────────────────────────────────────────── */}
       <div className={cardClass} style={cardStyle}>
-        <p className={sectionLabel}>Content Overview</p>
+        <div className="flex items-center justify-between">
+          <p className={sectionLabel}>Content Overview</p>
+          <SectionClearBtn onClick={() => clearSection(PRE_SLIDE_FIELDS.map(f => f.key))} />
+        </div>
         {PRE_SLIDE_FIELDS.map(({ key, label, hint, rows }) => (
           <div key={key}>
             <label className="flex items-center gap-2 text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
@@ -458,6 +491,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
       <div className={cardClass} style={cardStyle}>
         <div className="flex items-center justify-between">
           <p className={sectionLabel}>Slides</p>
+          <SectionClearBtn onClick={() => { setSlides([{ title: "", body: "" }]); setOverviewSlides([true]); setAiFilledFields(prev => { const next = new Set(prev); next.delete("slideContent"); return next; }); }} />
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1.5">
               <label className="text-xs font-medium" style={{ color: "var(--text-muted)" }}>AI slides:</label>
@@ -533,7 +567,10 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
 
       {/* ── Activities & Assessment ───────────────────────────────────── */}
       <div className={cardClass} style={cardStyle}>
-        <p className={sectionLabel}>Activities & Assessment</p>
+        <div className="flex items-center justify-between">
+          <p className={sectionLabel}>Activities & Assessment</p>
+          <SectionClearBtn onClick={() => clearSection(POST_SLIDE_FIELDS.map(f => f.key))} />
+        </div>
         {POST_SLIDE_FIELDS.map(({ key, label, hint, rows }) => (
           <div key={key}>
             <label className="flex items-center gap-2 text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
@@ -556,9 +593,12 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
 
       {/* ── Notes ───────────────────────────────────────────────────── */}
       <div className={cardClass} style={cardStyle}>
-        <div className="flex items-center gap-2">
-          <p className={sectionLabel}>Instructor Notes</p>
-          <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ background: "var(--bg-card-hover)", color: "var(--text-muted)" }}>Not included in generation</span>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <p className={sectionLabel}>Instructor Notes</p>
+            <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ background: "var(--bg-card-hover)", color: "var(--text-muted)" }}>Not included in generation</span>
+          </div>
+          <SectionClearBtn onClick={() => clearSection(["notes"])} />
         </div>
         <textarea
           value={form.notes ?? ""}
