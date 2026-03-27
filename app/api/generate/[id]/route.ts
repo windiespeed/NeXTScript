@@ -138,6 +138,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
             try {
               const formId = await buildQuiz(lessonToGenerate, accessToken);
               const formUrl = `https://docs.google.com/forms/d/${formId}/edit`;
+              // Delete any previously generated quizzes for this lesson before creating the new one
+              const existingGenerated = allProjects.filter(p =>
+                p.type === "form" && p.isQuiz &&
+                (p.lessonId === id || (p.lessonIds?.includes(id) ?? false)) &&
+                (p.status === "generated" || (!p.status && p.url))
+              );
+              await Promise.all(existingGenerated.map(p => projectStore.delete(p.id)));
               await projectStore.create({ type: "form", lessonId: id, title: lesson.title, subtitle: lesson.subtitle, isQuiz: true, status: "generated", url: formUrl }, session.user!.email!);
             } catch {
               // Non-fatal
