@@ -134,8 +134,8 @@ export default function StudentCoursePage() {
                     href={lesson.folderUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold text-[#0cc0df] hover:bg-[#0cc0df]/10 transition"
-                    style={{ border: "1px solid var(--border)" }}
+                    className="shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition hover:opacity-80"
+                    style={{ background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.35)", color: "var(--accent-purple)" }}
                   >
                     Open ↗
                   </a>

@@ -565,7 +565,7 @@ export default function LessonHubPage() {
               target="_blank"
               rel="noopener noreferrer"
               className="w-full text-center rounded-full px-5 py-2.5 text-sm font-semibold transition hover:opacity-80"
-              style={{ background: "rgba(45,212,160,0.12)", border: "1px solid rgba(45,212,160,0.35)", color: "#2dd4a0" }}
+              style={{ background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.35)", color: "var(--accent-purple)" }}
             >
               Open Drive Folder ↗
             </a>

@@ -1072,7 +1072,7 @@ export default function CourseDetailPage() {
                   </div>
 
                   {!selecting && lesson.folderUrl && (
-                    <a href={lesson.folderUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold transition hover:opacity-80 shrink-0" style={{ background: "rgba(45,212,160,0.12)", border: "1px solid rgba(45,212,160,0.35)", color: "#2dd4a0" }}>
+                    <a href={lesson.folderUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold transition hover:opacity-80 shrink-0" style={{ background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.35)", color: "var(--accent-purple)" }}>
                       <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
                       Drive ↗
                     </a>
@@ -1203,7 +1203,7 @@ export default function CourseDetailPage() {
                     return (
                       <div key={mod.id} className="rounded-3xl" style={{ border: "1px solid var(--border)" }}>
                         {/* Module header */}
-                        <div className={`flex items-center gap-2 px-4 py-2.5 rounded-t-3xl ${collapsed ? "rounded-b-3xl" : ""}`} style={{ background: "var(--bg-card-hover)", borderBottom: collapsed ? undefined : "1px solid var(--border)" }}>
+                        <div className={`flex items-center gap-2 px-4 py-2.5 rounded-t-3xl ${collapsed ? "rounded-b-3xl" : ""}`} style={{ background: "var(--bg-card)", borderBottom: collapsed ? undefined : "1px solid var(--border)" }}>
                           <button
                             onClick={() => toggleModuleCollapse(mod.id)}
                             className="p-0.5 rounded transition hover:bg-[var(--bg-card)]"
@@ -1265,7 +1265,7 @@ export default function CourseDetailPage() {
                   {(unassigned.length > 0 || modules.length === 0) && (
                     <div className="rounded-3xl" style={{ border: "1px solid var(--border)" }}>
                       {modules.length > 0 && (
-                        <div className="flex items-center gap-2 px-4 py-2.5 rounded-t-3xl" style={{ background: "var(--bg-card-hover)", borderBottom: "1px solid var(--border)" }}>
+                        <div className="flex items-center gap-2 px-4 py-2.5 rounded-t-3xl" style={{ background: "var(--bg-card)", borderBottom: "1px solid var(--border)" }}>
                           <span className="text-sm font-semibold" style={{ color: "var(--text-muted)" }}>Unassigned</span>
                           <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{unassigned.length} {unassigned.length === 1 ? "lesson" : "lessons"}</span>
                         </div>
