@@ -3,21 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import {
-  DndContext,
-  closestCenter,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  useSortable,
-  rectSortingStrategy,
-  arrayMove,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
+import type { Lesson } from "@/types/lesson";
 import type { Course } from "@/types/course";
 import type { SavedProject } from "@/types/project";
 
@@ -25,58 +11,31 @@ function fmt(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
-const gripSVG = (
-  <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
-    <circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/>
-    <circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/>
-    <circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/>
-  </svg>
-);
-
-function SortableQuizCard({ quiz, courses, onDelete }: { quiz: SavedProject; courses: Course[]; onDelete: (id: string) => void }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: quiz.id });
-  const course = courses.find(c => c.id === quiz.courseId);
+function QuizCard({ quiz, onDelete }: { quiz: SavedProject; onDelete: (id: string) => void }) {
   const isDraft = quiz.status === "draft" || !quiz.url;
 
   return (
     <div
-      ref={setNodeRef}
-      className={`group relative rounded-3xl p-5 space-y-3 ${isDragging ? "" : "hover:-translate-y-1"} transition-all duration-200`}
+      className="group relative rounded-3xl p-5 space-y-3 hover:-translate-y-1 transition-all duration-200"
       style={{
         background: "var(--bg-card)",
         border: "1px solid var(--border)",
         boxShadow: "var(--shadow-card)",
-        transform: CSS.Transform.toString(transform),
-        transition,
-        opacity: isDragging ? 0.5 : 1,
       }}
     >
-      {/* Drag handle */}
-      <div
-        {...listeners} {...attributes}
-        title="Drag to reorder"
-        className="absolute top-3 right-3 p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition cursor-grab active:cursor-grabbing"
-        style={{ color: "var(--text-muted)", background: "var(--bg-card-hover)" }}
-      >
-        {gripSVG}
-      </div>
-
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-sm leading-snug truncate" style={{ color: "var(--text-primary)" }}>
             {quiz.title}
           </p>
-          {((quiz.lessonIds?.length ?? 0) > 0 || (quiz.questions?.length ?? 0) > 0) && (
+          {(quiz.questions?.length ?? 0) > 0 && (
             <p className="text-xs mt-0.5 truncate" style={{ color: "var(--text-muted)" }}>
-              {[
-                (quiz.lessonIds?.length ?? 0) > 0 ? `${quiz.lessonIds!.length} lesson${quiz.lessonIds!.length !== 1 ? "s" : ""}` : null,
-                (quiz.questions?.length ?? 0) > 0 ? `${quiz.questions!.length} question${quiz.questions!.length !== 1 ? "s" : ""}` : null,
-              ].filter(Boolean).join(" · ")}
+              {quiz.questions!.length} question{quiz.questions!.length !== 1 ? "s" : ""}
             </p>
           )}
         </div>
         <span
-          className="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 mr-7"
+          className="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0"
           style={isDraft
             ? { background: "var(--bg-card-hover)", color: "var(--text-muted)", border: "1px solid var(--border)" }
             : { background: "rgba(45,212,160,0.12)", color: "#2dd4a0" }
@@ -86,18 +45,11 @@ function SortableQuizCard({ quiz, courses, onDelete }: { quiz: SavedProject; cou
         </span>
       </div>
 
-      {course && (
-        <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background: "var(--accent-purple-bg)", color: "var(--accent-purple)" }}>
-          <svg xmlns="http://www.w3.org/2000/svg" className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-          {course.title}
-        </span>
-      )}
-
       <div className="flex items-center justify-between pt-2" style={{ borderTop: "1px solid var(--border)" }}>
         <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
           {fmt(quiz.createdAt)}
         </span>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
           {!isDraft && quiz.url && (
             <a
               href={quiz.url}
@@ -131,32 +83,30 @@ function SortableQuizCard({ quiz, courses, onDelete }: { quiz: SavedProject; cou
   );
 }
 
+type QuizWithContext = SavedProject & {
+  effectiveCourseId?: string;
+  effectiveLessonId?: string;
+};
+
 export default function QuizzesPage() {
   useSession({ required: true });
 
   const [quizzes, setQuizzes] = useState<SavedProject[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
+  const [lessons, setLessons] = useState<Lesson[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterCourse, setFilterCourse] = useState("all");
   const [filterStatus, setFilterStatus] = useState<"all" | "draft" | "generated">("all");
-  const [order, setOrder] = useState<string[]>([]);
-
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
-
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem("sort-quizzes");
-      if (saved) setOrder(JSON.parse(saved));
-    } catch {}
-  }, []);
 
   useEffect(() => {
     Promise.all([
       fetch("/api/quizzes").then(r => r.json()),
       fetch("/api/courses").then(r => r.json()),
-    ]).then(([q, c]) => {
+      fetch("/api/lessons").then(r => r.json()),
+    ]).then(([q, c, l]) => {
       setQuizzes(Array.isArray(q) ? q : []);
       setCourses(Array.isArray(c) ? c : []);
+      setLessons(Array.isArray(l) ? l : []);
     }).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
@@ -166,37 +116,75 @@ export default function QuizzesPage() {
     setQuizzes(prev => prev.filter(q => q.id !== id));
   }
 
-  // Merge saved order with fetched quizzes: ordered items first, then new items appended
-  const sorted: SavedProject[] = (() => {
-    const orderedIds = order.filter(id => quizzes.some(q => q.id === id));
-    const unordered = quizzes.filter(q => !order.includes(q.id));
-    const ordered = orderedIds.map(id => quizzes.find(q => q.id === id)!);
-    return [...ordered, ...unordered];
-  })();
-
-  const filtered = sorted.filter(q => {
-    if (filterCourse !== "all" && filterCourse !== "unassigned") {
-      if (q.courseId !== filterCourse) return false;
+  // Attach effective courseId and lessonId to each quiz
+  const quizzesWithContext: QuizWithContext[] = quizzes.map(quiz => {
+    let effectiveLessonId = quiz.lessonId;
+    if (!effectiveLessonId && quiz.lessonIds?.length === 1) {
+      effectiveLessonId = quiz.lessonIds[0];
     }
-    if (filterCourse === "unassigned" && q.courseId) return false;
+
+    let effectiveCourseId = quiz.courseId;
+    if (!effectiveCourseId && effectiveLessonId) {
+      effectiveCourseId = lessons.find(l => l.id === effectiveLessonId)?.courseId;
+    }
+    if (!effectiveCourseId && quiz.lessonIds?.length) {
+      effectiveCourseId = lessons.find(l => quiz.lessonIds!.includes(l.id))?.courseId;
+    }
+
+    return { ...quiz, effectiveCourseId, effectiveLessonId };
+  });
+
+  // Apply status filter
+  const statusFiltered = quizzesWithContext.filter(q => {
     if (filterStatus === "draft" && q.status !== "draft") return false;
     if (filterStatus === "generated" && q.status === "draft") return false;
     return true;
   });
 
-  function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    const oldIndex = sorted.findIndex(q => q.id === active.id);
-    const newIndex = sorted.findIndex(q => q.id === over.id);
-    if (oldIndex === -1 || newIndex === -1) return;
-    const newSorted = arrayMove(sorted, oldIndex, newIndex);
-    const newOrder = newSorted.map(q => q.id);
-    setOrder(newOrder);
-    localStorage.setItem("sort-quizzes", JSON.stringify(newOrder));
-  }
+  type LessonGroup = { lessonId: string | null; lessonTitle: string; quizzes: QuizWithContext[] };
+  type CourseSection = { course: Course | null; lessonGroups: LessonGroup[] };
 
-  const hasCourseFilter = courses.length > 0;
+  const buildLessonGroups = (quizzesInSection: QuizWithContext[]): LessonGroup[] => {
+    const groupMap = new Map<string, LessonGroup>();
+    quizzesInSection.forEach(q => {
+      const key = q.effectiveLessonId ?? "__none__";
+      if (!groupMap.has(key)) {
+        const lesson = key !== "__none__" ? lessons.find(l => l.id === key) ?? null : null;
+        groupMap.set(key, { lessonId: lesson?.id ?? null, lessonTitle: lesson?.title ?? "No lesson", quizzes: [] });
+      }
+      groupMap.get(key)!.quizzes.push(q);
+    });
+    return Array.from(groupMap.values()).sort((a, b) => {
+      if (a.lessonId && !b.lessonId) return -1;
+      if (!a.lessonId && b.lessonId) return 1;
+      return a.lessonTitle.localeCompare(b.lessonTitle);
+    });
+  };
+
+  const courseSections: CourseSection[] = (() => {
+    const sections: CourseSection[] = [];
+
+    if (filterCourse === "unassigned") {
+      const unassigned = statusFiltered.filter(q => !q.effectiveCourseId);
+      if (unassigned.length > 0) sections.push({ course: null, lessonGroups: buildLessonGroups(unassigned) });
+      return sections;
+    }
+
+    const coursesToShow = filterCourse === "all" ? courses : courses.filter(c => c.id === filterCourse);
+    coursesToShow.forEach(course => {
+      const courseQuizzes = statusFiltered.filter(q => q.effectiveCourseId === course.id);
+      if (courseQuizzes.length > 0) sections.push({ course, lessonGroups: buildLessonGroups(courseQuizzes) });
+    });
+
+    if (filterCourse === "all") {
+      const unassigned = statusFiltered.filter(q => !q.effectiveCourseId);
+      if (unassigned.length > 0) sections.push({ course: null, lessonGroups: buildLessonGroups(unassigned) });
+    }
+
+    return sections;
+  })();
+
+  const totalFiltered = courseSections.reduce((sum, s) => sum + s.lessonGroups.reduce((g, lg) => g + lg.quizzes.length, 0), 0);
 
   return (
     <div className="space-y-6">
@@ -220,7 +208,6 @@ export default function QuizzesPage() {
       {/* Filter pills */}
       {!loading && (
         <div className="flex flex-wrap gap-2">
-          {/* Status filters */}
           {(["all", "draft", "generated"] as const).map(f => (
             <button
               key={f}
@@ -234,8 +221,7 @@ export default function QuizzesPage() {
             </button>
           ))}
 
-          {/* Course filters */}
-          {hasCourseFilter && (
+          {courses.length > 0 && (
             <>
               <span className="self-center text-xs" style={{ color: "var(--border)" }}>|</span>
               <button
@@ -273,10 +259,10 @@ export default function QuizzesPage() {
         </div>
       )}
 
-      {/* List */}
+      {/* Content */}
       {loading ? (
         <p className="text-sm text-[#0cc0df]">Loading…</p>
-      ) : filtered.length === 0 ? (
+      ) : totalFiltered === 0 ? (
         <div className="text-center py-20 rounded-3xl" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
           <p className="text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>No quizzes yet</p>
           <p className="text-xs mb-5" style={{ color: "var(--text-muted)" }}>Create a quiz draft to get started.</p>
@@ -288,15 +274,53 @@ export default function QuizzesPage() {
           </Link>
         </div>
       ) : (
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <SortableContext items={sorted.map(q => q.id)} strategy={rectSortingStrategy}>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {filtered.map(quiz => (
-                <SortableQuizCard key={quiz.id} quiz={quiz} courses={courses} onDelete={handleDelete} />
-              ))}
+        <div className="space-y-8">
+          {courseSections.map(({ course, lessonGroups }) => (
+            <div key={course?.id ?? "unassigned"}>
+              {/* Course section header */}
+              <div className="flex items-center gap-3 mb-5">
+                <h2 className="text-sm font-bold whitespace-nowrap" style={{ color: "var(--text-primary)" }}>
+                  {course?.title ?? "Unassigned"}
+                </h2>
+                <div className="flex-1 h-px" style={{ background: "var(--border)" }} />
+              </div>
+
+              <div className="space-y-6">
+                {lessonGroups.map(({ lessonId, lessonTitle, quizzes: groupQuizzes }) => (
+                  <div key={lessonId ?? "__none__"}>
+                    {/* Lesson sub-header */}
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>
+                        {lessonTitle}
+                      </span>
+                      <span
+                        className="text-[10px] font-medium px-1.5 py-0.5 rounded-full"
+                        style={{ background: "var(--bg-card-hover)", color: "var(--text-muted)" }}
+                      >
+                        {groupQuizzes.length} quiz{groupQuizzes.length !== 1 ? "zes" : ""}
+                      </span>
+                      <div className="flex-1 h-px" style={{ background: "var(--border)", opacity: 0.5 }} />
+                      {lessonId && (
+                        <Link
+                          href={`/lessons/${lessonId}`}
+                          className="text-[10px] transition hover:opacity-80"
+                          style={{ color: "var(--text-muted)" }}
+                        >
+                          View lesson ↗
+                        </Link>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                      {groupQuizzes.map(quiz => (
+                        <QuizCard key={quiz.id} quiz={quiz} onDelete={handleDelete} />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-          </SortableContext>
-        </DndContext>
+          ))}
+        </div>
       )}
     </div>
   );

@@ -3,23 +3,9 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import {
-  DndContext,
-  closestCenter,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  useSortable,
-  rectSortingStrategy,
-  arrayMove,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import type { Lesson } from "@/types/lesson";
 import type { Course } from "@/types/course";
+import type { SavedProject } from "@/types/project";
 
 const STATUS_COLOR: Record<Lesson["status"], { bg: string; text: string; label: string }> = {
   draft:        { bg: "var(--bg-card-hover)",  text: "var(--text-muted)", label: "Draft" },
@@ -33,54 +19,33 @@ function fmt(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
-const gripSVG = (
-  <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
-    <circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/>
-    <circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/>
-    <circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/>
-  </svg>
-);
-
-function SortableSlideCard({
+function SlideCard({
   lesson,
   courses,
+  deckCount,
   assigningOpen,
   onToggleAssign,
   onAssign,
 }: {
   lesson: Lesson;
   courses: Course[];
+  deckCount: number;
   assigningOpen: boolean;
   onToggleAssign: (id: string) => void;
   onAssign: (lessonId: string, courseId: string | null) => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: lesson.id });
   const course = courses.find(c => c.id === lesson.courseId);
   const s = STATUS_COLOR[lesson.status];
 
   return (
     <div
-      ref={setNodeRef}
-      className={`group relative rounded-3xl p-5 space-y-3 ${isDragging ? "" : "hover:-translate-y-1"} transition-all duration-200`}
+      className="group relative rounded-3xl p-5 space-y-3 hover:-translate-y-1 transition-all duration-200"
       style={{
         background: "var(--bg-card)",
         border: "1px solid var(--border)",
         boxShadow: "var(--shadow-card)",
-        transform: CSS.Transform.toString(transform),
-        transition,
-        opacity: isDragging ? 0.5 : 1,
       }}
     >
-      {/* Drag handle */}
-      <div
-        {...listeners} {...attributes}
-        title="Drag to reorder"
-        className="absolute top-3 right-3 p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition cursor-grab active:cursor-grabbing"
-        style={{ color: "var(--text-muted)", background: "var(--bg-card-hover)" }}
-      >
-        {gripSVG}
-      </div>
-
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-sm leading-snug truncate" style={{ color: "var(--text-primary)" }}>
@@ -90,12 +55,19 @@ function SortableSlideCard({
             <p className="text-xs mt-0.5 truncate" style={{ color: "var(--text-muted)" }}>{lesson.subtitle}</p>
           )}
         </div>
-        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 mr-7" style={{ background: s.bg, color: s.text }}>
-          {s.label}
-        </span>
+        <div className="flex items-center gap-1.5 shrink-0">
+          {deckCount > 0 && (
+            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background: "rgba(12,192,223,0.12)", color: "#0cc0df" }}>
+              {deckCount} deck{deckCount !== 1 ? "s" : ""}
+            </span>
+          )}
+          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background: s.bg, color: s.text }}>
+            {s.label}
+          </span>
+        </div>
       </div>
 
-      {/* Course assignment badge / dropdown */}
+      {/* Course assignment dropdown */}
       <div className="relative">
         <button
           onClick={e => { e.stopPropagation(); onToggleAssign(lesson.id); }}
@@ -115,26 +87,26 @@ function SortableSlideCard({
         </button>
         {assigningOpen && (
           <>
-          <div className="fixed inset-0 z-20" onClick={() => onToggleAssign(lesson.id)} />
-          <div className="absolute left-0 top-full mt-1 z-30 rounded-2xl overflow-hidden min-w-[180px]" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)" }}>
-            <button
-              onClick={() => onAssign(lesson.id, null)}
-              className="w-full text-left px-3 py-2 text-xs hover:bg-[var(--bg-card-hover)] transition"
-              style={{ color: !lesson.courseId ? "var(--accent-purple)" : "var(--text-muted)", fontWeight: !lesson.courseId ? 600 : 400 }}
-            >
-              {!lesson.courseId ? "✓ " : ""}No course
-            </button>
-            {courses.map(c => (
+            <div className="fixed inset-0 z-20" onClick={() => onToggleAssign(lesson.id)} />
+            <div className="absolute left-0 top-full mt-1 z-30 rounded-2xl overflow-hidden min-w-[180px]" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)" }}>
               <button
-                key={c.id}
-                onClick={() => onAssign(lesson.id, c.id)}
+                onClick={() => onAssign(lesson.id, null)}
                 className="w-full text-left px-3 py-2 text-xs hover:bg-[var(--bg-card-hover)] transition"
-                style={{ color: lesson.courseId === c.id ? "var(--accent-purple)" : "var(--text-primary)", fontWeight: lesson.courseId === c.id ? 600 : 400 }}
+                style={{ color: !lesson.courseId ? "var(--accent-purple)" : "var(--text-muted)", fontWeight: !lesson.courseId ? 600 : 400 }}
               >
-                {lesson.courseId === c.id ? "✓ " : ""}{c.title}
+                {!lesson.courseId ? "✓ " : ""}No course
               </button>
-            ))}
-          </div>
+              {courses.map(c => (
+                <button
+                  key={c.id}
+                  onClick={() => onAssign(lesson.id, c.id)}
+                  className="w-full text-left px-3 py-2 text-xs hover:bg-[var(--bg-card-hover)] transition"
+                  style={{ color: lesson.courseId === c.id ? "var(--accent-purple)" : "var(--text-primary)", fontWeight: lesson.courseId === c.id ? 600 : 400 }}
+                >
+                  {lesson.courseId === c.id ? "✓ " : ""}{c.title}
+                </button>
+              ))}
+            </div>
           </>
         )}
       </div>
@@ -167,47 +139,63 @@ export default function SlidesPage() {
   useSession({ required: true });
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
+  const [projects, setProjects] = useState<SavedProject[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterCourse, setFilterCourse] = useState("all");
   const [filterStatus, setFilterStatus] = useState<"all" | "draft" | "done">("all");
-  const [order, setOrder] = useState<string[]>([]);
   const [assigningLessonId, setAssigningLessonId] = useState<string | null>(null);
-
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
-
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem("sort-slides");
-      if (saved) setOrder(JSON.parse(saved));
-    } catch {}
-  }, []);
 
   useEffect(() => {
     Promise.all([
       fetch("/api/lessons").then(r => r.json()),
       fetch("/api/courses").then(r => r.json()),
-    ]).then(([l, c]) => {
+      fetch("/api/projects").then(r => r.json()),
+    ]).then(([l, c, p]) => {
       setLessons(Array.isArray(l) ? l : []);
       setCourses(Array.isArray(c) ? c : []);
+      setProjects(Array.isArray(p) ? p : []);
       setLoading(false);
     });
   }, []);
 
-  // Merge saved order with fetched lessons: ordered items first, then new items appended
-  const sorted: Lesson[] = (() => {
-    const orderedIds = order.filter(id => lessons.some(l => l.id === id));
-    const unordered = lessons.filter(l => !order.includes(l.id));
-    const ordered = orderedIds.map(id => lessons.find(l => l.id === id)!);
-    return [...ordered, ...unordered];
-  })();
-
-  const filtered = sorted.filter(l => {
-    if (filterCourse === "unassigned" && l.courseId) return false;
-    if (filterCourse !== "all" && filterCourse !== "unassigned" && l.courseId !== filterCourse) return false;
+  // Apply status filter
+  const statusFiltered = lessons.filter(l => {
     if (filterStatus === "draft" && l.status !== "draft") return false;
     if (filterStatus === "done" && l.status !== "done") return false;
     return true;
   });
+
+  // Build course-grouped sections, ordering lessons by course.lessonIds
+  const courseSections: { course: Course | null; lessons: Lesson[] }[] = (() => {
+    const sections: { course: Course | null; lessons: Lesson[] }[] = [];
+
+    const orderLessons = (course: Course, lessonList: Lesson[]) => {
+      const orderMap = new Map(course.lessonIds.map((id, i) => [id, i]));
+      return [...lessonList].sort((a, b) => (orderMap.get(a.id) ?? 999) - (orderMap.get(b.id) ?? 999));
+    };
+
+    if (filterCourse === "unassigned") {
+      const unassigned = statusFiltered.filter(l => !l.courseId);
+      if (unassigned.length > 0) sections.push({ course: null, lessons: unassigned });
+      return sections;
+    }
+
+    const coursesToShow = filterCourse === "all" ? courses : courses.filter(c => c.id === filterCourse);
+
+    coursesToShow.forEach(course => {
+      const courseLessons = statusFiltered.filter(l => l.courseId === course.id);
+      if (courseLessons.length > 0) sections.push({ course, lessons: orderLessons(course, courseLessons) });
+    });
+
+    if (filterCourse === "all") {
+      const unassigned = statusFiltered.filter(l => !l.courseId);
+      if (unassigned.length > 0) sections.push({ course: null, lessons: unassigned });
+    }
+
+    return sections;
+  })();
+
+  const totalFiltered = courseSections.reduce((sum, s) => sum + s.lessons.length, 0);
 
   async function handleAssignLesson(lessonId: string, newCourseId: string | null) {
     setAssigningLessonId(null);
@@ -249,18 +237,6 @@ export default function SlidesPage() {
     setLessons(prev => prev.map(l => l.id === lessonId ? { ...l, courseId: newCourseId ?? undefined, released: false } : l));
   }
 
-  function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    const oldIndex = sorted.findIndex(l => l.id === active.id);
-    const newIndex = sorted.findIndex(l => l.id === over.id);
-    if (oldIndex === -1 || newIndex === -1) return;
-    const newSorted = arrayMove(sorted, oldIndex, newIndex);
-    const newOrder = newSorted.map(l => l.id);
-    setOrder(newOrder);
-    localStorage.setItem("sort-slides", JSON.stringify(newOrder));
-  }
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -283,7 +259,6 @@ export default function SlidesPage() {
       {/* Filter pills */}
       {!loading && (
         <div className="flex flex-wrap gap-2">
-          {/* Status filters */}
           {(["all", "draft", "done"] as const).map(f => (
             <button
               key={f}
@@ -297,7 +272,6 @@ export default function SlidesPage() {
             </button>
           ))}
 
-          {/* Course filters */}
           {courses.length > 0 && (
             <>
               <span className="self-center text-xs" style={{ color: "var(--border)" }}>|</span>
@@ -336,10 +310,10 @@ export default function SlidesPage() {
         </div>
       )}
 
-      {/* List */}
+      {/* Content */}
       {loading ? (
         <p className="text-sm text-[#0cc0df]">Loading…</p>
-      ) : filtered.length === 0 ? (
+      ) : totalFiltered === 0 ? (
         <div className="text-center py-20 rounded-3xl" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
           <p className="text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>No slides yet</p>
           <p className="text-xs mb-5" style={{ color: "var(--text-muted)" }}>Create a slide deck to get started.</p>
@@ -351,22 +325,35 @@ export default function SlidesPage() {
           </Link>
         </div>
       ) : (
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <SortableContext items={sorted.map(l => l.id)} strategy={rectSortingStrategy}>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3" onClick={() => setAssigningLessonId(null)}>
-              {filtered.map(lesson => (
-                <SortableSlideCard
-                  key={lesson.id}
-                  lesson={lesson}
-                  courses={courses}
-                  assigningOpen={assigningLessonId === lesson.id}
-                  onToggleAssign={id => setAssigningLessonId(prev => prev === id ? null : id)}
-                  onAssign={handleAssignLesson}
-                />
-              ))}
+        <div className="space-y-8" onClick={() => setAssigningLessonId(null)}>
+          {courseSections.map(({ course, lessons: sectionLessons }) => (
+            <div key={course?.id ?? "unassigned"}>
+              {/* Course section header */}
+              <div className="flex items-center gap-3 mb-4">
+                <h2 className="text-sm font-bold whitespace-nowrap" style={{ color: "var(--text-primary)" }}>
+                  {course?.title ?? "Unassigned"}
+                </h2>
+                <span className="text-xs whitespace-nowrap" style={{ color: "var(--text-muted)" }}>
+                  {sectionLessons.length} lesson{sectionLessons.length !== 1 ? "s" : ""}
+                </span>
+                <div className="flex-1 h-px" style={{ background: "var(--border)" }} />
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {sectionLessons.map(lesson => (
+                  <SlideCard
+                    key={lesson.id}
+                    lesson={lesson}
+                    courses={courses}
+                    deckCount={projects.filter(p => p.type === "deck" && p.lessonId === lesson.id).length}
+                    assigningOpen={assigningLessonId === lesson.id}
+                    onToggleAssign={id => setAssigningLessonId(prev => prev === id ? null : id)}
+                    onAssign={handleAssignLesson}
+                  />
+                ))}
+              </div>
             </div>
-          </SortableContext>
-        </DndContext>
+          ))}
+        </div>
       )}
     </div>
   );
