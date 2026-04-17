@@ -39,6 +39,12 @@ const Icons = {
       <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
     </svg>
   ),
+  classes: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+    </svg>
+  ),
   schedule: (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/>
@@ -64,6 +70,7 @@ const DEFAULT_NAV: NavItem[] = [
   { label: "Slides",    href: "/slides",     icon: Icons.slides     },
   { label: "Quizzes",   href: "/quizzes",    icon: Icons.quizzes    },
   { label: "Exercises", href: "/exercises",  icon: Icons.exercises  },
+  { label: "Classes",   href: "/classes",    icon: Icons.classes    },
   { label: "Schedule",  href: "/schedule",   icon: Icons.schedule   },
   { label: "Resources", href: "/resources",  icon: Icons.resources  },
   { label: "Profile",   href: "/profile",    icon: Icons.profile    },
