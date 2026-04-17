@@ -34,6 +34,11 @@ const Icons = {
       <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
     </svg>
   ),
+  exercises: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+    </svg>
+  ),
   schedule: (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/>
@@ -54,13 +59,14 @@ const Icons = {
 };
 
 const DEFAULT_NAV: NavItem[] = [
-  { label: "Dashboard", href: "/",          icon: Icons.dashboard },
-  { label: "Courses",   href: "/courses",   icon: Icons.courses   },
-  { label: "Slides",    href: "/slides",    icon: Icons.slides    },
-  { label: "Quizzes",   href: "/quizzes",   icon: Icons.quizzes   },
-  { label: "Schedule",  href: "/schedule",  icon: Icons.schedule  },
-  { label: "Resources", href: "/resources", icon: Icons.resources },
-  { label: "Profile",   href: "/profile",   icon: Icons.profile   },
+  { label: "Dashboard", href: "/",           icon: Icons.dashboard  },
+  { label: "Courses",   href: "/courses",    icon: Icons.courses    },
+  { label: "Slides",    href: "/slides",     icon: Icons.slides     },
+  { label: "Quizzes",   href: "/quizzes",    icon: Icons.quizzes    },
+  { label: "Exercises", href: "/exercises",  icon: Icons.exercises  },
+  { label: "Schedule",  href: "/schedule",   icon: Icons.schedule   },
+  { label: "Resources", href: "/resources",  icon: Icons.resources  },
+  { label: "Profile",   href: "/profile",    icon: Icons.profile    },
 ];
 
 const STORAGE_KEY = "sidebar-nav-order";
