@@ -27,16 +27,11 @@ function CopyButton({ text }: { text: string }) {
 function ClassCard({ cls, onDelete }: { cls: Class; onDelete: (id: string) => void }) {
   return (
     <div className="rounded-3xl p-5 space-y-4" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-card)" }}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <p className="font-semibold text-sm truncate" style={{ color: "var(--text-primary)" }}>{cls.name}</p>
-          <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
-            {cls.studentIds.length} student{cls.studentIds.length !== 1 ? "s" : ""} · {cls.language}
-          </p>
-        </div>
-        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0" style={{ background: "rgba(12,192,223,0.12)", color: "#0cc0df" }}>
-          {cls.assignedConcepts.length} concept{cls.assignedConcepts.length !== 1 ? "s" : ""}
-        </span>
+      <div className="space-y-0.5">
+        <p className="font-semibold text-sm" style={{ color: "var(--text-primary)" }}>{cls.name}</p>
+        <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+          {cls.studentIds.length} student{cls.studentIds.length !== 1 ? "s" : ""} · {cls.language} · Created {new Date(cls.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
+        </p>
       </div>
 
       {/* Join code */}
@@ -48,44 +43,27 @@ function ClassCard({ cls, onDelete }: { cls: Class; onDelete: (id: string) => vo
         <CopyButton text={cls.joinCode} />
       </div>
 
-      {/* Concepts */}
-      {cls.assignedConcepts.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {cls.assignedConcepts.map(c => (
-            <span key={c} className="text-[10px] font-medium px-2 py-0.5 rounded-full"
-              style={{ background: "rgba(99,102,241,0.10)", color: "var(--accent-purple)", border: "1px solid rgba(99,102,241,0.2)" }}>
-              {slugToLabel(c)}
-            </span>
-          ))}
-        </div>
-      )}
-
-      <div className="flex items-center justify-between pt-1" style={{ borderTop: "1px solid var(--border)" }}>
-        <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
-          Created {new Date(cls.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
-        </span>
-        <div className="flex gap-2">
-          <Link href={`/classes/${cls.id}/progress`}
-            className="text-xs font-semibold px-3 py-1 rounded-full transition hover:opacity-80"
-            style={{ background: "rgba(45,212,160,0.08)", color: "#2dd4a0", border: "1px solid rgba(45,212,160,0.2)" }}>
-            Progress
-          </Link>
-          <Link href={`/classes/${cls.id}/concepts`}
-            className="text-xs font-semibold px-3 py-1 rounded-full transition hover:opacity-80"
-            style={{ background: "rgba(12,192,223,0.08)", color: "#0cc0df", border: "1px solid rgba(12,192,223,0.2)" }}>
-            Concepts
-          </Link>
-          <Link href={`/classes/${cls.id}`}
-            className="text-xs font-semibold px-3 py-1 rounded-full transition hover:opacity-80"
-            style={{ background: "var(--bg-card-hover)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}>
-            Edit
-          </Link>
-          <button onClick={() => onDelete(cls.id)}
-            className="text-xs font-semibold px-3 py-1 rounded-full transition hover:opacity-80"
-            style={{ background: "rgba(239,68,68,0.08)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.2)" }}>
-            Delete
-          </button>
-        </div>
+      <div className="flex items-center justify-end gap-2 pt-1 flex-wrap" style={{ borderTop: "1px solid var(--border)" }}>
+        <Link href={`/classes/${cls.id}/progress`}
+          className="text-xs font-semibold px-3 py-1 rounded-full transition hover:opacity-80"
+          style={{ background: "rgba(45,212,160,0.08)", color: "#2dd4a0", border: "1px solid rgba(45,212,160,0.2)" }}>
+          Progress
+        </Link>
+        <Link href={`/classes/${cls.id}/concepts`}
+          className="text-xs font-semibold px-3 py-1 rounded-full transition hover:opacity-80"
+          style={{ background: "rgba(12,192,223,0.08)", color: "#0cc0df", border: "1px solid rgba(12,192,223,0.2)" }}>
+          Concepts
+        </Link>
+        <Link href={`/classes/${cls.id}`}
+          className="text-xs font-semibold px-3 py-1 rounded-full transition hover:opacity-80"
+          style={{ background: "var(--bg-card-hover)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}>
+          Edit
+        </Link>
+        <button onClick={() => onDelete(cls.id)}
+          className="text-xs font-semibold px-3 py-1 rounded-full transition hover:opacity-80"
+          style={{ background: "rgba(239,68,68,0.08)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.2)" }}>
+          Delete
+        </button>
       </div>
     </div>
   );
