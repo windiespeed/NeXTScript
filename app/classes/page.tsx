@@ -43,7 +43,7 @@ function ClassCard({ cls, onDelete }: { cls: Class; onDelete: (id: string) => vo
         <CopyButton text={cls.joinCode} />
       </div>
 
-      <div className="flex items-center justify-end gap-2 pt-1 flex-wrap" style={{ borderTop: "1px solid var(--border)" }}>
+      <div className="flex items-center justify-center gap-2 pt-1 flex-wrap" style={{ borderTop: "1px solid var(--border)" }}>
         <Link href={`/classes/${cls.id}/progress`}
           className="text-xs font-semibold px-3 py-1 rounded-full transition hover:opacity-80"
           style={{ background: "rgba(45,212,160,0.08)", color: "#2dd4a0", border: "1px solid rgba(45,212,160,0.2)" }}>
