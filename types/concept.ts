@@ -1,6 +1,7 @@
 export interface Concept {
   id: string;
   teacherId: string;
+  classId: string;
   slug: string;
   label: string;
   description: string;
@@ -9,7 +10,7 @@ export interface Concept {
   updatedAt: string;
 }
 
-export type ConceptInput = Omit<Concept, "id" | "teacherId" | "createdAt" | "updatedAt">;
+export type ConceptInput = Omit<Concept, "id" | "teacherId" | "classId" | "createdAt" | "updatedAt">;
 
 export const DEFAULT_JS_CONCEPTS: ConceptInput[] = [
   { slug: "data-types",   label: "Data Types",   description: "Understand strings, numbers, booleans, null, undefined, and how to check types.", order: 1 },

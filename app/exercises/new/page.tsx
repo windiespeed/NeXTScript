@@ -27,8 +27,11 @@ export default function NewExercisePage() {
   useEffect(() => {
     fetch("/api/concepts").then(r => r.json()).then(data => {
       const list: Concept[] = Array.isArray(data) ? data : [];
-      setConcepts(list);
-      if (list.length > 0) setConcept(list[0].slug);
+      // Deduplicate by slug — same slug may appear in multiple classes
+      const seen = new Set<string>();
+      const deduped = list.filter(c => { if (seen.has(c.slug)) return false; seen.add(c.slug); return true; });
+      setConcepts(deduped);
+      if (deduped.length > 0) setConcept(deduped[0].slug);
     });
   }, []);
   const [difficulty, setDifficulty] = useState<ExerciseDifficulty>("beginner");

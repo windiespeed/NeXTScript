@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
-import type { Concept } from "@/types/concept";
 import type { ProgressMode } from "@/types/class";
 
 const cardClass = "rounded-3xl p-5 space-y-4";
@@ -22,31 +21,20 @@ export default function EditClassPage() {
   const [language, setLanguage] = useState<"javascript" | "python" | "html-css">("javascript");
   const [progressMode, setProgressMode] = useState<ProgressMode>("locked");
   const [solutionRevealAttempts, setSolutionRevealAttempts] = useState<number | null>(5);
-  const [selectedConcepts, setSelectedConcepts] = useState<string[]>([]);
-  const [concepts, setConcepts] = useState<Concept[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    Promise.all([
-      fetch(`/api/classes/${id}`).then(r => r.json()),
-      fetch("/api/concepts").then(r => r.json()),
-    ]).then(([classData, conceptData]) => {
-      if (classData.error) { setError(classData.error); setLoading(false); return; }
-      setName(classData.name);
-      setLanguage(classData.language);
-      setProgressMode(classData.progressMode ?? "locked");
-      setSolutionRevealAttempts(classData.solutionRevealAttempts ?? null);
-      setSelectedConcepts(classData.assignedConcepts ?? []);
-      setConcepts(Array.isArray(conceptData) ? conceptData : []);
+    fetch(`/api/classes/${id}`).then(r => r.json()).then(data => {
+      if (data.error) { setError(data.error); setLoading(false); return; }
+      setName(data.name);
+      setLanguage(data.language);
+      setProgressMode(data.progressMode ?? "locked");
+      setSolutionRevealAttempts(data.solutionRevealAttempts ?? null);
       setLoading(false);
     });
   }, [id]);
-
-  function toggleConcept(c: string) {
-    setSelectedConcepts(prev => prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c]);
-  }
 
   async function handleSave() {
     if (!name.trim()) { setError("Class name is required."); return; }
@@ -55,7 +43,7 @@ export default function EditClassPage() {
     const res = await fetch(`/api/classes/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: name.trim(), language, progressMode, solutionRevealAttempts, assignedConcepts: selectedConcepts }),
+      body: JSON.stringify({ name: name.trim(), language, progressMode, solutionRevealAttempts }),
     });
     if (res.ok) {
       router.push("/classes");
@@ -148,38 +136,20 @@ export default function EditClassPage() {
         </div>
       </div>
 
-      <div className={cardClass} style={cardStyle}>
+      <div className={cardClass} style={{ ...cardStyle, border: "1px solid rgba(12,192,223,0.2)" }}>
         <div className="flex items-center justify-between">
-          <p className={sectionLabel}>Concepts</p>
-          <div className="flex gap-2">
-            <button onClick={() => setSelectedConcepts(concepts.map(c => c.slug))} className="text-xs hover:underline" style={{ color: "#0cc0df" }}>Select all</button>
-            <button onClick={() => setSelectedConcepts([])} className="text-xs hover:underline" style={{ color: "var(--text-muted)" }}>Clear</button>
+          <div>
+            <p className={sectionLabel}>Concepts</p>
+            <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
+              Manage topic categories for this class separately.
+            </p>
           </div>
+          <a href={`/classes/${id}/concepts`}
+            className="rounded-full px-4 py-1.5 text-xs font-bold transition hover:opacity-90"
+            style={{ background: "rgba(12,192,223,0.12)", color: "#0cc0df", border: "1px solid rgba(12,192,223,0.3)" }}>
+            Manage Concepts →
+          </a>
         </div>
-        <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-          Only the selected concepts will be visible to students in NeXTBox.
-        </p>
-        {concepts.length === 0 ? (
-          <p className="text-xs py-2" style={{ color: "var(--text-muted)" }}>
-            No concepts yet. <a href="/concepts" className="underline" style={{ color: "#0cc0df" }}>Add concepts first.</a>
-          </p>
-        ) : (
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {concepts.map(c => {
-              const active = selectedConcepts.includes(c.slug);
-              return (
-                <button key={c.id} onClick={() => toggleConcept(c.slug)}
-                  className="rounded-2xl px-3 py-2.5 text-xs font-medium text-left transition"
-                  style={active
-                    ? { background: "rgba(99,102,241,0.15)", color: "var(--accent-purple)", border: "1px solid rgba(99,102,241,0.4)" }
-                    : { background: "var(--bg-card-hover)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}>
-                  {active && <span className="mr-1">✓</span>}
-                  {c.label}
-                </button>
-              );
-            })}
-          </div>
-        )}
       </div>
 
       <div className="flex gap-3 pb-8">

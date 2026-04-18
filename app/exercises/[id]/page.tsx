@@ -36,7 +36,11 @@ export default function EditExercisePage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    fetch("/api/concepts").then(r => r.json()).then(data => setConcepts(Array.isArray(data) ? data : []));
+    fetch("/api/concepts").then(r => r.json()).then(data => {
+      const list: Concept[] = Array.isArray(data) ? data : [];
+      const seen = new Set<string>();
+      setConcepts(list.filter(c => { if (seen.has(c.slug)) return false; seen.add(c.slug); return true; }));
+    });
     fetch(`/api/exercises/${id}`).then(r => r.json()).then((ex: Exercise) => {
       setTitle(ex.title);
       setDescription(ex.description);

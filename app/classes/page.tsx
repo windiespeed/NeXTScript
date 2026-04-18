@@ -70,6 +70,11 @@ function ClassCard({ cls, onDelete }: { cls: Class; onDelete: (id: string) => vo
             style={{ background: "rgba(45,212,160,0.08)", color: "#2dd4a0", border: "1px solid rgba(45,212,160,0.2)" }}>
             Progress
           </Link>
+          <Link href={`/classes/${cls.id}/concepts`}
+            className="text-xs font-semibold px-3 py-1 rounded-full transition hover:opacity-80"
+            style={{ background: "rgba(12,192,223,0.08)", color: "#0cc0df", border: "1px solid rgba(12,192,223,0.2)" }}>
+            Concepts
+          </Link>
           <Link href={`/classes/${cls.id}`}
             className="text-xs font-semibold px-3 py-1 rounded-full transition hover:opacity-80"
             style={{ background: "var(--bg-card-hover)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}>
