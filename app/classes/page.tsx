@@ -3,8 +3,11 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import { CONCEPT_LABELS, CONCEPT_ORDER } from "@/types/exercise";
 import type { Class } from "@/types/class";
+
+function slugToLabel(slug: string): string {
+  return slug.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+}
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -51,7 +54,7 @@ function ClassCard({ cls, onDelete }: { cls: Class; onDelete: (id: string) => vo
           {cls.assignedConcepts.map(c => (
             <span key={c} className="text-[10px] font-medium px-2 py-0.5 rounded-full"
               style={{ background: "rgba(99,102,241,0.10)", color: "var(--accent-purple)", border: "1px solid rgba(99,102,241,0.2)" }}>
-              {CONCEPT_LABELS[c]}
+              {slugToLabel(c)}
             </span>
           ))}
         </div>
@@ -62,6 +65,11 @@ function ClassCard({ cls, onDelete }: { cls: Class; onDelete: (id: string) => vo
           Created {new Date(cls.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
         </span>
         <div className="flex gap-2">
+          <Link href={`/classes/${cls.id}/progress`}
+            className="text-xs font-semibold px-3 py-1 rounded-full transition hover:opacity-80"
+            style={{ background: "rgba(45,212,160,0.08)", color: "#2dd4a0", border: "1px solid rgba(45,212,160,0.2)" }}>
+            Progress
+          </Link>
           <Link href={`/classes/${cls.id}`}
             className="text-xs font-semibold px-3 py-1 rounded-full transition hover:opacity-80"
             style={{ background: "var(--bg-card-hover)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}>

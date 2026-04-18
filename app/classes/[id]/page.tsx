@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import type { Concept } from "@/types/concept";
 import type { ProgressMode } from "@/types/class";
@@ -13,9 +13,10 @@ const sectionLabel = "text-xs font-semibold uppercase tracking-widest text-[#0cc
 const inputClass = "w-full rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#0cc0df] transition placeholder:text-[var(--text-muted)]";
 const inputStyle = { background: "var(--bg-card-hover)", color: "var(--text-primary)", border: "1px solid var(--border)" };
 
-export default function NewClassPage() {
+export default function EditClassPage() {
   useSession({ required: true });
   const router = useRouter();
+  const { id } = useParams<{ id: string }>();
 
   const [name, setName] = useState("");
   const [language, setLanguage] = useState<"javascript" | "python" | "html-css">("javascript");
@@ -23,26 +24,36 @@ export default function NewClassPage() {
   const [solutionRevealAttempts, setSolutionRevealAttempts] = useState<number | null>(5);
   const [selectedConcepts, setSelectedConcepts] = useState<string[]>([]);
   const [concepts, setConcepts] = useState<Concept[]>([]);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    fetch("/api/concepts").then(r => r.json()).then(data => setConcepts(Array.isArray(data) ? data : []));
-  }, []);
+    Promise.all([
+      fetch(`/api/classes/${id}`).then(r => r.json()),
+      fetch("/api/concepts").then(r => r.json()),
+    ]).then(([classData, conceptData]) => {
+      if (classData.error) { setError(classData.error); setLoading(false); return; }
+      setName(classData.name);
+      setLanguage(classData.language);
+      setProgressMode(classData.progressMode ?? "locked");
+      setSolutionRevealAttempts(classData.solutionRevealAttempts ?? null);
+      setSelectedConcepts(classData.assignedConcepts ?? []);
+      setConcepts(Array.isArray(conceptData) ? conceptData : []);
+      setLoading(false);
+    });
+  }, [id]);
 
   function toggleConcept(c: string) {
     setSelectedConcepts(prev => prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c]);
   }
 
-  function selectAll() { setSelectedConcepts(concepts.map(c => c.slug)); }
-  function clearAll() { setSelectedConcepts([]); }
-
   async function handleSave() {
     if (!name.trim()) { setError("Class name is required."); return; }
     setSaving(true);
     setError("");
-    const res = await fetch("/api/classes", {
-      method: "POST",
+    const res = await fetch(`/api/classes/${id}`, {
+      method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: name.trim(), language, progressMode, solutionRevealAttempts, assignedConcepts: selectedConcepts }),
     });
@@ -55,12 +66,16 @@ export default function NewClassPage() {
     }
   }
 
+  if (loading) {
+    return <div className="py-20 text-center text-sm" style={{ color: "#0cc0df" }}>Loading…</div>;
+  }
+
   return (
     <div className="space-y-6 max-w-2xl">
       <div className="flex items-center gap-3">
         <Link href="/classes" className="text-sm hover:underline" style={{ color: "#0cc0df" }}>← Classes</Link>
         <span style={{ color: "var(--border)" }}>/</span>
-        <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>New Class</span>
+        <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Edit Class</span>
       </div>
 
       {error && (
@@ -116,8 +131,7 @@ export default function NewClassPage() {
         <div className="flex items-center gap-3">
           <label className="flex items-center gap-2 text-xs cursor-pointer" style={{ color: "var(--text-secondary)" }}>
             <input type="checkbox" checked={solutionRevealAttempts !== null}
-              onChange={e => setSolutionRevealAttempts(e.target.checked ? 5 : null)}
-              className="rounded" />
+              onChange={e => setSolutionRevealAttempts(e.target.checked ? 5 : null)} />
             Enable after
           </label>
           {solutionRevealAttempts !== null && (
@@ -138,8 +152,8 @@ export default function NewClassPage() {
         <div className="flex items-center justify-between">
           <p className={sectionLabel}>Concepts</p>
           <div className="flex gap-2">
-            <button onClick={selectAll} className="text-xs hover:underline" style={{ color: "#0cc0df" }}>Select all</button>
-            <button onClick={clearAll} className="text-xs hover:underline" style={{ color: "var(--text-muted)" }}>Clear</button>
+            <button onClick={() => setSelectedConcepts(concepts.map(c => c.slug))} className="text-xs hover:underline" style={{ color: "#0cc0df" }}>Select all</button>
+            <button onClick={() => setSelectedConcepts([])} className="text-xs hover:underline" style={{ color: "var(--text-muted)" }}>Clear</button>
           </div>
         </div>
         <p className="text-xs" style={{ color: "var(--text-muted)" }}>
@@ -172,7 +186,7 @@ export default function NewClassPage() {
         <button onClick={handleSave} disabled={saving}
           className="rounded-full px-6 py-2.5 text-sm font-bold transition hover:opacity-90 disabled:opacity-50"
           style={{ background: "#0cc0df", color: "#0a0b13" }}>
-          {saving ? "Creating…" : "Create Class"}
+          {saving ? "Saving…" : "Save Changes"}
         </button>
         <Link href="/classes"
           className="rounded-full px-6 py-2.5 text-sm font-semibold transition hover:opacity-80"

@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { CONCEPT_LABELS, CONCEPT_ORDER } from "@/types/exercise";
-import type { ExerciseConcept, ExerciseDifficulty, ExerciseType, ExerciseTest } from "@/types/exercise";
+import type { ExerciseDifficulty, ExerciseType, ExerciseTest } from "@/types/exercise";
+import type { Concept } from "@/types/concept";
 import { v4 as uuidv4 } from "uuid";
 
 const cardClass = "rounded-3xl p-5 space-y-4";
@@ -19,9 +19,18 @@ export default function NewExercisePage() {
   useSession({ required: true });
   const router = useRouter();
 
+  const [concepts, setConcepts] = useState<Concept[]>([]);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [concept, setConcept] = useState<ExerciseConcept>("variables");
+  const [concept, setConcept] = useState<string>("");
+
+  useEffect(() => {
+    fetch("/api/concepts").then(r => r.json()).then(data => {
+      const list: Concept[] = Array.isArray(data) ? data : [];
+      setConcepts(list);
+      if (list.length > 0) setConcept(list[0].slug);
+    });
+  }, []);
   const [difficulty, setDifficulty] = useState<ExerciseDifficulty>("beginner");
   const [type, setType] = useState<ExerciseType>("exercise");
   const [order, setOrder] = useState(1);
@@ -113,9 +122,10 @@ export default function NewExercisePage() {
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div>
               <label className="text-xs mb-1 block" style={{ color: "var(--text-muted)" }}>Concept</label>
-              <select value={concept} onChange={e => setConcept(e.target.value as ExerciseConcept)}
+              <select value={concept} onChange={e => setConcept(e.target.value)}
                 className={inputClass} style={inputStyle}>
-                {CONCEPT_ORDER.map(c => <option key={c} value={c}>{CONCEPT_LABELS[c]}</option>)}
+                {concepts.length === 0 && <option value="">No concepts — add them first</option>}
+                {concepts.map(c => <option key={c.id} value={c.slug}>{c.label}</option>)}
               </select>
             </div>
             <div>

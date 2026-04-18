@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
-import { CONCEPT_LABELS, CONCEPT_ORDER } from "@/types/exercise";
-import type { Exercise, ExerciseConcept, ExerciseDifficulty, ExerciseType, ExerciseTest } from "@/types/exercise";
+import type { Exercise, ExerciseDifficulty, ExerciseType, ExerciseTest } from "@/types/exercise";
+import type { Concept } from "@/types/concept";
 import { v4 as uuidv4 } from "uuid";
 
 const cardClass = "rounded-3xl p-5 space-y-4";
@@ -21,9 +21,10 @@ export default function EditExercisePage() {
   const { id } = useParams<{ id: string }>();
 
   const [loading, setLoading] = useState(true);
+  const [concepts, setConcepts] = useState<Concept[]>([]);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [concept, setConcept] = useState<ExerciseConcept>("variables");
+  const [concept, setConcept] = useState<string>("");
   const [difficulty, setDifficulty] = useState<ExerciseDifficulty>("beginner");
   const [type, setType] = useState<ExerciseType>("exercise");
   const [order, setOrder] = useState(1);
@@ -35,6 +36,7 @@ export default function EditExercisePage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    fetch("/api/concepts").then(r => r.json()).then(data => setConcepts(Array.isArray(data) ? data : []));
     fetch(`/api/exercises/${id}`).then(r => r.json()).then((ex: Exercise) => {
       setTitle(ex.title);
       setDescription(ex.description);
@@ -120,8 +122,9 @@ export default function EditExercisePage() {
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div>
               <label className="text-xs mb-1 block" style={{ color: "var(--text-muted)" }}>Concept</label>
-              <select value={concept} onChange={e => setConcept(e.target.value as ExerciseConcept)} className={inputClass} style={inputStyle}>
-                {CONCEPT_ORDER.map(c => <option key={c} value={c}>{CONCEPT_LABELS[c]}</option>)}
+              <select value={concept} onChange={e => setConcept(e.target.value)} className={inputClass} style={inputStyle}>
+                {concepts.length === 0 && <option value={concept}>{concept}</option>}
+                {concepts.map(c => <option key={c.id} value={c.slug}>{c.label}</option>)}
               </select>
             </div>
             <div>

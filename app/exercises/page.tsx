@@ -3,8 +3,12 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import { CONCEPT_LABELS, CONCEPT_DESCRIPTIONS, CONCEPT_ORDER } from "@/types/exercise";
-import type { Exercise, ExerciseConcept, ExerciseType } from "@/types/exercise";
+import type { Exercise, ExerciseType } from "@/types/exercise";
+import type { Concept } from "@/types/concept";
+
+function slugToLabel(slug: string): string {
+  return slug.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+}
 
 const DIFFICULTY_COLOR: Record<string, { bg: string; text: string }> = {
   beginner:     { bg: "rgba(45,212,160,0.12)",  text: "#2dd4a0" },
@@ -78,14 +82,19 @@ export default function ExercisesPage() {
   useSession({ required: true });
 
   const [exercises, setExercises] = useState<Exercise[]>([]);
+  const [concepts, setConcepts] = useState<Concept[]>([]);
   const [loading, setLoading] = useState(true);
   const [seeding, setSeeding] = useState(false);
   const [filterType, setFilterType] = useState<"all" | ExerciseType>("all");
-  const [filterConcept, setFilterConcept] = useState<"all" | ExerciseConcept>("all");
+  const [filterConcept, setFilterConcept] = useState<string>("all");
 
   useEffect(() => {
-    fetch("/api/exercises").then(r => r.json()).then(data => {
-      setExercises(Array.isArray(data) ? data : []);
+    Promise.all([
+      fetch("/api/exercises").then(r => r.json()),
+      fetch("/api/concepts").then(r => r.json()),
+    ]).then(([ex, con]) => {
+      setExercises(Array.isArray(ex) ? ex : []);
+      setConcepts(Array.isArray(con) ? con : []);
       setLoading(false);
     });
   }, []);
@@ -113,10 +122,14 @@ export default function ExercisesPage() {
     return true;
   });
 
-  // Group filtered exercises by concept in canonical order
-  const conceptsInUse = CONCEPT_ORDER.filter(c =>
-    filtered.some(e => e.concept === c)
-  );
+  // Group filtered exercises by concept — order by concepts array, then unknown slugs at end
+  const conceptSlugsInUse = [...new Set(filtered.map(e => e.concept))];
+  const conceptsInUse = [
+    ...concepts.filter(c => conceptSlugsInUse.includes(c.slug)),
+    ...conceptSlugsInUse
+      .filter(s => !concepts.some(c => c.slug === s))
+      .map(s => ({ id: s, slug: s, label: slugToLabel(s), description: "", order: 9999, teacherId: "", createdAt: "", updatedAt: "" })),
+  ];
 
   const totalCount = exercises.length;
   const challengeCount = exercises.filter(e => e.type === "challenge").length;
@@ -181,16 +194,16 @@ export default function ExercisesPage() {
           >
             All Concepts
           </button>
-          {CONCEPT_ORDER.filter(c => exercises.some(e => e.concept === c)).map(c => (
+          {conceptsInUse.map(c => (
             <button
-              key={c}
-              onClick={() => setFilterConcept(c)}
+              key={c.slug}
+              onClick={() => setFilterConcept(c.slug)}
               className="rounded-full px-3 py-1 text-xs font-medium transition"
-              style={filterConcept === c
+              style={filterConcept === c.slug
                 ? { background: "rgba(99,102,241,0.2)", color: "var(--accent-purple)", border: "1px solid rgba(99,102,241,0.4)" }
                 : { background: "var(--bg-card-hover)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}
             >
-              {CONCEPT_LABELS[c]}
+              {c.label}
             </button>
           ))}
         </div>
@@ -222,17 +235,16 @@ export default function ExercisesPage() {
         <div className="space-y-10">
           {conceptsInUse.map(concept => {
             const conceptExercises = filtered
-              .filter(e => e.concept === concept)
+              .filter(e => e.concept === concept.slug)
               .sort((a, b) => a.order - b.order);
             const exerciseItems = conceptExercises.filter(e => e.type === "exercise");
             const challengeItems = conceptExercises.filter(e => e.type === "challenge");
 
             return (
-              <div key={concept}>
-                {/* Concept header */}
+              <div key={concept.slug}>
                 <div className="flex items-center gap-3 mb-2">
                   <h2 className="text-sm font-bold whitespace-nowrap" style={{ color: "var(--text-primary)" }}>
-                    {CONCEPT_LABELS[concept]}
+                    {concept.label}
                   </h2>
                   <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full whitespace-nowrap" style={{ background: "var(--bg-card-hover)", color: "var(--text-muted)" }}>
                     {exerciseItems.length} exercise{exerciseItems.length !== 1 ? "s" : ""}
@@ -240,9 +252,9 @@ export default function ExercisesPage() {
                   </span>
                   <div className="flex-1 h-px" style={{ background: "var(--border)" }} />
                 </div>
-                <p className="text-xs mb-4" style={{ color: "var(--text-muted)" }}>
-                  {CONCEPT_DESCRIPTIONS[concept]}
-                </p>
+                {concept.description && (
+                  <p className="text-xs mb-4" style={{ color: "var(--text-muted)" }}>{concept.description}</p>
+                )}
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {conceptExercises.map(exercise => (
                     <ExerciseCard key={exercise.id} exercise={exercise} onDelete={handleDelete} />

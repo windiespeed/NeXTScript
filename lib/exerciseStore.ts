@@ -1,11 +1,11 @@
 import { v4 as uuidv4 } from "uuid";
 import { getDb } from "@/lib/firebase";
-import type { Exercise, ExerciseInput, ExerciseConcept } from "@/types/exercise";
+import type { Exercise, ExerciseInput } from "@/types/exercise";
 
 const COLLECTION = "exercises";
 
 export const exerciseStore = {
-  async getAll(userId: string, concept?: ExerciseConcept): Promise<Exercise[]> {
+  async getAll(userId: string, concept?: string): Promise<Exercise[]> {
     let query = getDb().collection(COLLECTION).where("userId", "==", userId) as FirebaseFirestore.Query;
     if (concept) query = query.where("concept", "==", concept);
     const snapshot = await query.get();
