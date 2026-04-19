@@ -12,14 +12,14 @@ export const courseStore = {
       .where("userId", "==", userId)
       .get();
     return snapshot.docs
-      .map((doc) => doc.data() as Course)
+      .map((doc) => ({ id: doc.id, ...doc.data() } as Course))
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   },
 
   async getById(id: string): Promise<Course | undefined> {
     const doc = await getDb().collection(COLLECTION).doc(id).get();
     if (!doc.exists) return undefined;
-    return doc.data() as Course;
+    return { id: doc.id, ...doc.data() } as Course;
   },
 
   async create(input: CourseInput, userId: string): Promise<Course> {
