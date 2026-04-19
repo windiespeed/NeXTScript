@@ -1,3 +1,6 @@
+import type { ProgressMode } from "./class";
+import type { ExerciseConcept } from "./exercise";
+
 export interface CourseSettings {
   defaultSources: string;         // URLs pre-filled in lesson Sources field (one per line)
   defaultTemplateUrl: string;     // Google Slides template URL for generation
@@ -65,7 +68,15 @@ export interface Course {
   driveFolderUrl?: string;
   resources?: CourseResource[];
   modules?: CourseModule[];  // ordered list of modules grouping lessons within this course
-  moduleId?: string;         // links this Drive content to a NeXTBox module (courses/[id])
+  moduleId?: string;         // legacy: linked NeXTBox class id (removed after migration)
+  // NeXTBox classroom fields (migrated from classes collection)
+  joinCode?: string;
+  studentIds?: string[];
+  language?: "javascript" | "python" | "html-css";
+  progressMode?: ProgressMode;
+  solutionRevealAttempts?: number | null;
+  assignedConcepts?: ExerciseConcept[];
+  teacherId?: string;
   createdAt: string;
   updatedAt: string;
 }

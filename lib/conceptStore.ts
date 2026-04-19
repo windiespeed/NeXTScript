@@ -15,20 +15,25 @@ export const conceptStore = {
     return snap.docs.map(d => d.data() as Concept).sort((a, b) => a.order - b.order);
   },
 
+  async getByCourse(courseId: string): Promise<Concept[]> {
+    const snap = await getDb().collection(COLLECTION).where("courseId", "==", courseId).get();
+    return snap.docs.map(d => d.data() as Concept).sort((a, b) => a.order - b.order);
+  },
+
   async getById(id: string): Promise<Concept | undefined> {
     const doc = await getDb().collection(COLLECTION).doc(id).get();
     if (!doc.exists) return undefined;
     return doc.data() as Concept;
   },
 
-  async create(input: ConceptInput, teacherId: string, classId: string): Promise<Concept> {
+  async create(input: ConceptInput, teacherId: string, courseId: string): Promise<Concept> {
     const now = new Date().toISOString();
-    const concept: Concept = { ...input, id: uuidv4(), teacherId, classId, createdAt: now, updatedAt: now };
+    const concept: Concept = { ...input, id: uuidv4(), teacherId, courseId, createdAt: now, updatedAt: now };
     await getDb().collection(COLLECTION).doc(concept.id).set(concept);
     return concept;
   },
 
-  async createMany(inputs: ConceptInput[], teacherId: string, classId: string): Promise<Concept[]> {
+  async createMany(inputs: ConceptInput[], teacherId: string, courseId: string): Promise<Concept[]> {
     const now = new Date().toISOString();
     const db = getDb();
     const batch = db.batch();
@@ -36,7 +41,7 @@ export const conceptStore = {
       ...input,
       id: uuidv4(),
       teacherId,
-      classId,
+      courseId,
       createdAt: now,
       updatedAt: now,
     }));

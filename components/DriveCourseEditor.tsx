@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { Course, CourseSettings, CourseResource, CourseModule } from "@/types/course";
+import type { Concept } from "@/types/concept";
 import { DEFAULT_COURSE_SETTINGS } from "@/types/course";
 import type { Lesson } from "@/types/lesson";
 import type { SavedProject } from "@/types/project";
@@ -171,6 +172,14 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [overContainerId, setOverContainerId] = useState<string | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [nextboxOpen, setNextboxOpen] = useState(true);
+  const [editLanguage, setEditLanguage] = useState<"javascript" | "python" | "html-css">("javascript");
+  const [editProgressMode, setEditProgressMode] = useState<"sequential" | "locked" | "free">("locked");
+  const [editSolutionReveal, setEditSolutionReveal] = useState<string>("");
+  const [savingNextbox, setSavingNextbox] = useState(false);
+  const [nextboxSaveMsg, setNextboxSaveMsg] = useState("");
+  const [concepts, setConcepts] = useState<Concept[]>([]);
+  const [joinCodeCopied, setJoinCodeCopied] = useState(false);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
@@ -187,7 +196,8 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
       fetch(`/api/lessons?courseId=${id}`).then(r => r.json()),
       fetch("/api/projects").then(r => r.json()),
       fetch("/api/courses").then(r => r.json()),
-    ]).then(([courseData, lessonData, projectData, coursesData]) => {
+      fetch(`/api/concepts?courseId=${id}`).then(r => r.json()),
+    ]).then(([courseData, lessonData, projectData, coursesData, conceptsData]) => {
       if (!courseData?.id) { setLoading(false); return; }
       setCourse(courseData);
       setEditTitle(courseData.title ?? "");
@@ -195,11 +205,15 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
       setEditGradeLevel(courseData.gradeLevel ?? "");
       setEditTerm(courseData.term ?? "");
       setEditSettings({ ...DEFAULT_COURSE_SETTINGS, ...(courseData.settings ?? {}) });
+      setEditLanguage(courseData.language ?? "javascript");
+      setEditProgressMode(courseData.progressMode ?? "locked");
+      setEditSolutionReveal(courseData.solutionRevealAttempts != null ? String(courseData.solutionRevealAttempts) : "");
       setProjects(Array.isArray(projectData) ? projectData : []);
       setLessons(Array.isArray(lessonData) ? lessonData : []);
       setAllCourses(Array.isArray(coursesData) ? coursesData : []);
       setResources(Array.isArray(courseData.resources) ? courseData.resources : []);
       setDriveModules(Array.isArray(courseData.modules) ? courseData.modules : []);
+      setConcepts(Array.isArray(conceptsData) ? conceptsData : []);
       setLoading(false);
     });
   }, [id]);
@@ -572,6 +586,53 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
     setGeneratingLessonId(null);
   }
 
+  async function handleSaveNextbox() {
+    setSavingNextbox(true);
+    const res = await fetch(`/api/courses/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        language: editLanguage,
+        progressMode: editProgressMode,
+        solutionRevealAttempts: editSolutionReveal === "" ? null : parseInt(editSolutionReveal, 10),
+      }),
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      setCourse(updated);
+      setNextboxSaveMsg("Saved.");
+      setTimeout(() => setNextboxSaveMsg(""), 1500);
+    }
+    setSavingNextbox(false);
+  }
+
+  async function handleGenerateJoinCode() {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    const code = Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+    const res = await fetch(`/api/courses/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ joinCode: code }),
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      setCourse(updated);
+    }
+  }
+
+  async function handleReleaseModule(modId: string, release: boolean) {
+    const mod = driveModules.find(m => m.id === modId);
+    if (!mod) return;
+    const targets = mod.lessonIds
+      .map(lid => lessons.find(l => l.id === lid))
+      .filter((l): l is Lesson => !!l && l.released !== release);
+    if (targets.length === 0) return;
+    setLessons(prev => prev.map(l => mod.lessonIds.includes(l.id) ? { ...l, released: release } : l));
+    await Promise.all(targets.map(l =>
+      fetch(`/api/lessons/${l.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ released: release }) })
+    ));
+  }
+
   if (loading) return <p className="text-sm text-[#0cc0df] py-4">Loading…</p>;
   if (!course) return <p className="text-sm text-red-500 py-4">Drive course not found.</p>;
 
@@ -659,6 +720,118 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                   className="opacity-0 group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-500 leading-none">×</button>
               </div>
             ))}
+          </div>
+        )}
+      </div>
+
+      {/* NeXTBox Panel */}
+      <div className="rounded-3xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+        <div
+          className="flex items-center justify-between px-4 py-3 cursor-pointer transition hover:bg-[var(--bg-card-hover)]"
+          style={{ background: "var(--bg-card)" }}
+          onClick={() => setNextboxOpen(o => !o)}
+        >
+          <div className="flex items-center gap-2">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--text-muted)" }}>
+              <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/>
+              <path d="M9 8l3 3-3 3"/><path d="M15 14h-3"/>
+            </svg>
+            <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>NeXTBox</p>
+            {(course.studentIds?.length ?? 0) > 0 && (
+              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: "rgba(12,192,223,0.1)", color: "#0cc0df" }}>
+                {course.studentIds!.length} student{course.studentIds!.length !== 1 ? "s" : ""}
+              </span>
+            )}
+          </div>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+            className="transition-transform duration-200" style={{ transform: nextboxOpen ? "rotate(90deg)" : "rotate(0deg)", color: "var(--text-muted)" }}>
+            <polyline points="9 18 15 12 9 6"/>
+          </svg>
+        </div>
+
+        {nextboxOpen && (
+          <div className="px-4 pb-4 pt-3 space-y-4" style={{ background: "var(--bg-card-hover)" }}>
+            {/* Join Code + Progress */}
+            <div className="flex items-start justify-between gap-4 flex-wrap">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "var(--text-muted)" }}>Join Code</p>
+                {course.joinCode ? (
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-2xl font-bold tracking-[0.15em]" style={{ color: "#0cc0df" }}>{course.joinCode}</span>
+                    <button
+                      onClick={() => { navigator.clipboard.writeText(course.joinCode!); setJoinCodeCopied(true); setTimeout(() => setJoinCodeCopied(false), 2000); }}
+                      className="rounded-full px-2.5 py-1 text-[10px] font-semibold transition hover:opacity-80"
+                      style={{ background: "rgba(12,192,223,0.1)", color: "#0cc0df" }}>
+                      {joinCodeCopied ? "Copied!" : "Copy"}
+                    </button>
+                  </div>
+                ) : (
+                  <button onClick={handleGenerateJoinCode}
+                    className="rounded-full px-3 py-1.5 text-xs font-semibold transition hover:opacity-80"
+                    style={{ background: "rgba(12,192,223,0.1)", color: "#0cc0df" }}>
+                    Generate Join Code
+                  </button>
+                )}
+              </div>
+              <Link href={`/courses/${id}/progress`}
+                className="rounded-full px-3 py-1.5 text-xs font-semibold transition hover:opacity-80 self-end"
+                style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
+                View Progress →
+              </Link>
+            </div>
+
+            {/* Concepts */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>Concepts</p>
+                <Link href={`/courses/${id}/concepts`} className="text-[10px] font-semibold transition hover:opacity-80" style={{ color: "#0cc0df" }}>Manage →</Link>
+              </div>
+              {concepts.length === 0 ? (
+                <p className="text-xs" style={{ color: "var(--text-muted)" }}>No concepts yet.</p>
+              ) : (
+                <div className="flex flex-wrap gap-1">
+                  {concepts.map(c => (
+                    <span key={c.id} className="text-[10px] font-medium px-1.5 py-0.5 rounded-full"
+                      style={{ background: "rgba(12,192,223,0.1)", color: "#0cc0df" }}>{c.label}</span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Settings */}
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="block text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: "var(--text-muted)" }}>Language</label>
+                <select value={editLanguage} onChange={e => setEditLanguage(e.target.value as "javascript" | "python" | "html-css")} className={inputClass} style={inputStyle}>
+                  <option value="javascript">JavaScript</option>
+                  <option value="python">Python</option>
+                  <option value="html-css">HTML/CSS</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: "var(--text-muted)" }}>Progress Mode</label>
+                <select value={editProgressMode} onChange={e => setEditProgressMode(e.target.value as "sequential" | "locked" | "free")} className={inputClass} style={inputStyle}>
+                  <option value="sequential">Sequential</option>
+                  <option value="locked">Locked</option>
+                  <option value="free">Free</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: "var(--text-muted)" }}>Solution After</label>
+                <input type="number" min="1" value={editSolutionReveal}
+                  onChange={e => setEditSolutionReveal(e.target.value)}
+                  placeholder="Never"
+                  className={inputClass} style={inputStyle} />
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <button onClick={handleSaveNextbox} disabled={savingNextbox}
+                className="rounded-full px-4 py-1.5 text-xs font-semibold transition hover:opacity-90 disabled:opacity-50"
+                style={{ background: "#0cc0df", color: "#0a0b13" }}>
+                {savingNextbox ? "Saving…" : "Save"}
+              </button>
+              {nextboxSaveMsg && <span className="text-xs" style={{ color: "#2dd4a0" }}>{nextboxSaveMsg}</span>}
+            </div>
           </div>
         )}
       </div>
@@ -969,6 +1142,19 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                           <span className="flex-1 text-sm font-semibold" style={{ color: "var(--accent)" }}>{mod.title}</span>
                         )}
                         <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{modLessons.length} {modLessons.length === 1 ? "lesson" : "lessons"}</span>
+                        {modLessons.length > 0 && (() => {
+                          const allReleased = modLessons.every(l => l.released);
+                          return (
+                            <button
+                              onClick={() => handleReleaseModule(mod.id, !allReleased)}
+                              className="rounded-full px-2 py-0.5 text-[10px] font-semibold transition"
+                              style={allReleased
+                                ? { background: "rgba(45,212,160,0.12)", color: "#2dd4a0" }
+                                : { background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
+                              {allReleased ? "Unrelease" : "Release"}
+                            </button>
+                          );
+                        })()}
                         <button onClick={() => { setEditingModuleId(mod.id); setEditModuleTitle(mod.title); }} title="Rename"
                           className="p-1 rounded transition hover:bg-[var(--bg-card)]" style={{ color: "var(--text-muted)" }}>
                           <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
