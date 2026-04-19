@@ -33,7 +33,7 @@ function NewSlidesInner() {
   useEffect(() => {
     Promise.all([
       fetch("/api/user/settings").then(r => r.json()),
-      fetch("/api/courses").then(r => r.json()),
+      fetch("/api/drive").then(r => r.json()),
     ]).then(([userSettings, coursesData]) => {
       setHasAiKey(userSettings.hasKey ?? false);
       const courseList: Course[] = Array.isArray(coursesData) ? coursesData : [];
@@ -84,7 +84,7 @@ function NewSlidesInner() {
             ? m.lessonIds.includes(lesson.id) ? m.lessonIds : [...m.lessonIds, lesson.id]
             : m.lessonIds,
         }));
-        await fetch(`/api/courses/${selectedCourseId}`, {
+        await fetch(`/api/drive/${selectedCourseId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ modules: updatedModules }),
@@ -108,7 +108,7 @@ function NewSlidesInner() {
   const selectedCourse = courses.find(c => c.id === selectedCourseId);
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
           <button onClick={() => router.push(backHref)} className="text-sm text-[#0cc0df] hover:underline mb-2 block">

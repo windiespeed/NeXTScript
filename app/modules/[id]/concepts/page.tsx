@@ -16,7 +16,7 @@ function slugify(label: string): string {
   return label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 }
 
-export default function ClassConceptsPage() {
+export default function ModuleConceptsPage() {
   useSession({ required: true });
   const { id: classId } = useParams<{ id: string }>();
 
@@ -39,7 +39,7 @@ export default function ClassConceptsPage() {
 
   async function load() {
     const [classRes, conceptsRes] = await Promise.all([
-      fetch(`/api/classes/${classId}`),
+      fetch(`/api/modules/${classId}`),
       fetch(`/api/concepts?classId=${classId}`),
     ]);
     const classData = await classRes.json();
@@ -107,7 +107,7 @@ export default function ClassConceptsPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Delete this concept? Exercises using this slug won't appear in this class anymore.")) return;
+    if (!confirm("Delete this concept? Exercises using this slug won't appear in this module anymore.")) return;
     const res = await fetch(`/api/concepts/${id}`, { method: "DELETE" });
     if (res.ok) { await load(); } else {
       const data = await res.json();
@@ -138,11 +138,11 @@ export default function ClassConceptsPage() {
   if (loading) return <div className="py-20 text-center text-sm" style={{ color: "#0cc0df" }}>Loading…</div>;
 
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className="space-y-6">
       <div className="flex items-center gap-3 flex-wrap">
-        <Link href="/classes" className="text-sm hover:underline" style={{ color: "#0cc0df" }}>← Classes</Link>
+        <Link href="/modules" className="text-sm hover:underline" style={{ color: "#0cc0df" }}>← Modules</Link>
         <span style={{ color: "var(--border)" }}>/</span>
-        <Link href={`/classes/${classId}`} className="text-sm hover:underline" style={{ color: "#0cc0df" }}>{className}</Link>
+        <Link href={`/modules/${classId}`} className="text-sm hover:underline" style={{ color: "#0cc0df" }}>{className}</Link>
         <span style={{ color: "var(--border)" }}>/</span>
         <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Concepts</span>
       </div>

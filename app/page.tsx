@@ -328,7 +328,7 @@ function Dashboard() {
     if (oldCourseId) {
       const oldCourse = courses.find(c => c.id === oldCourseId);
       if (oldCourse) {
-        await fetch(`/api/courses/${oldCourseId}`, {
+        await fetch(`/api/drive/${oldCourseId}`, {
           method: "PUT", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ lessonIds: oldCourse.lessonIds.filter(id => id !== lessonId) }),
         });
@@ -338,7 +338,7 @@ function Dashboard() {
     if (courseId) {
       const newCourse = courses.find(c => c.id === courseId);
       if (newCourse) {
-        await fetch(`/api/courses/${courseId}`, {
+        await fetch(`/api/drive/${courseId}`, {
           method: "PUT", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ lessonIds: [...newCourse.lessonIds, lessonId] }),
         });
@@ -466,7 +466,7 @@ function Dashboard() {
       Promise.all([
         loadLessons(),
         loadProjects(),
-        fetch("/api/courses").then(r => r.json()).then(d => setCourses(Array.isArray(d) ? d : [])),
+        fetch("/api/drive").then(r => r.json()).then(d => setCourses(Array.isArray(d) ? d : [])),
         fetch("/api/user/settings").then(r => r.json()).then(s => {
           if (Array.isArray(s.lessonOrder)) setLessonOrder(s.lessonOrder);
           if (s.defaultSources) setDefaultSources(s.defaultSources);
@@ -548,7 +548,7 @@ function Dashboard() {
               });
             })()}
             {courses.length > 4 && (
-              <Link href="/courses" className="text-[10px] text-[#0cc0df] hover:underline">
+              <Link href="/drive" className="text-[10px] text-[#0cc0df] hover:underline">
                 +{courses.length - 4} more courses →
               </Link>
             )}
@@ -596,7 +596,7 @@ function Dashboard() {
       <div className="rounded-3xl p-5 flex flex-col gap-4 h-full" style={{ background: "var(--bg-sidebar)", boxShadow: "var(--shadow-card)" }}>
         <div className="flex items-center justify-between">
           <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Active Course</p>
-          <Link href="/courses" className="text-[10px] text-[#0cc0df] hover:underline">
+          <Link href="/drive" className="text-[10px] text-[#0cc0df] hover:underline">
             View all →
           </Link>
         </div>
@@ -665,7 +665,7 @@ function Dashboard() {
             )}
 
             <Link
-              href="/courses"
+              href="/drive"
               className="flex items-center justify-center gap-2 rounded-full py-2.5 text-sm font-semibold hover:opacity-90 transition"
               style={{ background: "#0cc0df", color: "#0a0b13" }}
             >
@@ -684,7 +684,7 @@ function Dashboard() {
             </div>
             <p className="text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>No courses yet</p>
             <p className="text-xs mb-4" style={{ color: "var(--text-muted)" }}>Organize your lessons into courses for better management.</p>
-            <Link href="/courses/new" className="rounded-full bg-[#0cc0df] px-4 py-2 text-xs font-semibold text-[#0a0b13] hover:opacity-90 transition">
+            <Link href="/drive/new" className="rounded-full bg-[#0cc0df] px-4 py-2 text-xs font-semibold text-[#0a0b13] hover:opacity-90 transition">
               Create a Course
             </Link>
           </div>

@@ -11,7 +11,11 @@ interface NavItem {
   icon: React.ReactNode;
 }
 
-// Icons
+interface Module {
+  id: string;
+  name: string;
+}
+
 const Icons = {
   dashboard: (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -22,26 +26,6 @@ const Icons = {
   courses: (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-    </svg>
-  ),
-  slides: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/>
-    </svg>
-  ),
-  quizzes: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-    </svg>
-  ),
-  exercises: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
-    </svg>
-  ),
-  concepts: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/>
     </svg>
   ),
   classes: (
@@ -70,16 +54,11 @@ const Icons = {
 };
 
 const DEFAULT_NAV: NavItem[] = [
-  { label: "Dashboard", href: "/",           icon: Icons.dashboard  },
-  { label: "Courses",   href: "/courses",    icon: Icons.courses    },
-  { label: "Slides",    href: "/slides",     icon: Icons.slides     },
-  { label: "Quizzes",   href: "/quizzes",    icon: Icons.quizzes    },
-  { label: "Exercises", href: "/exercises",  icon: Icons.exercises  },
-  { label: "Concepts",  href: "/concepts",   icon: Icons.concepts   },
-  { label: "Classes",   href: "/classes",    icon: Icons.classes    },
-  { label: "Schedule",  href: "/schedule",   icon: Icons.schedule   },
-  { label: "Resources", href: "/resources",  icon: Icons.resources  },
-  { label: "Profile",   href: "/profile",    icon: Icons.profile    },
+  { label: "Dashboard", href: "/",          icon: Icons.dashboard },
+  { label: "Courses",   href: "/courses",   icon: Icons.courses   },
+  { label: "Schedule",  href: "/schedule",  icon: Icons.schedule  },
+  { label: "Resources", href: "/resources", icon: Icons.resources },
+  { label: "Profile",   href: "/profile",   icon: Icons.profile   },
 ];
 
 const STORAGE_KEY = "sidebar-nav-order";
@@ -88,24 +67,41 @@ function loadOrder(): string[] | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
 
 function saveOrder(hrefs: string[]) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(hrefs));
-  } catch {}
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(hrefs)); } catch {}
 }
 
 function applyOrder(saved: string[]): NavItem[] {
   const map = Object.fromEntries(DEFAULT_NAV.map(n => [n.href, n]));
   const ordered = saved.map(h => map[h]).filter(Boolean);
-  // Append any new items not yet in saved order
   DEFAULT_NAV.forEach(n => { if (!saved.includes(n.href)) ordered.push(n); });
   return ordered;
 }
+
+const chevronSVG = (open: boolean) => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+    className="transition-transform duration-200" style={{ transform: open ? "rotate(90deg)" : "rotate(0deg)" }}>
+    <polyline points="9 18 15 12 9 6"/>
+  </svg>
+);
+
+const gripSVG = (
+  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+    <circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/>
+    <circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/>
+    <circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/>
+  </svg>
+);
+
+const nextboxIcon = (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/>
+    <path d="M9 8l3 3-3 3"/><path d="M15 14h-3"/>
+  </svg>
+);
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -115,24 +111,34 @@ export default function Sidebar() {
   const dragIndex = useRef<number | null>(null);
   const [dragOver, setDragOver] = useState<number | null>(null);
 
+  const [modules, setModules] = useState<Module[]>([]);
+  const [coursesOpen, setCoursesOpen] = useState(false);
+
   useEffect(() => {
     const saved = loadOrder();
     if (saved) setNav(applyOrder(saved));
   }, []);
+
+  // Auto-open and fetch when on course or module routes
+  useEffect(() => {
+    if (!pathname.startsWith("/courses") && !pathname.startsWith("/modules")) return;
+    setCoursesOpen(true);
+    fetch("/api/modules")
+      .then(r => r.json())
+      .then(data => {
+        if (Array.isArray(data)) setModules(data.map((c: { id: string; name: string }) => ({ id: c.id, name: c.name })));
+      })
+      .catch(() => {});
+  }, [pathname]);
 
   function isActive(href: string) {
     if (href === "/") return pathname === "/";
     return pathname.startsWith(href);
   }
 
-  function onDragStart(i: number) {
-    dragIndex.current = i;
-  }
-
-  function onDragOver(e: React.DragEvent, i: number) {
-    e.preventDefault();
-    setDragOver(i);
-  }
+  function onDragStart(i: number) { dragIndex.current = i; }
+  function onDragOver(e: React.DragEvent, i: number) { e.preventDefault(); setDragOver(i); }
+  function onDragEnd() { dragIndex.current = null; setDragOver(null); }
 
   function onDrop(i: number) {
     const from = dragIndex.current;
@@ -146,81 +152,150 @@ export default function Sidebar() {
     setDragOver(null);
   }
 
-  function onDragEnd() {
-    dragIndex.current = null;
-    setDragOver(null);
+  function renderCoursesItem(item: NavItem, i: number) {
+    const active = isActive(item.href);
+    return (
+      <div
+        key={item.href}
+        draggable
+        onDragStart={() => onDragStart(i)}
+        onDragOver={(e) => onDragOver(e, i)}
+        onDrop={() => onDrop(i)}
+        onDragEnd={onDragEnd}
+        className={`transition-all duration-150 ${dragOver === i ? "opacity-50" : ""}`}
+      >
+        {/* Courses row */}
+        <div className="group relative flex items-center">
+          <Link
+            href={item.href}
+            className={`flex items-center gap-3 pl-3 py-2 rounded-full text-sm font-medium transition-all duration-150 flex-1 min-w-0 ${
+              active ? "bg-[#0cc0df] text-[#0a0b13] shadow-sm" : "hover:bg-[var(--bg-card-hover)]"
+            }`}
+            style={active ? {} : { color: "var(--text-secondary)" }}
+          >
+            <span className="flex-shrink-0" style={active ? { color: "#0a0b13" } : { color: "var(--text-muted)" }}>
+              {item.icon}
+            </span>
+            <span className="truncate">{item.label}</span>
+          </Link>
+          <button
+            onClick={() => setCoursesOpen(o => !o)}
+            className="flex-shrink-0 p-1.5 rounded-full transition hover:bg-[var(--bg-card-hover)] mr-1"
+            style={{ color: active ? "#0a0b13" : "var(--text-muted)" }}
+          >
+            {chevronSVG(coursesOpen)}
+          </button>
+          <div
+            className="absolute right-0 top-1/2 -translate-y-1/2 p-1 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing"
+            style={{ color: "var(--text-muted)" }}
+          >
+            {gripSVG}
+          </div>
+        </div>
+
+        {/* Modules sub-menu */}
+        {coursesOpen && (
+          <div className="mt-0.5 space-y-0.5 pl-2">
+            {modules.length === 0 && (
+              <p className="pl-3 py-1.5 text-xs" style={{ color: "var(--text-muted)" }}>No modules yet</p>
+            )}
+            {modules.map(mod => {
+              const modActive = pathname.startsWith(`/modules/${mod.id}`);
+              return (
+                <Link
+                  key={mod.id}
+                  href={`/modules/${mod.id}`}
+                  className={`flex items-center gap-2 pl-3 pr-3 py-1.5 rounded-full text-xs font-medium transition truncate ${
+                    modActive ? "bg-[#0cc0df]/15 text-[#0cc0df]" : "hover:bg-[var(--bg-card-hover)]"
+                  }`}
+                  style={modActive ? {} : { color: "var(--text-secondary)" }}
+                >
+                  <span className="w-1 h-1 rounded-full flex-shrink-0" style={{ background: modActive ? "#0cc0df" : "var(--text-muted)" }} />
+                  <span className="truncate">{mod.name}</span>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
   }
 
   const sidebarContent = (
-    <nav className="flex-1 overflow-y-auto px-3 py-4">
-      <div className="space-y-1.5">
-        {nav.map((item, i) => (
-          <div
-            key={item.href}
-            draggable
-            onDragStart={() => onDragStart(i)}
-            onDragOver={(e) => onDragOver(e, i)}
-            onDrop={() => onDrop(i)}
-            onDragEnd={onDragEnd}
-            className={`group relative transition-all duration-150 ${dragOver === i ? "opacity-50" : ""}`}
-          >
-            <Link
-              href={item.href}
-              className={`flex items-center gap-3 pl-3 pr-8 py-2 rounded-full text-sm font-medium transition-all duration-150 ${
-                isActive(item.href)
-                  ? "bg-[#0cc0df] text-[#0a0b13] shadow-sm"
-                  : "hover:bg-[var(--bg-card-hover)]"
-              }`}
-              style={isActive(item.href) ? {} : { color: "var(--text-secondary)", border: "1px solid var(--border)", background: "var(--bg-card)" }}
-            >
-              <span className={`flex-shrink-0`} style={isActive(item.href) ? { color: "#0a0b13" } : { color: "var(--text-muted)" }}>
-                {item.icon}
-              </span>
-              {item.label}
-            </Link>
-            {/* Drag handle — visible on hover */}
+    <nav className="flex-1 overflow-y-auto px-3 py-4 flex flex-col">
+      <div className="space-y-1.5 flex-1">
+        {nav.map((item, i) => {
+          if (item.href === "/courses") return renderCoursesItem(item, i);
+
+          return (
             <div
-              className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing"
-              style={{ color: "var(--text-muted)" }}
+              key={item.href}
+              draggable
+              onDragStart={() => onDragStart(i)}
+              onDragOver={(e) => onDragOver(e, i)}
+              onDrop={() => onDrop(i)}
+              onDragEnd={onDragEnd}
+              className={`group relative transition-all duration-150 ${dragOver === i ? "opacity-50" : ""}`}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                <circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/>
-                <circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/>
-                <circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/>
-              </svg>
+              <Link
+                href={item.href}
+                className={`flex items-center gap-3 pl-3 pr-8 py-2 rounded-full text-sm font-medium transition-all duration-150 ${
+                  isActive(item.href)
+                    ? "bg-[#0cc0df] text-[#0a0b13] shadow-sm"
+                    : "hover:bg-[var(--bg-card-hover)]"
+                }`}
+                style={isActive(item.href) ? {} : { color: "var(--text-secondary)" }}
+              >
+                <span className="flex-shrink-0" style={isActive(item.href) ? { color: "#0a0b13" } : { color: "var(--text-muted)" }}>
+                  {item.icon}
+                </span>
+                {item.label}
+              </Link>
+              <div
+                className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing"
+                style={{ color: "var(--text-muted)" }}
+              >
+                {gripSVG}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
+      </div>
+
+      {/* NeXTBox external link */}
+      <div className="px-0 pb-2 pt-3" style={{ borderTop: "1px solid var(--border)" }}>
+        <a
+          href="http://localhost:3001"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-3 pl-3 pr-3 py-2 rounded-full text-sm font-medium transition-all duration-150 hover:bg-[var(--bg-card-hover)]"
+          style={{ color: "var(--text-secondary)" }}
+        >
+          <span className="flex-shrink-0" style={{ color: "var(--text-muted)" }}>{nextboxIcon}</span>
+          <span className="flex-1">NeXTBox</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--text-muted)" }}>
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+          </svg>
+        </a>
       </div>
     </nav>
   );
 
   return (
     <>
-      {/* Desktop sidebar — floats below top bar with margin */}
       <aside
         className="hidden lg:flex flex-col fixed left-3 z-40 rounded-3xl w-56"
-        style={{
-          top: "76px",
-          height: "calc(100vh - 88px)",
-          background: "var(--bg-sidebar)",
-          boxShadow: "var(--shadow-card)",
-        }}
+        style={{ top: "76px", height: "calc(100vh - 88px)", background: "var(--bg-sidebar)", boxShadow: "var(--shadow-card)" }}
       >
         {sidebarContent}
       </aside>
 
-      {/* Mobile drawer */}
       {open && (
         <>
           <div className="lg:hidden fixed inset-0 z-40 bg-black/50" onClick={close} />
           <aside
             className="lg:hidden fixed left-3 z-50 w-56 flex flex-col rounded-3xl"
-            style={{
-              top: "76px",
-              height: "calc(100vh - 88px)",
-              background: "var(--bg-sidebar)",
-            }}
+            style={{ top: "76px", height: "calc(100vh - 88px)", background: "var(--bg-sidebar)" }}
           >
             {sidebarContent}
           </aside>

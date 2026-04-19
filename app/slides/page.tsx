@@ -148,7 +148,7 @@ export default function SlidesPage() {
   useEffect(() => {
     Promise.all([
       fetch("/api/lessons").then(r => r.json()),
-      fetch("/api/courses").then(r => r.json()),
+      fetch("/api/drive").then(r => r.json()),
       fetch("/api/projects").then(r => r.json()),
     ]).then(([l, c, p]) => {
       setLessons(Array.isArray(l) ? l : []);
@@ -213,7 +213,7 @@ export default function SlidesPage() {
     if (oldCourseId) {
       const oldCourse = courses.find(c => c.id === oldCourseId);
       if (oldCourse) {
-        await fetch(`/api/courses/${oldCourseId}`, {
+        await fetch(`/api/drive/${oldCourseId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ lessonIds: oldCourse.lessonIds.filter(id => id !== lessonId) }),
@@ -225,7 +225,7 @@ export default function SlidesPage() {
     if (newCourseId) {
       const newCourse = courses.find(c => c.id === newCourseId);
       if (newCourse && !newCourse.lessonIds.includes(lessonId)) {
-        await fetch(`/api/courses/${newCourseId}`, {
+        await fetch(`/api/drive/${newCourseId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ lessonIds: [...newCourse.lessonIds, lessonId] }),

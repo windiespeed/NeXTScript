@@ -40,7 +40,7 @@ function NewLessonInner() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    fetch("/api/courses").then(r => r.json()).then(data => {
+    fetch("/api/drive").then(r => r.json()).then(data => {
       if (Array.isArray(data)) setCourses(data);
     }).catch(() => {});
   }, []);
@@ -86,7 +86,7 @@ function NewLessonInner() {
               ? m.lessonIds.includes(lesson.id) ? m.lessonIds : [...m.lessonIds, lesson.id]
               : m.lessonIds,
           }));
-          await fetch(`/api/courses/${selectedCourseId}`, {
+          await fetch(`/api/drive/${selectedCourseId}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ modules: updatedModules }),
@@ -104,7 +104,7 @@ function NewLessonInner() {
   const backHref = selectedCourseId ? `/courses/${selectedCourseId}` : "/courses";
 
   return (
-    <div className="max-w-xl space-y-6">
+    <div className="space-y-6">
       <div>
         <button onClick={() => router.push(backHref)} className="text-sm text-[#0cc0df] hover:underline mb-2 block">
           ← {selectedCourseId ? "Back to Course" : "Back to Courses"}

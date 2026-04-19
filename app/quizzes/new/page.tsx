@@ -53,7 +53,7 @@ export default function NewQuizPage() {
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/courses").then(r => r.json()),
+      fetch("/api/drive").then(r => r.json()),
       fetch("/api/lessons").then(r => r.json()),
       fetch("/api/user/settings").then(r => r.json()),
     ]).then(([c, l, s]) => {
@@ -207,7 +207,7 @@ export default function NewQuizPage() {
   const canSave = quizTitle.trim() && questions.length > 0;
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="space-y-6">
       {/* Header */}
       <div>
         <button onClick={() => router.push("/quizzes")} className="text-sm text-[#0cc0df] hover:underline mb-2 block">

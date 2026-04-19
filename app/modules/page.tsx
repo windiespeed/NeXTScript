@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import type { Class } from "@/types/class";
+import type { Course } from "@/types/course";
 
 function slugToLabel(slug: string): string {
   return slug.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
@@ -44,58 +45,56 @@ function ClassCard({ cls, onDelete }: { cls: Class; onDelete: (id: string) => vo
       </div>
 
       <div className="flex items-center justify-center gap-1 pt-1" style={{ borderTop: "1px solid var(--border)" }}>
-        <Link href={`/classes/${cls.id}/progress`} title="View student progress"
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition hover:opacity-80"
+        <Link href={`/modules/${cls.id}/progress`}
+          className="px-3 py-1.5 rounded-full text-xs font-semibold transition hover:opacity-80"
           style={{ background: "rgba(45,212,160,0.08)", color: "#2dd4a0", border: "1px solid rgba(45,212,160,0.2)" }}>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
-          </svg>
           Progress
         </Link>
-        <Link href={`/classes/${cls.id}/concepts`} title="Manage concepts"
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition hover:opacity-80"
+        <Link href={`/modules/${cls.id}/concepts`}
+          className="px-3 py-1.5 rounded-full text-xs font-semibold transition hover:opacity-80"
           style={{ background: "rgba(12,192,223,0.08)", color: "#0cc0df", border: "1px solid rgba(12,192,223,0.2)" }}>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-          </svg>
           Concepts
         </Link>
-        <Link href={`/classes/${cls.id}`} title="Edit class settings"
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition hover:opacity-80"
+        <Link href={`/modules/${cls.id}`} title="Edit module settings"
+          className="flex items-center justify-center w-7 h-7 rounded-full transition hover:opacity-80"
           style={{ background: "var(--bg-card-hover)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
           </svg>
-          Edit
         </Link>
-        <button onClick={() => onDelete(cls.id)} title="Delete class"
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition hover:opacity-80"
+        <button onClick={() => onDelete(cls.id)} title="Delete module"
+          className="flex items-center justify-center w-7 h-7 rounded-full transition hover:opacity-80"
           style={{ background: "rgba(239,68,68,0.08)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.2)" }}>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
           </svg>
-          Delete
         </button>
       </div>
     </div>
   );
 }
 
-export default function ClassesPage() {
+export default function ModulesPage() {
   useSession({ required: true });
   const [classes, setClasses] = useState<Class[]>([]);
   const [loading, setLoading] = useState(true);
+  const [unassigned, setUnassigned] = useState<Course[]>([]);
+  const [loadingUnassigned, setLoadingUnassigned] = useState(true);
 
   useEffect(() => {
-    fetch("/api/classes").then(r => r.json()).then(data => {
+    fetch("/api/modules").then(r => r.json()).then(data => {
       setClasses(Array.isArray(data) ? data : []);
       setLoading(false);
+    });
+    fetch("/api/courses?unassigned=true").then(r => r.json()).then(data => {
+      setUnassigned(Array.isArray(data) ? data : []);
+      setLoadingUnassigned(false);
     });
   }, []);
 
   async function handleDelete(id: string) {
-    if (!confirm("Delete this class? Students will lose access.")) return;
-    await fetch(`/api/classes/${id}`, { method: "DELETE" });
+    if (!confirm("Delete this module? Students will lose access.")) return;
+    await fetch(`/api/modules/${id}`, { method: "DELETE" });
     setClasses(prev => prev.filter(c => c.id !== id));
   }
 
@@ -103,17 +102,17 @@ export default function ClassesPage() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>Classes</h1>
+          <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>Modules</h1>
           {!loading && (
             <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
-              Each class gets a join code students use to access NeXTBox.
+              Each module gets a join code students use to access NeXTBox.
             </p>
           )}
         </div>
-        <Link href="/classes/new"
+        <Link href="/modules/new"
           className="rounded-full px-4 py-2 text-sm font-semibold transition hover:opacity-90"
           style={{ background: "#0cc0df", color: "#0a0b13" }}>
-          + New Class
+          + New Module
         </Link>
       </div>
 
@@ -121,19 +120,47 @@ export default function ClassesPage() {
         <p className="text-sm text-[#0cc0df]">Loading…</p>
       ) : classes.length === 0 ? (
         <div className="text-center py-20 rounded-3xl" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
-          <p className="text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>No classes yet</p>
+          <p className="text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>No modules yet</p>
           <p className="text-xs mb-5" style={{ color: "var(--text-muted)" }}>
-            Create a class to get a join code for your students.
+            Create a module to get a join code for your students.
           </p>
-          <Link href="/classes/new"
+          <Link href="/modules/new"
             className="rounded-full px-5 py-2 text-sm font-semibold transition hover:opacity-90"
             style={{ background: "#0cc0df", color: "#0a0b13" }}>
-            Create First Class
+            Create First Module
           </Link>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {classes.map(cls => <ClassCard key={cls.id} cls={cls} onDelete={handleDelete} />)}
+        </div>
+      )}
+
+      {/* Unassigned Drive Content */}
+      {!loadingUnassigned && unassigned.length > 0 && (
+        <div className="mt-10 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="h-px flex-1" style={{ background: "var(--border)" }} />
+            <p className="text-xs font-bold uppercase tracking-widest px-2" style={{ color: "var(--text-muted)" }}>Unassigned Drive Content</p>
+            <div className="h-px flex-1" style={{ background: "var(--border)" }} />
+          </div>
+          <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+            These courses aren't linked to any module. Open a module above and use "Assign Existing" to connect them.
+          </p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {unassigned.map(course => (
+              <Link key={course.id} href={`/courses/${course.id}`}
+                className="rounded-3xl p-4 block transition hover:opacity-90"
+                style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
+                <p className="text-sm font-semibold truncate mb-1" style={{ color: "var(--text-primary)" }}>{course.title}</p>
+                <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+                  {course.lessonIds.length} {course.lessonIds.length === 1 ? "lesson" : "lessons"}
+                  {course.settings?.subject ? ` · ${course.settings.subject}` : ""}
+                  {course.gradeLevel ? ` · ${course.gradeLevel}` : ""}
+                </p>
+              </Link>
+            ))}
+          </div>
         </div>
       )}
     </div>

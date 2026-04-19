@@ -42,7 +42,7 @@ export default function ProgressDashboardPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    fetch(`/api/classes/${id}/progress`)
+    fetch(`/api/modules/${id}/progress`)
       .then(r => r.json())
       .then(d => {
         if (d.error) { setError(d.error); setLoading(false); return; }
@@ -57,17 +57,14 @@ export default function ProgressDashboardPage() {
 
   const { cls, exercises, progress } = data;
 
-  // Gather unique students
-  const studentIds = [...new Set(progress.map(p => p.studentId))].sort();
+  const studentIds = (cls.studentIds?.length ? cls.studentIds : [...new Set(progress.map(p => p.studentId))]).sort();
 
-  // Build lookup: studentId -> exerciseId -> status
   const lookup: Record<string, Record<string, "completed" | "in_progress">> = {};
   progress.forEach(p => {
     if (!lookup[p.studentId]) lookup[p.studentId] = {};
     lookup[p.studentId][p.exerciseId] = p.status;
   });
 
-  // Group exercises by concept for column headers
   const conceptOrder: string[] = [];
   const conceptGroups: Record<string, Exercise[]> = {};
   exercises.forEach(e => {
@@ -81,7 +78,7 @@ export default function ProgressDashboardPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3 flex-wrap">
-        <Link href="/classes" className="text-sm hover:underline" style={{ color: "#0cc0df" }}>← Classes</Link>
+        <Link href="/modules" className="text-sm hover:underline" style={{ color: "#0cc0df" }}>← Modules</Link>
         <span style={{ color: "var(--border)" }}>/</span>
         <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{cls.name}</span>
         <span style={{ color: "var(--border)" }}>/</span>
@@ -90,9 +87,9 @@ export default function ProgressDashboardPage() {
 
       {studentIds.length === 0 ? (
         <div className="rounded-3xl p-8 text-center space-y-2" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
-          <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>No student activity yet</p>
+          <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>No students yet</p>
           <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-            Students will appear here once they start working on exercises in this class.
+            Students will appear here once they join this module using the join code.
           </p>
         </div>
       ) : (
@@ -100,7 +97,6 @@ export default function ProgressDashboardPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-xs border-collapse">
               <thead>
-                {/* Concept header row */}
                 <tr style={{ borderBottom: "1px solid var(--border)" }}>
                   <th className="text-left px-4 py-3 font-semibold sticky left-0 z-10 min-w-[180px]"
                     style={{ background: "var(--bg-card)", color: "var(--text-muted)" }}>
@@ -118,7 +114,6 @@ export default function ProgressDashboardPage() {
                     Score
                   </th>
                 </tr>
-                {/* Exercise title row */}
                 <tr style={{ borderBottom: "1px solid var(--border)" }}>
                   <th className="sticky left-0 z-10 px-4 py-2" style={{ background: "var(--bg-card)" }} />
                   {exercises.map(ex => (
@@ -165,7 +160,6 @@ export default function ProgressDashboardPage() {
             </table>
           </div>
 
-          {/* Legend */}
           <div className="px-4 py-3 flex items-center gap-5 flex-wrap" style={{ borderTop: "1px solid var(--border)" }}>
             <span className="text-xs" style={{ color: "var(--text-muted)" }}>
               {studentIds.length} student{studentIds.length !== 1 ? "s" : ""} · {exercises.length} exercise{exercises.length !== 1 ? "s" : ""}

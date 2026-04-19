@@ -13,7 +13,7 @@ export default function ConceptsOverviewPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/classes").then(r => r.json()).then(async (clsList: Class[]) => {
+    fetch("/api/modules").then(r => r.json()).then(async (clsList: Class[]) => {
       if (!Array.isArray(clsList)) { setLoading(false); return; }
       setClasses(clsList);
       const entries = await Promise.all(
@@ -31,7 +31,7 @@ export default function ConceptsOverviewPage() {
   if (loading) return <div className="py-20 text-center text-sm" style={{ color: "#0cc0df" }}>Loading…</div>;
 
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className="space-y-6">
       <div>
         <h1 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>Concepts</h1>
         <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
@@ -43,7 +43,7 @@ export default function ConceptsOverviewPage() {
         <div className="rounded-3xl p-8 text-center space-y-3" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
           <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>No classes yet</p>
           <p className="text-xs" style={{ color: "var(--text-muted)" }}>Create a class first, then add concepts to it.</p>
-          <Link href="/classes/new"
+          <Link href="/modules/new"
             className="inline-block rounded-full px-5 py-2 text-xs font-bold transition hover:opacity-90"
             style={{ background: "#0cc0df", color: "#0a0b13" }}>
             Create a Class
@@ -76,7 +76,7 @@ export default function ConceptsOverviewPage() {
                     </div>
                   )}
                 </div>
-                <Link href={`/classes/${cls.id}/concepts`}
+                <Link href={`/courses/${cls.id}/concepts`}
                   className="rounded-full px-4 py-1.5 text-xs font-semibold transition hover:opacity-80 shrink-0"
                   style={{ background: "var(--bg-card-hover)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}>
                   Manage

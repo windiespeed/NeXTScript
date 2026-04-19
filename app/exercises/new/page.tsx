@@ -88,7 +88,7 @@ export default function NewExercisePage() {
   }
 
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
         <Link href="/exercises" className="text-sm hover:underline" style={{ color: "#0cc0df" }}>

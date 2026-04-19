@@ -65,6 +65,7 @@ export interface Course {
   driveFolderUrl?: string;
   resources?: CourseResource[];
   modules?: CourseModule[];  // ordered list of modules grouping lessons within this course
+  moduleId?: string;         // links this Drive content to a NeXTBox module (courses/[id])
   createdAt: string;
   updatedAt: string;
 }

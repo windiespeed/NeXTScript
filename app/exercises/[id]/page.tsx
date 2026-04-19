@@ -94,7 +94,7 @@ export default function EditExercisePage() {
   if (loading) return <p className="text-sm text-[#0cc0df]">Loading…</p>;
 
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
         <Link href="/exercises" className="text-sm hover:underline" style={{ color: "#0cc0df" }}>

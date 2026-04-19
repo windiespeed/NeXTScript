@@ -13,7 +13,7 @@ const sectionLabel = "text-xs font-semibold uppercase tracking-widest text-[#0cc
 const inputClass = "w-full rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#0cc0df] transition placeholder:text-[var(--text-muted)]";
 const inputStyle = { background: "var(--bg-card-hover)", color: "var(--text-primary)", border: "1px solid var(--border)" };
 
-export default function NewClassPage() {
+export default function NewModulePage() {
   useSession({ required: true });
   const router = useRouter();
 
@@ -41,13 +41,13 @@ export default function NewClassPage() {
     if (!name.trim()) { setError("Class name is required."); return; }
     setSaving(true);
     setError("");
-    const res = await fetch("/api/classes", {
+    const res = await fetch("/api/modules", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: name.trim(), language, progressMode, solutionRevealAttempts, assignedConcepts: selectedConcepts }),
     });
     if (res.ok) {
-      router.push("/classes");
+      router.push("/modules");
     } else {
       const data = await res.json();
       setError(data.error || "Failed to save.");
@@ -56,11 +56,11 @@ export default function NewClassPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <Link href="/classes" className="text-sm hover:underline" style={{ color: "#0cc0df" }}>← Classes</Link>
+        <Link href="/modules" className="text-sm hover:underline" style={{ color: "#0cc0df" }}>← Modules</Link>
         <span style={{ color: "var(--border)" }}>/</span>
-        <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>New Class</span>
+        <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>New Module</span>
       </div>
 
       {error && (
@@ -70,10 +70,10 @@ export default function NewClassPage() {
       )}
 
       <div className={cardClass} style={cardStyle}>
-        <p className={sectionLabel}>Class Details</p>
+        <p className={sectionLabel}>Module Details</p>
         <div className="space-y-3">
           <div>
-            <label className="text-xs mb-1 block" style={{ color: "var(--text-muted)" }}>Class Name</label>
+            <label className="text-xs mb-1 block" style={{ color: "var(--text-muted)" }}>Module Name</label>
             <input value={name} onChange={e => setName(e.target.value)}
               placeholder="e.g. Period 3 — Intro to JavaScript"
               className={inputClass} style={inputStyle} />
@@ -172,9 +172,9 @@ export default function NewClassPage() {
         <button onClick={handleSave} disabled={saving}
           className="rounded-full px-6 py-2.5 text-sm font-bold transition hover:opacity-90 disabled:opacity-50"
           style={{ background: "#0cc0df", color: "#0a0b13" }}>
-          {saving ? "Creating…" : "Create Class"}
+          {saving ? "Creating…" : "Create Module"}
         </button>
-        <Link href="/classes"
+        <Link href="/modules"
           className="rounded-full px-6 py-2.5 text-sm font-semibold transition hover:opacity-80"
           style={{ background: "var(--bg-card-hover)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}>
           Cancel

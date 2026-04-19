@@ -183,7 +183,7 @@ export default function LessonHubPage() {
     Promise.all([
       fetch(`/api/lessons/${id}`).then(r => r.json()),
       fetch("/api/projects").then(r => r.json()),
-      fetch("/api/courses").then(r => r.json()),
+      fetch("/api/drive").then(r => r.json()),
     ]).then(([lessonData, projectData, coursesData]) => {
       setAllCourses(Array.isArray(coursesData) ? coursesData : []);
       setLesson(lessonData);
@@ -195,7 +195,7 @@ export default function LessonHubPage() {
       if (hasDraft) setGenQuiz(true);
 
       if (lessonData?.courseId) {
-        fetch(`/api/courses/${lessonData.courseId}`).then(r => r.json()).then(c => {
+        fetch(`/api/drive/${lessonData.courseId}`).then(r => r.json()).then(c => {
           setCourse(c);
           if (Array.isArray(c?.modules)) setCourseModules(c.modules);
         }).catch(() => {});
@@ -313,7 +313,7 @@ export default function LessonHubPage() {
     if (oldCourseId) {
       const oldCourse = allCourses.find(c => c.id === oldCourseId);
       if (oldCourse) {
-        await fetch(`/api/courses/${oldCourseId}`, {
+        await fetch(`/api/drive/${oldCourseId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ lessonIds: oldCourse.lessonIds.filter(lid => lid !== id) }),
@@ -324,13 +324,13 @@ export default function LessonHubPage() {
     if (newCourseId) {
       const newCourse = allCourses.find(c => c.id === newCourseId);
       if (newCourse && !newCourse.lessonIds.includes(id)) {
-        await fetch(`/api/courses/${newCourseId}`, {
+        await fetch(`/api/drive/${newCourseId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ lessonIds: [...newCourse.lessonIds, id] }),
         });
       }
-      const fetchedCourse = await fetch(`/api/courses/${newCourseId}`).then(r => r.json());
+      const fetchedCourse = await fetch(`/api/drive/${newCourseId}`).then(r => r.json());
       setCourse(fetchedCourse);
       setCourseModules(Array.isArray(fetchedCourse?.modules) ? fetchedCourse.modules : []);
     } else {
@@ -359,7 +359,7 @@ export default function LessonHubPage() {
   const typeColors = TYPE_COLORS[lesson.lessonType ?? "lesson"];
 
   return (
-    <div className="max-w-3xl space-y-5">
+    <div className="space-y-5">
       {/* Back + header */}
       <div>
         <button onClick={() => router.push(backHref)} className="text-sm text-[#0cc0df] hover:underline mb-3 block">

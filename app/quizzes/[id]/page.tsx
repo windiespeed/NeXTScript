@@ -46,7 +46,7 @@ export default function EditQuizPage() {
   useEffect(() => {
     Promise.all([
       fetch(`/api/projects/${id}`).then(r => r.ok ? r.json() : null),
-      fetch("/api/courses").then(r => r.json()),
+      fetch("/api/drive").then(r => r.json()),
       fetch("/api/lessons").then(r => r.json()),
       fetch("/api/user/settings").then(r => r.json()),
     ]).then(([quiz, c, l, s]) => {
@@ -174,7 +174,7 @@ export default function EditQuizPage() {
   const canAiGenerate = hasAiKey && lessonIds.length > 0;
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="space-y-6">
       {/* Header */}
       <div>
         <button onClick={() => router.push("/quizzes")} className="text-sm text-[#0cc0df] hover:underline mb-2 block">

@@ -101,7 +101,7 @@ export default function QuizzesPage() {
   useEffect(() => {
     Promise.all([
       fetch("/api/quizzes").then(r => r.json()),
-      fetch("/api/courses").then(r => r.json()),
+      fetch("/api/drive").then(r => r.json()),
       fetch("/api/lessons").then(r => r.json()),
     ]).then(([q, c, l]) => {
       setQuizzes(Array.isArray(q) ? q : []);

@@ -64,14 +64,12 @@ export default function NewCoursePage() {
       return;
     }
     const course = await res.json();
-    // Attempt to create Drive folder — non-blocking, failure won't prevent navigation
     await fetch(`/api/courses/${course.id}/folder`, { method: "POST" }).catch(() => {});
     router.push(`/courses/${course.id}`);
   }
 
   return (
-    <div className="max-w-2xl">
-      {/* Page header */}
+    <div>
       <div className="mb-6">
         <button onClick={() => router.push("/courses")} className="text-sm text-[#0cc0df] hover:underline mb-3 block">
           ← Back to Courses
@@ -84,7 +82,6 @@ export default function NewCoursePage() {
 
       <form onSubmit={handleSubmit} className="space-y-6">
 
-        {/* ── Course Info ─────────────────────────────────────────────── */}
         <div className="rounded-3xl p-6 space-y-4" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
           <p className={sectionHeading}>Course Info</p>
 
@@ -92,55 +89,30 @@ export default function NewCoursePage() {
             <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
               Title <span className="text-red-500">*</span>
             </label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. JavaScript Fundamentals"
-              className={inputClass}
-              style={inputStyle}
-            />
+            <input type="text" value={title} onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. JavaScript Fundamentals" className={inputClass} style={inputStyle} />
           </div>
 
           <div>
             <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Description</label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={3}
-              placeholder="Brief summary of what this course covers…"
-              className={inputClass}
-              style={inputStyle}
-            />
+            <textarea value={description} onChange={(e) => setDescription(e.target.value)}
+              rows={3} placeholder="Brief summary of what this course covers…" className={inputClass} style={inputStyle} />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Grade Level</label>
-              <input
-                type="text"
-                value={gradeLevel}
-                onChange={(e) => setGradeLevel(e.target.value)}
-                placeholder="e.g. 9th Grade, College, Adult Ed"
-                className={inputClass}
-                style={inputStyle}
-              />
+              <input type="text" value={gradeLevel} onChange={(e) => setGradeLevel(e.target.value)}
+                placeholder="e.g. 9th Grade, College, Adult Ed" className={inputClass} style={inputStyle} />
             </div>
             <div>
               <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Term</label>
-              <input
-                type="text"
-                value={term}
-                onChange={(e) => setTerm(e.target.value)}
-                placeholder="e.g. Spring 2026, Q1"
-                className={inputClass}
-                style={inputStyle}
-              />
+              <input type="text" value={term} onChange={(e) => setTerm(e.target.value)}
+                placeholder="e.g. Spring 2026, Q1" className={inputClass} style={inputStyle} />
             </div>
           </div>
         </div>
 
-        {/* ── Generation Settings ─────────────────────────────────────── */}
         <div className="rounded-3xl p-6 space-y-4" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
           <p className={sectionHeading}>Generation Settings</p>
           <p className="text-xs -mt-1 mb-2" style={{ color: "var(--text-muted)" }}>
@@ -150,36 +122,21 @@ export default function NewCoursePage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Industry</label>
-              <input
-                type="text"
-                value={settings.industry}
-                onChange={(e) => patchSettings({ industry: e.target.value })}
-                placeholder="e.g. Coding, Healthcare, Business"
-                className={inputClass}
-                style={inputStyle}
-              />
+              <input type="text" value={settings.industry} onChange={(e) => patchSettings({ industry: e.target.value })}
+                placeholder="e.g. Coding, Healthcare, Business" className={inputClass} style={inputStyle} />
             </div>
             <div>
               <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Subject Area</label>
-              <input
-                type="text"
-                value={settings.subject}
-                onChange={(e) => patchSettings({ subject: e.target.value })}
-                placeholder="e.g. JavaScript, Nursing 101"
-                className={inputClass}
-                style={inputStyle}
-              />
+              <input type="text" value={settings.subject} onChange={(e) => patchSettings({ subject: e.target.value })}
+                placeholder="e.g. JavaScript, Nursing 101" className={inputClass} style={inputStyle} />
             </div>
           </div>
 
           <div>
             <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Student Level</label>
-            <select
-              value={settings.studentLevel}
+            <select value={settings.studentLevel}
               onChange={(e) => patchSettings({ studentLevel: e.target.value as CourseSettings["studentLevel"] })}
-              className={inputClass}
-              style={inputStyle}
-            >
+              className={inputClass} style={inputStyle}>
               <option value="">— Not specified —</option>
               <option value="beginner">Beginner</option>
               <option value="intermediate">Intermediate</option>
@@ -190,40 +147,26 @@ export default function NewCoursePage() {
           <div>
             <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Default Sources</label>
             <p className="text-xs mb-1.5" style={{ color: "var(--text-muted)" }}>Pre-filled in every new lesson in this course. One URL per line.</p>
-            <textarea
-              value={settings.defaultSources}
-              onChange={(e) => patchSettings({ defaultSources: e.target.value })}
-              rows={4}
-              placeholder={"https://www.w3schools.com/\nhttps://developer.mozilla.org/"}
-              className={`${inputClass} font-mono`}
-              style={inputStyle}
-            />
+            <textarea value={settings.defaultSources} onChange={(e) => patchSettings({ defaultSources: e.target.value })}
+              rows={4} placeholder={"https://www.w3schools.com/\nhttps://developer.mozilla.org/"}
+              className={`${inputClass} font-mono`} style={inputStyle} />
           </div>
 
           <div>
             <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
               Slides Template URL <span className="font-normal" style={{ color: "var(--text-muted)" }}>(optional)</span>
             </label>
-            <input
-              type="url"
-              value={settings.defaultTemplateUrl}
+            <input type="url" value={settings.defaultTemplateUrl}
               onChange={(e) => patchSettings({ defaultTemplateUrl: e.target.value })}
-              placeholder="https://docs.google.com/presentation/d/…"
-              className={inputClass}
-              style={inputStyle}
-            />
+              placeholder="https://docs.google.com/presentation/d/…" className={inputClass} style={inputStyle} />
           </div>
         </div>
 
-        {/* ── Section Labels ──────────────────────────────────────────── */}
         <div className="rounded-3xl p-6 space-y-4" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
           <div className="flex items-center justify-between">
             <p className={sectionHeading}>Section Labels</p>
-            <button
-              type="button"
-              onClick={() => patchSettings({ sectionLabels: DEFAULT_COURSE_SETTINGS.sectionLabels })}
-              className="text-xs text-[#0cc0df] hover:underline"
-            >
+            <button type="button" onClick={() => patchSettings({ sectionLabels: DEFAULT_COURSE_SETTINGS.sectionLabels })}
+              className="text-xs text-[#0cc0df] hover:underline">
               Reset to defaults
             </button>
           </div>
@@ -234,35 +177,24 @@ export default function NewCoursePage() {
             {SECTION_LABEL_KEYS.map(({ key, label }) => (
               <div key={key}>
                 <label className="block text-xs mb-1" style={{ color: "var(--text-muted)" }}>{label}</label>
-                <input
-                  type="text"
-                  value={settings.sectionLabels[key]}
+                <input type="text" value={settings.sectionLabels[key]}
                   onChange={(e) => patchSectionLabel(key, e.target.value)}
                   placeholder={DEFAULT_COURSE_SETTINGS.sectionLabels[key]}
-                  className={inputClass}
-                  style={inputStyle}
-                />
+                  className={inputClass} style={inputStyle} />
               </div>
             ))}
           </div>
         </div>
 
-        {/* ── Footer ─────────────────────────────────────────────────── */}
         {error && <p className="text-sm text-red-500">{error}</p>}
         <div className="flex gap-3">
-          <button
-            type="button"
-            onClick={() => router.push("/courses")}
+          <button type="button" onClick={() => router.push("/courses")}
             className="rounded-full px-5 py-2.5 text-sm font-semibold transition hover:bg-[var(--bg-card-hover)]"
-            style={{ border: "1px solid var(--border)", color: "var(--text-primary)" }}
-          >
+            style={{ border: "1px solid var(--border)", color: "var(--text-primary)" }}>
             Cancel
           </button>
-          <button
-            type="submit"
-            disabled={saving}
-            className="flex-1 rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50 transition shadow"
-          >
+          <button type="submit" disabled={saving}
+            className="flex-1 rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50 transition shadow">
             {saving ? "Creating…" : "Create Course"}
           </button>
         </div>
