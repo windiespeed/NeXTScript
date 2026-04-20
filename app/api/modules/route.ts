@@ -25,6 +25,10 @@ export async function POST(req: Request) {
     const course = await courseStore.create(
       {
         title,
+        description: "",
+        gradeLevel: "",
+        term: "",
+        settings: { defaultSources: "", defaultTemplateUrl: "", industry: "", subject: "", studentLevel: "", sectionLabels: { lessonOverview: "", learningTargets: "", vocabulary: "", warmUp: "", guidedLab: "", selfPaced: "", submissionChecklist: "", checkpoint: "", industryBestPractices: "", devJournalPrompt: "", rubric: "" } },
         lessonIds: [],
         language: body.language,
         progressMode: body.progressMode,
