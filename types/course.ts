@@ -61,7 +61,8 @@ export interface Course {
   title: string;
   description: string;
   gradeLevel: string;   // e.g. "9th Grade", "College", "Adult Ed"
-  term: string;         // e.g. "Spring 2026", "Q1"
+  term: string;         // e.g. "Feb 2026" (month + year, required)
+  semester?: string;    // e.g. "Spring", "Fall", "Semester 1" (optional)
   settings: CourseSettings;
   lessonIds: string[];  // ordered list of lesson IDs belonging to this course
   driveFolderId?: string;

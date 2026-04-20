@@ -76,7 +76,7 @@ export default function ConceptsOverviewPage() {
                     </div>
                   )}
                 </div>
-                <Link href={`/courses/${course.id}/concepts`}
+                <Link href={`/courses/${course.id}/settings`}
                   className="rounded-full px-4 py-1.5 text-xs font-semibold transition hover:opacity-80 shrink-0"
                   style={{ background: "var(--bg-card-hover)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}>
                   Manage

@@ -33,7 +33,7 @@ function NewSlidesInner() {
   useEffect(() => {
     Promise.all([
       fetch("/api/user/settings").then(r => r.json()),
-      fetch("/api/drive").then(r => r.json()),
+      fetch("/api/courses").then(r => r.json()),
     ]).then(([userSettings, coursesData]) => {
       setHasAiKey(userSettings.hasKey ?? false);
       const courseList: Course[] = Array.isArray(coursesData) ? coursesData : [];
@@ -84,7 +84,7 @@ function NewSlidesInner() {
             ? m.lessonIds.includes(lesson.id) ? m.lessonIds : [...m.lessonIds, lesson.id]
             : m.lessonIds,
         }));
-        await fetch(`/api/drive/${selectedCourseId}`, {
+        await fetch(`/api/courses/${selectedCourseId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ modules: updatedModules }),

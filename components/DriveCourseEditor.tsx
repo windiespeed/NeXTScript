@@ -2,9 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import type { Course, CourseSettings, CourseResource, CourseModule } from "@/types/course";
-import type { Concept } from "@/types/concept";
-import { DEFAULT_COURSE_SETTINGS } from "@/types/course";
+import type { Course, CourseResource, CourseModule } from "@/types/course";
 import type { Lesson } from "@/types/lesson";
 import type { SavedProject } from "@/types/project";
 import {
@@ -26,19 +24,6 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
-const SECTION_LABEL_KEYS = [
-  { key: "lessonOverview",        label: "Lesson Overview" },
-  { key: "learningTargets",       label: "Learning Targets" },
-  { key: "vocabulary",            label: "Vocabulary" },
-  { key: "warmUp",                label: "Opening Activity" },
-  { key: "guidedLab",             label: "Guided Activity" },
-  { key: "selfPaced",             label: "Independent Activity" },
-  { key: "submissionChecklist",   label: "Requirements Checklist" },
-  { key: "checkpoint",            label: "Common Problems / FAQ" },
-  { key: "industryBestPractices", label: "Best Practices" },
-  { key: "devJournalPrompt",      label: "Reflection Journal" },
-  { key: "rubric",                label: "Assessment / Rubric" },
-] as const;
 
 const inputClass = "w-full rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#0cc0df] transition placeholder:text-[var(--text-muted)]";
 const inputStyle = { background: "var(--bg-card-hover)", color: "var(--text-primary)", border: "1px solid var(--border)" };
@@ -132,15 +117,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
   const [course, setCourse] = useState<Course | null>(null);
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [loading, setLoading] = useState(true);
-  const [settingsOpen, setSettingsOpen] = useState(false);
 
-  const [editSettings, setEditSettings] = useState<CourseSettings>(DEFAULT_COURSE_SETTINGS);
-  const [editTitle, setEditTitle] = useState("");
-  const [editDescription, setEditDescription] = useState("");
-  const [editGradeLevel, setEditGradeLevel] = useState("");
-  const [editTerm, setEditTerm] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [saveMsg, setSaveMsg] = useState("");
   const [copied, setCopied] = useState(false);
   const [selecting, setSelecting] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -178,7 +155,6 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
   const [editSolutionReveal, setEditSolutionReveal] = useState<string>("");
   const [savingNextbox, setSavingNextbox] = useState(false);
   const [nextboxSaveMsg, setNextboxSaveMsg] = useState("");
-  const [concepts, setConcepts] = useState<Concept[]>([]);
   const [joinCodeCopied, setJoinCodeCopied] = useState(false);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
@@ -196,15 +172,9 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
       fetch(`/api/lessons?courseId=${id}`).then(r => r.json()),
       fetch("/api/projects").then(r => r.json()),
       fetch("/api/courses").then(r => r.json()),
-      fetch(`/api/concepts?courseId=${id}`).then(r => r.json()),
-    ]).then(([courseData, lessonData, projectData, coursesData, conceptsData]) => {
+    ]).then(([courseData, lessonData, projectData, coursesData]) => {
       if (!courseData?.id) { setLoading(false); return; }
       setCourse(courseData);
-      setEditTitle(courseData.title ?? "");
-      setEditDescription(courseData.description ?? "");
-      setEditGradeLevel(courseData.gradeLevel ?? "");
-      setEditTerm(courseData.term ?? "");
-      setEditSettings({ ...DEFAULT_COURSE_SETTINGS, ...(courseData.settings ?? {}) });
       setEditLanguage(courseData.language ?? "javascript");
       setEditProgressMode(courseData.progressMode ?? "locked");
       setEditSolutionReveal(courseData.solutionRevealAttempts != null ? String(courseData.solutionRevealAttempts) : "");
@@ -213,39 +183,10 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
       setAllCourses(Array.isArray(coursesData) ? coursesData : []);
       setResources(Array.isArray(courseData.resources) ? courseData.resources : []);
       setDriveModules(Array.isArray(courseData.modules) ? courseData.modules : []);
-      setConcepts(Array.isArray(conceptsData) ? conceptsData : []);
       setLoading(false);
     });
   }, [id]);
 
-  function patchSettings(patch: Partial<CourseSettings>) {
-    setEditSettings(prev => ({ ...prev, ...patch }));
-  }
-
-  function patchSectionLabel(key: string, value: string) {
-    setEditSettings(prev => ({
-      ...prev,
-      sectionLabels: { ...prev.sectionLabels, [key]: value },
-    }));
-  }
-
-  async function handleSaveSettings(e: React.FormEvent) {
-    e.preventDefault();
-    setSaving(true);
-    setSaveMsg("");
-    const res = await fetch(`/api/courses/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: editTitle, description: editDescription, gradeLevel: editGradeLevel, term: editTerm, settings: editSettings }),
-    });
-    setSaving(false);
-    if (res.ok) {
-      const updated = await res.json();
-      setCourse(updated);
-      setSaveMsg("Settings saved.");
-      setTimeout(() => { setSaveMsg(""); setSettingsOpen(false); }, 1500);
-    }
-  }
 
   async function handleToggleReleased(lesson: Lesson) {
     const updated = { ...lesson, released: !lesson.released };
@@ -773,29 +714,18 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                   </button>
                 )}
               </div>
-              <Link href={`/courses/${id}/progress`}
-                className="rounded-full px-3 py-1.5 text-xs font-semibold transition hover:opacity-80 self-end"
-                style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
-                View Progress →
-              </Link>
-            </div>
-
-            {/* Concepts */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>Concepts</p>
-                <Link href={`/courses/${id}/concepts`} className="text-[10px] font-semibold transition hover:opacity-80" style={{ color: "#0cc0df" }}>Manage →</Link>
+              <div className="flex items-center gap-2 self-end">
+                <Link href={`/courses/${id}/settings`}
+                  className="rounded-full px-3 py-1.5 text-xs font-semibold transition hover:opacity-80"
+                  style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
+                  Course Settings →
+                </Link>
+                <Link href={`/courses/${id}/progress`}
+                  className="rounded-full px-3 py-1.5 text-xs font-semibold transition hover:opacity-80"
+                  style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
+                  View Progress →
+                </Link>
               </div>
-              {concepts.length === 0 ? (
-                <p className="text-xs" style={{ color: "var(--text-muted)" }}>No concepts yet.</p>
-              ) : (
-                <div className="flex flex-wrap gap-1">
-                  {concepts.map(c => (
-                    <span key={c.id} className="text-[10px] font-medium px-1.5 py-0.5 rounded-full"
-                      style={{ background: "rgba(12,192,223,0.1)", color: "#0cc0df" }}>{c.label}</span>
-                  ))}
-                </div>
-              )}
             </div>
 
             {/* Settings */}
@@ -931,9 +861,9 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                           style={{ color: "#2dd4a0" }}>Student View ↗</a>
                       </div>
                       <div style={{ borderTop: "1px solid var(--border)" }}>
-                        <button onClick={() => { setSettingsOpen(true); setMoreOpen(false); }}
-                          className="w-full text-left px-4 py-2.5 text-xs hover:bg-[var(--bg-card-hover)] transition"
-                          style={{ color: "var(--text-primary)" }}>Course Settings ⚙</button>
+                        <Link href={`/courses/${id}/settings`} onClick={() => setMoreOpen(false)}
+                          className="block px-4 py-2.5 text-xs hover:bg-[var(--bg-card-hover)] transition"
+                          style={{ color: "var(--text-primary)" }}>Course Settings ⚙</Link>
                       </div>
                     </div>
                     </>
@@ -948,7 +878,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
           </div>
         </div>
 
-        {lessons.length === 0 ? (
+        {lessons.length === 0 && driveModules.length === 0 ? (
           <div className="text-center py-10 rounded-3xl" style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)" }}>
             <p className="text-sm mb-4" style={{ color: "var(--text-muted)" }}>No lessons yet.</p>
             <Link href={`/lessons/new?courseId=${id}`}
@@ -1287,100 +1217,6 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
         </div>
       )}
 
-      {/* Settings Modal */}
-      {settingsOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setSettingsOpen(false)} />
-          <div className="relative w-full max-w-2xl max-h-[90vh] flex flex-col rounded-3xl overflow-hidden" style={{ background: "var(--bg-card)", boxShadow: "var(--shadow-float)" }}>
-            <div className="flex items-center justify-between px-6 py-4 shrink-0" style={{ borderBottom: "1px solid var(--border)" }}>
-              <h2 className="text-base font-bold" style={{ color: "var(--text-primary)" }}>Course Settings</h2>
-              <button onClick={() => setSettingsOpen(false)} className="p-1.5 rounded-full transition hover:bg-[var(--bg-card-hover)]" style={{ color: "var(--text-muted)" }}>
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-              </button>
-            </div>
-            <div className="overflow-y-auto flex-1 px-6 py-5">
-              <form onSubmit={handleSaveSettings} className="space-y-6">
-                <div className="rounded-3xl p-6 space-y-4" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
-                  <p className="text-xs font-semibold uppercase tracking-widest text-[#0cc0df] mb-3">Course Info</p>
-                  <div>
-                    <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Title</label>
-                    <input type="text" value={editTitle} onChange={e => setEditTitle(e.target.value)} className={inputClass} style={inputStyle} />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Description</label>
-                    <textarea value={editDescription} onChange={e => setEditDescription(e.target.value)} rows={3} className={inputClass} style={inputStyle} />
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Grade Level</label>
-                      <input type="text" value={editGradeLevel} onChange={e => setEditGradeLevel(e.target.value)} placeholder="e.g. 9th Grade, College" className={inputClass} style={inputStyle} />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Term</label>
-                      <input type="text" value={editTerm} onChange={e => setEditTerm(e.target.value)} placeholder="e.g. Spring 2026" className={inputClass} style={inputStyle} />
-                    </div>
-                  </div>
-                </div>
-                <div className="rounded-3xl p-6 space-y-4" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
-                  <p className="text-xs font-semibold uppercase tracking-widest text-[#0cc0df] mb-1">Generation Settings</p>
-                  <p className="text-xs" style={{ color: "var(--text-muted)" }}>These override your global profile settings for every lesson in this course.</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Industry</label>
-                      <input type="text" value={editSettings.industry} onChange={e => patchSettings({ industry: e.target.value })} placeholder="e.g. Coding, Healthcare" className={inputClass} style={inputStyle} />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Subject Area</label>
-                      <input type="text" value={editSettings.subject} onChange={e => patchSettings({ subject: e.target.value })} placeholder="e.g. JavaScript, Nursing 101" className={inputClass} style={inputStyle} />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Student Level</label>
-                    <select value={editSettings.studentLevel} onChange={e => patchSettings({ studentLevel: e.target.value as CourseSettings["studentLevel"] })} className={inputClass} style={inputStyle}>
-                      <option value="">— Not specified —</option>
-                      <option value="beginner">Beginner</option>
-                      <option value="intermediate">Intermediate</option>
-                      <option value="advanced">Advanced</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Default Sources</label>
-                    <textarea value={editSettings.defaultSources} onChange={e => patchSettings({ defaultSources: e.target.value })} rows={4} placeholder={"https://www.w3schools.com/\nhttps://developer.mozilla.org/"} className={`${inputClass} font-mono`} style={inputStyle} />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
-                      Slides Template URL <span className="font-normal" style={{ color: "var(--text-muted)" }}>(optional)</span>
-                    </label>
-                    <input type="url" value={editSettings.defaultTemplateUrl} onChange={e => patchSettings({ defaultTemplateUrl: e.target.value })} placeholder="https://docs.google.com/presentation/d/…" className={inputClass} style={inputStyle} />
-                  </div>
-                </div>
-                <div className="rounded-3xl p-6 space-y-4" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs font-semibold uppercase tracking-widest text-[#0cc0df]">Section Labels</p>
-                    <button type="button" onClick={() => patchSettings({ sectionLabels: DEFAULT_COURSE_SETTINGS.sectionLabels })} className="text-xs text-[#0cc0df] hover:underline">Reset to defaults</button>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {SECTION_LABEL_KEYS.map(({ key, label }) => (
-                      <div key={key}>
-                        <label className="block text-xs mb-1" style={{ color: "var(--text-muted)" }}>{label}</label>
-                        <input type="text" value={editSettings.sectionLabels[key]} onChange={e => patchSectionLabel(key, e.target.value)}
-                          placeholder={DEFAULT_COURSE_SETTINGS.sectionLabels[key]} className={inputClass} style={inputStyle} />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <button type="submit" disabled={saving}
-                    className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-6 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50 transition shadow">
-                    {saving ? "Saving…" : "Save Settings"}
-                  </button>
-                  {saveMsg && <p className="text-sm text-[#2dd4a0]">{saveMsg}</p>}
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

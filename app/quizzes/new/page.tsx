@@ -53,7 +53,7 @@ export default function NewQuizPage() {
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/drive").then(r => r.json()),
+      fetch("/api/courses").then(r => r.json()),
       fetch("/api/lessons").then(r => r.json()),
       fetch("/api/user/settings").then(r => r.json()),
     ]).then(([c, l, s]) => {

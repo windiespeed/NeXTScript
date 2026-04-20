@@ -274,17 +274,10 @@ function Dashboard() {
     .sort((a, b) => a.deadline.localeCompare(b.deadline))
     .slice(0, 5);
 
-  const activeCourse = courses.length > 0
-    ? [...courses].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0]
-    : null;
-
-  const activeCourseProgress = activeCourse
-    ? lessons.filter(l => l.courseId === activeCourse.id && l.status === "done").length
-    : 0;
-
-  const activeCourseTotal = activeCourse
-    ? lessons.filter(l => l.courseId === activeCourse.id).length
-    : 0;
+  const recentCourses = useMemo(
+    () => [...courses].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
+    [courses]
+  );
 
   // ── Sorted lesson list ──────────────────────────────────────────────────────
   const sorted = useMemo(() => {
@@ -328,7 +321,7 @@ function Dashboard() {
     if (oldCourseId) {
       const oldCourse = courses.find(c => c.id === oldCourseId);
       if (oldCourse) {
-        await fetch(`/api/drive/${oldCourseId}`, {
+        await fetch(`/api/courses/${oldCourseId}`, {
           method: "PUT", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ lessonIds: oldCourse.lessonIds.filter(id => id !== lessonId) }),
         });
@@ -338,7 +331,7 @@ function Dashboard() {
     if (courseId) {
       const newCourse = courses.find(c => c.id === courseId);
       if (newCourse) {
-        await fetch(`/api/drive/${courseId}`, {
+        await fetch(`/api/courses/${courseId}`, {
           method: "PUT", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ lessonIds: [...newCourse.lessonIds, lessonId] }),
         });
@@ -466,7 +459,7 @@ function Dashboard() {
       Promise.all([
         loadLessons(),
         loadProjects(),
-        fetch("/api/drive").then(r => r.json()).then(d => setCourses(Array.isArray(d) ? d : [])),
+        fetch("/api/courses").then(r => r.json()).then(d => setCourses(Array.isArray(d) ? d : [])),
         fetch("/api/user/settings").then(r => r.json()).then(s => {
           if (Array.isArray(s.lessonOrder)) setLessonOrder(s.lessonOrder);
           if (s.defaultSources) setDefaultSources(s.defaultSources);
@@ -591,81 +584,43 @@ function Dashboard() {
     );
   }
 
-  function renderActiveCourseWidget() {
+  function renderActiveCourseWidget(span: 1 | 2 | 3 = 1) {
+    const maxCourses = span === 3 ? 5 : span === 2 ? 4 : 3;
+    const visible = recentCourses.slice(0, maxCourses);
     return (
       <div className="rounded-3xl p-5 flex flex-col gap-4 h-full" style={{ background: "var(--bg-sidebar)", boxShadow: "var(--shadow-card)" }}>
         <div className="flex items-center justify-between">
-          <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Active Course</p>
-          <Link href="/drive" className="text-[10px] text-[#0cc0df] hover:underline">
+          <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Recent Courses</p>
+          <Link href="/courses" className="text-[10px] text-[#0cc0df] hover:underline">
             View all →
           </Link>
         </div>
 
-        {activeCourse ? (
+        {visible.length > 0 ? (
           <>
-            <div className="flex-1">
-              <div className="flex flex-wrap gap-1.5 mb-3">
-                {activeCourse.settings?.subject && (
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md" style={{ background: "var(--accent-bg)", color: "var(--accent)" }}>
-                    {activeCourse.settings.subject}
-                  </span>
-                )}
-                {activeCourse.gradeLevel && (
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md" style={{ background: "var(--bg-card-hover)", color: "var(--text-secondary)" }}>
-                    {activeCourse.gradeLevel}
-                  </span>
-                )}
-                {activeCourse.settings?.studentLevel && (
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md capitalize" style={{ background: "rgba(45,212,160,0.12)", color: "#2dd4a0" }}>
-                    {activeCourse.settings.studentLevel}
-                  </span>
-                )}
-              </div>
-              <Link href={`/courses/${activeCourse.id}`} className="text-base font-bold leading-snug mb-1 hover:underline" style={{ color: "var(--text-primary)" }}>
-                {activeCourse.title}
-              </Link>
-              {activeCourse.description && (
-                <p className="text-xs line-clamp-2 mb-3" style={{ color: "var(--text-secondary)" }}>
-                  {activeCourse.description}
-                </p>
-              )}
-              {/* Progress bar */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>Lessons generated</p>
-                  <p className="text-[10px] font-semibold" style={{ color: "var(--text-primary)" }}>
-                    {activeCourseProgress} / {activeCourseTotal}
-                  </p>
-                </div>
-                <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "var(--bg-card-hover)" }}>
-                  <div
-                    className="h-full rounded-full transition-all duration-700"
-                    style={{
-                      width: `${activeCourseTotal > 0 ? (activeCourseProgress / activeCourseTotal) * 100 : 0}%`,
-                      background: "linear-gradient(90deg, #6366f1, #818cf8)",
-                    }}
-                  />
-                </div>
-              </div>
+            <div className="flex-1 space-y-3">
+              {visible.map(course => {
+                const total = lessons.filter(l => l.courseId === course.id).length;
+                const done = lessons.filter(l => l.courseId === course.id && l.status === "done").length;
+                const pct = total > 0 ? (done / total) * 100 : 0;
+                return (
+                  <Link key={course.id} href={`/courses/${course.id}`}
+                    className="block rounded-2xl p-3 transition hover:opacity-90"
+                    style={{ background: "var(--bg-card-hover)" }}>
+                    <div className="flex items-center justify-between gap-2 mb-1.5">
+                      <p className="text-xs font-semibold truncate" style={{ color: "var(--text-primary)" }}>{course.title}</p>
+                      <span className="text-[10px] font-semibold shrink-0" style={{ color: "var(--text-muted)" }}>{done}/{total}</span>
+                    </div>
+                    <div className="h-1 rounded-full overflow-hidden" style={{ background: "var(--bg-card)" }}>
+                      <div className="h-full rounded-full transition-all duration-700"
+                        style={{ width: `${pct}%`, background: "linear-gradient(90deg, #6366f1, #818cf8)" }} />
+                    </div>
+                  </Link>
+                );
+              })}
             </div>
-
-            {/* Upcoming deadlines in this course */}
-            {upcoming.filter(l => l.courseId === activeCourse.id).length > 0 && (
-              <div className="pt-3" style={{ borderTop: "1px solid var(--border)" }}>
-                <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: "var(--sidebar-label)" }}>
-                  Upcoming
-                </p>
-                {upcoming.filter(l => l.courseId === activeCourse.id).slice(0, 2).map(l => (
-                  <div key={l.id} className="flex items-center justify-between gap-2 py-1">
-                    <p className="text-xs truncate" style={{ color: "var(--text-secondary)" }}>{l.title}</p>
-                    <span className="text-[10px] font-semibold shrink-0" style={{ color: "#ff8c4a" }}>{l.deadline}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-
             <Link
-              href="/drive"
+              href="/courses"
               className="flex items-center justify-center gap-2 rounded-full py-2.5 text-sm font-semibold hover:opacity-90 transition"
               style={{ background: "#0cc0df", color: "#0a0b13" }}
             >
@@ -684,7 +639,7 @@ function Dashboard() {
             </div>
             <p className="text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>No courses yet</p>
             <p className="text-xs mb-4" style={{ color: "var(--text-muted)" }}>Organize your lessons into courses for better management.</p>
-            <Link href="/drive/new" className="rounded-full bg-[#0cc0df] px-4 py-2 text-xs font-semibold text-[#0a0b13] hover:opacity-90 transition">
+            <Link href="/courses/new" className="rounded-full bg-[#0cc0df] px-4 py-2 text-xs font-semibold text-[#0a0b13] hover:opacity-90 transition">
               Create a Course
             </Link>
           </div>
@@ -867,7 +822,7 @@ function Dashboard() {
                 <SortableWidget key={widgetId} widgetId={widgetId} span={widgetSizes[widgetId]} onCycleSize={() => cycleWidgetSize(widgetId)}>
                   {widgetId === "activity" && renderActivityWidget()}
                   {widgetId === "progress" && renderProgressWidget()}
-                  {widgetId === "activeCourse" && renderActiveCourseWidget()}
+                  {widgetId === "activeCourse" && renderActiveCourseWidget(widgetSizes[widgetId])}
                   {widgetId === "schedule" && renderScheduleWidget(widgetSizes[widgetId])}
                 </SortableWidget>
               ))}

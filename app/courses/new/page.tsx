@@ -6,6 +6,9 @@ import { useSession } from "next-auth/react";
 import { DEFAULT_COURSE_SETTINGS } from "@/types/course";
 import type { CourseSettings } from "@/types/course";
 
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const TERM_YEARS: number[] = Array.from({ length: 21 }, (_, i) => 2040 - i);
+
 const SECTION_LABEL_KEYS = [
   { key: "lessonOverview",        label: "Lesson Overview" },
   { key: "learningTargets",       label: "Learning Targets" },
@@ -31,7 +34,9 @@ export default function NewCoursePage() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [gradeLevel, setGradeLevel] = useState("");
-  const [term, setTerm] = useState("");
+  const [termMonth, setTermMonth] = useState("");
+  const [termYear, setTermYear] = useState("");
+  const [semester, setSemester] = useState("");
   const [settings, setSettings] = useState<CourseSettings>(DEFAULT_COURSE_SETTINGS);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -50,12 +55,13 @@ export default function NewCoursePage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim()) { setError("Title is required."); return; }
+    if (!termMonth || !termYear) { setError("Term month and year are required."); return; }
     setSaving(true);
     setError("");
     const res = await fetch("/api/courses", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: title.trim(), description, gradeLevel, term, settings, lessonIds: [] }),
+      body: JSON.stringify({ title: title.trim(), description, gradeLevel, term: `${termMonth} ${termYear}`, semester: semester.trim() || undefined, settings, lessonIds: [] }),
     });
     if (!res.ok) {
       const d = await res.json();
@@ -106,10 +112,27 @@ export default function NewCoursePage() {
                 placeholder="e.g. 9th Grade, College, Adult Ed" className={inputClass} style={inputStyle} />
             </div>
             <div>
-              <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Term</label>
-              <input type="text" value={term} onChange={(e) => setTerm(e.target.value)}
-                placeholder="e.g. Spring 2026, Q1" className={inputClass} style={inputStyle} />
+              <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
+                Term <span style={{ color: "#ef4444" }}>*</span>
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <select value={termMonth} onChange={(e) => setTermMonth(e.target.value)} className={inputClass} style={inputStyle}>
+                  <option value="">Month</option>
+                  {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
+                </select>
+                <select value={termYear} onChange={(e) => setTermYear(e.target.value)} className={inputClass} style={inputStyle}>
+                  <option value="">Year</option>
+                  {TERM_YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+                </select>
+              </div>
             </div>
+          </div>
+          <div>
+            <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
+              Semester <span className="font-normal text-xs" style={{ color: "var(--text-muted)" }}>(optional)</span>
+            </label>
+            <input type="text" value={semester} onChange={(e) => setSemester(e.target.value)}
+              placeholder="e.g. Spring, Fall, Semester 1" className={inputClass} style={inputStyle} />
           </div>
         </div>
 

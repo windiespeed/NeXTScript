@@ -40,7 +40,7 @@ function NewLessonInner() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    fetch("/api/drive").then(r => r.json()).then(data => {
+    fetch("/api/courses").then(r => r.json()).then(data => {
       if (Array.isArray(data)) setCourses(data);
     }).catch(() => {});
   }, []);
@@ -86,7 +86,7 @@ function NewLessonInner() {
               ? m.lessonIds.includes(lesson.id) ? m.lessonIds : [...m.lessonIds, lesson.id]
               : m.lessonIds,
           }));
-          await fetch(`/api/drive/${selectedCourseId}`, {
+          await fetch(`/api/courses/${selectedCourseId}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ modules: updatedModules }),

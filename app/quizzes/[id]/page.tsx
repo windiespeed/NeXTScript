@@ -46,7 +46,7 @@ export default function EditQuizPage() {
   useEffect(() => {
     Promise.all([
       fetch(`/api/projects/${id}`).then(r => r.ok ? r.json() : null),
-      fetch("/api/drive").then(r => r.json()),
+      fetch("/api/courses").then(r => r.json()),
       fetch("/api/lessons").then(r => r.json()),
       fetch("/api/user/settings").then(r => r.json()),
     ]).then(([quiz, c, l, s]) => {

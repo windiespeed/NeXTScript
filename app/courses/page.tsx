@@ -25,6 +25,19 @@ function fmt(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
+const MONTH_ORDER: Record<string, number> = {
+  Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11
+};
+
+function termYear(term: string): number {
+  const y = parseInt(term?.split(" ")[1] ?? "0", 10);
+  return isNaN(y) ? 0 : y;
+}
+
+function termMonth(term: string): number {
+  return MONTH_ORDER[term?.split(" ")[0]] ?? 0;
+}
+
 const gripSVG = (
   <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
     <circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/>
@@ -46,20 +59,9 @@ function CourseCard({
 }) {
   return (
     <div
-      className="group h-full rounded-3xl flex flex-col hover:-translate-y-1 transition-all duration-200"
+      className="group relative h-full rounded-3xl flex flex-col hover:-translate-y-1 transition-all duration-200"
       style={{ background: "var(--bg-card)", boxShadow: "var(--shadow-card)" }}
     >
-      {gripProps && (
-        <div
-          {...gripProps}
-          title="Drag to reorder"
-          className="absolute top-3 right-3 p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition cursor-grab active:cursor-grabbing"
-          style={{ color: "var(--text-muted)", background: "var(--bg-card-hover)" }}
-        >
-          {gripSVG}
-        </div>
-      )}
-
       <div className="flex flex-col gap-3 p-5 flex-1">
         <div className="flex items-start justify-between gap-2">
           <h2 className="font-bold text-base leading-snug" style={{ color: "var(--text-primary)" }}>
@@ -70,6 +72,16 @@ function CourseCard({
               <span className="rounded-full px-2.5 py-0.5 text-[10px] font-semibold text-[#0cc0df] capitalize" style={{ background: "var(--accent-bg)" }}>
                 {course.settings.studentLevel}
               </span>
+            )}
+            {gripProps && (
+              <div
+                {...gripProps}
+                title="Drag to reorder"
+                className="p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition cursor-grab active:cursor-grabbing"
+                style={{ color: "var(--text-muted)" }}
+              >
+                {gripSVG}
+              </div>
             )}
             <button
               onClick={() => onDuplicate(course)}
@@ -102,7 +114,7 @@ function CourseCard({
             )}
             {course.term && (
               <span className="rounded-full px-2.5 py-0.5 text-[10px] font-medium" style={{ background: "var(--bg-card-hover)", color: "var(--text-secondary)" }}>
-                {course.term}
+                {course.term}{course.semester ? ` · ${course.semester}` : ""}
               </span>
             )}
           </div>
@@ -123,6 +135,14 @@ function CourseCard({
           className="flex-1 flex items-center justify-center rounded-full bg-[#0cc0df] py-2 text-xs font-semibold text-[#0a0b13] hover:opacity-90 active:scale-95 transition-all"
         >
           Open
+        </Link>
+        <Link
+          href={`/courses/${course.id}/settings`}
+          title="Course settings"
+          className="p-2 rounded-full transition hover:bg-[var(--bg-card-hover)] active:scale-95"
+          style={{ color: "var(--text-muted)" }}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         </Link>
         <button
           onClick={() => onDelete(course.id)}
@@ -193,6 +213,7 @@ export default function CoursesPage() {
         description: course.description,
         gradeLevel: course.gradeLevel,
         term: course.term,
+        semester: course.semester,
         settings: course.settings,
         lessonIds: [],
       }),
@@ -254,11 +275,33 @@ export default function CoursesPage() {
         ) : (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleCourseDragEnd}>
             <SortableContext items={sortedCourses.map(c => c.id)} strategy={rectSortingStrategy}>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {sortedCourses.map(course => (
-                  <SortableCourseCard key={course.id} course={course} onDelete={handleDelete} onDuplicate={handleDuplicate} />
-                ))}
-              </div>
+              {(() => {
+                const grouped = new Map<number, Course[]>();
+                for (const c of sortedCourses) {
+                  const y = termYear(c.term);
+                  if (!grouped.has(y)) grouped.set(y, []);
+                  grouped.get(y)!.push(c);
+                }
+                const years = Array.from(grouped.keys()).sort((a, b) => b - a);
+                return years.map((year, yi) => {
+                  const group = grouped.get(year)!.slice().sort((a, b) => termMonth(b.term) - termMonth(a.term));
+                  return (
+                    <div key={year} className={yi > 0 ? "mt-8" : ""}>
+                      <div className="flex items-center gap-3 mb-4">
+                        <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>
+                          {year === 0 ? "No Term" : year}
+                        </span>
+                        <div className="flex-1 h-px" style={{ background: "var(--border)" }} />
+                      </div>
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        {group.map(course => (
+                          <SortableCourseCard key={course.id} course={course} onDelete={handleDelete} onDuplicate={handleDuplicate} />
+                        ))}
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
             </SortableContext>
           </DndContext>
         )}

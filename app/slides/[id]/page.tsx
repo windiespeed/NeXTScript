@@ -32,7 +32,7 @@ export default function EditSlidesPage() {
     Promise.all([
       fetch(`/api/lessons/${id}`).then(r => r.json()),
       fetch("/api/user/settings").then(r => r.json()),
-      fetch("/api/drive").then(r => r.json()),
+      fetch("/api/courses").then(r => r.json()),
     ]).then(([lessonData, settings, coursesData]) => {
       setLesson(lessonData);
       setHasAiKey(settings.hasKey ?? false);
@@ -83,7 +83,7 @@ export default function EditSlidesPage() {
             ...m,
             lessonIds: m.lessonIds.filter(lid => lid !== id),
           }));
-          await fetch(`/api/drive/${lesson.courseId}`, {
+          await fetch(`/api/courses/${lesson.courseId}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ modules: updatedModules }),
@@ -104,7 +104,7 @@ export default function EditSlidesPage() {
             ? m.lessonIds.includes(id) ? m.lessonIds : [...m.lessonIds, id]
             : m.lessonIds.filter(lid => lid !== id),
         }));
-        await fetch(`/api/drive/${selectedCourseId}`, {
+        await fetch(`/api/courses/${selectedCourseId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ modules: updatedModules }),

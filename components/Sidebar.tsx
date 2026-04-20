@@ -11,9 +11,15 @@ interface NavItem {
   icon: React.ReactNode;
 }
 
-interface Module {
+interface SidebarCourse {
   id: string;
   name: string;
+  moduleGroups: { id: string; title: string; lessonIds: string[] }[];
+}
+
+interface SidebarLesson {
+  id: string;
+  title: string;
 }
 
 const Icons = {
@@ -111,8 +117,11 @@ export default function Sidebar() {
   const dragIndex = useRef<number | null>(null);
   const [dragOver, setDragOver] = useState<number | null>(null);
 
-  const [modules, setModules] = useState<Module[]>([]);
+  const [sidebarCourses, setSidebarCourses] = useState<SidebarCourse[]>([]);
+  const [sidebarLessons, setSidebarLessons] = useState<SidebarLesson[]>([]);
   const [coursesOpen, setCoursesOpen] = useState(false);
+  const [expandedCourseIds, setExpandedCourseIds] = useState<Set<string>>(new Set());
+  const [expandedModuleIds, setExpandedModuleIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const saved = loadOrder();
@@ -123,12 +132,26 @@ export default function Sidebar() {
   useEffect(() => {
     if (!pathname.startsWith("/courses") && !pathname.startsWith("/modules")) return;
     setCoursesOpen(true);
-    fetch("/api/modules")
-      .then(r => r.json())
-      .then(data => {
-        if (Array.isArray(data)) setModules(data.map((c: { id: string; name: string }) => ({ id: c.id, name: c.name })));
-      })
-      .catch(() => {});
+    Promise.all([
+      fetch("/api/courses").then(r => r.json()),
+      fetch("/api/lessons").then(r => r.json()),
+    ]).then(([courseData, lessonData]) => {
+      if (Array.isArray(lessonData)) {
+        setSidebarLessons(lessonData.map((l: { id: string; title: string }) => ({ id: l.id, title: l.title })));
+      }
+      if (!Array.isArray(courseData)) return;
+      const courses: SidebarCourse[] = courseData.map((c: { id: string; title: string; modules?: { id: string; title: string; lessonIds?: string[] }[] }) => ({
+        id: c.id,
+        name: c.title,
+        moduleGroups: Array.isArray(c.modules) ? c.modules.map(m => ({ id: m.id, title: m.title, lessonIds: m.lessonIds ?? [] })) : [],
+      }));
+      setSidebarCourses(courses);
+      // Auto-expand the active course
+      const activeCourse = courses.find(c => pathname.startsWith(`/courses/${c.id}`));
+      if (activeCourse && activeCourse.moduleGroups.length > 0) {
+        setExpandedCourseIds(prev => new Set([...prev, activeCourse.id]));
+      }
+    }).catch(() => {});
   }, [pathname]);
 
   function isActive(href: string) {
@@ -165,7 +188,7 @@ export default function Sidebar() {
         className={`transition-all duration-150 ${dragOver === i ? "opacity-50" : ""}`}
       >
         {/* Courses row */}
-        <div className="group relative flex items-center">
+        <div className="group flex items-center">
           <Link
             href={item.href}
             className={`flex items-center gap-3 pl-3 py-2 rounded-full text-sm font-medium transition-all duration-150 flex-1 min-w-0 ${
@@ -178,6 +201,12 @@ export default function Sidebar() {
             </span>
             <span className="truncate">{item.label}</span>
           </Link>
+          <div
+            className="flex-shrink-0 p-1 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing"
+            style={{ color: "var(--text-muted)" }}
+          >
+            {gripSVG}
+          </div>
           <button
             onClick={() => setCoursesOpen(o => !o)}
             className="flex-shrink-0 p-1.5 rounded-full transition hover:bg-[var(--bg-card-hover)] mr-1"
@@ -185,34 +214,101 @@ export default function Sidebar() {
           >
             {chevronSVG(coursesOpen)}
           </button>
-          <div
-            className="absolute right-0 top-1/2 -translate-y-1/2 p-1 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing"
-            style={{ color: "var(--text-muted)" }}
-          >
-            {gripSVG}
-          </div>
         </div>
 
-        {/* Modules sub-menu */}
+        {/* Courses sub-menu */}
         {coursesOpen && (
           <div className="mt-0.5 space-y-0.5 pl-2">
-            {modules.length === 0 && (
-              <p className="pl-3 py-1.5 text-xs" style={{ color: "var(--text-muted)" }}>No modules yet</p>
+            {sidebarCourses.length === 0 && (
+              <p className="pl-3 py-1.5 text-xs" style={{ color: "var(--text-muted)" }}>No courses yet</p>
             )}
-            {modules.map(mod => {
-              const modActive = pathname.startsWith(`/modules/${mod.id}`);
+            {sidebarCourses.map(course => {
+              const courseActive = pathname.startsWith(`/courses/${course.id}`);
+              const courseExpanded = expandedCourseIds.has(course.id);
+              const hasModules = course.moduleGroups.length > 0;
               return (
-                <Link
-                  key={mod.id}
-                  href={`/modules/${mod.id}`}
-                  className={`flex items-center gap-2 pl-3 pr-3 py-1.5 rounded-full text-xs font-medium transition truncate ${
-                    modActive ? "bg-[#0cc0df]/15 text-[#0cc0df]" : "hover:bg-[var(--bg-card-hover)]"
-                  }`}
-                  style={modActive ? {} : { color: "var(--text-secondary)" }}
-                >
-                  <span className="w-1 h-1 rounded-full flex-shrink-0" style={{ background: modActive ? "#0cc0df" : "var(--text-muted)" }} />
-                  <span className="truncate">{mod.name}</span>
-                </Link>
+                <div key={course.id}>
+                  <div className="flex items-center">
+                    <Link
+                      href={`/courses/${course.id}`}
+                      className="flex items-center gap-2 pl-3 py-1.5 rounded-full text-xs transition truncate flex-1 min-w-0 hover:bg-[var(--bg-card-hover)]"
+                      style={{ color: courseActive ? "#0cc0df" : "var(--text-secondary)", fontWeight: courseActive ? 700 : 500 }}
+                    >
+                      <span className="w-1 h-1 rounded-full flex-shrink-0" style={{ background: courseActive ? "#0cc0df" : "var(--text-muted)" }} />
+                      <span className="truncate">{course.name}</span>
+                    </Link>
+                    {hasModules && (
+                      <button
+                        onClick={() => setExpandedCourseIds(prev => {
+                          const next = new Set(prev);
+                          next.has(course.id) ? next.delete(course.id) : next.add(course.id);
+                          return next;
+                        })}
+                        className="flex-shrink-0 p-1 rounded-full transition hover:bg-[var(--bg-card-hover)] mr-1"
+                        style={{ color: "var(--text-muted)" }}
+                      >
+                        {chevronSVG(courseExpanded)}
+                      </button>
+                    )}
+                  </div>
+                  {hasModules && courseExpanded && (
+                    <div className="mt-0.5 space-y-0.5 pl-4">
+                      {course.moduleGroups.map(mod => {
+                        const modExpanded = expandedModuleIds.has(mod.id);
+                        const modLessons = mod.lessonIds.map(lid => sidebarLessons.find(l => l.id === lid)).filter(Boolean) as SidebarLesson[];
+                        return (
+                          <div key={mod.id}>
+                            <div className="flex items-center">
+                              <button
+                                onClick={() => setExpandedModuleIds(prev => {
+                                  const next = new Set(prev);
+                                  next.has(mod.id) ? next.delete(mod.id) : next.add(mod.id);
+                                  return next;
+                                })}
+                                className="flex items-center gap-2 pl-3 py-1 rounded-full text-xs transition truncate flex-1 min-w-0 hover:bg-[var(--bg-card-hover)] text-left"
+                                style={{ color: "var(--text-muted)" }}
+                              >
+                                <span className="w-1 h-1 rounded-full flex-shrink-0" style={{ background: "var(--border)" }} />
+                                <span className="truncate">{mod.title}</span>
+                              </button>
+                              {modLessons.length > 0 && (
+                                <button
+                                  onClick={() => setExpandedModuleIds(prev => {
+                                    const next = new Set(prev);
+                                    next.has(mod.id) ? next.delete(mod.id) : next.add(mod.id);
+                                    return next;
+                                  })}
+                                  className="flex-shrink-0 p-1 rounded-full transition hover:bg-[var(--bg-card-hover)] mr-1"
+                                  style={{ color: "var(--text-muted)" }}
+                                >
+                                  {chevronSVG(modExpanded)}
+                                </button>
+                              )}
+                            </div>
+                            {modExpanded && modLessons.length > 0 && (
+                              <div className="mt-0.5 space-y-0.5 pl-4">
+                                {modLessons.map(lesson => {
+                                  const lessonActive = pathname === `/lessons/${lesson.id}`;
+                                  return (
+                                    <Link
+                                      key={lesson.id}
+                                      href={`/lessons/${lesson.id}`}
+                                      className="flex items-center gap-2 pl-3 pr-3 py-1 rounded-full text-xs transition truncate hover:bg-[var(--bg-card-hover)]"
+                                      style={{ color: lessonActive ? "#0cc0df" : "var(--text-muted)", fontWeight: lessonActive ? 700 : 400 }}
+                                    >
+                                      <span className="w-1 h-1 rounded-full flex-shrink-0" style={{ background: lessonActive ? "#0cc0df" : "var(--border)" }} />
+                                      <span className="truncate">{lesson.title}</span>
+                                    </Link>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               );
             })}
           </div>
