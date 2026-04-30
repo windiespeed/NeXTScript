@@ -118,7 +118,7 @@ export default function BatchSlidesPage() {
       let updatedSlideCount = slideCount;
 
       if (doAiFill) {
-        setLessonProgress(lesson.id, "filling", "AI filling slides…");
+        setLessonProgress(lesson.id, "filling", "AI filling content…");
         try {
           const res = await fetch("/api/ai/lesson", {
             method: "POST",
@@ -132,11 +132,22 @@ export default function BatchSlidesPage() {
             updatedSlideContent = serializeSlides(data.slides);
             updatedSlideCount = data.slides.length;
 
-            setLessonProgress(lesson.id, "saving", "Saving slides…");
+            setLessonProgress(lesson.id, "saving", "Saving content…");
             const saveRes = await fetch(`/api/lessons/${lesson.id}`, {
               method: "PUT",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
+                overview: data.overview ?? lesson.overview,
+                learningTargets: data.learningTargets ?? lesson.learningTargets,
+                vocabulary: data.vocabulary ?? lesson.vocabulary,
+                warmUp: data.warmUp ?? lesson.warmUp,
+                guidedLab: data.guidedLab ?? lesson.guidedLab,
+                selfPaced: data.selfPaced ?? lesson.selfPaced,
+                submissionChecklist: data.submissionChecklist ?? lesson.submissionChecklist,
+                checkpoint: data.checkpoint ?? lesson.checkpoint,
+                industryBestPractices: data.industryBestPractices ?? lesson.industryBestPractices,
+                devJournalPrompt: data.devJournalPrompt ?? lesson.devJournalPrompt,
+                rubric: data.rubric ?? lesson.rubric,
                 slideContent: updatedSlideContent,
                 slideCount: updatedSlideCount,
                 overviewSlides: Array(data.slides.length).fill(false),
