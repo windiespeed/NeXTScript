@@ -1,7 +1,6 @@
 "use client";
 
-export const dynamic = "force-dynamic";
-
+import { Suspense } from "react";
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -25,7 +24,7 @@ const cardClass = "rounded-3xl p-5 space-y-4";
 const cardStyle = { background: "var(--bg-card)", border: "1px solid var(--border)" };
 const sectionLabel = "text-xs font-semibold uppercase tracking-widest text-[#0cc0df]";
 
-export default function NewQuizPage() {
+function NewQuizPageInner() {
   useSession({ required: true });
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -487,5 +486,13 @@ export default function NewQuizPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function NewQuizPage() {
+  return (
+    <Suspense>
+      <NewQuizPageInner />
+    </Suspense>
   );
 }
