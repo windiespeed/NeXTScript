@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import type { Course, CourseModule } from "@/types/course";
 import type { Lesson } from "@/types/lesson";
@@ -26,6 +26,8 @@ const sectionLabel = "text-xs font-semibold uppercase tracking-widest text-[#0cc
 export default function NewQuizPage() {
   useSession({ required: true });
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const preselectedCourseId = searchParams.get("courseId") ?? "";
 
   // Data
   const [courses, setCourses] = useState<Course[]>([]);
@@ -60,6 +62,10 @@ export default function NewQuizPage() {
       setCourses(Array.isArray(c) ? c : []);
       setAllLessons(Array.isArray(l) ? l : []);
       setHasAiKey(s.hasKey ?? false);
+      if (preselectedCourseId) {
+        setScope("course");
+        setSelectedCourseId(preselectedCourseId);
+      }
     }).catch(() => {});
   }, []);
 
