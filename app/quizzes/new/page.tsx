@@ -63,8 +63,10 @@ export default function NewQuizPage() {
       setAllLessons(Array.isArray(l) ? l : []);
       setHasAiKey(s.hasKey ?? false);
       if (preselectedCourseId) {
+        const course = (Array.isArray(c) ? c : []).find((x: { id: string; title: string }) => x.id === preselectedCourseId);
         setScope("course");
         setSelectedCourseId(preselectedCourseId);
+        if (course) setQuizTitle(`${course.title} — Final Quiz`);
       }
     }).catch(() => {});
   }, []);
@@ -109,6 +111,10 @@ export default function NewQuizPage() {
     setSelectedLessonIds(prev => {
       const next = new Set(prev);
       next.has(id) ? next.delete(id) : next.add(id);
+      if (scope === "lesson" && !quizTitle.trim()) {
+        const names = allLessons.filter(l => next.has(l.id)).map(l => l.title);
+        if (names.length > 0) setQuizTitle(names.join(", ") + " — Quiz");
+      }
       return next;
     });
   }
