@@ -94,7 +94,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
     const count = parseSlides(initial.slideContent ?? "").length;
     const saved = initial.overviewSlides;
     if (saved && saved.length === count) return saved;
-    return Array(count).fill(true);
+    return Array(count).fill(false);
   });
   const [saving, setSaving] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
@@ -108,7 +108,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
     if (!confirm("Clear all fields? This cannot be undone.")) return;
     setForm({ ...EMPTY, sources: form.sources });
     setSlides([{ title: "", body: "" }]);
-    setOverviewSlides([true]);
+    setOverviewSlides([false]);
     setSlideCount(10);
     setAiFilledFields(new Set());
   }
@@ -184,7 +184,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
 
   function addSlide() {
     setSlides((prev) => [...prev, { title: "", body: "" }]);
-    setOverviewSlides((prev) => [...prev, true]);
+    setOverviewSlides((prev) => [...prev, false]);
   }
 
   function removeSlide(index: number) {
@@ -234,7 +234,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
       const currentSlideContent = serializeSlides(slides).trim();
       if (aiSlides?.length && !currentSlideContent) {
         setSlides(aiSlides);
-        setOverviewSlides(Array(aiSlides.length).fill(true));
+        setOverviewSlides(Array(aiSlides.length).fill(false));
         filled.add("slideContent");
       }
       setAiFilledFields(prev => new Set([...prev, ...filled]));
