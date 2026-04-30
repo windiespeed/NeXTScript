@@ -47,6 +47,7 @@ export default function BatchSlidesPage() {
 
   const [course, setCourse] = useState<Course | null>(null);
   const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [hasAiKey, setHasAiKey] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -62,9 +63,12 @@ export default function BatchSlidesPage() {
     Promise.all([
       fetch(`/api/courses/${courseId}`).then(r => r.json()),
       fetch(`/api/lessons?courseId=${courseId}`).then(r => r.json()),
-    ]).then(([courseData, lessonData]) => {
+      fetch("/api/user/settings").then(r => r.json()),
+    ]).then(([courseData, lessonData, settings]) => {
       setCourse(courseData);
       setLessons(Array.isArray(lessonData) ? lessonData : []);
+      setHasAiKey(settings.hasKey ?? false);
+      if (!settings.hasKey) setDoAiFill(false);
       setLoading(false);
     });
   }, [courseId]);
@@ -293,10 +297,16 @@ export default function BatchSlidesPage() {
           <div className="rounded-3xl p-6 space-y-4" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
             <p className={sectionHeading}>Options</p>
 
-            <label className="flex items-center gap-2.5 cursor-pointer">
-              <input type="checkbox" checked={doAiFill} onChange={e => setDoAiFill(e.target.checked)} disabled={running} className="accent-[#0cc0df] w-3.5 h-3.5" />
-              <span className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>AI Fill Slides</span>
+            <label className={`flex items-center gap-2.5 ${hasAiKey ? "cursor-pointer" : "cursor-not-allowed opacity-50"}`}>
+              <input type="checkbox" checked={doAiFill} onChange={e => setDoAiFill(e.target.checked)} disabled={running || !hasAiKey} className="accent-[#0cc0df] w-3.5 h-3.5" />
+              <span className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>AI Fill Content</span>
             </label>
+            {!hasAiKey && (
+              <p className="text-xs ml-6" style={{ color: "var(--text-muted)" }}>
+                No API key configured. Add one in{" "}
+                <Link href="/profile" className="underline" style={{ color: "#0cc0df" }}>Profile</Link>.
+              </p>
+            )}
             {doAiFill && (
               <div className="ml-6">
                 <label className="block text-xs mb-1" style={{ color: "var(--text-muted)" }}>Slides per lesson</label>
