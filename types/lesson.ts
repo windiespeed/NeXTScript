@@ -48,6 +48,9 @@ export interface Lesson {
   lessonType?: "lesson" | "practice" | "project" | "assessment" | "review"; // Activity classification
   resources?: LessonResource[];  // Attached links and blank docs for this lesson
   overviewUrl?: string;           // URL of the generated Overview Doc (Google Doc)
+  concept?: string;               // Assigned concept from the course's concept list
+  progressMode?: "sequential" | "locked" | "free";  // Per-lesson override (falls back to module setting)
+  solutionRevealAttempts?: number | null;            // Per-lesson override (falls back to module setting)
 }
 
 export type LessonInput = Omit<

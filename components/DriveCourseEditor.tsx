@@ -150,12 +150,9 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
   const [overContainerId, setOverContainerId] = useState<string | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
   const [nextboxOpen, setNextboxOpen] = useState(true);
-  const [editLanguage, setEditLanguage] = useState<"javascript" | "python" | "html-css">("javascript");
-  const [editProgressMode, setEditProgressMode] = useState<"sequential" | "locked" | "free">("locked");
-  const [editSolutionReveal, setEditSolutionReveal] = useState<string>("");
-  const [savingNextbox, setSavingNextbox] = useState(false);
-  const [nextboxSaveMsg, setNextboxSaveMsg] = useState("");
   const [joinCodeCopied, setJoinCodeCopied] = useState(false);
+  const [editingModuleSettings, setEditingModuleSettings] = useState<string | null>(null);
+  const [nextboxPanelId, setNextboxPanelId] = useState<string | null>(null);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
@@ -175,9 +172,6 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
     ]).then(([courseData, lessonData, projectData, coursesData]) => {
       if (!courseData?.id) { setLoading(false); return; }
       setCourse(courseData);
-      setEditLanguage(courseData.language ?? "javascript");
-      setEditProgressMode(courseData.progressMode ?? "locked");
-      setEditSolutionReveal(courseData.solutionRevealAttempts != null ? String(courseData.solutionRevealAttempts) : "");
       setProjects(Array.isArray(projectData) ? projectData : []);
       setLessons(Array.isArray(lessonData) ? lessonData : []);
       setAllCourses(Array.isArray(coursesData) ? coursesData : []);
@@ -527,24 +521,13 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
     setGeneratingLessonId(null);
   }
 
-  async function handleSaveNextbox() {
-    setSavingNextbox(true);
-    const res = await fetch(`/api/courses/${id}`, {
+  async function handlePatchLesson(lessonId: string, patch: Partial<Lesson>) {
+    setLessons(prev => prev.map(l => l.id === lessonId ? { ...l, ...patch } : l));
+    await fetch(`/api/lessons/${lessonId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        language: editLanguage,
-        progressMode: editProgressMode,
-        solutionRevealAttempts: editSolutionReveal === "" ? null : parseInt(editSolutionReveal, 10),
-      }),
+      body: JSON.stringify(patch),
     });
-    if (res.ok) {
-      const updated = await res.json();
-      setCourse(updated);
-      setNextboxSaveMsg("Saved.");
-      setTimeout(() => setNextboxSaveMsg(""), 1500);
-    }
-    setSavingNextbox(false);
   }
 
   async function handleGenerateJoinCode() {
@@ -608,7 +591,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                   style={{ width: `${Math.round((lessons.filter(l => l.released).length / lessons.length) * 100)}%` }} />
               </div>
               <p className="text-[10px] mt-0.5 text-right" style={{ color: "var(--text-muted)" }}>
-                {lessons.filter(l => l.released).length}/{lessons.length} released
+                {lessons.filter(l => l.released).length}/{lessons.length} published to NeXTBox
               </p>
             </div>
           )}
@@ -728,40 +711,6 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
               </div>
             </div>
 
-            {/* Settings */}
-            <div className="grid grid-cols-3 gap-3">
-              <div>
-                <label className="block text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: "var(--text-muted)" }}>Language</label>
-                <select value={editLanguage} onChange={e => setEditLanguage(e.target.value as "javascript" | "python" | "html-css")} className={inputClass} style={inputStyle}>
-                  <option value="javascript">JavaScript</option>
-                  <option value="python">Python</option>
-                  <option value="html-css">HTML/CSS</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: "var(--text-muted)" }}>Progress Mode</label>
-                <select value={editProgressMode} onChange={e => setEditProgressMode(e.target.value as "sequential" | "locked" | "free")} className={inputClass} style={inputStyle}>
-                  <option value="sequential">Sequential</option>
-                  <option value="locked">Locked</option>
-                  <option value="free">Free</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: "var(--text-muted)" }}>Solution After</label>
-                <input type="number" min="1" value={editSolutionReveal}
-                  onChange={e => setEditSolutionReveal(e.target.value)}
-                  placeholder="Never"
-                  className={inputClass} style={inputStyle} />
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <button onClick={handleSaveNextbox} disabled={savingNextbox}
-                className="rounded-full px-4 py-1.5 text-xs font-semibold transition hover:opacity-90 disabled:opacity-50"
-                style={{ background: "#0cc0df", color: "#0a0b13" }}>
-                {savingNextbox ? "Saving…" : "Save"}
-              </button>
-              {nextboxSaveMsg && <span className="text-xs" style={{ color: "#2dd4a0" }}>{nextboxSaveMsg}</span>}
-            </div>
           </div>
         )}
       </div>
@@ -772,7 +721,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
           <p className="text-sm font-semibold" style={{ color: "var(--text-secondary)" }}>
             {lessons.length} {lessons.length === 1 ? "lesson" : "lessons"} in this course
             {lessons.filter(l => l.released).length > 0 && (
-              <span className="ml-2 text-[#2dd4a0]">· {lessons.filter(l => l.released).length} released</span>
+              <span className="ml-2 text-[#2dd4a0]">· {lessons.filter(l => l.released).length} published</span>
             )}
           </p>
           <div className="flex items-center gap-2">
@@ -849,7 +798,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                         <button onClick={() => handleBulkRelease(!lessons.every(l => l.released))}
                           className="w-full text-left px-4 py-2.5 text-xs hover:bg-[var(--bg-card-hover)] transition"
                           style={{ color: "var(--text-primary)" }}>
-                          {lessons.every(l => l.released) ? "Unrelease All" : "Release All"}
+                          {lessons.every(l => l.released) ? "Unpublish All" : "Publish All to NeXTBox"}
                         </button>
                       )}
                       <div style={{ borderTop: "1px solid var(--border)" }}>
@@ -959,6 +908,21 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                         </div>
                       );
                     })()}
+                    {(course?.assignedConcepts?.length ?? 0) > 0 && !selecting && (
+                      <select
+                        value={lesson.concept ?? ""}
+                        onChange={e => { e.stopPropagation(); handlePatchLesson(lesson.id, { concept: e.target.value || undefined }); }}
+                        onClick={e => e.stopPropagation()}
+                        className="text-[10px] font-semibold px-2 py-0.5 rounded-md focus:outline-none focus:ring-1 focus:ring-[#0cc0df] max-w-[120px]"
+                        style={lesson.concept
+                          ? { background: "rgba(12,192,223,0.1)", color: "#0cc0df", border: "1px solid rgba(12,192,223,0.3)" }
+                          : { background: "var(--bg-card-hover)", color: "var(--text-muted)", border: "1px dashed var(--border)" }}>
+                        <option value="">No concept</option>
+                        {course!.assignedConcepts!.map(c => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
+                    )}
                     {lesson.deadline && <span className="text-xs" style={{ color: "var(--text-muted)" }}>Due {lesson.deadline}</span>}
                     <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>
                       Created {fmt(lesson.createdAt)}{lesson.updatedAt !== lesson.createdAt && <> · Modified {fmt(lesson.updatedAt)}</>}
@@ -975,12 +939,56 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                 )}
                 {!selecting && (
                   <div className="flex items-center gap-2 shrink-0">
-                    <button onClick={() => handleToggleReleased(lesson)}
-                      title={lesson.released ? "Click to hide from students" : "Click to release to students"}
-                      className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${lesson.released ? "bg-[#2dd4a0]/15 text-[#2dd4a0] hover:bg-[#2dd4a0]/25" : "hover:bg-[var(--bg-card-hover)]"}`}
-                      style={lesson.released ? {} : { border: "1px solid var(--border)", color: "var(--text-muted)" }}>
-                      {lesson.released ? "Released" : "Release"}
-                    </button>
+                    {/* Publish to NeXTBox */}
+                    <div className="relative">
+                      <button onClick={() => handleToggleReleased(lesson)}
+                        title={lesson.released ? "Click to unpublish from NeXTBox" : "Publish to NeXTBox"}
+                        className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${lesson.released ? "bg-[#2dd4a0]/15 text-[#2dd4a0] hover:bg-[#2dd4a0]/25" : "hover:bg-[var(--bg-card-hover)]"}`}
+                        style={lesson.released ? {} : { border: "1px solid var(--border)", color: "var(--text-muted)" }}>
+                        {lesson.released ? "Published" : "Publish"}
+                      </button>
+                    </div>
+                    {/* NeXTBox per-lesson overrides */}
+                    <div className="relative">
+                      <button
+                        onClick={e => { e.stopPropagation(); setNextboxPanelId(nextboxPanelId === lesson.id ? null : lesson.id); }}
+                        title="NeXTBox settings"
+                        className="p-1.5 rounded-full transition hover:bg-[var(--bg-card-hover)]"
+                        style={{ color: nextboxPanelId === lesson.id ? "#0cc0df" : "var(--text-muted)" }}>
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/><path d="M9 8l3 3-3 3"/><path d="M15 14h-3"/></svg>
+                      </button>
+                      {nextboxPanelId === lesson.id && (
+                        <>
+                        <div className="fixed inset-0 z-20" onClick={() => setNextboxPanelId(null)} />
+                        <div className="absolute right-0 top-full mt-1 z-30 rounded-2xl p-3 min-w-[200px] space-y-3" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)" }}>
+                          <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>NeXTBox Overrides</p>
+                          <div>
+                            <label className="block text-[10px] mb-1" style={{ color: "var(--text-muted)" }}>Progress Mode</label>
+                            <select
+                              value={lesson.progressMode ?? ""}
+                              onChange={e => handlePatchLesson(lesson.id, { progressMode: (e.target.value || undefined) as any })}
+                              className="w-full rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#0cc0df]"
+                              style={{ background: "var(--bg-card-hover)", color: "var(--text-primary)", border: "1px solid var(--border)" }}>
+                              <option value="">Inherit from module</option>
+                              <option value="sequential">Sequential</option>
+                              <option value="locked">Locked</option>
+                              <option value="free">Free</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-[10px] mb-1" style={{ color: "var(--text-muted)" }}>Solution After (attempts)</label>
+                            <input
+                              type="number" min="1"
+                              value={lesson.solutionRevealAttempts ?? ""}
+                              onChange={e => handlePatchLesson(lesson.id, { solutionRevealAttempts: e.target.value === "" ? null : parseInt(e.target.value, 10) })}
+                              placeholder="Inherit from module"
+                              className="w-full rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#0cc0df]"
+                              style={{ background: "var(--bg-card-hover)", color: "var(--text-primary)", border: "1px solid var(--border)" }} />
+                          </div>
+                        </div>
+                        </>
+                      )}
+                    </div>
                     <Link href={`/lessons/${lesson.id}`}
                       className="rounded-full bg-[#0cc0df] px-3 py-1.5 text-xs font-semibold text-[#0a0b13] hover:opacity-90 transition">View</Link>
                     <div className="relative">
@@ -1075,15 +1083,15 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                         )}
                         <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{modLessons.length} {modLessons.length === 1 ? "lesson" : "lessons"}</span>
                         {modLessons.length > 0 && (() => {
-                          const allReleased = modLessons.every(l => l.released);
+                          const allPublished = modLessons.every(l => l.released);
                           return (
                             <button
-                              onClick={() => handleReleaseModule(mod.id, !allReleased)}
+                              onClick={() => handleReleaseModule(mod.id, !allPublished)}
                               className="rounded-full px-2 py-0.5 text-[10px] font-semibold transition"
-                              style={allReleased
+                              style={allPublished
                                 ? { background: "rgba(45,212,160,0.12)", color: "#2dd4a0" }
                                 : { background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
-                              {allReleased ? "Unrelease" : "Release"}
+                              {allPublished ? "Unpublish All" : "Publish All"}
                             </button>
                           );
                         })()}
@@ -1097,16 +1105,46 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                         </button>
                       </div>
                       {!collapsed && (
-                        modLessons.length === 0 ? (
-                          <DroppableEmptySlot id={containerKey} isOver={overContainerId === containerKey} />
-                        ) : (
-                          <SortableContext id={containerKey} items={mod.lessonIds} strategy={verticalListSortingStrategy}>
-                            {modLessons.map((lesson, i) => (
-                              <SortableLessonItem key={lesson.id} id={lesson.id}
-                                render={s => renderLessonRow(lesson, i, i === 0, i === modLessons.length - 1, false, s)} />
-                            ))}
-                          </SortableContext>
-                        )
+                        <>
+                          {/* Module NeXTBox settings bar */}
+                          <div className="flex items-center gap-4 px-4 py-2 border-b" style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}>
+                            <span className="text-[10px] font-semibold uppercase tracking-widest shrink-0" style={{ color: "var(--text-muted)" }}>NeXTBox</span>
+                            <div className="flex items-center gap-1.5">
+                              <label className="text-[10px]" style={{ color: "var(--text-muted)" }}>Progress:</label>
+                              <select
+                                value={mod.progressMode ?? ""}
+                                onChange={e => saveModules(driveModules.map(m => m.id === mod.id ? { ...m, progressMode: (e.target.value || undefined) as any } : m))}
+                                className="rounded px-1.5 py-0.5 text-[10px] focus:outline-none focus:ring-1 focus:ring-[#0cc0df]"
+                                style={{ background: "var(--bg-card-hover)", color: "var(--text-primary)", border: "1px solid var(--border)" }}>
+                                <option value="">Default</option>
+                                <option value="sequential">Sequential</option>
+                                <option value="locked">Locked</option>
+                                <option value="free">Free</option>
+                              </select>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <label className="text-[10px]" style={{ color: "var(--text-muted)" }}>Solution after:</label>
+                              <input
+                                type="number" min="1"
+                                value={mod.solutionRevealAttempts ?? ""}
+                                onChange={e => saveModules(driveModules.map(m => m.id === mod.id ? { ...m, solutionRevealAttempts: e.target.value === "" ? null : parseInt(e.target.value, 10) } : m))}
+                                placeholder="Never"
+                                className="w-16 rounded px-1.5 py-0.5 text-[10px] focus:outline-none focus:ring-1 focus:ring-[#0cc0df]"
+                                style={{ background: "var(--bg-card-hover)", color: "var(--text-primary)", border: "1px solid var(--border)" }} />
+                              <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>attempts</span>
+                            </div>
+                          </div>
+                          {modLessons.length === 0 ? (
+                            <DroppableEmptySlot id={containerKey} isOver={overContainerId === containerKey} />
+                          ) : (
+                            <SortableContext id={containerKey} items={mod.lessonIds} strategy={verticalListSortingStrategy}>
+                              {modLessons.map((lesson, i) => (
+                                <SortableLessonItem key={lesson.id} id={lesson.id}
+                                  render={s => renderLessonRow(lesson, i, i === 0, i === modLessons.length - 1, false, s)} />
+                              ))}
+                            </SortableContext>
+                          )}
+                        </>
                       )}
                     </div>
                   );

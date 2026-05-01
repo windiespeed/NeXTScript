@@ -53,6 +53,8 @@ export interface CourseModule {
   id: string;        // client-generated uuid
   title: string;     // e.g. "Module 1: The Basics"
   lessonIds: string[]; // ordered subset of course.lessonIds belonging to this module
+  progressMode?: "sequential" | "locked" | "free";
+  solutionRevealAttempts?: number | null;
 }
 
 export interface Course {
