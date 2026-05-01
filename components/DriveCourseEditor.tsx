@@ -980,13 +980,6 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                 </div>
                 {!selecting && (
                   <div className="flex items-center gap-2 shrink-0">
-                    {/* Release to NeXTBox */}
-                    <button onClick={() => handleToggleReleased(lesson)}
-                      title={lesson.released ? "Click to unrelease from NeXTBox" : "Release to NeXTBox"}
-                      className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${lesson.released ? "bg-[#2dd4a0]/15 text-[#2dd4a0] hover:bg-[#2dd4a0]/25" : "hover:bg-[var(--bg-card-hover)]"}`}
-                      style={lesson.released ? {} : { border: "1px solid var(--border)", color: "var(--text-muted)" }}>
-                      {lesson.released ? "Released" : "Release"}
-                    </button>
                     {/* Publish to Google Classroom */}
                     {(() => {
                       const currentModule = driveModules.find(m => m.lessonIds.includes(lesson.id));
@@ -998,10 +991,17 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                           title={course?.googleClassroomId ? "Publish to Google Classroom" : "Link a classroom in Course Settings first"}
                           className="rounded-full px-3 py-1.5 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)] disabled:opacity-50"
                           style={{ border: "1px solid var(--border)", color: course?.googleClassroomId ? "var(--text-primary)" : "var(--text-muted)" }}>
-                          {isPublishing ? "Publishing…" : "Publish"}
+                          {isPublishing ? "Publishing…" : "Publish to Classroom"}
                         </button>
                       );
                     })()}
+                    {/* Release to NeXTBox */}
+                    <button onClick={() => handleToggleReleased(lesson)}
+                      title={lesson.released ? "Click to unrelease from NeXTBox" : "Release to NeXTBox"}
+                      className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${lesson.released ? "bg-[#2dd4a0]/15 text-[#2dd4a0] hover:bg-[#2dd4a0]/25" : "hover:bg-[var(--bg-card-hover)]"}`}
+                      style={lesson.released ? {} : { border: "1px solid var(--border)", color: "var(--text-muted)" }}>
+                      {lesson.released ? "Released" : "Release"}
+                    </button>
                     <Link href={`/lessons/${lesson.id}`}
                       className="rounded-full bg-[#0cc0df] px-3 py-1.5 text-xs font-semibold text-[#0a0b13] hover:opacity-90 transition">View</Link>
                     <div className="relative">
