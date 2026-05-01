@@ -844,7 +844,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                       <button onClick={handleAddModule} className="w-full text-left px-4 py-2.5 text-xs hover:bg-[var(--bg-card-hover)] transition" style={{ color: "var(--text-primary)" }}>+ Add Module Group</button>
                       <button onClick={openAddExisting} className="w-full text-left px-4 py-2.5 text-xs hover:bg-[var(--bg-card-hover)] transition" style={{ color: "var(--text-primary)" }}>Add Existing Lesson</button>
                       <Link href={`/quizzes/new?courseId=${id}`} className="block px-4 py-2.5 text-xs hover:bg-[var(--bg-card-hover)] transition" style={{ color: "var(--text-primary)" }}>New Quiz</Link>
-                      <Link href={`/courses/${id}/batch-slides`} className="block px-4 py-2.5 text-xs hover:bg-[var(--bg-card-hover)] transition" style={{ color: "var(--text-primary)" }}>Batch Slides</Link>
+                      <Link href={`/courses/${id}/batch-slides`} className="block px-4 py-2.5 text-xs hover:bg-[var(--bg-card-hover)] transition" style={{ color: "var(--text-primary)" }}>Batch Generate</Link>
                       {lessons.length > 0 && (
                         <button onClick={() => handleBulkRelease(!lessons.every(l => l.released))}
                           className="w-full text-left px-4 py-2.5 text-xs hover:bg-[var(--bg-card-hover)] transition"

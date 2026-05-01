@@ -40,7 +40,7 @@ function StatusDot({ status }: { status: LessonStatus }) {
   );
 }
 
-export default function BatchSlidesPage() {
+export default function BatchGeneratePage() {
   useSession({ required: true });
   const { id: courseId } = useParams<{ id: string }>();
   const router = useRouter();
@@ -53,6 +53,9 @@ export default function BatchSlidesPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [doAiFill, setDoAiFill] = useState(true);
   const [doGenerate, setDoGenerate] = useState(true);
+  const [doGenerateDoc, setDoGenerateDoc] = useState(false);
+  const [doGenerateQuiz, setDoGenerateQuiz] = useState(false);
+  const [doPublishNextbox, setDoPublishNextbox] = useState(false);
   const [slideCount, setSlideCount] = useState(10);
 
   const [running, setRunning] = useState(false);
@@ -107,7 +110,8 @@ export default function BatchSlidesPage() {
   }
 
   async function handleRun() {
-    if (selectedIds.size === 0 || (!doAiFill && !doGenerate)) return;
+    const anyEnabled = doAiFill || doGenerate || doGenerateDoc || doGenerateQuiz || doPublishNextbox;
+    if (selectedIds.size === 0 || !anyEnabled) return;
     setRunning(true);
     setFinished(false);
     setProgress({});
@@ -120,7 +124,9 @@ export default function BatchSlidesPage() {
     for (const lesson of ordered) {
       let updatedSlideContent = lesson.slideContent ?? "";
       let updatedSlideCount = slideCount;
+      let failed = false;
 
+      // Step 1: AI Fill
       if (doAiFill) {
         setLessonProgress(lesson.id, "filling", "AI filling content…");
         try {
@@ -157,34 +163,91 @@ export default function BatchSlidesPage() {
                 overviewSlides: Array(data.slides.length).fill(false),
               }),
             });
-            if (!saveRes.ok) throw new Error("Failed to save slide content.");
+            if (!saveRes.ok) throw new Error("Failed to save content.");
           }
         } catch (e: any) {
           setLessonProgress(lesson.id, "error", e.message || "AI fill failed.");
-          continue;
+          failed = true;
         }
       }
 
-      if (doGenerate) {
+      // Step 2: Generate Google Slides
+      if (!failed && doGenerate) {
         if (!updatedSlideContent.trim()) {
           setLessonProgress(lesson.id, "error", "No slide content to generate from.");
-          continue;
+          failed = true;
+        } else {
+          setLessonProgress(lesson.id, "generating", "Generating Google Slides…");
+          try {
+            const res = await fetch(`/api/generate/${lesson.id}`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ files: ["slides"], destination: "drive" }),
+            });
+            if (!res.ok) throw new Error("Slides generation failed.");
+          } catch (e: any) {
+            setLessonProgress(lesson.id, "error", e.message || "Slides generation failed.");
+            failed = true;
+          }
         }
-        setLessonProgress(lesson.id, "generating", "Generating Google Slides…");
+      }
+
+      // Step 3: Generate Overview Doc
+      if (!failed && doGenerateDoc) {
+        setLessonProgress(lesson.id, "generating", "Generating Overview Doc…");
         try {
           const res = await fetch(`/api/generate/${lesson.id}`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ files: ["slides"], destination: "drive" }),
+            body: JSON.stringify({ files: ["doc"], destination: "drive" }),
           });
-          if (!res.ok) throw new Error("Generation failed.");
-          setLessonProgress(lesson.id, "done", "Done — slides generated.");
+          if (!res.ok) throw new Error("Overview doc generation failed.");
         } catch (e: any) {
-          setLessonProgress(lesson.id, "error", e.message || "Generation failed.");
-          continue;
+          setLessonProgress(lesson.id, "error", e.message || "Overview doc generation failed.");
+          failed = true;
         }
-      } else {
-        setLessonProgress(lesson.id, "done", "Slides filled and saved.");
+      }
+
+      // Step 4: Generate Quiz
+      if (!failed && doGenerateQuiz) {
+        setLessonProgress(lesson.id, "generating", "Generating Quiz…");
+        try {
+          const res = await fetch(`/api/generate/${lesson.id}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ files: ["quiz"], destination: "drive" }),
+          });
+          if (!res.ok) throw new Error("Quiz generation failed.");
+        } catch (e: any) {
+          setLessonProgress(lesson.id, "error", e.message || "Quiz generation failed.");
+          failed = true;
+        }
+      }
+
+      // Step 5: Publish to NeXTBox
+      if (!failed && doPublishNextbox) {
+        setLessonProgress(lesson.id, "generating", "Publishing to NeXTBox…");
+        try {
+          const res = await fetch(`/api/lessons/${lesson.id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ released: true }),
+          });
+          if (!res.ok) throw new Error("Publish to NeXTBox failed.");
+        } catch (e: any) {
+          setLessonProgress(lesson.id, "error", e.message || "Publish to NeXTBox failed.");
+          failed = true;
+        }
+      }
+
+      if (!failed) {
+        const parts: string[] = [];
+        if (doAiFill) parts.push("content filled");
+        if (doGenerate) parts.push("slides generated");
+        if (doGenerateDoc) parts.push("doc generated");
+        if (doGenerateQuiz) parts.push("quiz generated");
+        if (doPublishNextbox) parts.push("published to NeXTBox");
+        setLessonProgress(lesson.id, "done", `Done — ${parts.join(", ")}.`);
       }
     }
 
@@ -195,7 +258,8 @@ export default function BatchSlidesPage() {
   const doneCount = Object.values(progress).filter(p => p.status === "done").length;
   const errorCount = Object.values(progress).filter(p => p.status === "error").length;
   const totalSelected = selectedIds.size;
-  const canRun = totalSelected > 0 && (doAiFill || doGenerate) && !running;
+  const anyEnabled = doAiFill || doGenerate || doGenerateDoc || doGenerateQuiz || doPublishNextbox;
+  const canRun = totalSelected > 0 && anyEnabled && !running;
 
   function renderLessonRow(lesson: Lesson) {
     const prog = progress[lesson.id];
@@ -234,13 +298,13 @@ export default function BatchSlidesPage() {
         <span style={{ color: "var(--border)" }}>/</span>
         <Link href={`/courses/${courseId}`} className="hover:underline" style={{ color: "#0cc0df" }}>{course?.title}</Link>
         <span style={{ color: "var(--border)" }}>/</span>
-        <span className="font-semibold" style={{ color: "var(--text-primary)" }}>Batch Slides</span>
+        <span className="font-semibold" style={{ color: "var(--text-primary)" }}>Batch Generate</span>
       </div>
 
       <div>
-        <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>Batch Slides</h1>
+        <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>Batch Generate</h1>
         <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>
-          AI fill and generate Google Slides for multiple lessons at once.
+          AI fill content and generate Google Slides, docs, and quizzes for multiple lessons at once.
         </p>
       </div>
 
@@ -297,6 +361,7 @@ export default function BatchSlidesPage() {
           <div className="rounded-3xl p-6 space-y-4" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
             <p className={sectionHeading}>Options</p>
 
+            {/* AI Fill */}
             <label className={`flex items-center gap-2.5 ${hasAiKey ? "cursor-pointer" : "cursor-not-allowed opacity-50"}`}>
               <input type="checkbox" checked={doAiFill} onChange={e => setDoAiFill(e.target.checked)} disabled={running || !hasAiKey} className="accent-[#0cc0df] w-3.5 h-3.5" />
               <span className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>AI Fill Content</span>
@@ -319,10 +384,45 @@ export default function BatchSlidesPage() {
               </div>
             )}
 
-            <label className="flex items-center gap-2.5 cursor-pointer">
-              <input type="checkbox" checked={doGenerate} onChange={e => setDoGenerate(e.target.checked)} disabled={running} className="accent-[#0cc0df] w-3.5 h-3.5" />
-              <span className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>Generate Google Slides</span>
-            </label>
+            <div className="border-t pt-3 space-y-3" style={{ borderColor: "var(--border)" }}>
+              {/* Generate Slides */}
+              <label className="flex items-center gap-2.5 cursor-pointer">
+                <input type="checkbox" checked={doGenerate} onChange={e => setDoGenerate(e.target.checked)} disabled={running} className="accent-[#0cc0df] w-3.5 h-3.5" />
+                <span className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>Generate Google Slides</span>
+              </label>
+
+              {/* Generate Overview Doc */}
+              <label className="flex items-center gap-2.5 cursor-pointer">
+                <input type="checkbox" checked={doGenerateDoc} onChange={e => setDoGenerateDoc(e.target.checked)} disabled={running} className="accent-[#0cc0df] w-3.5 h-3.5" />
+                <span className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>Generate Overview Doc</span>
+              </label>
+
+              {/* Generate Quiz */}
+              <div>
+                <label className="flex items-center gap-2.5 cursor-pointer">
+                  <input type="checkbox" checked={doGenerateQuiz} onChange={e => setDoGenerateQuiz(e.target.checked)} disabled={running} className="accent-[#0cc0df] w-3.5 h-3.5" />
+                  <span className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>Generate Quiz</span>
+                </label>
+                {doGenerateQuiz && (
+                  <p className="text-[10px] ml-6 mt-0.5" style={{ color: "var(--text-muted)" }}>
+                    Uses saved quiz drafts or lesson questions.{!hasAiKey && " Add an AI key for auto-generation."}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="border-t pt-3" style={{ borderColor: "var(--border)" }}>
+              {/* Publish to NeXTBox */}
+              <label className="flex items-center gap-2.5 cursor-pointer">
+                <input type="checkbox" checked={doPublishNextbox} onChange={e => setDoPublishNextbox(e.target.checked)} disabled={running} className="accent-[#0cc0df] w-3.5 h-3.5" />
+                <span className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>Publish to NeXTBox</span>
+              </label>
+              {doPublishNextbox && (
+                <p className="text-[10px] ml-6 mt-0.5" style={{ color: "var(--text-muted)" }}>
+                  Marks selected lessons as released and visible to students.
+                </p>
+              )}
+            </div>
 
             <div className="pt-2">
               <button
