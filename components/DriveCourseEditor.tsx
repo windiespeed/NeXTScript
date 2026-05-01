@@ -978,14 +978,6 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                     </span>
                   </div>
                 </div>
-                {!selecting && lesson.folderUrl && (
-                  <a href={lesson.folderUrl} target="_blank" rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold transition hover:opacity-80 shrink-0"
-                    style={{ background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.35)", color: "var(--accent-purple)" }}>
-                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-                    Drive ↗
-                  </a>
-                )}
                 {!selecting && (
                   <div className="flex items-center gap-2 shrink-0">
                     {/* Release to NeXTBox */}
@@ -1010,6 +1002,36 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                         </button>
                       );
                     })()}
+                    <Link href={`/lessons/${lesson.id}`}
+                      className="rounded-full bg-[#0cc0df] px-3 py-1.5 text-xs font-semibold text-[#0a0b13] hover:opacity-90 transition">View</Link>
+                    <div className="relative">
+                      <button
+                        onClick={e => { e.stopPropagation(); genPanelId === lesson.id ? setGenPanelId(null) : (setGenPanelId(lesson.id), setGenChecks({ slides: true, overview: true, quiz: false })); }}
+                        disabled={generatingLessonId === lesson.id}
+                        className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50 transition">
+                        {generatingLessonId === lesson.id ? "Generating…" : "Generate"}
+                      </button>
+                      {genPanelId === lesson.id && (
+                        <>
+                        <div className="fixed inset-0 z-20" onClick={() => setGenPanelId(null)} />
+                        <div className="absolute right-0 top-full mt-1 z-30 rounded-2xl p-3 min-w-[190px]" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)" }}>
+                          <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: "var(--text-muted)" }}>What to generate</p>
+                          <label className="flex items-center gap-2 text-xs mb-1.5 cursor-pointer" style={{ color: "var(--text-primary)" }}>
+                            <input type="checkbox" checked={genChecks.slides} onChange={e => setGenChecks(c => ({ ...c, slides: e.target.checked }))} className="accent-[#0cc0df]" />Slides
+                          </label>
+                          <label className="flex items-center gap-2 text-xs mb-1.5 cursor-pointer" style={{ color: "var(--text-primary)" }}>
+                            <input type="checkbox" checked={genChecks.overview} onChange={e => setGenChecks(c => ({ ...c, overview: e.target.checked }))} className="accent-[#0cc0df]" />Overview Doc
+                          </label>
+                          <label className="flex items-center gap-2 text-xs mb-3 cursor-pointer" style={{ color: "var(--text-primary)" }}>
+                            <input type="checkbox" checked={genChecks.quiz} onChange={e => setGenChecks(c => ({ ...c, quiz: e.target.checked }))} className="accent-[#0cc0df]" />Quiz
+                          </label>
+                          <button onClick={() => handleGenerateLesson(lesson.id)}
+                            disabled={!genChecks.slides && !genChecks.overview && !genChecks.quiz}
+                            className="w-full rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50 transition">Generate</button>
+                        </div>
+                        </>
+                      )}
+                    </div>
                     {/* NeXTBox per-lesson overrides */}
                     <div className="relative">
                       <button
@@ -1047,36 +1069,6 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                               className="w-full rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#0cc0df]"
                               style={{ background: "var(--bg-card-hover)", color: "var(--text-primary)", border: "1px solid var(--border)" }} />
                           </div>
-                        </div>
-                        </>
-                      )}
-                    </div>
-                    <Link href={`/lessons/${lesson.id}`}
-                      className="rounded-full bg-[#0cc0df] px-3 py-1.5 text-xs font-semibold text-[#0a0b13] hover:opacity-90 transition">View</Link>
-                    <div className="relative">
-                      <button
-                        onClick={e => { e.stopPropagation(); genPanelId === lesson.id ? setGenPanelId(null) : (setGenPanelId(lesson.id), setGenChecks({ slides: true, overview: true, quiz: false })); }}
-                        disabled={generatingLessonId === lesson.id}
-                        className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50 transition">
-                        {generatingLessonId === lesson.id ? "Generating…" : "Generate"}
-                      </button>
-                      {genPanelId === lesson.id && (
-                        <>
-                        <div className="fixed inset-0 z-20" onClick={() => setGenPanelId(null)} />
-                        <div className="absolute right-0 top-full mt-1 z-30 rounded-2xl p-3 min-w-[190px]" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)" }}>
-                          <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: "var(--text-muted)" }}>What to generate</p>
-                          <label className="flex items-center gap-2 text-xs mb-1.5 cursor-pointer" style={{ color: "var(--text-primary)" }}>
-                            <input type="checkbox" checked={genChecks.slides} onChange={e => setGenChecks(c => ({ ...c, slides: e.target.checked }))} className="accent-[#0cc0df]" />Slides
-                          </label>
-                          <label className="flex items-center gap-2 text-xs mb-1.5 cursor-pointer" style={{ color: "var(--text-primary)" }}>
-                            <input type="checkbox" checked={genChecks.overview} onChange={e => setGenChecks(c => ({ ...c, overview: e.target.checked }))} className="accent-[#0cc0df]" />Overview Doc
-                          </label>
-                          <label className="flex items-center gap-2 text-xs mb-3 cursor-pointer" style={{ color: "var(--text-primary)" }}>
-                            <input type="checkbox" checked={genChecks.quiz} onChange={e => setGenChecks(c => ({ ...c, quiz: e.target.checked }))} className="accent-[#0cc0df]" />Quiz
-                          </label>
-                          <button onClick={() => handleGenerateLesson(lesson.id)}
-                            disabled={!genChecks.slides && !genChecks.overview && !genChecks.quiz}
-                            className="w-full rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50 transition">Generate</button>
                         </div>
                         </>
                       )}
