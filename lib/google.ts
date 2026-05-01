@@ -623,6 +623,7 @@ export async function pushLessonToClassroom(params: {
   topicId?: string;
   slidesUrl?: string;
   docUrl?: string;
+  formUrl?: string;
   accessToken: string;
 }): Promise<void> {
   const classroom = google.classroom({ version: "v1", auth: getAuthClient(params.accessToken) });
@@ -636,8 +637,10 @@ export async function pushLessonToClassroom(params: {
   const materials: any[] = [];
   const slidesId = params.slidesUrl ? extractFileId(params.slidesUrl) : undefined;
   const docId = params.docUrl ? extractFileId(params.docUrl) : undefined;
+  const formId = params.formUrl ? extractFileId(params.formUrl) : undefined;
   if (slidesId) materials.push({ driveFile: { driveFile: { id: slidesId }, shareMode: "VIEW" } });
   if (docId) materials.push({ driveFile: { driveFile: { id: docId }, shareMode: "VIEW" } });
+  if (formId) materials.push({ form: { formUrl: params.formUrl } });
 
   await classroom.courses.courseWork.create({
     courseId: params.classroomId,

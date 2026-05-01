@@ -231,6 +231,7 @@ export default function Sidebar() {
                   <div className="flex items-center">
                     <Link
                       href={`/courses/${course.id}`}
+                      title={course.name}
                       className="flex items-center gap-2 pl-3 py-1.5 rounded-full text-xs transition truncate flex-1 min-w-0 hover:bg-[var(--bg-card-hover)]"
                       style={{ color: courseActive ? "#0cc0df" : "var(--text-secondary)", fontWeight: courseActive ? 700 : 500 }}
                     >
@@ -265,6 +266,7 @@ export default function Sidebar() {
                                   next.has(mod.id) ? next.delete(mod.id) : next.add(mod.id);
                                   return next;
                                 })}
+                                title={mod.title}
                                 className="flex items-center gap-2 pl-3 py-1 rounded-full text-xs transition truncate flex-1 min-w-0 hover:bg-[var(--bg-card-hover)] text-left"
                                 style={{ color: "var(--text-muted)" }}
                               >
@@ -293,6 +295,7 @@ export default function Sidebar() {
                                     <Link
                                       key={lesson.id}
                                       href={`/lessons/${lesson.id}`}
+                                      title={lesson.title}
                                       className="flex items-center gap-2 pl-3 pr-3 py-1 rounded-full text-xs transition truncate hover:bg-[var(--bg-card-hover)]"
                                       style={{ color: lessonActive ? "#0cc0df" : "var(--text-muted)", fontWeight: lessonActive ? 700 : 400 }}
                                     >

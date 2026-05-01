@@ -56,10 +56,11 @@ export async function POST(req: Request) {
         const lesson = await store.getById(lessonId);
         if (!lesson) { results.push({ lessonId, ok: false, error: "Lesson not found" }); continue; }
 
-        // Find the generated slides deck for this lesson
         const deck = allProjects.find(p => p.type === "deck" && (p.lessonId === lessonId || p.lessonIds?.includes(lessonId)));
+        const quiz = allProjects.find(p => p.type === "form" && p.isQuiz && (p.lessonId === lessonId || p.lessonIds?.includes(lessonId)) && p.url);
         const slidesUrl = deck?.url;
         const docUrl = lesson.overviewUrl;
+        const formUrl = quiz?.url;
 
         const description = lesson.overview || lesson.subtitle || undefined;
 
@@ -70,6 +71,7 @@ export async function POST(req: Request) {
           topicId,
           slidesUrl,
           docUrl,
+          formUrl,
           accessToken,
         });
 

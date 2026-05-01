@@ -621,7 +621,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                   style={{ width: `${Math.round((lessons.filter(l => l.released).length / lessons.length) * 100)}%` }} />
               </div>
               <p className="text-[10px] mt-0.5 text-right" style={{ color: "var(--text-muted)" }}>
-                {lessons.filter(l => l.released).length}/{lessons.length} published to NeXTBox
+                {lessons.filter(l => l.released).length}/{lessons.length} released to NeXTBox
               </p>
             </div>
           )}
@@ -762,7 +762,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
           <p className="text-sm font-semibold" style={{ color: "var(--text-secondary)" }}>
             {lessons.length} {lessons.length === 1 ? "lesson" : "lessons"} in this course
             {lessons.filter(l => l.released).length > 0 && (
-              <span className="ml-2 text-[#2dd4a0]">· {lessons.filter(l => l.released).length} published</span>
+              <span className="ml-2 text-[#2dd4a0]">· {lessons.filter(l => l.released).length} released</span>
             )}
           </p>
           <div className="flex items-center gap-2">
@@ -839,7 +839,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                         <button onClick={() => handleBulkRelease(!lessons.every(l => l.released))}
                           className="w-full text-left px-4 py-2.5 text-xs hover:bg-[var(--bg-card-hover)] transition"
                           style={{ color: "var(--text-primary)" }}>
-                          {lessons.every(l => l.released) ? "Unpublish All" : "Publish All to NeXTBox"}
+                          {lessons.every(l => l.released) ? "Unrelease All" : "Release All to NeXTBox"}
                         </button>
                       )}
                       {lessons.length > 0 && (
@@ -847,7 +847,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                           onClick={() => { setMoreOpen(false); handleReleaseToClassroom(lessons.map(l => l.id)); }}
                           className="w-full text-left px-4 py-2.5 text-xs hover:bg-[var(--bg-card-hover)] transition"
                           style={{ color: "var(--text-primary)" }}>
-                          Release All to Classroom
+                          Publish All to Classroom
                         </button>
                       )}
                       <div style={{ borderTop: "1px solid var(--border)" }}>
@@ -988,27 +988,25 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                 )}
                 {!selecting && (
                   <div className="flex items-center gap-2 shrink-0">
-                    {/* Publish to NeXTBox */}
-                    <div className="relative">
-                      <button onClick={() => handleToggleReleased(lesson)}
-                        title={lesson.released ? "Click to unpublish from NeXTBox" : "Publish to NeXTBox"}
-                        className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${lesson.released ? "bg-[#2dd4a0]/15 text-[#2dd4a0] hover:bg-[#2dd4a0]/25" : "hover:bg-[var(--bg-card-hover)]"}`}
-                        style={lesson.released ? {} : { border: "1px solid var(--border)", color: "var(--text-muted)" }}>
-                        {lesson.released ? "Published" : "Publish"}
-                      </button>
-                    </div>
-                    {/* Release to Google Classroom */}
+                    {/* Release to NeXTBox */}
+                    <button onClick={() => handleToggleReleased(lesson)}
+                      title={lesson.released ? "Click to unrelease from NeXTBox" : "Release to NeXTBox"}
+                      className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${lesson.released ? "bg-[#2dd4a0]/15 text-[#2dd4a0] hover:bg-[#2dd4a0]/25" : "hover:bg-[var(--bg-card-hover)]"}`}
+                      style={lesson.released ? {} : { border: "1px solid var(--border)", color: "var(--text-muted)" }}>
+                      {lesson.released ? "Released" : "Release"}
+                    </button>
+                    {/* Publish to Google Classroom */}
                     {(() => {
                       const currentModule = driveModules.find(m => m.lessonIds.includes(lesson.id));
-                      const isReleasing = releasingIds.has(lesson.id);
+                      const isPublishing = releasingIds.has(lesson.id);
                       return (
                         <button
                           onClick={() => handleReleaseToClassroom([lesson.id], currentModule?.title)}
-                          disabled={isReleasing}
-                          title={course?.googleClassroomId ? "Release to Google Classroom" : "Link a classroom in Course Settings first"}
+                          disabled={isPublishing}
+                          title={course?.googleClassroomId ? "Publish to Google Classroom" : "Link a classroom in Course Settings first"}
                           className="rounded-full px-3 py-1.5 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)] disabled:opacity-50"
                           style={{ border: "1px solid var(--border)", color: course?.googleClassroomId ? "var(--text-primary)" : "var(--text-muted)" }}>
-                          {isReleasing ? "Releasing…" : "Release"}
+                          {isPublishing ? "Publishing…" : "Publish"}
                         </button>
                       );
                     })()}
@@ -1158,14 +1156,15 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                                 style={allPublished
                                   ? { background: "rgba(45,212,160,0.12)", color: "#2dd4a0" }
                                   : { background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
-                                {allPublished ? "Unpublish All" : "Publish All"}
+                                {allPublished ? "Unrelease All" : "Release All"}
                               </button>
                               <button
                                 onClick={() => handleReleaseToClassroom(modLessonIds, mod.title)}
                                 disabled={anyReleasing}
+                                title={course?.googleClassroomId ? "Publish module to Google Classroom" : "Link a classroom in Course Settings first"}
                                 className="rounded-full px-2 py-0.5 text-[10px] font-semibold transition disabled:opacity-50"
                                 style={{ background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
-                                {anyReleasing ? "Releasing…" : "Release"}
+                                {anyReleasing ? "Publishing…" : "Publish"}
                               </button>
                             </>
                           );
