@@ -79,6 +79,8 @@ export interface Course {
   progressMode?: ProgressMode;
   solutionRevealAttempts?: number | null;
   assignedConcepts?: ExerciseConcept[];
+  googleClassroomId?: string;
+  googleClassroomName?: string;
   teacherId?: string;
   createdAt: string;
   updatedAt: string;

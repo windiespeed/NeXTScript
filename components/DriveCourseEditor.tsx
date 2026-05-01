@@ -153,6 +153,8 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
   const [joinCodeCopied, setJoinCodeCopied] = useState(false);
   const [editingModuleSettings, setEditingModuleSettings] = useState<string | null>(null);
   const [nextboxPanelId, setNextboxPanelId] = useState<string | null>(null);
+  const [releasingIds, setReleasingIds] = useState<Set<string>>(new Set());
+  const [releaseMsg, setReleaseMsg] = useState<{ text: string; ok: boolean } | null>(null);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
@@ -530,6 +532,34 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
     });
   }
 
+  async function handleReleaseToClassroom(lessonIds: string[], moduleName?: string) {
+    if (!course?.googleClassroomId) {
+      setReleaseMsg({ text: "Link a Google Classroom in Course Settings first.", ok: false });
+      setTimeout(() => setReleaseMsg(null), 4000);
+      return;
+    }
+    setReleasingIds(prev => new Set([...prev, ...lessonIds]));
+    setReleaseMsg(null);
+    try {
+      const res = await fetch("/api/classroom/push", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lessonIds, courseId: id, moduleName }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Push failed.");
+      const msg = data.failed > 0
+        ? `${data.pushed} pushed, ${data.failed} failed.`
+        : `${data.pushed} lesson${data.pushed !== 1 ? "s" : ""} released to Classroom.`;
+      setReleaseMsg({ text: msg, ok: data.failed === 0 });
+    } catch (e: any) {
+      setReleaseMsg({ text: e.message || "Push failed.", ok: false });
+    } finally {
+      setReleasingIds(prev => { const next = new Set(prev); lessonIds.forEach(id => next.delete(id)); return next; });
+      setTimeout(() => setReleaseMsg(null), 5000);
+    }
+  }
+
   async function handleGenerateJoinCode() {
     const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     const code = Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
@@ -647,6 +677,17 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
           </div>
         )}
       </div>
+
+      {/* Release feedback */}
+      {releaseMsg && (
+        <div className="rounded-2xl px-4 py-2.5 text-xs font-medium" style={{
+          background: releaseMsg.ok ? "rgba(45,212,160,0.08)" : "rgba(239,68,68,0.08)",
+          border: `1px solid ${releaseMsg.ok ? "rgba(45,212,160,0.25)" : "rgba(239,68,68,0.25)"}`,
+          color: releaseMsg.ok ? "#2dd4a0" : "#ef4444",
+        }}>
+          {releaseMsg.text}
+        </div>
+      )}
 
       {/* NeXTBox Panel */}
       <div className="rounded-3xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
@@ -801,6 +842,14 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                           {lessons.every(l => l.released) ? "Unpublish All" : "Publish All to NeXTBox"}
                         </button>
                       )}
+                      {lessons.length > 0 && (
+                        <button
+                          onClick={() => { setMoreOpen(false); handleReleaseToClassroom(lessons.map(l => l.id)); }}
+                          className="w-full text-left px-4 py-2.5 text-xs hover:bg-[var(--bg-card-hover)] transition"
+                          style={{ color: "var(--text-primary)" }}>
+                          Release All to Classroom
+                        </button>
+                      )}
                       <div style={{ borderTop: "1px solid var(--border)" }}>
                         <button onClick={handleCopyLink}
                           className="w-full text-left px-4 py-2.5 text-xs hover:bg-[var(--bg-card-hover)] transition"
@@ -948,6 +997,21 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                         {lesson.released ? "Published" : "Publish"}
                       </button>
                     </div>
+                    {/* Release to Google Classroom */}
+                    {(() => {
+                      const currentModule = driveModules.find(m => m.lessonIds.includes(lesson.id));
+                      const isReleasing = releasingIds.has(lesson.id);
+                      return (
+                        <button
+                          onClick={() => handleReleaseToClassroom([lesson.id], currentModule?.title)}
+                          disabled={isReleasing}
+                          title={course?.googleClassroomId ? "Release to Google Classroom" : "Link a classroom in Course Settings first"}
+                          className="rounded-full px-3 py-1.5 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)] disabled:opacity-50"
+                          style={{ border: "1px solid var(--border)", color: course?.googleClassroomId ? "var(--text-primary)" : "var(--text-muted)" }}>
+                          {isReleasing ? "Releasing…" : "Release"}
+                        </button>
+                      );
+                    })()}
                     {/* NeXTBox per-lesson overrides */}
                     <div className="relative">
                       <button
@@ -1084,15 +1148,26 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                         <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{modLessons.length} {modLessons.length === 1 ? "lesson" : "lessons"}</span>
                         {modLessons.length > 0 && (() => {
                           const allPublished = modLessons.every(l => l.released);
+                          const modLessonIds = modLessons.map(l => l.id);
+                          const anyReleasing = modLessonIds.some(lid => releasingIds.has(lid));
                           return (
-                            <button
-                              onClick={() => handleReleaseModule(mod.id, !allPublished)}
-                              className="rounded-full px-2 py-0.5 text-[10px] font-semibold transition"
-                              style={allPublished
-                                ? { background: "rgba(45,212,160,0.12)", color: "#2dd4a0" }
-                                : { background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
-                              {allPublished ? "Unpublish All" : "Publish All"}
-                            </button>
+                            <>
+                              <button
+                                onClick={() => handleReleaseModule(mod.id, !allPublished)}
+                                className="rounded-full px-2 py-0.5 text-[10px] font-semibold transition"
+                                style={allPublished
+                                  ? { background: "rgba(45,212,160,0.12)", color: "#2dd4a0" }
+                                  : { background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
+                                {allPublished ? "Unpublish All" : "Publish All"}
+                              </button>
+                              <button
+                                onClick={() => handleReleaseToClassroom(modLessonIds, mod.title)}
+                                disabled={anyReleasing}
+                                className="rounded-full px-2 py-0.5 text-[10px] font-semibold transition disabled:opacity-50"
+                                style={{ background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
+                                {anyReleasing ? "Releasing…" : "Release"}
+                              </button>
+                            </>
                           );
                         })()}
                         <button onClick={() => { setEditingModuleId(mod.id); setEditModuleTitle(mod.title); }} title="Rename"

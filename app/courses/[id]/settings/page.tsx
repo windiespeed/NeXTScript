@@ -53,6 +53,15 @@ export default function CourseSettingsPage() {
   const [saveMsg, setSaveMsg] = useState("");
   const [saveError, setSaveError] = useState("");
 
+  // Google Classroom
+  const [classrooms, setClassrooms] = useState<{ id: string; name: string }[]>([]);
+  const [classroomsLoading, setClassroomsLoading] = useState(false);
+  const [linkedClassroomId, setLinkedClassroomId] = useState("");
+  const [linkedClassroomName, setLinkedClassroomName] = useState("");
+  const [selectedClassroomId, setSelectedClassroomId] = useState("");
+  const [savingClassroom, setSavingClassroom] = useState(false);
+  const [classroomMsg, setClassroomMsg] = useState("");
+
   // Concepts
   const [concepts, setConcepts] = useState<Concept[]>([]);
   const [seeding, setSeeding] = useState(false);
@@ -99,9 +108,43 @@ export default function CourseSettingsPage() {
       setEditSemester(courseData.semester ?? "");
       setEditSettings({ ...DEFAULT_COURSE_SETTINGS, ...(courseData.settings ?? {}) });
       setConcepts(Array.isArray(conceptData) ? conceptData : []);
+      setLinkedClassroomId(courseData.googleClassroomId ?? "");
+      setLinkedClassroomName(courseData.googleClassroomName ?? "");
+      setSelectedClassroomId(courseData.googleClassroomId ?? "");
       setLoading(false);
     });
   }, [courseId]);
+
+  async function loadClassrooms() {
+    setClassroomsLoading(true);
+    const res = await fetch("/api/classroom");
+    if (res.ok) {
+      const data = await res.json();
+      setClassrooms(Array.isArray(data) ? data : []);
+    }
+    setClassroomsLoading(false);
+  }
+
+  async function handleLinkClassroom() {
+    setSavingClassroom(true);
+    setClassroomMsg("");
+    const selected = classrooms.find(c => c.id === selectedClassroomId);
+    const res = await fetch(`/api/courses/${courseId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        googleClassroomId: selectedClassroomId || null,
+        googleClassroomName: selected?.name ?? null,
+      }),
+    });
+    if (res.ok) {
+      setLinkedClassroomId(selectedClassroomId);
+      setLinkedClassroomName(selected?.name ?? "");
+      setClassroomMsg(selectedClassroomId ? "Classroom linked." : "Classroom unlinked.");
+      setTimeout(() => setClassroomMsg(""), 3000);
+    }
+    setSavingClassroom(false);
+  }
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -347,6 +390,83 @@ export default function CourseSettingsPage() {
           {saveMsg && <p className="text-sm font-medium" style={{ color: "#2dd4a0" }}>{saveMsg}</p>}
         </div>
       </form>
+
+      {/* Google Classroom */}
+      <div className="rounded-3xl p-6 space-y-4" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
+        <div>
+          <p className={sectionHeading}>Google Classroom</p>
+          <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
+            Link a Google Classroom to enable releasing lessons as draft assignments.
+          </p>
+        </div>
+
+        {linkedClassroomId && (
+          <div className="flex items-center gap-3 rounded-2xl px-4 py-3" style={{ background: "rgba(12,192,223,0.06)", border: "1px solid rgba(12,192,223,0.2)" }}>
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="#0cc0df" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold truncate" style={{ color: "var(--text-primary)" }}>{linkedClassroomName}</p>
+              <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>Currently linked</p>
+            </div>
+            <button
+              onClick={async () => {
+                setSavingClassroom(true);
+                const res = await fetch(`/api/courses/${courseId}`, {
+                  method: "PUT",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ googleClassroomId: null, googleClassroomName: null }),
+                });
+                if (res.ok) {
+                  setLinkedClassroomId(""); setLinkedClassroomName(""); setSelectedClassroomId("");
+                  setClassroomMsg("Classroom unlinked.");
+                  setTimeout(() => setClassroomMsg(""), 3000);
+                }
+                setSavingClassroom(false);
+              }}
+              className="text-xs hover:underline shrink-0" style={{ color: "#ef4444" }}>
+              Unlink
+            </button>
+          </div>
+        )}
+
+        {classrooms.length === 0 ? (
+          <button
+            onClick={loadClassrooms}
+            disabled={classroomsLoading}
+            className="rounded-full px-4 py-2 text-xs font-semibold transition hover:opacity-90 disabled:opacity-50"
+            style={{ background: "rgba(12,192,223,0.1)", color: "#0cc0df", border: "1px solid rgba(12,192,223,0.3)" }}>
+            {classroomsLoading ? "Loading classrooms…" : "Load my Google Classrooms"}
+          </button>
+        ) : (
+          <div className="flex items-end gap-3 flex-wrap">
+            <div className="flex-1 min-w-[200px]">
+              <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
+                Select Classroom
+              </label>
+              <select
+                value={selectedClassroomId}
+                onChange={e => setSelectedClassroomId(e.target.value)}
+                className={inputClass} style={inputStyle}>
+                <option value="">— None —</option>
+                {classrooms.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+            <button
+              onClick={handleLinkClassroom}
+              disabled={savingClassroom}
+              className="rounded-full px-4 py-2 text-xs font-semibold transition hover:opacity-90 disabled:opacity-50 shrink-0"
+              style={{ background: "#0cc0df", color: "#0a0b13" }}>
+              {savingClassroom ? "Saving…" : selectedClassroomId ? "Link Classroom" : "Unlink"}
+            </button>
+          </div>
+        )}
+        {classroomMsg && <p className="text-xs font-medium" style={{ color: "#2dd4a0" }}>{classroomMsg}</p>}
+        <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+          After linking, use the <strong>Release</strong> button on each lesson or module to push it to this classroom as a draft assignment.
+          If a matching title already exists, a copy is created automatically.
+        </p>
+      </div>
 
       {/* NeXTBox Concepts */}
       <div className="rounded-3xl p-6 space-y-4" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>

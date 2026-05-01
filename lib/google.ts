@@ -587,3 +587,67 @@ export async function generateBundle(
 
   return { folderUrl: folder.webViewLink!, slideCount: 0 };
 }
+
+// ─── Google Classroom ───────────────────────────────���──────────────────────
+
+function extractFileId(url: string): string | undefined {
+  return url?.match(/\/d\/([a-zA-Z0-9_-]+)/)?.[1];
+}
+
+export async function listGoogleClassrooms(accessToken: string): Promise<{ id: string; name: string }[]> {
+  const classroom = google.classroom({ version: "v1", auth: getAuthClient(accessToken) });
+  const res = await classroom.courses.list({ teacherId: "me", courseStates: ["ACTIVE"], pageSize: 50 });
+  return (res.data.courses ?? []).map(c => ({ id: c.id!, name: c.name! }));
+}
+
+export async function getOrCreateClassroomTopic(
+  classroomId: string,
+  topicName: string,
+  accessToken: string,
+): Promise<string> {
+  const classroom = google.classroom({ version: "v1", auth: getAuthClient(accessToken) });
+  const { data } = await classroom.courses.topics.list({ courseId: classroomId, pageSize: 100 });
+  const existing = (data.topic ?? []).find(t => t.name === topicName);
+  if (existing?.topicId) return existing.topicId;
+  const created = await classroom.courses.topics.create({
+    courseId: classroomId,
+    requestBody: { name: topicName },
+  });
+  return created.data.topicId!;
+}
+
+export async function pushLessonToClassroom(params: {
+  classroomId: string;
+  title: string;
+  description?: string;
+  topicId?: string;
+  slidesUrl?: string;
+  docUrl?: string;
+  accessToken: string;
+}): Promise<void> {
+  const classroom = google.classroom({ version: "v1", auth: getAuthClient(params.accessToken) });
+
+  // Duplicate detection — auto-suffix with (Copy) if title already exists
+  const existing = await classroom.courses.courseWork.list({ courseId: params.classroomId, pageSize: 250 });
+  const existingTitles = new Set((existing.data.courseWork ?? []).map(cw => cw.title));
+  let title = params.title;
+  if (existingTitles.has(title)) title = `${title} (Copy)`;
+
+  const materials: any[] = [];
+  const slidesId = params.slidesUrl ? extractFileId(params.slidesUrl) : undefined;
+  const docId = params.docUrl ? extractFileId(params.docUrl) : undefined;
+  if (slidesId) materials.push({ driveFile: { driveFile: { id: slidesId }, shareMode: "VIEW" } });
+  if (docId) materials.push({ driveFile: { driveFile: { id: docId }, shareMode: "VIEW" } });
+
+  await classroom.courses.courseWork.create({
+    courseId: params.classroomId,
+    requestBody: {
+      title,
+      ...(params.description ? { description: params.description } : {}),
+      state: "DRAFT",
+      workType: "ASSIGNMENT",
+      ...(params.topicId ? { topicId: params.topicId } : {}),
+      ...(materials.length > 0 ? { materials } : {}),
+    },
+  });
+}
