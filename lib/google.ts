@@ -616,6 +616,14 @@ export async function getOrCreateClassroomTopic(
   return created.data.topicId!;
 }
 
+// Derives the Classroom item type from the lesson's type field.
+// assessment → quiz assignment (form is primary); lesson/review → material; everything else → assignment
+function classroomItemTypeFor(lessonType?: string): "assignment" | "material" | "quiz" {
+  if (lessonType === "assessment") return "quiz";
+  if (lessonType === "lesson" || lessonType === "review") return "material";
+  return "assignment";
+}
+
 export async function pushLessonToClassroom(params: {
   classroomId: string;
   title: string;
@@ -624,20 +632,74 @@ export async function pushLessonToClassroom(params: {
   slidesUrl?: string;
   docUrl?: string;
   formUrl?: string;
+  lessonType?: string;
   accessToken: string;
 }): Promise<void> {
   const classroom = google.classroom({ version: "v1", auth: getAuthClient(params.accessToken) });
+  const itemType = classroomItemTypeFor(params.lessonType);
 
-  // Duplicate detection — auto-suffix with (Copy) if title already exists
+  const slidesId = params.slidesUrl ? extractFileId(params.slidesUrl) : undefined;
+  const docId = params.docUrl ? extractFileId(params.docUrl) : undefined;
+  const formId = params.formUrl ? extractFileId(params.formUrl) : undefined;
+
+  if (itemType === "material") {
+    // Read-only reference post — no submission required
+    const existing = await classroom.courses.courseWorkMaterials.list({ courseId: params.classroomId, pageSize: 250 });
+    const existingTitles = new Set((existing.data.courseWorkMaterial ?? []).map(m => m.title));
+    let title = params.title;
+    if (existingTitles.has(title)) title = `${title} (Copy)`;
+
+    const materials: any[] = [];
+    if (slidesId) materials.push({ driveFile: { driveFile: { id: slidesId }, shareMode: "VIEW" } });
+    if (docId) materials.push({ driveFile: { driveFile: { id: docId }, shareMode: "VIEW" } });
+    if (formId) materials.push({ form: { formUrl: params.formUrl } });
+
+    await classroom.courses.courseWorkMaterials.create({
+      courseId: params.classroomId,
+      requestBody: {
+        title,
+        ...(params.description ? { description: params.description } : {}),
+        state: "DRAFT",
+        ...(params.topicId ? { topicId: params.topicId } : {}),
+        ...(materials.length > 0 ? { materials } : {}),
+      },
+    });
+    return;
+  }
+
+  if (itemType === "quiz") {
+    // Assignment where the quiz form is the primary item; slides/doc are supplementary
+    const existing = await classroom.courses.courseWork.list({ courseId: params.classroomId, pageSize: 250 });
+    const existingTitles = new Set((existing.data.courseWork ?? []).map(cw => cw.title));
+    let title = params.title;
+    if (existingTitles.has(title)) title = `${title} (Copy)`;
+
+    const materials: any[] = [];
+    if (formId) materials.push({ form: { formUrl: params.formUrl } });
+    if (slidesId) materials.push({ driveFile: { driveFile: { id: slidesId }, shareMode: "VIEW" } });
+    if (docId) materials.push({ driveFile: { driveFile: { id: docId }, shareMode: "VIEW" } });
+
+    await classroom.courses.courseWork.create({
+      courseId: params.classroomId,
+      requestBody: {
+        title,
+        ...(params.description ? { description: params.description } : {}),
+        state: "DRAFT",
+        workType: "ASSIGNMENT",
+        ...(params.topicId ? { topicId: params.topicId } : {}),
+        ...(materials.length > 0 ? { materials } : {}),
+      },
+    });
+    return;
+  }
+
+  // Default: assignment with all attachments
   const existing = await classroom.courses.courseWork.list({ courseId: params.classroomId, pageSize: 250 });
   const existingTitles = new Set((existing.data.courseWork ?? []).map(cw => cw.title));
   let title = params.title;
   if (existingTitles.has(title)) title = `${title} (Copy)`;
 
   const materials: any[] = [];
-  const slidesId = params.slidesUrl ? extractFileId(params.slidesUrl) : undefined;
-  const docId = params.docUrl ? extractFileId(params.docUrl) : undefined;
-  const formId = params.formUrl ? extractFileId(params.formUrl) : undefined;
   if (slidesId) materials.push({ driveFile: { driveFile: { id: slidesId }, shareMode: "VIEW" } });
   if (docId) materials.push({ driveFile: { driveFile: { id: docId }, shareMode: "VIEW" } });
   if (formId) materials.push({ form: { formUrl: params.formUrl } });

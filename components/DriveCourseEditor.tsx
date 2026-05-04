@@ -155,6 +155,8 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
   const [nextboxPanelId, setNextboxPanelId] = useState<string | null>(null);
   const [releasingIds, setReleasingIds] = useState<Set<string>>(new Set());
   const [releaseMsg, setReleaseMsg] = useState<{ text: string; ok: boolean } | null>(null);
+  const [releasePickerModuleId, setReleasePickerModuleId] = useState<string | null>(null);
+  const [releasePickerSelected, setReleasePickerSelected] = useState<Set<string>>(new Set());
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
@@ -995,13 +997,10 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                         </button>
                       );
                     })()}
-                    {/* Release to NeXTBox */}
-                    <button onClick={() => handleToggleReleased(lesson)}
-                      title={lesson.released ? "Click to unrelease from NeXTBox" : "Release to NeXTBox"}
-                      className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${lesson.released ? "bg-[#2dd4a0]/15 text-[#2dd4a0] hover:bg-[#2dd4a0]/25" : "hover:bg-[var(--bg-card-hover)]"}`}
-                      style={lesson.released ? {} : { border: "1px solid var(--border)", color: "var(--text-muted)" }}>
-                      {lesson.released ? "Released" : "Release"}
-                    </button>
+                    {/* Released indicator (read-only) */}
+                    {lesson.released && (
+                      <span className="rounded-full px-2.5 py-1 text-[10px] font-semibold" style={{ background: "rgba(45,212,160,0.12)", color: "#2dd4a0" }}>Released</span>
+                    )}
                     <Link href={`/lessons/${lesson.id}`}
                       className="rounded-full bg-[#0cc0df] px-3 py-1.5 text-xs font-semibold text-[#0a0b13] hover:opacity-90 transition">View</Link>
                     <div className="relative">
@@ -1137,28 +1136,17 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                         )}
                         <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{modLessons.length} {modLessons.length === 1 ? "lesson" : "lessons"}</span>
                         {modLessons.length > 0 && (() => {
-                          const allPublished = modLessons.every(l => l.released);
                           const modLessonIds = modLessons.map(l => l.id);
                           const anyReleasing = modLessonIds.some(lid => releasingIds.has(lid));
                           return (
-                            <>
-                              <button
-                                onClick={() => handleReleaseModule(mod.id, !allPublished)}
-                                className="rounded-full px-2 py-0.5 text-[10px] font-semibold transition"
-                                style={allPublished
-                                  ? { background: "rgba(45,212,160,0.12)", color: "#2dd4a0" }
-                                  : { background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
-                                {allPublished ? "Unrelease All" : "Release All"}
-                              </button>
-                              <button
-                                onClick={() => handleReleaseToClassroom(modLessonIds, mod.title)}
-                                disabled={anyReleasing}
-                                title={course?.googleClassroomId ? "Publish module to Google Classroom" : "Link a classroom in Course Settings first"}
-                                className="rounded-full px-2 py-0.5 text-[10px] font-semibold transition disabled:opacity-50"
-                                style={{ background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
-                                {anyReleasing ? "Publishing…" : "Publish"}
-                              </button>
-                            </>
+                            <button
+                              onClick={() => handleReleaseToClassroom(modLessonIds, mod.title)}
+                              disabled={anyReleasing}
+                              title={course?.googleClassroomId ? "Publish module to Google Classroom" : "Link a classroom in Course Settings first"}
+                              className="rounded-full px-2 py-0.5 text-[10px] font-semibold transition disabled:opacity-50"
+                              style={{ background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
+                              {anyReleasing ? "Publishing…" : "Publish to Classroom"}
+                            </button>
                           );
                         })()}
                         <button onClick={() => { setEditingModuleId(mod.id); setEditModuleTitle(mod.title); }} title="Rename"
@@ -1198,6 +1186,65 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                                 className="w-16 rounded px-1.5 py-0.5 text-[10px] focus:outline-none focus:ring-1 focus:ring-[#0cc0df]"
                                 style={{ background: "var(--bg-card-hover)", color: "var(--text-primary)", border: "1px solid var(--border)" }} />
                               <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>attempts</span>
+                            </div>
+                            <div className="flex-1" />
+                            {/* Release to NeXTBox picker */}
+                            <div className="relative">
+                              <button
+                                onClick={() => {
+                                  if (releasePickerModuleId === mod.id) {
+                                    setReleasePickerModuleId(null);
+                                  } else {
+                                    setReleasePickerModuleId(mod.id);
+                                    setReleasePickerSelected(new Set(modLessons.filter(l => !l.released).map(l => l.id)));
+                                  }
+                                }}
+                                className="rounded-full px-2.5 py-0.5 text-[10px] font-semibold transition"
+                                style={{ background: releasePickerModuleId === mod.id ? "rgba(45,212,160,0.12)" : "var(--bg-card-hover)", border: "1px solid var(--border)", color: releasePickerModuleId === mod.id ? "#2dd4a0" : "var(--text-muted)" }}>
+                                Release to NeXTBox
+                              </button>
+                              {releasePickerModuleId === mod.id && (
+                                <div className="absolute right-0 top-full mt-1 z-50 rounded-xl shadow-lg p-3 min-w-[220px]"
+                                  style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
+                                  <div className="flex items-center gap-2 mb-2 pb-2" style={{ borderBottom: "1px solid var(--border)" }}>
+                                    <input
+                                      type="checkbox"
+                                      checked={releasePickerSelected.size === modLessons.length && modLessons.length > 0}
+                                      onChange={e => setReleasePickerSelected(e.target.checked ? new Set(modLessons.map(l => l.id)) : new Set())} />
+                                    <span className="text-[11px] font-semibold" style={{ color: "var(--text-secondary)" }}>Select All</span>
+                                  </div>
+                                  <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                                    {modLessons.map(l => (
+                                      <label key={l.id} className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                          type="checkbox"
+                                          checked={releasePickerSelected.has(l.id)}
+                                          onChange={e => {
+                                            const next = new Set(releasePickerSelected);
+                                            if (e.target.checked) next.add(l.id); else next.delete(l.id);
+                                            setReleasePickerSelected(next);
+                                          }} />
+                                        <span className="text-[11px] truncate flex-1" style={{ color: "var(--text-primary)" }}>{l.title}</span>
+                                        {l.released && <span className="shrink-0 text-[10px]" style={{ color: "#2dd4a0" }}>✓</span>}
+                                      </label>
+                                    ))}
+                                  </div>
+                                  <button
+                                    disabled={releasePickerSelected.size === 0}
+                                    onClick={async () => {
+                                      const ids = Array.from(releasePickerSelected);
+                                      setLessons(prev => prev.map(l => ids.includes(l.id) ? { ...l, released: true } : l));
+                                      setReleasePickerModuleId(null);
+                                      await Promise.all(ids.map(lid =>
+                                        fetch(`/api/lessons/${lid}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ released: true }) })
+                                      ));
+                                    }}
+                                    className="mt-3 w-full rounded-full py-1 text-[11px] font-semibold transition disabled:opacity-50"
+                                    style={{ background: "rgba(12,192,223,0.12)", color: "#0cc0df", border: "1px solid rgba(12,192,223,0.2)" }}>
+                                    Release Selected
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           </div>
                           {modLessons.length === 0 ? (

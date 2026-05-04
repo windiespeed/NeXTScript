@@ -453,8 +453,11 @@ export default function LessonHubPage() {
                 <input value={metaSubtitle} onChange={e => setMetaSubtitle(e.target.value)} className={inputClass} style={inputStyle} placeholder="Topic or subject" />
               </div>
               <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Topics</label>
-                <input value={metaTopics} onChange={e => setMetaTopics(e.target.value)} className={inputClass} style={inputStyle} placeholder="Comma-separated topics" />
+                <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
+                  Topics <span className="font-normal text-[10px]" style={{ color: "#0cc0df" }}>· used by AI</span>
+                </label>
+                <input value={metaTopics} onChange={e => setMetaTopics(e.target.value)} className={inputClass} style={inputStyle} placeholder="e.g. Variables, Data Types, Type Casting" />
+                <p className="text-[10px] mt-1" style={{ color: "var(--text-muted)" }}>Comma-separated. AI uses these to generate slide content, overviews, and quizzes.</p>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>

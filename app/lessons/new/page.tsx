@@ -204,7 +204,9 @@ function NewLessonInner() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Topics <span className="font-normal" style={{ color: "var(--text-muted)" }}>(optional)</span></label>
+            <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
+              Topics <span className="font-normal text-[10px]" style={{ color: "#0cc0df" }}>· used by AI</span>
+            </label>
             <input
               type="text"
               value={topics}
@@ -213,6 +215,7 @@ function NewLessonInner() {
               className={inputClass}
               style={inputStyle}
             />
+            <p className="text-[10px] mt-1" style={{ color: "var(--text-muted)" }}>Comma-separated. AI uses these to generate slide content, overviews, and quizzes.</p>
           </div>
         </div>
 

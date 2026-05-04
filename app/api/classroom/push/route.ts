@@ -72,6 +72,7 @@ export async function POST(req: Request) {
           slidesUrl,
           docUrl,
           formUrl,
+          lessonType: lesson.lessonType,
           accessToken,
         });
 

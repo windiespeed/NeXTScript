@@ -362,8 +362,10 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
         </div>
 
         <div>
-          <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Topics</label>
-          <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>Enter topics comma-separated (e.g. HTML, CSS, Flexbox)</p>
+          <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
+            Topics <span className="font-normal text-[10px]" style={{ color: "#0cc0df" }}>· used by AI</span>
+          </label>
+          <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>Comma-separated. AI uses these to generate slide content, overviews, and quizzes.</p>
           <input
             type="text"
             value={form.topics}

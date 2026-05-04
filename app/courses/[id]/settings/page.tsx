@@ -56,6 +56,7 @@ export default function CourseSettingsPage() {
   // Google Classroom
   const [classrooms, setClassrooms] = useState<{ id: string; name: string }[]>([]);
   const [classroomsLoading, setClassroomsLoading] = useState(false);
+  const [classroomsError, setClassroomsError] = useState("");
   const [linkedClassroomId, setLinkedClassroomId] = useState("");
   const [linkedClassroomName, setLinkedClassroomName] = useState("");
   const [selectedClassroomId, setSelectedClassroomId] = useState("");
@@ -117,10 +118,20 @@ export default function CourseSettingsPage() {
 
   async function loadClassrooms() {
     setClassroomsLoading(true);
-    const res = await fetch("/api/classroom");
-    if (res.ok) {
+    setClassroomsError("");
+    try {
+      const res = await fetch("/api/classroom");
       const data = await res.json();
-      setClassrooms(Array.isArray(data) ? data : []);
+      if (!res.ok) {
+        setClassroomsError(data.error ?? "Failed to load classrooms.");
+      } else {
+        setClassrooms(Array.isArray(data) ? data : []);
+        if (Array.isArray(data) && data.length === 0) {
+          setClassroomsError("No classrooms found in your Google account.");
+        }
+      }
+    } catch {
+      setClassroomsError("Network error — could not reach the server.");
     }
     setClassroomsLoading(false);
   }
@@ -429,13 +440,18 @@ export default function CourseSettingsPage() {
         )}
 
         {classrooms.length === 0 ? (
-          <button
-            onClick={loadClassrooms}
-            disabled={classroomsLoading}
-            className="rounded-full px-4 py-2 text-xs font-semibold transition hover:opacity-90 disabled:opacity-50"
-            style={{ background: "rgba(12,192,223,0.1)", color: "#0cc0df", border: "1px solid rgba(12,192,223,0.3)" }}>
-            {classroomsLoading ? "Loading classrooms…" : "Load my Google Classrooms"}
-          </button>
+          <div className="space-y-2">
+            <button
+              onClick={loadClassrooms}
+              disabled={classroomsLoading}
+              className="rounded-full px-4 py-2 text-xs font-semibold transition hover:opacity-90 disabled:opacity-50"
+              style={{ background: "rgba(12,192,223,0.1)", color: "#0cc0df", border: "1px solid rgba(12,192,223,0.3)" }}>
+              {classroomsLoading ? "Loading classrooms…" : "Load my Google Classrooms"}
+            </button>
+            {classroomsError && (
+              <p className="text-xs" style={{ color: "#ef4444" }}>{classroomsError}</p>
+            )}
+          </div>
         ) : (
           <div className="flex items-end gap-3 flex-wrap">
             <div className="flex-1 min-w-[200px]">
