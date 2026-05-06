@@ -53,6 +53,8 @@ function NewQuizPageInner() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [savedDraftId, setSavedDraftId] = useState("");
+  const [generating, setGenerating] = useState(false);
+  const [generateError, setGenerateError] = useState("");
 
   useEffect(() => {
     Promise.all([
@@ -173,7 +175,7 @@ function NewQuizPageInner() {
         body: JSON.stringify({
           title: quizTitle.trim(),
           lessonIds: resolvedLessonIds,
-          moduleId: scope === "module" ? selectedModuleId : undefined,
+          moduleId: selectedModuleId || undefined,
           courseId: selectedCourseId || undefined,
           questions,
         }),
@@ -185,6 +187,47 @@ function NewQuizPageInner() {
       setSaveError(err.message);
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleGenerateForm() {
+    if (!quizTitle.trim()) { setSaveError("Quiz title is required."); return; }
+    if (questions.length === 0) { setSaveError("Add at least one question."); return; }
+    setGenerating(true);
+    setSaveError("");
+    setGenerateError("");
+    let draftId = savedDraftId;
+    if (!draftId) {
+      try {
+        const saveRes = await fetch("/api/quizzes", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: quizTitle.trim(),
+            lessonIds: resolvedLessonIds,
+            moduleId: selectedModuleId || undefined,
+            courseId: selectedCourseId || undefined,
+            questions,
+          }),
+        });
+        const saveData = await saveRes.json();
+        if (!saveRes.ok) throw new Error(saveData.error || "Failed to save quiz draft.");
+        draftId = saveData.id;
+        setSavedDraftId(saveData.id);
+      } catch (err: any) {
+        setGenerateError(err.message);
+        setGenerating(false);
+        return;
+      }
+    }
+    try {
+      const genRes = await fetch(`/api/generate/quiz/${draftId}`, { method: "POST" });
+      const genData = await genRes.json();
+      if (!genRes.ok) throw new Error(genData.error || "Generation failed.");
+      router.push(`/quizzes/${draftId}`);
+    } catch (err: any) {
+      setGenerateError(err.message);
+      setGenerating(false);
     }
   }
 
@@ -217,7 +260,8 @@ function NewQuizPageInner() {
   }
 
   const canAiGenerate = hasAiKey && (scope === "standalone" || resolvedLessonIds.length > 0 || selectedLessonIds.size > 0);
-  const canSave = quizTitle.trim() && questions.length > 0;
+  const needsModule = (scope === "lesson" || scope === "module") && modules.length > 0;
+  const canSave = quizTitle.trim() && questions.length > 0 && (!needsModule || !!selectedModuleId);
 
   return (
     <div className="space-y-6">
@@ -279,6 +323,16 @@ function NewQuizPageInner() {
                   {modules.map(m => <option key={m.id} value={m.id}>{m.title} ({m.lessonIds.length} lessons)</option>)}
                 </select>
               )}
+            </div>
+          )}
+
+          {scope === "lesson" && selectedCourseId && modules.length > 0 && (
+            <div>
+              <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Module <span className="text-red-500">*</span></label>
+              <select value={selectedModuleId} onChange={e => setSelectedModuleId(e.target.value)} className={inputClass} style={inputStyle}>
+                <option value="">— Select a module —</option>
+                {modules.map(m => <option key={m.id} value={m.id}>{m.title}</option>)}
+              </select>
             </div>
           )}
 
@@ -468,22 +522,33 @@ function NewQuizPageInner() {
         )}
       </div>
 
-      {/* ── Save Draft ── */}
-      <div className="flex items-center gap-4">
-        <button
-          onClick={handleSaveDraft}
-          disabled={saving || !canSave}
-          className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-6 py-2.5 text-sm font-bold text-white hover:opacity-90 disabled:opacity-50 transition shadow"
-        >
-          {saving ? "Saving…" : "Save Quiz Draft"}
-        </button>
+      {/* ── Save / Generate ── */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          <button
+            onClick={handleSaveDraft}
+            disabled={saving || generating || !canSave}
+            className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-6 py-2.5 text-sm font-bold text-white hover:opacity-90 disabled:opacity-50 transition shadow"
+          >
+            {saving ? "Saving…" : "Save Quiz Draft"}
+          </button>
+          <button
+            onClick={handleGenerateForm}
+            disabled={generating || saving || !canSave}
+            className="rounded-full px-6 py-2.5 text-sm font-bold transition hover:opacity-90 disabled:opacity-50 shadow"
+            style={{ background: "#0cc0df", color: "#0a0b13" }}
+          >
+            {generating ? "Generating…" : "Generate Google Form"}
+          </button>
+          {savedDraftId && !generating && (
+            <p className="text-xs font-semibold text-[#2dd4a0]">
+              Draft saved!{" "}
+              <button onClick={() => router.push("/quizzes")} className="underline">View all quizzes</button>
+            </p>
+          )}
+        </div>
         {saveError && <p className="text-xs text-red-500">{saveError}</p>}
-        {savedDraftId && (
-          <p className="text-xs font-semibold text-[#2dd4a0]">
-            Quiz draft saved!{" "}
-            <button onClick={() => router.push("/quizzes")} className="underline">View all quizzes</button>
-          </p>
-        )}
+        {generateError && <p className="text-xs text-red-500">{generateError}</p>}
       </div>
     </div>
   );

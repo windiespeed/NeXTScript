@@ -248,9 +248,9 @@ export default function EditQuizPage() {
 
         {courseId && modules.length > 0 && (
           <div>
-            <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Module (optional)</label>
+            <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Module <span className="text-red-500">*</span></label>
             <select value={moduleId} onChange={e => setModuleId(e.target.value)} className={inputClass} style={inputStyle}>
-              <option value="">— No module —</option>
+              <option value="">— Select a module —</option>
               {modules.map(m => <option key={m.id} value={m.id}>{m.title}</option>)}
             </select>
           </div>
@@ -436,14 +436,14 @@ export default function EditQuizPage() {
         <div className="flex items-center gap-3 flex-wrap">
           <button
             onClick={handleSave}
-            disabled={saving || !quizTitle.trim() || questions.length === 0}
+            disabled={saving || !quizTitle.trim() || questions.length === 0 || (modules.length > 0 && !moduleId)}
             className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-6 py-2.5 text-sm font-bold text-white hover:opacity-90 disabled:opacity-50 transition shadow"
           >
             {saving ? "Saving…" : "Save Changes"}
           </button>
           <button
             onClick={handleGenerateForm}
-            disabled={generating || saving || !quizTitle.trim() || questions.length === 0}
+            disabled={generating || saving || !quizTitle.trim() || questions.length === 0 || (modules.length > 0 && !moduleId)}
             className="rounded-full px-6 py-2.5 text-sm font-bold transition hover:opacity-90 disabled:opacity-50 shadow"
             style={{ background: "#0cc0df", color: "#0a0b13" }}
           >
