@@ -149,7 +149,6 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [overContainerId, setOverContainerId] = useState<string | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
-  const [nextboxOpen, setNextboxOpen] = useState(true);
   const [joinCodeCopied, setJoinCodeCopied] = useState(false);
   const [editingModuleSettings, setEditingModuleSettings] = useState<string | null>(null);
   const [nextboxPanelId, setNextboxPanelId] = useState<string | null>(null);
@@ -613,11 +612,15 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
             )}
           </div>
         </div>
-        <div className="shrink-0 text-right">
-          <p className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{lessons.length}</p>
-          <p className="text-xs" style={{ color: "var(--text-muted)" }}>{lessons.length === 1 ? "lesson" : "lessons"}</p>
+        <div className="shrink-0 text-right flex flex-col items-end gap-2">
+          <Link href={`/courses/${id}/settings`}
+            className="rounded-full px-3 py-1.5 text-xs font-semibold transition hover:opacity-80"
+            style={{ border: "1px solid var(--border)", color: "var(--text-secondary)", background: "var(--bg-card)" }}>
+            Course Settings ⚙
+          </Link>
+          <p className="text-xs" style={{ color: "var(--text-muted)" }}>{lessons.length} {lessons.length === 1 ? "lesson" : "lessons"}</p>
           {lessons.length > 0 && (
-            <div className="w-20 mt-1">
+            <div className="w-full">
               <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: "var(--border)" }}>
                 <div className="h-full rounded-full bg-[#2dd4a0] transition-all duration-500"
                   style={{ width: `${Math.round((lessons.filter(l => l.released).length / lessons.length) * 100)}%` }} />
@@ -691,71 +694,43 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
         </div>
       )}
 
-      {/* NeXTBox Panel */}
-      <div className="rounded-3xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
-        <div
-          className="flex items-center justify-between px-4 py-3 cursor-pointer transition hover:bg-[var(--bg-card-hover)]"
-          style={{ background: "var(--bg-card)" }}
-          onClick={() => setNextboxOpen(o => !o)}
-        >
-          <div className="flex items-center gap-2">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--text-muted)" }}>
-              <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/>
-              <path d="M9 8l3 3-3 3"/><path d="M15 14h-3"/>
-            </svg>
-            <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>NeXTBox</p>
-            {(course.studentIds?.length ?? 0) > 0 && (
-              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: "rgba(12,192,223,0.1)", color: "#0cc0df" }}>
-                {course.studentIds!.length} student{course.studentIds!.length !== 1 ? "s" : ""}
-              </span>
-            )}
-          </div>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-            className="transition-transform duration-200" style={{ transform: nextboxOpen ? "rotate(90deg)" : "rotate(0deg)", color: "var(--text-muted)" }}>
-            <polyline points="9 18 15 12 9 6"/>
+      {/* NeXTBox strip */}
+      <div className="rounded-2xl px-4 py-2.5 flex items-center gap-3 flex-wrap" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--text-muted)" }}>
+            <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/>
+            <path d="M9 8l3 3-3 3"/><path d="M15 14h-3"/>
           </svg>
+          <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>NeXTBox</span>
+          {(course.studentIds?.length ?? 0) > 0 && (
+            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: "rgba(12,192,223,0.1)", color: "#0cc0df" }}>
+              {course.studentIds!.length} student{course.studentIds!.length !== 1 ? "s" : ""}
+            </span>
+          )}
         </div>
-
-        {nextboxOpen && (
-          <div className="px-4 pb-4 pt-3 space-y-4" style={{ background: "var(--bg-card-hover)" }}>
-            {/* Join Code + Progress */}
-            <div className="flex items-start justify-between gap-4 flex-wrap">
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "var(--text-muted)" }}>Join Code</p>
-                {course.joinCode ? (
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-2xl font-bold tracking-[0.15em]" style={{ color: "#0cc0df" }}>{course.joinCode}</span>
-                    <button
-                      onClick={() => { navigator.clipboard.writeText(course.joinCode!); setJoinCodeCopied(true); setTimeout(() => setJoinCodeCopied(false), 2000); }}
-                      className="rounded-full px-2.5 py-1 text-[10px] font-semibold transition hover:opacity-80"
-                      style={{ background: "rgba(12,192,223,0.1)", color: "#0cc0df" }}>
-                      {joinCodeCopied ? "Copied!" : "Copy"}
-                    </button>
-                  </div>
-                ) : (
-                  <button onClick={handleGenerateJoinCode}
-                    className="rounded-full px-3 py-1.5 text-xs font-semibold transition hover:opacity-80"
-                    style={{ background: "rgba(12,192,223,0.1)", color: "#0cc0df" }}>
-                    Generate Join Code
-                  </button>
-                )}
-              </div>
-              <div className="flex items-center gap-2 self-end">
-                <Link href={`/courses/${id}/settings`}
-                  className="rounded-full px-3 py-1.5 text-xs font-semibold transition hover:opacity-80"
-                  style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
-                  Course Settings →
-                </Link>
-                <Link href={`/courses/${id}/progress`}
-                  className="rounded-full px-3 py-1.5 text-xs font-semibold transition hover:opacity-80"
-                  style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
-                  View Progress →
-                </Link>
-              </div>
-            </div>
-
+        <div className="h-3 w-px shrink-0" style={{ background: "var(--border)" }} />
+        {course.joinCode ? (
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-sm font-bold tracking-[0.15em]" style={{ color: "#0cc0df" }}>{course.joinCode}</span>
+            <button
+              onClick={() => { navigator.clipboard.writeText(course.joinCode!); setJoinCodeCopied(true); setTimeout(() => setJoinCodeCopied(false), 2000); }}
+              className="rounded-full px-2 py-0.5 text-[10px] font-semibold transition hover:opacity-80"
+              style={{ background: "rgba(12,192,223,0.1)", color: "#0cc0df" }}>
+              {joinCodeCopied ? "Copied!" : "Copy"}
+            </button>
           </div>
+        ) : (
+          <button onClick={handleGenerateJoinCode}
+            className="rounded-full px-2.5 py-1 text-[10px] font-semibold transition hover:opacity-80"
+            style={{ background: "rgba(12,192,223,0.1)", color: "#0cc0df" }}>
+            Generate Join Code
+          </button>
         )}
+        <Link href={`/courses/${id}/progress`}
+          className="ml-auto rounded-full px-3 py-1 text-[10px] font-semibold transition hover:opacity-80"
+          style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
+          View Progress →
+        </Link>
       </div>
 
       {/* Lessons */}
@@ -861,11 +836,6 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                         <a href={`/courses/${id}/student`} target="_blank" rel="noopener noreferrer"
                           className="block w-full text-left px-4 py-2.5 text-xs hover:bg-[var(--bg-card-hover)] transition"
                           style={{ color: "#2dd4a0" }}>Student View ↗</a>
-                      </div>
-                      <div style={{ borderTop: "1px solid var(--border)" }}>
-                        <Link href={`/courses/${id}/settings`} onClick={() => setMoreOpen(false)}
-                          className="block px-4 py-2.5 text-xs hover:bg-[var(--bg-card-hover)] transition"
-                          style={{ color: "var(--text-primary)" }}>Course Settings ⚙</Link>
                       </div>
                     </div>
                     </>
