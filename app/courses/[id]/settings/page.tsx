@@ -40,6 +40,7 @@ export default function CourseSettingsPage() {
 
   const [courseName, setCourseName] = useState("");
   const [loading, setLoading] = useState(true);
+  const [hasAiKey, setHasAiKey] = useState(false);
 
   // Course info
   const [editTitle, setEditTitle] = useState("");
@@ -98,7 +99,9 @@ export default function CourseSettingsPage() {
     Promise.all([
       fetch(`/api/courses/${courseId}`).then(r => r.json()),
       fetch(`/api/concepts?courseId=${courseId}`).then(r => r.json()),
-    ]).then(([courseData, conceptData]) => {
+      fetch("/api/user/settings").then(r => r.json()),
+    ]).then(([courseData, conceptData, settings]) => {
+      setHasAiKey(settings.hasKey ?? false);
       setCourseName(courseData.title ?? "");
       setEditTitle(courseData.title ?? "");
       setEditDescription(courseData.description ?? "");
@@ -335,16 +338,16 @@ export default function CourseSettingsPage() {
           <p className="text-xs -mt-1" style={{ color: "var(--text-muted)" }}>These override your global profile settings for every lesson in this course.</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Industry</label>
+              <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Industry {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "#0cc0df" }}>· used by AI</span>}</label>
               <input type="text" value={editSettings.industry} onChange={e => patchSettings({ industry: e.target.value })} placeholder="e.g. Coding, Healthcare" className={inputClass} style={inputStyle} />
             </div>
             <div>
-              <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Subject Area</label>
+              <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Subject Area {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "#0cc0df" }}>· used by AI</span>}</label>
               <input type="text" value={editSettings.subject} onChange={e => patchSettings({ subject: e.target.value })} placeholder="e.g. JavaScript, Nursing 101" className={inputClass} style={inputStyle} />
             </div>
           </div>
           <div>
-            <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Student Level</label>
+            <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Student Level {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "#0cc0df" }}>· used by AI</span>}</label>
             <select value={editSettings.studentLevel} onChange={e => patchSettings({ studentLevel: e.target.value as CourseSettings["studentLevel"] })} className={inputClass} style={inputStyle}>
               <option value="">— Not specified —</option>
               <option value="beginner">Beginner</option>
@@ -353,7 +356,7 @@ export default function CourseSettingsPage() {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Default Sources</label>
+            <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Default Sources {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "#0cc0df" }}>· used by AI</span>}</label>
             <p className="text-xs mb-1.5" style={{ color: "var(--text-muted)" }}>Pre-filled in every new lesson in this course. One URL per line.</p>
             <textarea value={editSettings.defaultSources} onChange={e => patchSettings({ defaultSources: e.target.value })}
               rows={4} placeholder={"https://www.w3schools.com/\nhttps://developer.mozilla.org/"}

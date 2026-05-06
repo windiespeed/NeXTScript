@@ -38,10 +38,15 @@ function NewLessonInner() {
 
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
+  const [hasAiKey, setHasAiKey] = useState(false);
 
   useEffect(() => {
-    fetch("/api/courses").then(r => r.json()).then(data => {
-      if (Array.isArray(data)) setCourses(data);
+    Promise.all([
+      fetch("/api/courses").then(r => r.json()),
+      fetch("/api/user/settings").then(r => r.json()),
+    ]).then(([coursesData, settings]) => {
+      if (Array.isArray(coursesData)) setCourses(coursesData);
+      setHasAiKey(settings.hasKey ?? false);
     }).catch(() => {});
   }, []);
 
@@ -154,7 +159,7 @@ function NewLessonInner() {
           <p className={sectionLabel}>Lesson Info</p>
 
           <div>
-            <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Title <span className="text-red-500">*</span></label>
+            <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Title <span className="text-red-500">*</span> {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "#0cc0df" }}>· used by AI</span>}</label>
             <input
               type="text"
               value={title}
@@ -167,7 +172,7 @@ function NewLessonInner() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Subtitle <span className="font-normal" style={{ color: "var(--text-muted)" }}>(optional)</span></label>
+            <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Subtitle <span className="font-normal" style={{ color: "var(--text-muted)" }}>(optional)</span> {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "#0cc0df" }}>· used by AI</span>}</label>
             <input
               type="text"
               value={subtitle}
@@ -205,7 +210,7 @@ function NewLessonInner() {
 
           <div>
             <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
-              Topics <span className="font-normal text-[10px]" style={{ color: "#0cc0df" }}>· used by AI</span>
+              Topics {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "#0cc0df" }}>· used by AI</span>}
             </label>
             <input
               type="text"

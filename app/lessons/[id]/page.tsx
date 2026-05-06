@@ -122,6 +122,8 @@ export default function LessonHubPage() {
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState("");
 
+  const [hasAiKey, setHasAiKey] = useState(false);
+
   // Add resource state
   const [addingLink, setAddingLink] = useState(false);
   const [linkLabel, setLinkLabel] = useState("");
@@ -184,8 +186,10 @@ export default function LessonHubPage() {
       fetch(`/api/lessons/${id}`).then(r => r.json()),
       fetch("/api/projects").then(r => r.json()),
       fetch("/api/courses").then(r => r.json()),
-    ]).then(([lessonData, projectData, coursesData]) => {
+      fetch("/api/user/settings").then(r => r.json()),
+    ]).then(([lessonData, projectData, coursesData, settings]) => {
       setAllCourses(Array.isArray(coursesData) ? coursesData : []);
+      setHasAiKey(settings.hasKey ?? false);
       setLesson(lessonData);
       setProjects(Array.isArray(projectData) ? projectData : []);
       // Set quiz checkbox on if drafts exist for this lesson
@@ -449,16 +453,16 @@ export default function LessonHubPage() {
             <h2 className="text-base font-bold" style={{ color: "var(--text-primary)" }}>Edit Lesson Info</h2>
             <div className="space-y-3">
               <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Title</label>
+                <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Title {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "#0cc0df" }}>· used by AI</span>}</label>
                 <input value={metaTitle} onChange={e => setMetaTitle(e.target.value)} className={inputClass} style={inputStyle} placeholder="Lesson title" />
               </div>
               <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Subtitle</label>
+                <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Subtitle {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "#0cc0df" }}>· used by AI</span>}</label>
                 <input value={metaSubtitle} onChange={e => setMetaSubtitle(e.target.value)} className={inputClass} style={inputStyle} placeholder="Topic or subject" />
               </div>
               <div>
                 <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
-                  Topics <span className="font-normal text-[10px]" style={{ color: "#0cc0df" }}>· used by AI</span>
+                  Topics {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "#0cc0df" }}>· used by AI</span>}
                 </label>
                 <input value={metaTopics} onChange={e => setMetaTopics(e.target.value)} className={inputClass} style={inputStyle} placeholder="e.g. Variables, Data Types, Type Casting" />
                 <p className="text-[10px] mt-1" style={{ color: "var(--text-muted)" }}>Comma-separated. AI uses these to generate slide content, overviews, and quizzes.</p>

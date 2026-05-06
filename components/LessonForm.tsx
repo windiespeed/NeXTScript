@@ -334,7 +334,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
 
         <div>
           <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
-            Lesson Title <span className="text-red-500">*</span>
+            Lesson Title <span className="text-red-500">*</span> {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "#0cc0df" }}>· used by AI</span>}
           </label>
           <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>Module number and lesson number (e.g. Module 3, Lesson 2)</p>
           <input
@@ -349,7 +349,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
         </div>
 
         <div>
-          <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Lesson Subtitle</label>
+          <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Lesson Subtitle {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "#0cc0df" }}>· used by AI</span>}</label>
           <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>Specific topic or subject covered in this lesson</p>
           <input
             type="text"
@@ -363,7 +363,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
 
         <div>
           <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
-            Topics <span className="font-normal text-[10px]" style={{ color: "#0cc0df" }}>· used by AI</span>
+            Topics {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "#0cc0df" }}>· used by AI</span>}
           </label>
           <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>Comma-separated. AI uses these to generate slide content, overviews, and quizzes.</p>
           <input
@@ -408,7 +408,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
         </div>
 
         <div>
-          <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Sources</label>
+          <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Sources {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "#0cc0df" }}>· used by AI</span>}</label>
           <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>
             One URL per line. These are passed to the AI as reference material when generating lesson content.
             {form.sources
@@ -429,7 +429,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
 
         {hasAiKey && (
           <div>
-            <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Student Level</label>
+            <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Student Level <span className="font-normal text-[10px]" style={{ color: "#0cc0df" }}>· used by AI</span></label>
             <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>
               Adjusts the tone and complexity of AI-generated content to match your students&apos; experience.
             </p>
