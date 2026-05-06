@@ -144,7 +144,7 @@ export default function QuizzesPage() {
     return true;
   });
 
-  type LessonGroup = { lessonId: string | null; lessonTitle: string; quizzes: QuizWithContext[] };
+  type LessonGroup = { groupKey: string; lessonId: string | null; lessonTitle: string; quizzes: QuizWithContext[] };
   type CourseSection = { course: Course | null; lessonGroups: LessonGroup[] };
 
   const buildLessonGroups = (quizzesInSection: QuizWithContext[]): LessonGroup[] => {
@@ -163,7 +163,7 @@ export default function QuizzesPage() {
           lessonTitle = lesson?.title ?? "Unknown lesson";
           lessonId = lesson?.id ?? null;
         }
-        groupMap.set(key, { lessonId, lessonTitle, quizzes: [] });
+        groupMap.set(key, { groupKey: key, lessonId, lessonTitle, quizzes: [] });
       }
       groupMap.get(key)!.quizzes.push(q);
     });
@@ -299,8 +299,8 @@ export default function QuizzesPage() {
               </div>
 
               <div className="space-y-6">
-                {lessonGroups.map(({ lessonId, lessonTitle, quizzes: groupQuizzes }) => (
-                  <div key={lessonId ?? "__none__"}>
+                {lessonGroups.map(({ groupKey, lessonId, lessonTitle, quizzes: groupQuizzes }) => (
+                  <div key={groupKey}>
                     {/* Lesson sub-header */}
                     <div className="flex items-center gap-2 mb-3">
                       <span className="text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>
