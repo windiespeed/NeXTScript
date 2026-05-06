@@ -421,7 +421,7 @@ export async function buildOverviewDoc(lesson: Lesson, accessToken: string, labe
 
 // ─── Forms (Quiz) ────────────────────────────────────────────────────────────
 
-export async function buildQuiz(lesson: Lesson, accessToken: string): Promise<string> {
+export async function buildQuiz(lesson: Lesson, accessToken: string, folderId?: string): Promise<string> {
   const forms = google.forms({ version: "v1", auth: getAuthClient(accessToken) });
 
   const form = await forms.forms.create({
@@ -474,6 +474,17 @@ export async function buildQuiz(lesson: Lesson, accessToken: string): Promise<st
     await forms.forms.batchUpdate({
       formId,
       requestBody: { requests: items },
+    });
+  }
+
+  // Move into the specified Drive folder (course folder)
+  if (folderId) {
+    const drive = google.drive({ version: "v3", auth: getAuthClient(accessToken) });
+    await drive.files.update({
+      fileId: formId,
+      addParents: folderId,
+      removeParents: "root",
+      fields: "id, parents",
     });
   }
 

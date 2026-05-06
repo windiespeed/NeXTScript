@@ -356,6 +356,10 @@ export default function LessonHubPage() {
   const quizProjects = projects.filter(p => p.type === "form" && p.isQuiz && (p.lessonId === id || p.lessonIds?.includes(id)));
   const quizDrafts = quizProjects.filter(p => p.status === "draft");
   const quizGenerated = quizProjects.filter(p => p.status === "generated" || (!p.status && p.url));
+  const isMultiLesson = (p: typeof projects[0]) => Array.isArray(p.lessonIds) && p.lessonIds.length > 1;
+  const singleLessonQuizDrafts = quizDrafts.filter(p => !isMultiLesson(p));
+  const multiLessonQuizDrafts = quizDrafts.filter(isMultiLesson);
+  const multiLessonQuizGenerated = quizGenerated.filter(isMultiLesson);
   const typeColors = TYPE_COLORS[lesson.lessonType ?? "lesson"];
 
   return (
@@ -490,7 +494,12 @@ export default function LessonHubPage() {
 
       {/* ── Documents ───────────────────────────────────────────────────── */}
       <div className={cardClass} style={cardStyle}>
-        <p className={sectionLabel}>Documents</p>
+        <div className="flex items-center justify-between">
+          <p className={sectionLabel}>Documents</p>
+          <Link href="/quizzes" className="text-[10px] font-semibold hover:underline" style={{ color: "#0cc0df" }}>
+            View All Quizzes →
+          </Link>
+        </div>
         <div className="space-y-2">
           {deck ? (
             <DocRow icon={RESOURCE_ICON.slides} color="var(--accent-purple)" label="Slide Deck" badge="Generated" badgeColor="#2dd4a0" url={deck.url} editHref={`/slides/${id}`} editLabel="Edit Slides" />
@@ -503,10 +512,18 @@ export default function LessonHubPage() {
             <DocRow icon={RESOURCE_ICON.doc} color="var(--text-muted)" label="Overview Doc" badge="Not generated" badgeColor="var(--text-muted)" />
           )}
           {quizDrafts.map(q => (
-            <DocRow key={q.id} icon={RESOURCE_ICON.form} color="#ff8c4a" label={q.title} badge="Quiz Draft" badgeColor="#ff8c4a" editHref={`/quizzes/${q.id}`} editLabel="Edit Quiz" />
+            <DocRow key={q.id} icon={RESOURCE_ICON.form} color="#ff8c4a"
+              label={q.title}
+              sublabel={isMultiLesson(q) ? `Covers ${q.lessonIds!.length} lessons` : "This lesson only"}
+              badge="Quiz Draft" badgeColor="#ff8c4a"
+              editHref={`/quizzes/${q.id}`} editLabel={isMultiLesson(q) ? "Edit & Generate" : "Edit Quiz"} />
           ))}
           {quizGenerated.map(q => (
-            <DocRow key={q.id} icon={RESOURCE_ICON.form} color="#ff8c4a" label={q.title} badge="Quiz" badgeColor="#2dd4a0" url={q.url} />
+            <DocRow key={q.id} icon={RESOURCE_ICON.form} color="#ff8c4a"
+              label={q.title}
+              sublabel={isMultiLesson(q) ? `Covers ${q.lessonIds!.length} lessons` : "This lesson only"}
+              badge="Quiz" badgeColor="#2dd4a0"
+              url={q.url} editHref={`/quizzes/${q.id}`} editLabel="Edit Quiz" />
           ))}
           {!deck && quizProjects.length === 0 && !lesson.overviewUrl && (
             <p className="text-xs text-center py-4" style={{ color: "var(--text-muted)" }}>No documents generated yet — use the Generate panel above.</p>
@@ -532,7 +549,7 @@ export default function LessonHubPage() {
                         {([
                           { key: "slides", label: "Slide Deck", state: genSlides, set: setGenSlides },
                           { key: "overview", label: "Overview Doc", state: genOverview, set: setGenOverview },
-                          { key: "quiz", label: `Quiz${quizDrafts.length > 0 ? ` (${quizDrafts.length} draft${quizDrafts.length > 1 ? "s" : ""})` : ""}`, state: genQuiz, set: setGenQuiz },
+                          { key: "quiz", label: `Quiz${singleLessonQuizDrafts.length > 0 ? ` (${singleLessonQuizDrafts.length} draft${singleLessonQuizDrafts.length > 1 ? "s" : ""})` : ""}`, state: genQuiz, set: setGenQuiz },
                         ] as const).map(({ key, label, state, set }) => (
                           <button
                             key={key}
@@ -574,6 +591,14 @@ export default function LessonHubPage() {
                       </div>
                     </div>
                     {generateError && <p className="text-xs text-red-500">{generateError}</p>}
+                    {(multiLessonQuizDrafts.length > 0 || multiLessonQuizGenerated.length > 0) && (
+                      <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+                        Quiz only generates single-lesson drafts here.{" "}
+                        <Link href="/quizzes" className="hover:underline" style={{ color: "#0cc0df" }}>
+                          View multi-lesson quizzes →
+                        </Link>
+                      </p>
+                    )}
                   </div>
                 )}
                 {wid === "resources" && (
@@ -711,10 +736,11 @@ export default function LessonHubPage() {
 
 // ── Helper component ──────────────────────────────────────────────────────────
 
-function DocRow({ icon, color, label, badge, badgeColor, url, editHref, editLabel }: {
+function DocRow({ icon, color, label, sublabel, badge, badgeColor, url, editHref, editLabel }: {
   icon: React.ReactNode;
   color: string;
   label: string;
+  sublabel?: string;
   badge: string;
   badgeColor: string;
   url?: string;
@@ -726,6 +752,7 @@ function DocRow({ icon, color, label, badge, badgeColor, url, editHref, editLabe
       <span style={{ color }}>{icon}</span>
       <div className="flex-1 min-w-0">
         <p className="text-xs font-semibold truncate" style={{ color: "var(--text-primary)" }}>{label}</p>
+        {sublabel && <p className="text-[10px] truncate" style={{ color: "var(--text-muted)" }}>{sublabel}</p>}
       </div>
       <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0" style={{ background: badgeColor + "20", color: badgeColor }}>
         {badge}

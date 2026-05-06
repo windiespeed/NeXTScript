@@ -61,14 +61,15 @@ function QuizCard({ quiz, onDelete }: { quiz: SavedProject; onDelete: (id: strin
               Open ↗
             </a>
           )}
-          {isDraft && (
-            <Link
-              href={`/quizzes/${quiz.id}`}
-              className="rounded-full bg-[#0cc0df] px-3 py-1 text-xs font-semibold text-[#0a0b13] hover:opacity-90 transition"
-            >
-              Edit
-            </Link>
-          )}
+          <Link
+            href={`/quizzes/${quiz.id}`}
+            className="rounded-full px-3 py-1 text-xs font-semibold transition hover:opacity-90"
+            style={isDraft
+              ? { background: "#0cc0df", color: "#0a0b13" }
+              : { background: "var(--bg-card-hover)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}
+          >
+            Edit
+          </Link>
           <button
             onClick={() => onDelete(quiz.id)}
             title="Delete quiz"
@@ -121,6 +122,8 @@ export default function QuizzesPage() {
     let effectiveLessonId = quiz.lessonId;
     if (!effectiveLessonId && quiz.lessonIds?.length === 1) {
       effectiveLessonId = quiz.lessonIds[0];
+    } else if (!effectiveLessonId && quiz.lessonIds && quiz.lessonIds.length > 1) {
+      effectiveLessonId = "__multi__";
     }
 
     let effectiveCourseId = quiz.courseId;
@@ -149,8 +152,18 @@ export default function QuizzesPage() {
     quizzesInSection.forEach(q => {
       const key = q.effectiveLessonId ?? "__none__";
       if (!groupMap.has(key)) {
-        const lesson = key !== "__none__" ? lessons.find(l => l.id === key) ?? null : null;
-        groupMap.set(key, { lessonId: lesson?.id ?? null, lessonTitle: lesson?.title ?? "No lesson", quizzes: [] });
+        let lessonTitle: string;
+        let lessonId: string | null = null;
+        if (key === "__multi__") {
+          lessonTitle = "Multi-lesson Quizzes";
+        } else if (key === "__none__") {
+          lessonTitle = "No lesson";
+        } else {
+          const lesson = lessons.find(l => l.id === key) ?? null;
+          lessonTitle = lesson?.title ?? "Unknown lesson";
+          lessonId = lesson?.id ?? null;
+        }
+        groupMap.set(key, { lessonId, lessonTitle, quizzes: [] });
       }
       groupMap.get(key)!.quizzes.push(q);
     });

@@ -43,6 +43,11 @@ export default function EditQuizPage() {
   const [saveError, setSaveError] = useState("");
   const [saved, setSaved] = useState(false);
 
+  // Generate Google Form
+  const [generating, setGenerating] = useState(false);
+  const [generateError, setGenerateError] = useState("");
+  const [formUrl, setFormUrl] = useState("");
+
   useEffect(() => {
     Promise.all([
       fetch(`/api/projects/${id}`).then(r => r.ok ? r.json() : null),
@@ -56,6 +61,7 @@ export default function EditQuizPage() {
       setLessonIds(Array.isArray(quiz.lessonIds) ? quiz.lessonIds : []);
       setCourseId(quiz.courseId ?? "");
       setModuleId(quiz.moduleId ?? "");
+      if (quiz.url) setFormUrl(quiz.url);
       setCourses(Array.isArray(c) ? c : []);
       setAllLessons(Array.isArray(l) ? l : []);
       setHasAiKey(s.hasKey ?? false);
@@ -137,6 +143,43 @@ export default function EditQuizPage() {
       setSaveError(err.message);
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleGenerateForm() {
+    if (!quizTitle.trim()) { setSaveError("Quiz title is required before generating."); return; }
+    if (questions.length === 0) { setSaveError("Add at least one question before generating."); return; }
+    setGenerating(true);
+    setGenerateError("");
+    // Auto-save first so the API sees the latest questions
+    try {
+      const saveRes = await fetch(`/api/projects/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: quizTitle.trim(),
+          questions,
+          lessonIds,
+          ...(courseId ? { courseId } : { courseId: "" }),
+          ...(moduleId ? { moduleId } : { moduleId: "" }),
+        }),
+      });
+      if (!saveRes.ok) throw new Error("Failed to save before generating.");
+      setSaved(true);
+    } catch (err: any) {
+      setGenerateError(err.message);
+      setGenerating(false);
+      return;
+    }
+    try {
+      const res = await fetch(`/api/generate/quiz/${id}`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Generation failed.");
+      setFormUrl(data.url);
+    } catch (err: any) {
+      setGenerateError(err.message);
+    } finally {
+      setGenerating(false);
     }
   }
 
@@ -388,17 +431,38 @@ export default function EditQuizPage() {
         )}
       </div>
 
-      {/* ── Save ── */}
-      <div className="flex items-center gap-4">
-        <button
-          onClick={handleSave}
-          disabled={saving || !quizTitle.trim() || questions.length === 0}
-          className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-6 py-2.5 text-sm font-bold text-white hover:opacity-90 disabled:opacity-50 transition shadow"
-        >
-          {saving ? "Saving…" : "Save Changes"}
-        </button>
+      {/* ── Save & Generate ── */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          <button
+            onClick={handleSave}
+            disabled={saving || !quizTitle.trim() || questions.length === 0}
+            className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-6 py-2.5 text-sm font-bold text-white hover:opacity-90 disabled:opacity-50 transition shadow"
+          >
+            {saving ? "Saving…" : "Save Changes"}
+          </button>
+          <button
+            onClick={handleGenerateForm}
+            disabled={generating || saving || !quizTitle.trim() || questions.length === 0}
+            className="rounded-full px-6 py-2.5 text-sm font-bold transition hover:opacity-90 disabled:opacity-50 shadow"
+            style={{ background: "#0cc0df", color: "#0a0b13" }}
+          >
+            {generating ? "Generating…" : formUrl ? "Regenerate Google Form" : "Generate Google Form"}
+          </button>
+          {saved && !saving && <p className="text-xs font-semibold" style={{ color: "#2dd4a0" }}>Changes saved!</p>}
+        </div>
         {saveError && <p className="text-xs text-red-500">{saveError}</p>}
-        {saved && <p className="text-xs font-semibold text-[#2dd4a0]">Changes saved!</p>}
+        {generateError && <p className="text-xs text-red-500">{generateError}</p>}
+        {formUrl && (
+          <div className="flex items-center gap-3 rounded-2xl px-4 py-3" style={{ background: "rgba(12,192,223,0.06)", border: "1px solid rgba(12,192,223,0.2)" }}>
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="#0cc0df" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            <p className="text-xs font-semibold flex-1" style={{ color: "var(--text-primary)" }}>Google Form generated</p>
+            <a href={formUrl} target="_blank" rel="noopener noreferrer"
+              className="text-xs font-semibold hover:underline shrink-0" style={{ color: "#0cc0df" }}>
+              Open in Google Forms →
+            </a>
+          </div>
+        )}
       </div>
     </div>
   );
