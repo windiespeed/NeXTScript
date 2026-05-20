@@ -140,7 +140,12 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
   const [driveModules, setDriveModules] = useState<CourseModule[]>([]);
   const [editingModuleId, setEditingModuleId] = useState<string | null>(null);
   const [editModuleTitle, setEditModuleTitle] = useState("");
-  const [collapsedModules, setCollapsedModules] = useState<Set<string>>(new Set());
+  const [collapsedModules, setCollapsedModules] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem(`module-collapse-${id}`);
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch { return new Set(); }
+  });
   const [assigningModuleForLesson, setAssigningModuleForLesson] = useState<string | null>(null);
   const [genPanelId, setGenPanelId] = useState<string | null>(null);
   const [genChecks, setGenChecks] = useState({ slides: true, overview: true, quiz: false });
@@ -436,6 +441,12 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
       return next;
     });
   }
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(`module-collapse-${id}`, JSON.stringify([...collapsedModules]));
+    } catch {}
+  }, [id, collapsedModules]);
 
   function handleGlobalDragEnd(event: DragEndEvent) {
     const { active, over } = event;
