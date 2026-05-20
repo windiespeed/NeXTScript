@@ -164,7 +164,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ downloads });
     }
   } catch (err: any) {
-    await store.update(id, { status: "error", errorMessage: err.message });
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    const errMsg = typeof err?.message === "string" ? err.message : String(err?.message ?? err);
+    await store.update(id, { status: "error", errorMessage: errMsg });
+    return NextResponse.json({ error: errMsg }, { status: 500 });
   }
 }

@@ -598,6 +598,9 @@ export default function LessonHubPage() {
                       </div>
                     </div>
                     {generateError && <p className="text-xs text-red-500">{generateError}</p>}
+                    {!generateError && lesson.status === "error" && lesson.errorMessage && (
+                      <p className="text-xs text-red-500">Last generation failed: {lesson.errorMessage}</p>
+                    )}
                     {(multiLessonQuizDrafts.length > 0 || multiLessonQuizGenerated.length > 0) && (
                       <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>
                         Quiz only generates single-lesson drafts here.{" "}
