@@ -253,12 +253,15 @@ export default function LessonHubPage() {
         body: JSON.stringify({ files, destination: "drive" }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Generation failed.");
+      if (!res.ok) {
+        const msg = typeof data.error === "string" ? data.error : data.message ?? "Generation failed.";
+        throw new Error(msg);
+      }
       setLesson(prev => prev ? { ...prev, ...data } : prev);
       // Refresh projects to pick up newly created deck/quiz
       fetch("/api/projects").then(r => r.json()).then(d => setProjects(Array.isArray(d) ? d : []));
     } catch (err: any) {
-      setGenerateError(err.message || "Generation failed.");
+      setGenerateError(typeof err.message === "string" ? err.message : "Generation failed.");
     } finally {
       setGenerating(false);
     }
