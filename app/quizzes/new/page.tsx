@@ -197,6 +197,7 @@ function NewQuizPageInner() {
     setSaveError("");
     setGenerateError("");
     let draftId = savedDraftId;
+    const isNewDraft = !draftId;
     if (!draftId) {
       try {
         const saveRes = await fetch("/api/quizzes", {
@@ -227,6 +228,11 @@ function NewQuizPageInner() {
       router.push(`/quizzes/${draftId}`);
     } catch (err: any) {
       setGenerateError(err.message);
+      // Clean up the draft we just created — it has no Google Form and would be a dead entry
+      if (isNewDraft && draftId) {
+        fetch(`/api/projects/${draftId}`, { method: "DELETE" }).catch(() => {});
+        setSavedDraftId("");
+      }
       setGenerating(false);
     }
   }
