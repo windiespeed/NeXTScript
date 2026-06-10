@@ -83,7 +83,7 @@ For "slides": generate exactly ${slideCount} slides that cover the lesson's main
 
   const message = await client.messages.create({
     model: "claude-haiku-4-5-20251001",
-    max_tokens: 8192,
+    max_tokens: 16000,
     messages: [{ role: "user", content: prompt }],
   });
 
