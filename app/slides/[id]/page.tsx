@@ -34,7 +34,6 @@ export default function EditSlidesPage() {
       fetch("/api/user/settings").then(r => r.json()),
       fetch("/api/courses").then(r => r.json()),
     ]).then(([lessonData, settings, coursesData]) => {
-      setLesson(lessonData);
       setHasAiKey(settings.hasKey ?? false);
       const courseList: Course[] = Array.isArray(coursesData) ? coursesData : [];
       setCourses(courseList);
@@ -42,12 +41,16 @@ export default function EditSlidesPage() {
       if (lessonData?.courseId) {
         setSelectedCourseId(lessonData.courseId);
         const course = courseList.find(c => c.id === lessonData.courseId);
+        if (!lessonData.sources && course?.settings?.defaultSources) {
+          lessonData = { ...lessonData, sources: course.settings.defaultSources };
+        }
         const mods: CourseModule[] = Array.isArray(course?.modules) ? course.modules : [];
         setModules(mods);
         // Find which module this lesson is in
         const currentMod = mods.find(m => m.lessonIds.includes(id));
         if (currentMod) setSelectedModuleId(currentMod.id);
       }
+      setLesson(lessonData);
     }).catch(() => {}).finally(() => setLoading(false));
   }, [id]);
 
