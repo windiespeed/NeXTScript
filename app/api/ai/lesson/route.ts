@@ -39,6 +39,7 @@ export async function POST(req: Request) {
     // Surface Anthropic billing/auth errors clearly
     if (err.status === 401) return NextResponse.json({ error: "Invalid Anthropic API key." }, { status: 402 });
     if (err.status === 402) return NextResponse.json({ error: "Anthropic credits exhausted. Top up your account at console.anthropic.com." }, { status: 402 });
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    const msg = err instanceof Error ? err.message : typeof err === "string" ? err : JSON.stringify(err);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
