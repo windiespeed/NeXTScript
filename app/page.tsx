@@ -197,7 +197,7 @@ function SortableWidget({ widgetId, span, onCycleSize, children }: {
   children: React.ReactNode;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: widgetId });
-  const spanClass = span === 3 ? "lg:col-span-3" : span === 2 ? "lg:col-span-2" : "lg:col-span-1";
+  const spanClass = span === 3 ? "xl:col-span-3" : span === 2 ? "xl:col-span-2" : "xl:col-span-1";
   return (
     <div
       ref={setNodeRef}
@@ -817,7 +817,7 @@ function Dashboard() {
       {!loading && (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleWidgetDragEnd}>
           <SortableContext items={widgetOrder} strategy={rectSortingStrategy}>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
               {widgetOrder.map(widgetId => (
                 <SortableWidget key={widgetId} widgetId={widgetId} span={widgetSizes[widgetId]} onCycleSize={() => cycleWidgetSize(widgetId)}>
                   {widgetId === "activity" && renderActivityWidget()}

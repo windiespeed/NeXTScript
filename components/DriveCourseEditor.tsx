@@ -157,6 +157,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
   const [joinCodeCopied, setJoinCodeCopied] = useState(false);
   const [editingModuleSettings, setEditingModuleSettings] = useState<string | null>(null);
   const [nextboxPanelId, setNextboxPanelId] = useState<string | null>(null);
+  const [publishMenuId, setPublishMenuId] = useState<string | null>(null);
   const [releasingIds, setReleasingIds] = useState<Set<string>>(new Set());
   const [releaseMsg, setReleaseMsg] = useState<{ text: string; ok: boolean } | null>(null);
   const [releasePickerModuleId, setReleasePickerModuleId] = useState<string | null>(null);
@@ -197,6 +198,16 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ released: !lesson.released }),
+    });
+  }
+
+  async function handleTogglePublishedToClassroom(lesson: Lesson) {
+    const next = !lesson.publishedToClassroom;
+    setLessons(prev => prev.map(l => l.id === lesson.id ? { ...l, publishedToClassroom: next } : l));
+    await fetch(`/api/lessons/${lesson.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ publishedToClassroom: next }),
     });
   }
 
@@ -560,6 +571,10 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Push failed.");
+      setLessons(prev => prev.map(l => lessonIds.includes(l.id) ? { ...l, publishedToClassroom: true } : l));
+      await Promise.all(lessonIds.map(lid =>
+        fetch(`/api/lessons/${lid}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ publishedToClassroom: true }) })
+      ));
       const msg = data.failed > 0
         ? `${data.pushed} pushed, ${data.failed} failed.`
         : `${data.pushed} lesson${data.pushed !== 1 ? "s" : ""} released to Classroom.`;
@@ -963,19 +978,59 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                 </div>
                 {!selecting && (
                   <div className="flex items-center gap-2 shrink-0">
-                    {/* Publish to Google Classroom */}
+                    {/* Publish to Google Classroom — toggles between Published/unpublished */}
                     {(() => {
                       const currentModule = driveModules.find(m => m.lessonIds.includes(lesson.id));
                       const isPublishing = releasingIds.has(lesson.id);
-                      return (
+                      const isPublished = !!lesson.publishedToClassroom;
+                      return isPublished ? (
                         <button
-                          onClick={() => handleReleaseToClassroom([lesson.id], currentModule?.title)}
-                          disabled={isPublishing}
-                          title={course?.googleClassroomId ? "Publish to Google Classroom" : "Link a classroom in Course Settings first"}
-                          className="rounded-full px-3 py-1.5 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)] disabled:opacity-50"
-                          style={{ border: "1px solid var(--border)", color: course?.googleClassroomId ? "var(--text-primary)" : "var(--text-muted)" }}>
-                          {isPublishing ? "Publishing…" : "Publish to Classroom"}
+                          onClick={() => handleTogglePublishedToClassroom(lesson)}
+                          title="Click to mark as unpublished"
+                          className="rounded-full px-3 py-1.5 text-xs font-semibold transition hover:opacity-80"
+                          style={{ background: "rgba(45,212,160,0.12)", border: "1px solid rgba(45,212,160,0.35)", color: "#2dd4a0" }}>
+                          Published ✓
                         </button>
+                      ) : (
+                        <div className="relative flex items-center">
+                          <div className="flex items-center rounded-full overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+                          <button
+                            onClick={() => handleReleaseToClassroom([lesson.id], currentModule?.title)}
+                            disabled={isPublishing}
+                            title={course?.googleClassroomId ? "Publish to Google Classroom" : "Link a classroom in Course Settings first"}
+                            className="px-3 py-1.5 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)] disabled:opacity-50"
+                            style={{ color: course?.googleClassroomId ? "var(--text-primary)" : "var(--text-muted)" }}>
+                            {isPublishing ? "Publishing…" : "Publish to Classroom"}
+                          </button>
+                          <div className="self-stretch w-px shrink-0" style={{ background: "var(--border)" }} />
+                          <button
+                            onClick={e => { e.stopPropagation(); setPublishMenuId(publishMenuId === lesson.id ? null : lesson.id); }}
+                            title="More options"
+                            className="px-1.5 py-1.5 text-xs transition hover:bg-[var(--bg-card-hover)]"
+                            style={{ color: "var(--text-muted)" }}>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                          </button>
+                          </div>
+                          {publishMenuId === lesson.id && (
+                            <>
+                              <div className="fixed inset-0 z-20" onClick={() => setPublishMenuId(null)} />
+                              <div className="absolute right-0 top-full mt-1 z-30 rounded-2xl overflow-hidden min-w-[170px]" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)" }}>
+                                <button
+                                  onClick={() => { setPublishMenuId(null); handleReleaseToClassroom([lesson.id], currentModule?.title); }}
+                                  className="w-full text-left px-3 py-2 text-xs hover:bg-[var(--bg-card-hover)] transition"
+                                  style={{ color: "var(--text-primary)" }}>
+                                  Push to Classroom
+                                </button>
+                                <button
+                                  onClick={() => { setPublishMenuId(null); handleTogglePublishedToClassroom(lesson); }}
+                                  className="w-full text-left px-3 py-2 text-xs hover:bg-[var(--bg-card-hover)] transition"
+                                  style={{ color: "var(--text-primary)" }}>
+                                  Mark as published
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </div>
                       );
                     })()}
                     {/* Released indicator (read-only) */}
@@ -984,34 +1039,6 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                     )}
                     <Link href={`/lessons/${lesson.id}`}
                       className="rounded-full bg-[#0cc0df] px-3 py-1.5 text-xs font-semibold text-[#0a0b13] hover:opacity-90 transition">View</Link>
-                    <div className="relative">
-                      <button
-                        onClick={e => { e.stopPropagation(); genPanelId === lesson.id ? setGenPanelId(null) : (setGenPanelId(lesson.id), setGenChecks({ slides: true, overview: true, quiz: false })); }}
-                        disabled={generatingLessonId === lesson.id}
-                        className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50 transition">
-                        {generatingLessonId === lesson.id ? "Generating…" : "Generate"}
-                      </button>
-                      {genPanelId === lesson.id && (
-                        <>
-                        <div className="fixed inset-0 z-20" onClick={() => setGenPanelId(null)} />
-                        <div className="absolute right-0 top-full mt-1 z-30 rounded-2xl p-3 min-w-[190px]" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)" }}>
-                          <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: "var(--text-muted)" }}>What to generate</p>
-                          <label className="flex items-center gap-2 text-xs mb-1.5 cursor-pointer" style={{ color: "var(--text-primary)" }}>
-                            <input type="checkbox" checked={genChecks.slides} onChange={e => setGenChecks(c => ({ ...c, slides: e.target.checked }))} className="accent-[#0cc0df]" />Slides
-                          </label>
-                          <label className="flex items-center gap-2 text-xs mb-1.5 cursor-pointer" style={{ color: "var(--text-primary)" }}>
-                            <input type="checkbox" checked={genChecks.overview} onChange={e => setGenChecks(c => ({ ...c, overview: e.target.checked }))} className="accent-[#0cc0df]" />Overview Doc
-                          </label>
-                          <label className="flex items-center gap-2 text-xs mb-3 cursor-pointer" style={{ color: "var(--text-primary)" }}>
-                            <input type="checkbox" checked={genChecks.quiz} onChange={e => setGenChecks(c => ({ ...c, quiz: e.target.checked }))} className="accent-[#0cc0df]" />Quiz
-                          </label>
-                          <button onClick={() => handleGenerateLesson(lesson.id)}
-                            disabled={!genChecks.slides && !genChecks.overview && !genChecks.quiz}
-                            className="w-full rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50 transition">Generate</button>
-                        </div>
-                        </>
-                      )}
-                    </div>
                     {/* NeXTBox per-lesson overrides */}
                     <div className="relative">
                       <button

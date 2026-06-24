@@ -38,6 +38,7 @@ export interface Lesson {
   rubric: string;                // RUBRIC — comprehension/objective checklist
   courseId?: string;             // ID of the course this lesson belongs to (null = standalone)
   released?: boolean;            // Whether this lesson is visible in the student view
+  publishedToClassroom?: boolean; // Whether this lesson has been published to Google Classroom
   folder?: string;               // Optional folder name for grouping lessons on the dashboard
   sources: string;               // Reference URLs (one per line) used during generation
   studentLevel?: "beginner" | "intermediate" | "advanced"; // Target student experience level for AI generation
