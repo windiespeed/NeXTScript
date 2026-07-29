@@ -26,6 +26,20 @@ export const projectStore = {
     return project;
   },
 
+  /** Projects belonging to any of the given courses, regardless of which collaborator authored them. */
+  async getAllForCourseIds(courseIds: string[]): Promise<SavedProject[]> {
+    if (courseIds.length === 0) return [];
+    const db = getDb();
+    const CHUNK = 30; // Firestore "in" query limit
+    const chunks: string[][] = [];
+    for (let i = 0; i < courseIds.length; i += CHUNK) chunks.push(courseIds.slice(i, i + CHUNK));
+
+    const snapshots = await Promise.all(
+      chunks.map((chunk) => db.collection(COLLECTION).where("courseId", "in", chunk).get())
+    );
+    return snapshots.flatMap((snap) => snap.docs.map((doc) => doc.data() as SavedProject));
+  },
+
   async getById(id: string): Promise<SavedProject | null> {
     const doc = await getDb().collection(COLLECTION).doc(id).get();
     return doc.exists ? (doc.data() as SavedProject) : null;

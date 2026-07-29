@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { userSettings } from "@/lib/userSettings";
+import { FieldValue } from "firebase-admin/firestore";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +32,7 @@ export async function DELETE() {
     const session = await auth();
     if (!session?.user?.email) return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
 
-    await userSettings.save(session.user.email, { avatarUrl: undefined });
+    await userSettings.save(session.user.email, { avatarUrl: FieldValue.delete() });
     return NextResponse.json({ success: true });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });

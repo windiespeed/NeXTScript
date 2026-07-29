@@ -34,13 +34,21 @@ function slugify(label: string): string {
 }
 
 export default function CourseSettingsPage() {
-  useSession({ required: true });
+  const { data: session } = useSession({ required: true });
   const { id: courseId } = useParams<{ id: string }>();
   const router = useRouter();
 
   const [courseName, setCourseName] = useState("");
   const [loading, setLoading] = useState(true);
   const [hasAiKey, setHasAiKey] = useState(false);
+
+  // Collaborators
+  const [courseOwnerId, setCourseOwnerId] = useState("");
+  const [collaborators, setCollaborators] = useState<string[]>([]);
+  const [newCollaboratorEmail, setNewCollaboratorEmail] = useState("");
+  const [collabSaving, setCollabSaving] = useState(false);
+  const [collabError, setCollabError] = useState("");
+  const isOwner = !!session?.user?.email && session.user.email.toLowerCase() === courseOwnerId.toLowerCase();
 
   // Course info
   const [editTitle, setEditTitle] = useState("");
@@ -111,6 +119,8 @@ export default function CourseSettingsPage() {
       setEditTermYear(termY);
       setEditSemester(courseData.semester ?? "");
       setEditSettings({ ...DEFAULT_COURSE_SETTINGS, ...(courseData.settings ?? {}) });
+      setCourseOwnerId(courseData.userId ?? "");
+      setCollaborators(Array.isArray(courseData.collaborators) ? courseData.collaborators : []);
       setConcepts(Array.isArray(conceptData) ? conceptData : []);
       setLinkedClassroomId(courseData.googleClassroomId ?? "");
       setLinkedClassroomName(courseData.googleClassroomName ?? "");
@@ -158,6 +168,46 @@ export default function CourseSettingsPage() {
       setTimeout(() => setClassroomMsg(""), 3000);
     }
     setSavingClassroom(false);
+  }
+
+  async function handleAddCollaborator() {
+    const email = newCollaboratorEmail.trim().toLowerCase();
+    if (!email) return;
+    if (collaborators.includes(email)) { setCollabError("That person already has access."); return; }
+    setCollabSaving(true);
+    setCollabError("");
+    const next = [...collaborators, email];
+    const res = await fetch(`/api/courses/${courseId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ collaborators: next }),
+    });
+    if (res.ok) {
+      setCollaborators(next);
+      setNewCollaboratorEmail("");
+    } else {
+      const data = await res.json();
+      setCollabError(data.error || "Failed to add collaborator.");
+    }
+    setCollabSaving(false);
+  }
+
+  async function handleRemoveCollaborator(email: string) {
+    setCollabSaving(true);
+    setCollabError("");
+    const next = collaborators.filter(e => e !== email);
+    const res = await fetch(`/api/courses/${courseId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ collaborators: next }),
+    });
+    if (res.ok) {
+      setCollaborators(next);
+    } else {
+      const data = await res.json();
+      setCollabError(data.error || "Failed to remove collaborator.");
+    }
+    setCollabSaving(false);
   }
 
   async function handleSave(e: React.FormEvent) {
@@ -485,6 +535,52 @@ export default function CourseSettingsPage() {
           After linking, use the <strong>Release</strong> button on each lesson or module to push it to this classroom as a draft assignment.
           If a matching title already exists, a copy is created automatically.
         </p>
+      </div>
+
+      {/* Collaborators */}
+      <div className="rounded-3xl p-6 space-y-4" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
+        <div>
+          <p className={sectionHeading}>Collaborators</p>
+          <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
+            {isOwner
+              ? "Give another Google account full edit access to this course, its lessons, and its slides/quizzes."
+              : `Shared by ${courseOwnerId}. You have full edit access.`}
+          </p>
+        </div>
+
+        {isOwner && (
+          <div className="flex items-end gap-3 flex-wrap">
+            <div className="flex-1 min-w-[220px]">
+              <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Invite by email</label>
+              <input type="email" value={newCollaboratorEmail} onChange={e => setNewCollaboratorEmail(e.target.value)}
+                placeholder="coteacher@school.edu" className={inputClass} style={inputStyle}
+                onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); handleAddCollaborator(); } }} />
+            </div>
+            <button onClick={handleAddCollaborator} disabled={collabSaving || !newCollaboratorEmail.trim()}
+              className="rounded-full px-4 py-2 text-xs font-semibold transition hover:opacity-90 disabled:opacity-50 shrink-0"
+              style={{ background: "#0cc0df", color: "#0a0b13" }}>
+              {collabSaving ? "Saving…" : "Invite"}
+            </button>
+          </div>
+        )}
+
+        {collabError && <p className="text-xs" style={{ color: "#ef4444" }}>{collabError}</p>}
+
+        {collaborators.length > 0 && (
+          <div className="space-y-2">
+            {collaborators.map(email => (
+              <div key={email} className="flex items-center justify-between rounded-2xl px-4 py-2.5" style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)" }}>
+                <span className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>{email}</span>
+                {isOwner && (
+                  <button onClick={() => handleRemoveCollaborator(email)} disabled={collabSaving}
+                    className="text-xs transition hover:opacity-80 disabled:opacity-50" style={{ color: "#ef4444" }}>
+                    Remove
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* NeXTBox Concepts */}

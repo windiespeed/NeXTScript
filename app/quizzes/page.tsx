@@ -98,6 +98,14 @@ export default function QuizzesPage() {
   const [loading, setLoading] = useState(true);
   const [filterCourse, setFilterCourse] = useState("all");
   const [filterStatus, setFilterStatus] = useState<"all" | "draft" | "generated">("all");
+  const [fixingFolders, setFixingFolders] = useState(false);
+  const [fixFoldersMsg, setFixFoldersMsg] = useState("");
+  const [checkingFolders, setCheckingFolders] = useState(false);
+  const [folderCheck, setFolderCheck] = useState<{
+    checked: number;
+    ambiguous: { id: string; title: string; courseIds: string[] }[];
+    unresolvable: { id: string; title: string }[];
+  } | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -115,6 +123,41 @@ export default function QuizzesPage() {
     if (!confirm("Delete this quiz? This cannot be undone.")) return;
     await fetch(`/api/projects/${id}`, { method: "DELETE" });
     setQuizzes(prev => prev.filter(q => q.id !== id));
+  }
+
+  async function handleCheckFolders() {
+    setCheckingFolders(true);
+    setFolderCheck(null);
+    setFixFoldersMsg("");
+    try {
+      const res = await fetch("/api/admin/fix-quiz-folders");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to check quiz folders.");
+      setFolderCheck(data);
+    } catch (err: any) {
+      setFixFoldersMsg(err.message || "Failed to check quiz folders.");
+    } finally {
+      setCheckingFolders(false);
+    }
+  }
+
+  async function handleFixFolders() {
+    setFixingFolders(true);
+    setFixFoldersMsg("");
+    try {
+      const res = await fetch("/api/admin/fix-quiz-folders", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to fix quiz folders.");
+      setFixFoldersMsg(
+        `Checked ${data.checked} quiz${data.checked !== 1 ? "zes" : ""} — moved ${data.moved}, skipped ${data.skipped}${data.failed > 0 ? `, ${data.failed} failed` : ""}` +
+        (data.ambiguousCount > 0 ? ` (${data.ambiguousCount} skipped for spanning multiple courses — use Check for Issues to review).` : ".")
+      );
+      setFolderCheck(null);
+    } catch (err: any) {
+      setFixFoldersMsg(err.message || "Failed to fix quiz folders.");
+    } finally {
+      setFixingFolders(false);
+    }
   }
 
   // Attach effective courseId and lessonId to each quiz
@@ -210,13 +253,83 @@ export default function QuizzesPage() {
             Build and manage quiz drafts for your lessons.
           </p>
         </div>
-        <Link
-          href="/quizzes/new"
-          className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-bold text-white hover:opacity-90 transition shadow"
-        >
-          + New Quiz
-        </Link>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleCheckFolders}
+            disabled={checkingFolders}
+            title="Step 1 of 2 — run this first. Temporary migration tool (safe to remove once run): a past bug generated some quizzes without filing them into their course's Drive folder. This does a read-only check for quizzes whose course can't be resolved unambiguously, so you can review those before running Fix Drive Folders."
+            className="rounded-full px-4 py-2 text-xs font-semibold transition hover:opacity-90 disabled:opacity-50"
+            style={{ background: "var(--bg-card-hover)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}
+          >
+            {checkingFolders ? "Checking…" : "1. Check for Issues"}
+          </button>
+          <button
+            onClick={handleFixFolders}
+            disabled={fixingFolders}
+            title="Step 2 of 2 — run after Check for Issues. Temporary migration tool (safe to remove once run): a past bug generated some quizzes without filing them into their course's Drive folder. This one-time fix moves already-generated quizzes into the right folder(s); new quizzes are already placed correctly."
+            className="rounded-full px-4 py-2 text-xs font-semibold transition hover:opacity-90 disabled:opacity-50"
+            style={{ background: "var(--bg-card-hover)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}
+          >
+            {fixingFolders ? "Fixing…" : "2. Fix Drive Folders"}
+          </button>
+          <Link
+            href="/quizzes/new"
+            className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-bold text-white hover:opacity-90 transition shadow"
+          >
+            + New Quiz
+          </Link>
+        </div>
       </div>
+
+      {fixFoldersMsg && (
+        <p className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>{fixFoldersMsg}</p>
+      )}
+
+      {folderCheck && (
+        <div className="rounded-2xl p-4 space-y-3 text-xs" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
+          <p style={{ color: "var(--text-secondary)" }}>
+            Checked {folderCheck.checked} generated quiz{folderCheck.checked !== 1 ? "zes" : ""}.
+          </p>
+          {folderCheck.ambiguous.length === 0 && folderCheck.unresolvable.length === 0 ? (
+            <p style={{ color: "#2dd4a0" }}>No issues found — safe to run "Fix Drive Folders".</p>
+          ) : (
+            <>
+              {folderCheck.ambiguous.length > 0 && (
+                <div>
+                  <p className="font-semibold mb-1" style={{ color: "#ff8c4a" }}>
+                    Spans multiple courses (fix will skip these):
+                  </p>
+                  <ul className="space-y-1">
+                    {folderCheck.ambiguous.map(q => (
+                      <li key={q.id}>
+                        <Link href={`/quizzes/${q.id}`} className="hover:underline" style={{ color: "#0cc0df" }}>{q.title}</Link>
+                        {" — "}
+                        <span style={{ color: "var(--text-muted)" }}>
+                          {q.courseIds.map(cid => courses.find(c => c.id === cid)?.title ?? cid).join(", ")}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {folderCheck.unresolvable.length > 0 && (
+                <div>
+                  <p className="font-semibold mb-1" style={{ color: "var(--text-muted)" }}>
+                    No course found at all (fix will skip these too):
+                  </p>
+                  <ul className="space-y-1">
+                    {folderCheck.unresolvable.map(q => (
+                      <li key={q.id}>
+                        <Link href={`/quizzes/${q.id}`} className="hover:underline" style={{ color: "#0cc0df" }}>{q.title}</Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
 
       {/* Filter pills */}
       {!loading && (

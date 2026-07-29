@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { Course, CourseResource, CourseModule } from "@/types/course";
 import type { Lesson } from "@/types/lesson";
-import type { SavedProject } from "@/types/project";
 import {
   DndContext,
   DragOverlay,
@@ -125,7 +124,6 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [bulkMoveOpen, setBulkMoveOpen] = useState(false);
   const [bulkMoving, setBulkMoving] = useState(false);
-  const [projects, setProjects] = useState<SavedProject[]>([]);
   const [addExistingOpen, setAddExistingOpen] = useState(false);
   const [allLessons, setAllLessons] = useState<Lesson[]>([]);
   const [toAdd, setToAdd] = useState<Set<string>>(new Set());
@@ -176,12 +174,10 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
     Promise.all([
       fetch(`/api/courses/${id}`).then(r => r.json()),
       fetch(`/api/lessons?courseId=${id}`).then(r => r.json()),
-      fetch("/api/projects").then(r => r.json()),
       fetch("/api/courses").then(r => r.json()),
-    ]).then(([courseData, lessonData, projectData, coursesData]) => {
+    ]).then(([courseData, lessonData, coursesData]) => {
       if (!courseData?.id) { setLoading(false); return; }
       setCourse(courseData);
-      setProjects(Array.isArray(projectData) ? projectData : []);
       setLessons(Array.isArray(lessonData) ? lessonData : []);
       setAllCourses(Array.isArray(coursesData) ? coursesData : []);
       setResources(Array.isArray(courseData.resources) ? courseData.resources : []);
@@ -244,15 +240,15 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
       checkpoint: full.checkpoint ?? "", industryBestPractices: full.industryBestPractices ?? "",
       devJournalPrompt: full.devJournalPrompt ?? "", rubric: full.rubric ?? "",
       sources: full.sources ?? "", studentLevel: full.studentLevel, quizQuestions: full.quizQuestions,
+      lessonType: full.lessonType,
       courseId: id, released: false, folder: full.folder ?? "",
     };
+    // POST /api/lessons already registers the new lesson in this course's lessonIds
+    // (atomically, via courseStore.addLesson) — no need to also PUT it here, and doing so
+    // from a stale local `course` snapshot would race when duplicating several lessons at once.
     const res = await fetch("/api/lessons", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     if (!res.ok) return null;
     const copy = await res.json();
-    await fetch(`/api/courses/${id}`, {
-      method: "PUT", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ lessonIds: [...(course?.lessonIds ?? []), copy.id] }),
-    });
     return copy;
   }
 
@@ -282,6 +278,9 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
     if (!confirm(`Delete ${selectedIds.size} lesson${selectedIds.size > 1 ? "s" : ""}? This cannot be undone.`)) return;
     setBulkDeleting(true);
     const ids = [...selectedIds];
+    if (driveModules.some(m => m.lessonIds.some(lid => selectedIds.has(lid)))) {
+      await saveModules(driveModules.map(m => ({ ...m, lessonIds: m.lessonIds.filter(lid => !selectedIds.has(lid)) })));
+    }
     await Promise.all(ids.map(lid => fetch(`/api/lessons/${lid}`, { method: "DELETE" })));
     setLessons(prev => prev.filter(l => !selectedIds.has(l.id)));
     setCourse(prev => prev ? { ...prev, lessonIds: prev.lessonIds.filter(l => !selectedIds.has(l)) } : prev);
@@ -293,6 +292,9 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
     setBulkMoving(true); setBulkMoveOpen(false);
     const ids = [...selectedIds];
     const targetCourse = allCourses.find(c => c.id === targetCourseId);
+    if (driveModules.some(m => m.lessonIds.some(lid => selectedIds.has(lid)))) {
+      await saveModules(driveModules.map(m => ({ ...m, lessonIds: m.lessonIds.filter(lid => !selectedIds.has(lid)) })));
+    }
     await fetch(`/api/courses/${id}`, {
       method: "PUT", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ lessonIds: course!.lessonIds.filter(l => !selectedIds.has(l)) }),
@@ -314,7 +316,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
 
   async function openAddExisting() {
     const data = await fetch("/api/lessons").then(r => r.json());
-    setAllLessons(Array.isArray(data) ? data.filter((l: Lesson) => l.id !== id && !lessons.some(cl => cl.id === l.id)) : []);
+    setAllLessons(Array.isArray(data) ? data.filter((l: Lesson) => !lessons.some(cl => cl.id === l.id)) : []);
     setToAdd(new Set());
     setAddExistingOpen(true);
   }
@@ -351,6 +353,9 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
   async function handleMoveLesson(lessonId: string, newCourseId: string) {
     const lesson = lessons.find(l => l.id === lessonId);
     if (!lesson) return;
+    if (driveModules.some(m => m.lessonIds.includes(lessonId))) {
+      await saveModules(driveModules.map(m => ({ ...m, lessonIds: m.lessonIds.filter(lid => lid !== lessonId) })));
+    }
     await fetch(`/api/courses/${id}`, {
       method: "PUT", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ lessonIds: course!.lessonIds.filter(l => l !== lessonId) }),
@@ -379,7 +384,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
     });
     if (driveModules.some(m => m.lessonIds.includes(lessonId))) {
       const updatedModules = driveModules.map(m => ({ ...m, lessonIds: m.lessonIds.filter(lid => lid !== lessonId) }));
-      setDriveModules(updatedModules);
+      await saveModules(updatedModules);
     }
     await fetch(`/api/lessons/${lessonId}`, { method: "DELETE" });
     setLessons(prev => prev.filter(l => l.id !== lessonId));
@@ -571,8 +576,12 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Push failed.");
-      setLessons(prev => prev.map(l => lessonIds.includes(l.id) ? { ...l, publishedToClassroom: true } : l));
-      await Promise.all(lessonIds.map(lid =>
+      // Only mark lessons that actually succeeded — data.results reports per-lesson outcome.
+      const succeededIds: string[] = Array.isArray(data.results)
+        ? data.results.filter((r: { ok: boolean }) => r.ok).map((r: { lessonId: string }) => r.lessonId)
+        : lessonIds;
+      setLessons(prev => prev.map(l => succeededIds.includes(l.id) ? { ...l, publishedToClassroom: true } : l));
+      await Promise.all(succeededIds.map(lid =>
         fetch(`/api/lessons/${lid}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ publishedToClassroom: true }) })
       ));
       const msg = data.failed > 0
@@ -752,8 +761,13 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
             Generate Join Code
           </button>
         )}
-        <Link href={`/courses/${id}/progress`}
+        <Link href={`/courses/${id}/exercises`}
           className="ml-auto rounded-full px-3 py-1 text-[10px] font-semibold transition hover:opacity-80"
+          style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
+          Exercises
+        </Link>
+        <Link href={`/courses/${id}/progress`}
+          className="rounded-full px-3 py-1 text-[10px] font-semibold transition hover:opacity-80"
           style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
           View Progress →
         </Link>

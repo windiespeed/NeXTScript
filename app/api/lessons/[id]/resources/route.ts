@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { store } from "@/lib/store";
+import { canAccessLesson } from "@/lib/access";
 import { v4 as uuidv4 } from "uuid";
 import type { LessonResource } from "@/types/lesson";
 
@@ -13,7 +14,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
   const lesson = await store.getById(id);
   if (!lesson) return NextResponse.json({ error: "Not found." }, { status: 404 });
-  if (lesson.userId !== session.user.email) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+  if (!(await canAccessLesson(lesson, session.user.email))) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
 
   return NextResponse.json(lesson.resources ?? []);
 }
@@ -25,7 +26,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const lesson = await store.getById(id);
   if (!lesson) return NextResponse.json({ error: "Not found." }, { status: 404 });
-  if (lesson.userId !== session.user.email) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+  if (!(await canAccessLesson(lesson, session.user.email))) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
 
   const body = await req.json() as { label: string; url: string; type: LessonResource["type"] };
   if (!body.label?.trim() || !body.url?.trim()) {

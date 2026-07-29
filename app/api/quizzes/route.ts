@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { projectStore } from "@/lib/projectStore";
+import { getAccessibleProjects } from "@/lib/access";
 import type { FormQuestion } from "@/types/form";
 
 export const dynamic = "force-dynamic";
@@ -8,7 +9,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const session = await auth();
   if (!session?.user?.email) return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
-  const projects = await projectStore.getAll(session.user.email);
+  const projects = await getAccessibleProjects(session.user.email);
   const quizzes = projects.filter(p => p.type === "form" && p.isQuiz);
   return NextResponse.json(quizzes);
 }

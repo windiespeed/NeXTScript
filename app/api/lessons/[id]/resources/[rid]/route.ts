@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { store } from "@/lib/store";
+import { canAccessLesson } from "@/lib/access";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +12,7 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
 
   const lesson = await store.getById(id);
   if (!lesson) return NextResponse.json({ error: "Not found." }, { status: 404 });
-  if (lesson.userId !== session.user.email) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+  if (!(await canAccessLesson(lesson, session.user.email))) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
 
   const resources = (lesson.resources ?? []).filter(r => r.id !== rid);
   await store.update(id, { resources });

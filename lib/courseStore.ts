@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 import { getDb } from "@/lib/firebase";
+import { FieldValue } from "firebase-admin/firestore";
 import type { Course, CourseInput } from "@/types/course";
 import { DEFAULT_COURSE_SETTINGS } from "@/types/course";
 
@@ -7,13 +8,16 @@ const COLLECTION = "courses";
 
 export const courseStore = {
   async getAll(userId: string): Promise<Course[]> {
-    const snapshot = await getDb()
-      .collection(COLLECTION)
-      .where("userId", "==", userId)
-      .get();
-    return snapshot.docs
-      .map((doc) => ({ id: doc.id, ...doc.data() } as Course))
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    const db = getDb();
+    const [owned, shared] = await Promise.all([
+      db.collection(COLLECTION).where("userId", "==", userId).get(),
+      db.collection(COLLECTION).where("collaborators", "array-contains", userId).get(),
+    ]);
+    const byId = new Map<string, Course>();
+    for (const doc of [...owned.docs, ...shared.docs]) {
+      byId.set(doc.id, { id: doc.id, ...doc.data() } as Course);
+    }
+    return Array.from(byId.values()).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   },
 
   async getById(id: string): Promise<Course | undefined> {
@@ -63,26 +67,23 @@ export const courseStore = {
     return true;
   },
 
-  /** Add a lesson ID to a course's ordered list (no-op if already present). */
+  /**
+   * Add a lesson ID to a course's ordered list (no-op if already present).
+   * Uses arrayUnion so concurrent calls (e.g. bulk-duplicating several lessons at once)
+   * don't lose updates to each other via a read-then-write race.
+   */
   async addLesson(courseId: string, lessonId: string): Promise<void> {
     const ref = getDb().collection(COLLECTION).doc(courseId);
     const doc = await ref.get();
     if (!doc.exists) return;
-    const course = doc.data() as Course;
-    if (!course.lessonIds.includes(lessonId)) {
-      await ref.update({ lessonIds: [...course.lessonIds, lessonId], updatedAt: new Date().toISOString() });
-    }
+    await ref.update({ lessonIds: FieldValue.arrayUnion(lessonId), updatedAt: new Date().toISOString() });
   },
 
-  /** Remove a lesson ID from a course's ordered list. */
+  /** Remove a lesson ID from a course's ordered list. Atomic for the same reason as addLesson. */
   async removeLesson(courseId: string, lessonId: string): Promise<void> {
     const ref = getDb().collection(COLLECTION).doc(courseId);
     const doc = await ref.get();
     if (!doc.exists) return;
-    const course = doc.data() as Course;
-    await ref.update({
-      lessonIds: course.lessonIds.filter((id) => id !== lessonId),
-      updatedAt: new Date().toISOString(),
-    });
+    await ref.update({ lessonIds: FieldValue.arrayRemove(lessonId), updatedAt: new Date().toISOString() });
   },
 };

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { courseStore } from "@/lib/courseStore";
+import { canAccessCourse } from "@/lib/access";
 import { exerciseStore } from "@/lib/exerciseStore";
 import { getDb } from "@/lib/firebase";
 
@@ -13,19 +14,17 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     const { id } = await params;
     const course = await courseStore.getById(id);
     if (!course) return NextResponse.json({ error: "Not found." }, { status: 404 });
-    const teacherId = course.teacherId ?? course.userId;
-    if (teacherId !== session.user.email) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+    if (!canAccessCourse(course, session.user.email)) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
 
     const assignedConcepts: string[] = course.assignedConcepts ?? [];
-    const allExercises = await exerciseStore.getAll(session.user.email);
-    const exercises = allExercises
-      .filter(e => assignedConcepts.includes(e.concept))
-      .sort((a, b) => {
-        const ai = assignedConcepts.indexOf(a.concept);
-        const bi = assignedConcepts.indexOf(b.concept);
-        if (ai !== bi) return ai - bi;
-        return a.order - b.order;
-      });
+    const courseExercises = await exerciseStore.getAllByCourse(course.id);
+    const exercises = courseExercises.sort((a, b) => {
+      const ai = assignedConcepts.indexOf(a.concept);
+      const bi = assignedConcepts.indexOf(b.concept);
+      if (ai !== bi) return ai - bi;
+      if (a.concept !== b.concept) return a.concept.localeCompare(b.concept);
+      return a.order - b.order;
+    });
 
     const snap = await getDb().collection("student_progress").where("courseId", "==", id).get();
     const progress = snap.docs.map(d => d.data());

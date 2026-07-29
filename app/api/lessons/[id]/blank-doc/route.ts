@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { store } from "@/lib/store";
+import { canAccessLesson } from "@/lib/access";
 import { createBlankFile } from "@/lib/google";
 import { v4 as uuidv4 } from "uuid";
 import type { LessonResource } from "@/types/lesson";
@@ -17,7 +18,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const lesson = await store.getById(id);
   if (!lesson) return NextResponse.json({ error: "Not found." }, { status: 404 });
-  if (lesson.userId !== session.user.email) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+  if (!(await canAccessLesson(lesson, session.user.email))) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
 
   const { name, docType } = await req.json() as { name: string; docType: "doc" | "sheet" | "slides" };
   if (!name?.trim()) return NextResponse.json({ error: "name is required." }, { status: 400 });

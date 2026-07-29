@@ -22,6 +22,7 @@ export default function EditExercisePage() {
 
   const [loading, setLoading] = useState(true);
   const [concepts, setConcepts] = useState<Concept[]>([]);
+  const [courseId, setCourseId] = useState<string | undefined>(undefined);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [concept, setConcept] = useState<string>("");
@@ -35,12 +36,9 @@ export default function EditExercisePage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
+  const backHref = courseId ? `/courses/${courseId}/exercises` : "/exercises";
+
   useEffect(() => {
-    fetch("/api/concepts").then(r => r.json()).then(data => {
-      const list: Concept[] = Array.isArray(data) ? data : [];
-      const seen = new Set<string>();
-      setConcepts(list.filter(c => { if (seen.has(c.slug)) return false; seen.add(c.slug); return true; }));
-    });
     fetch(`/api/exercises/${id}`).then(r => r.json()).then((ex: Exercise) => {
       setTitle(ex.title);
       setDescription(ex.description);
@@ -52,7 +50,14 @@ export default function EditExercisePage() {
       setSolution(ex.solution);
       setHints(ex.hints.length ? ex.hints : [""]);
       setTests(ex.tests.length ? ex.tests : [{ id: uuidv4(), description: "", code: "" }]);
+      setCourseId(ex.courseId);
       setLoading(false);
+
+      if (ex.courseId) {
+        fetch(`/api/concepts?courseId=${ex.courseId}`).then(r => r.json()).then(data => {
+          setConcepts(Array.isArray(data) ? data : []);
+        });
+      }
     });
   }, [id]);
 
@@ -83,7 +88,7 @@ export default function EditExercisePage() {
       }),
     });
     if (res.ok) {
-      router.push("/exercises");
+      router.push(backHref);
     } else {
       const data = await res.json();
       setError(data.error || "Failed to save.");
@@ -97,7 +102,7 @@ export default function EditExercisePage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Link href="/exercises" className="text-sm hover:underline" style={{ color: "#0cc0df" }}>
+        <Link href={backHref} className="text-sm hover:underline" style={{ color: "#0cc0df" }}>
           ← Exercises
         </Link>
         <span style={{ color: "var(--border)" }}>/</span>
@@ -224,7 +229,7 @@ export default function EditExercisePage() {
           style={{ background: "#0cc0df", color: "#0a0b13" }}>
           {saving ? "Saving…" : "Save Changes"}
         </button>
-        <Link href="/exercises"
+        <Link href={backHref}
           className="rounded-full px-6 py-2.5 text-sm font-semibold transition hover:opacity-80"
           style={{ background: "var(--bg-card-hover)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}>
           Cancel

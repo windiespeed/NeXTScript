@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { courseStore } from "@/lib/courseStore";
+import { canAccessCourse } from "@/lib/access";
 import { store } from "@/lib/store";
 import { projectStore } from "@/lib/projectStore";
 import { getOrCreateClassroomTopic, pushLessonToClassroom } from "@/lib/google";
@@ -31,7 +32,7 @@ export async function POST(req: Request) {
 
     const course = await courseStore.getById(courseId);
     if (!course) return NextResponse.json({ error: "Course not found." }, { status: 404 });
-    if (course.userId !== session.user.email) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+    if (!canAccessCourse(course, session.user.email)) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
 
     const classroomId = course.googleClassroomId;
     if (!classroomId) return NextResponse.json({ error: "No Google Classroom linked to this course." }, { status: 400 });
@@ -46,8 +47,8 @@ export async function POST(req: Request) {
       }
     }
 
-    // Fetch all projects once to find slides URLs
-    const allProjects = await projectStore.getAll(session.user.email);
+    // Fetch all projects once to find slides URLs (owner's account authored them, regardless of who is pushing)
+    const allProjects = await projectStore.getAll(course.userId);
 
     const results: { lessonId: string; ok: boolean; error?: string }[] = [];
 

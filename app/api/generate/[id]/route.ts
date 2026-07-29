@@ -3,8 +3,10 @@ import { auth } from "@/lib/auth";
 import { store } from "@/lib/store";
 import { projectStore } from "@/lib/projectStore";
 import { courseStore } from "@/lib/courseStore";
+import { canAccessLesson } from "@/lib/access";
 import { userSettings, getMergedLabels } from "@/lib/userSettings";
-import { generateBundleSelective, generateBundleAsDownload, buildQuiz } from "@/lib/google";
+import { generateBundleSelective, generateBundleAsDownload, buildQuiz, createCourseFolder, addFileToFolders } from "@/lib/google";
+import { ensureLessonFolderId } from "@/lib/lessonFolders";
 import { generateQuizQuestions } from "@/lib/ai";
 import { DEFAULT_SECTION_LABELS } from "@/lib/sectionLabels";
 
@@ -22,7 +24,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const { id } = await params;
 
   const session = await auth();
-  if (!session) {
+  if (!session?.user?.email) {
     return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
   }
 
@@ -38,6 +40,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const lesson = await store.getById(id);
   if (!lesson) {
     return NextResponse.json({ error: "Lesson not found." }, { status: 404 });
+  }
+  if (!(await canAccessLesson(lesson, session.user.email))) {
+    return NextResponse.json({ error: "Forbidden." }, { status: 403 });
   }
 
   // Parse body — fall back to "all files, drive" if body is absent (backwards compat)
@@ -61,6 +66,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     userSettings.get(session.user!.email!),
     lesson.courseId ? courseStore.getById(lesson.courseId) : Promise.resolve(undefined),
   ]);
+
+  // Ensure the course has a Drive folder so slides/docs/quizzes all land in one place
+  let courseFolderId = course?.driveFolderId;
+  if (course && !courseFolderId && destination === "drive") {
+    const folder = await createCourseFolder(course.title, accessToken);
+    await courseStore.update(course.id, { driveFolderId: folder.id, driveFolderUrl: folder.webViewLink });
+    courseFolderId = folder.id;
+  }
 
   // Course settings override user settings when non-empty
   const industry = (course?.settings?.industry || uSettings.industry) ?? "";
@@ -94,7 +107,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         accessToken,
         templateId,
         mergedLabels,
-        course?.driveFolderId ?? undefined
+        courseFolderId
       );
 
       // Save deck and overview doc as projects
@@ -116,7 +129,19 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           for (const draft of quizDrafts) {
             try {
               const syntheticLesson = { ...lesson, quizQuestions: draft.questions ?? [] };
-              const formId = await buildQuiz(syntheticLesson, accessToken);
+              const formId = await buildQuiz(syntheticLesson, accessToken, courseFolderId);
+
+              // A quiz covering multiple lessons also gets added to each of those lessons'
+              // own folders, in addition to the course folder.
+              if (draft.lessonIds && draft.lessonIds.length > 1) {
+                const lessonFolderIds: string[] = [];
+                for (const lessonId of draft.lessonIds) {
+                  const otherLesson = lessonId === id ? lesson : await store.getById(lessonId);
+                  if (otherLesson) lessonFolderIds.push(await ensureLessonFolderId(otherLesson, courseFolderId, accessToken));
+                }
+                await addFileToFolders(formId, lessonFolderIds, accessToken).catch(() => {});
+              }
+
               const formUrl = `https://docs.google.com/forms/d/${formId}/edit`;
               await projectStore.update(draft.id, { status: "generated", url: formUrl });
             } catch {
@@ -136,7 +161,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           }
           if (lessonToGenerate.quizQuestions?.length) {
             try {
-              const formId = await buildQuiz(lessonToGenerate, accessToken);
+              const formId = await buildQuiz(lessonToGenerate, accessToken, courseFolderId);
               const formUrl = `https://docs.google.com/forms/d/${formId}/edit`;
               // Delete any previously generated quizzes for this lesson before creating the new one
               const existingGenerated = allProjects.filter(p =>

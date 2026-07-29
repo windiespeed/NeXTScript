@@ -10,12 +10,16 @@ import type { Lesson, LessonInput } from "@/types/lesson";
 const COLLECTION = "lessons";
 
 export const store = {
-  async getAll(userId: string, courseId?: string): Promise<Lesson[]> {
-    let query = getDb().collection(COLLECTION).where("userId", "==", userId) as FirebaseFirestore.Query;
-    if (courseId) {
-      query = query.where("courseId", "==", courseId);
-    }
-    const snapshot = await query.get();
+  async getAll(userId: string): Promise<Lesson[]> {
+    const snapshot = await getDb().collection(COLLECTION).where("userId", "==", userId).get();
+    return snapshot.docs
+      .map((doc) => doc.data() as Lesson)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  },
+
+  /** All lessons in a course, regardless of which collaborator authored them. */
+  async getAllByCourse(courseId: string): Promise<Lesson[]> {
+    const snapshot = await getDb().collection(COLLECTION).where("courseId", "==", courseId).get();
     return snapshot.docs
       .map((doc) => doc.data() as Lesson)
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));

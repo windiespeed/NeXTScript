@@ -82,6 +82,7 @@ export interface Course {
   googleClassroomId?: string;
   googleClassroomName?: string;
   teacherId?: string;
+  collaborators?: string[]; // co-teacher emails with edit access (owner manages this list)
   createdAt: string;
   updatedAt: string;
 }

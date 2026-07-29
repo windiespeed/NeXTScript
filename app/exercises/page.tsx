@@ -3,12 +3,8 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import type { Exercise, ExerciseType } from "@/types/exercise";
-import type { Concept } from "@/types/concept";
-
-function slugToLabel(slug: string): string {
-  return slug.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
-}
+import type { Exercise } from "@/types/exercise";
+import type { Course } from "@/types/course";
 
 const DIFFICULTY_COLOR: Record<string, { bg: string; text: string }> = {
   beginner:     { bg: "rgba(45,212,160,0.12)",  text: "#2dd4a0" },
@@ -16,254 +12,210 @@ const DIFFICULTY_COLOR: Record<string, { bg: string; text: string }> = {
   advanced:     { bg: "rgba(239,68,68,0.12)",   text: "#ef4444" },
 };
 
-function ExerciseCard({ exercise, onDelete }: { exercise: Exercise; onDelete: (id: string) => void }) {
+const inputClass = "rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#0cc0df] transition";
+const inputStyle = { background: "var(--bg-card-hover)", color: "var(--text-primary)", border: "1px solid var(--border)" };
+
+function ExerciseRow({
+  exercise, courses, selected, onToggle, onAssign, onDelete,
+}: {
+  exercise: Exercise;
+  courses: Course[];
+  selected: boolean;
+  onToggle: (id: string) => void;
+  onAssign: (id: string, courseId: string) => void;
+  onDelete: (id: string) => void;
+}) {
   const diff = DIFFICULTY_COLOR[exercise.difficulty];
-  const isChallenge = exercise.type === "challenge";
+  const [courseId, setCourseId] = useState("");
 
   return (
     <div
-      className="group relative rounded-3xl p-5 space-y-3 hover:-translate-y-1 transition-all duration-200"
-      style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-card)" }}
+      className="flex items-center gap-3 rounded-2xl px-4 py-3 flex-wrap"
+      style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex-1 min-w-0">
-          <p className="font-semibold text-sm leading-snug truncate" style={{ color: "var(--text-primary)" }}>
-            {exercise.title}
-          </p>
-          <p className="text-xs mt-0.5 truncate" style={{ color: "var(--text-muted)" }}>
-            {exercise.tests.length} test{exercise.tests.length !== 1 ? "s" : ""}
-            {exercise.hints.length > 0 && ` · ${exercise.hints.length} hint${exercise.hints.length !== 1 ? "s" : ""}`}
-          </p>
-        </div>
-        <div className="flex flex-col items-end gap-1 shrink-0">
-          {isChallenge && (
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "rgba(99,102,241,0.15)", color: "var(--accent-purple)" }}>
-              CHALLENGE
-            </span>
-          )}
-          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background: diff.bg, color: diff.text }}>
-            {exercise.difficulty}
-          </span>
-        </div>
-      </div>
-
-      {exercise.description && (
-        <p className="text-[11px] leading-relaxed line-clamp-2" style={{ color: "var(--text-muted)" }}>
-          {exercise.description.replace(/`/g, "").split("\n")[0]}
+      <input type="checkbox" checked={selected} onChange={() => onToggle(exercise.id)} className="shrink-0" />
+      <div className="flex-1 min-w-[160px]">
+        <p className="text-sm font-semibold truncate" style={{ color: "var(--text-primary)" }}>{exercise.title}</p>
+        <p className="text-[10px] mt-0.5" style={{ color: "var(--text-muted)" }}>
+          {exercise.concept} · {exercise.type}
         </p>
-      )}
-
-      <div className="flex items-center justify-between pt-2" style={{ borderTop: "1px solid var(--border)" }}>
-        <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
-          Order #{exercise.order}
-        </span>
-        <div className="flex gap-2 items-center">
-          <Link
-            href={`/exercises/${exercise.id}`}
-            className="text-xs font-semibold px-3 py-1 rounded-full transition hover:opacity-80"
-            style={{ background: "var(--bg-card-hover)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}
-          >
-            Edit
-          </Link>
-          <button
-            onClick={() => onDelete(exercise.id)}
-            className="text-xs font-semibold px-3 py-1 rounded-full transition hover:opacity-80"
-            style={{ background: "rgba(239,68,68,0.08)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.2)" }}
-          >
-            Delete
-          </button>
-        </div>
       </div>
+      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0" style={{ background: diff.bg, color: diff.text }}>
+        {exercise.difficulty}
+      </span>
+      <select value={courseId} onChange={e => setCourseId(e.target.value)} className={inputClass} style={inputStyle}>
+        <option value="">Assign to course…</option>
+        {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
+      </select>
+      <button
+        onClick={() => courseId && onAssign(exercise.id, courseId)}
+        disabled={!courseId}
+        className="rounded-full px-3 py-1.5 text-xs font-semibold transition hover:opacity-90 disabled:opacity-50 shrink-0"
+        style={{ background: "#0cc0df", color: "#0a0b13" }}
+      >
+        Assign
+      </button>
+      <Link
+        href={`/exercises/${exercise.id}`}
+        className="text-xs font-semibold px-3 py-1.5 rounded-full transition hover:opacity-80 shrink-0"
+        style={{ background: "var(--bg-card-hover)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}
+      >
+        Edit
+      </Link>
+      <button
+        onClick={() => onDelete(exercise.id)}
+        className="text-xs font-semibold px-3 py-1.5 rounded-full transition hover:opacity-80 shrink-0"
+        style={{ background: "rgba(239,68,68,0.08)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.2)" }}
+      >
+        Delete
+      </button>
     </div>
   );
 }
 
-export default function ExercisesPage() {
+export default function UnassignedExercisesPage() {
   useSession({ required: true });
 
   const [exercises, setExercises] = useState<Exercise[]>([]);
-  const [concepts, setConcepts] = useState<Concept[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
-  const [seeding, setSeeding] = useState(false);
-  const [filterType, setFilterType] = useState<"all" | ExerciseType>("all");
-  const [filterConcept, setFilterConcept] = useState<string>("all");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkCourseId, setBulkCourseId] = useState("");
+  const [assigning, setAssigning] = useState(false);
+  const [error, setError] = useState("");
 
-  useEffect(() => {
-    Promise.all([
+  async function load() {
+    const [ex, co] = await Promise.all([
       fetch("/api/exercises").then(r => r.json()),
-      fetch("/api/concepts").then(r => r.json()),
-    ]).then(([ex, con]) => {
-      setExercises(Array.isArray(ex) ? ex : []);
-      setConcepts(Array.isArray(con) ? con : []);
-      setLoading(false);
-    });
-  }, []);
+      fetch("/api/courses").then(r => r.json()),
+    ]);
+    setExercises(Array.isArray(ex) ? ex : []);
+    setCourses(Array.isArray(co) ? co : []);
+    setLoading(false);
+  }
 
-  async function handleSeed() {
-    setSeeding(true);
-    const res = await fetch("/api/exercises/seed", { method: "POST" });
-    const data = await res.json();
-    if (data.seeded > 0) {
-      const fresh = await fetch("/api/exercises").then(r => r.json());
-      setExercises(Array.isArray(fresh) ? fresh : []);
+  useEffect(() => { load(); }, []);
+
+  async function assignOne(id: string, courseId: string) {
+    setError("");
+    const res = await fetch(`/api/exercises/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ courseId }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setError(data.error || "Failed to assign exercise.");
+      return;
     }
-    setSeeding(false);
+    setExercises(prev => prev.filter(e => e.id !== id));
+    setSelected(prev => { const next = new Set(prev); next.delete(id); return next; });
+  }
+
+  async function handleBulkAssign() {
+    if (!bulkCourseId || selected.size === 0) return;
+    setAssigning(true);
+    setError("");
+    const ids = Array.from(selected);
+    const results = await Promise.all(
+      ids.map(async (id) => {
+        const res = await fetch(`/api/exercises/${id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ courseId: bulkCourseId }),
+        });
+        return { id, ok: res.ok };
+      })
+    );
+    const succeeded = new Set(results.filter(r => r.ok).map(r => r.id));
+    const failedCount = results.length - succeeded.size;
+    if (failedCount > 0) {
+      setError(`${failedCount} exercise${failedCount !== 1 ? "s" : ""} failed to assign.`);
+    }
+    setExercises(prev => prev.filter(e => !succeeded.has(e.id)));
+    setSelected(prev => {
+      const next = new Set(prev);
+      succeeded.forEach(id => next.delete(id));
+      return next;
+    });
+    setBulkCourseId("");
+    setAssigning(false);
+  }
+
+  function toggle(id: string) {
+    setSelected(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
   }
 
   async function handleDelete(id: string) {
     if (!confirm("Delete this exercise?")) return;
     await fetch(`/api/exercises/${id}`, { method: "DELETE" });
     setExercises(prev => prev.filter(e => e.id !== id));
+    setSelected(prev => { const next = new Set(prev); next.delete(id); return next; });
   }
-
-  const filtered = exercises.filter(e => {
-    if (filterType !== "all" && e.type !== filterType) return false;
-    if (filterConcept !== "all" && e.concept !== filterConcept) return false;
-    return true;
-  });
-
-  // Group filtered exercises by concept — order by concepts array, then unknown slugs at end
-  const conceptSlugsInUse = [...new Set(filtered.map(e => e.concept))];
-  const conceptsInUse = [
-    ...concepts.filter(c => conceptSlugsInUse.includes(c.slug)),
-    ...conceptSlugsInUse
-      .filter(s => !concepts.some(c => c.slug === s))
-      .map(s => ({ id: s, slug: s, label: slugToLabel(s), description: "", order: 9999, teacherId: "", createdAt: "", updatedAt: "" })),
-  ];
-
-  const totalCount = exercises.length;
-  const challengeCount = exercises.filter(e => e.type === "challenge").length;
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>Exercises</h1>
-          {!loading && totalCount > 0 && (
-            <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
-              {totalCount} exercise{totalCount !== 1 ? "s" : ""} · {challengeCount} challenge{challengeCount !== 1 ? "s" : ""}
-            </p>
-          )}
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          {totalCount === 0 && !loading && (
-            <button
-              onClick={handleSeed}
-              disabled={seeding}
-              className="rounded-full px-4 py-2 text-sm font-semibold transition hover:opacity-90 disabled:opacity-50"
-              style={{ background: "rgba(99,102,241,0.15)", color: "var(--accent-purple)", border: "1px solid rgba(99,102,241,0.35)" }}
-            >
-              {seeding ? "Seeding…" : "Seed Starter Exercises"}
-            </button>
-          )}
-          <Link
-            href="/exercises/new"
-            className="rounded-full px-4 py-2 text-sm font-semibold transition hover:opacity-90"
-            style={{ background: "#0cc0df", color: "#0a0b13" }}
-          >
-            + New Exercise
-          </Link>
-        </div>
+      <div>
+        <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>Unassigned Exercises</h1>
+        <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>
+          Exercises created before per-course scoping — assign each one to the course it belongs to. Exercises are
+          now created and managed from within a course's own Exercises page.
+        </p>
       </div>
 
-      {/* Filter pills */}
-      {!loading && totalCount > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {(["all", "exercise", "challenge"] as const).map(f => (
-            <button
-              key={f}
-              onClick={() => setFilterType(f)}
-              className="rounded-full px-3 py-1 text-xs font-medium transition"
-              style={filterType === f
-                ? { background: "#0cc0df", color: "#0a0b13" }
-                : { background: "var(--bg-card-hover)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}
-            >
-              {f === "all" ? "All" : f.charAt(0).toUpperCase() + f.slice(1) + "s"}
-            </button>
-          ))}
-
-          <span className="self-center text-xs" style={{ color: "var(--border)" }}>|</span>
-
-          <button
-            onClick={() => setFilterConcept("all")}
-            className="rounded-full px-3 py-1 text-xs font-medium transition"
-            style={filterConcept === "all"
-              ? { background: "#0cc0df", color: "#0a0b13" }
-              : { background: "var(--bg-card-hover)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}
-          >
-            All Concepts
-          </button>
-          {conceptsInUse.map(c => (
-            <button
-              key={c.slug}
-              onClick={() => setFilterConcept(c.slug)}
-              className="rounded-full px-3 py-1 text-xs font-medium transition"
-              style={filterConcept === c.slug
-                ? { background: "rgba(99,102,241,0.2)", color: "var(--accent-purple)", border: "1px solid rgba(99,102,241,0.4)" }
-                : { background: "var(--bg-card-hover)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}
-            >
-              {c.label}
-            </button>
-          ))}
+      {error && (
+        <div className="rounded-2xl px-4 py-3 text-xs font-medium" style={{ background: "rgba(239,68,68,0.08)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.2)" }}>
+          {error}
         </div>
       )}
 
-      {/* Content */}
       {loading ? (
         <p className="text-sm text-[#0cc0df]">Loading…</p>
-      ) : totalCount === 0 ? (
+      ) : exercises.length === 0 ? (
         <div className="text-center py-20 rounded-3xl" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
-          <p className="text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>No exercises yet</p>
-          <p className="text-xs mb-5" style={{ color: "var(--text-muted)" }}>
-            Seed the 65 starter JavaScript exercises or create your own.
+          <p className="text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Nothing to assign</p>
+          <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+            Every exercise is assigned to a course. Manage exercises from inside each course.
           </p>
-          <button
-            onClick={handleSeed}
-            disabled={seeding}
-            className="rounded-full px-5 py-2 text-sm font-semibold transition hover:opacity-90 disabled:opacity-50"
-            style={{ background: "#0cc0df", color: "#0a0b13" }}
-          >
-            {seeding ? "Seeding…" : "Seed Starter Exercises"}
-          </button>
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="text-center py-16 rounded-3xl" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
-          <p className="text-sm" style={{ color: "var(--text-muted)" }}>No exercises match the current filters.</p>
         </div>
       ) : (
-        <div className="space-y-10">
-          {conceptsInUse.map(concept => {
-            const conceptExercises = filtered
-              .filter(e => e.concept === concept.slug)
-              .sort((a, b) => a.order - b.order);
-            const exerciseItems = conceptExercises.filter(e => e.type === "exercise");
-            const challengeItems = conceptExercises.filter(e => e.type === "challenge");
+        <>
+          <div className="flex items-center gap-3 rounded-2xl px-4 py-3 flex-wrap" style={{ background: "var(--accent-bg)", border: "1px solid rgba(12,192,223,0.3)" }}>
+            <span className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>
+              {selected.size} selected
+            </span>
+            <select value={bulkCourseId} onChange={e => setBulkCourseId(e.target.value)} className={inputClass} style={inputStyle}>
+              <option value="">Assign selected to course…</option>
+              {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
+            </select>
+            <button
+              onClick={handleBulkAssign}
+              disabled={!bulkCourseId || selected.size === 0 || assigning}
+              className="rounded-full px-4 py-1.5 text-xs font-bold transition hover:opacity-90 disabled:opacity-50"
+              style={{ background: "#0cc0df", color: "#0a0b13" }}
+            >
+              {assigning ? "Assigning…" : "Assign Selected"}
+            </button>
+          </div>
 
-            return (
-              <div key={concept.slug}>
-                <div className="flex items-center gap-3 mb-2">
-                  <h2 className="text-sm font-bold whitespace-nowrap" style={{ color: "var(--text-primary)" }}>
-                    {concept.label}
-                  </h2>
-                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full whitespace-nowrap" style={{ background: "var(--bg-card-hover)", color: "var(--text-muted)" }}>
-                    {exerciseItems.length} exercise{exerciseItems.length !== 1 ? "s" : ""}
-                    {challengeItems.length > 0 && ` · ${challengeItems.length} challenge${challengeItems.length !== 1 ? "s" : ""}`}
-                  </span>
-                  <div className="flex-1 h-px" style={{ background: "var(--border)" }} />
-                </div>
-                {concept.description && (
-                  <p className="text-xs mb-4" style={{ color: "var(--text-muted)" }}>{concept.description}</p>
-                )}
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {conceptExercises.map(exercise => (
-                    <ExerciseCard key={exercise.id} exercise={exercise} onDelete={handleDelete} />
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+          <div className="space-y-2">
+            {exercises.map(exercise => (
+              <ExerciseRow
+                key={exercise.id}
+                exercise={exercise}
+                courses={courses}
+                selected={selected.has(exercise.id)}
+                onToggle={toggle}
+                onAssign={assignOne}
+                onDelete={handleDelete}
+              />
+            ))}
+          </div>
+        </>
       )}
     </div>
   );

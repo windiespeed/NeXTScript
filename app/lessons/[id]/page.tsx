@@ -183,7 +183,7 @@ export default function LessonHubPage() {
 
   useEffect(() => {
     Promise.all([
-      fetch(`/api/lessons/${id}`).then(r => r.json()),
+      fetch(`/api/lessons/${id}`).then(r => r.ok ? r.json() : null),
       fetch("/api/projects").then(r => r.json()),
       fetch("/api/courses").then(r => r.json()),
       fetch("/api/user/settings").then(r => r.json()),

@@ -61,7 +61,38 @@ export async function createBlankFile(
   return { id: res.data.id!, url: res.data.webViewLink! };
 }
 
-async function moveFileToFolder(fileId: string, folderId: string, accessToken: string) {
+/** Grant a Google account edit (or view) access to a Drive file/folder. Used for course collaborator sharing. */
+export async function shareDriveFile(fileId: string, email: string, accessToken: string, role: "writer" | "reader" = "writer") {
+  const drive = google.drive({ version: "v3", auth: getAuthClient(accessToken) });
+  await drive.permissions.create({
+    fileId,
+    sendNotificationEmail: false,
+    requestBody: { type: "user", role, emailAddress: email },
+  });
+}
+
+/** Revoke a previously-shared Google account's access to a Drive file/folder. */
+export async function revokeDriveAccess(fileId: string, email: string, accessToken: string) {
+  const drive = google.drive({ version: "v3", auth: getAuthClient(accessToken) });
+  const res = await drive.permissions.list({ fileId, fields: "permissions(id,emailAddress)" });
+  const match = (res.data.permissions ?? []).find(p => p.emailAddress?.toLowerCase() === email.toLowerCase());
+  if (match?.id) {
+    await drive.permissions.delete({ fileId, permissionId: match.id });
+  }
+}
+
+/** Adds one or more folders as additional parents of a file, without removing existing parents. */
+export async function addFileToFolders(fileId: string, folderIds: string[], accessToken: string) {
+  if (folderIds.length === 0) return;
+  const drive = google.drive({ version: "v3", auth: getAuthClient(accessToken) });
+  await drive.files.update({
+    fileId,
+    addParents: folderIds.join(","),
+    fields: "id, parents",
+  });
+}
+
+export async function moveFileToFolder(fileId: string, folderId: string, accessToken: string) {
   const drive = google.drive({ version: "v3", auth: getAuthClient(accessToken) });
   const file = await drive.files.get({ fileId, fields: "parents" });
   const prevParents = (file.data.parents || []).join(",");
@@ -627,6 +658,30 @@ export async function getOrCreateClassroomTopic(
   return created.data.topicId!;
 }
 
+/** Paginates through every courseWorkMaterial in a Classroom course to collect all existing titles. */
+async function listAllCourseWorkMaterialTitles(classroom: ReturnType<typeof google.classroom>, courseId: string): Promise<Set<string>> {
+  const titles = new Set<string>();
+  let pageToken: string | undefined;
+  do {
+    const res = await classroom.courses.courseWorkMaterials.list({ courseId, pageSize: 250, pageToken });
+    (res.data.courseWorkMaterial ?? []).forEach(m => { if (m.title) titles.add(m.title); });
+    pageToken = res.data.nextPageToken ?? undefined;
+  } while (pageToken);
+  return titles;
+}
+
+/** Paginates through every courseWork item in a Classroom course to collect all existing titles. */
+async function listAllCourseWorkTitles(classroom: ReturnType<typeof google.classroom>, courseId: string): Promise<Set<string>> {
+  const titles = new Set<string>();
+  let pageToken: string | undefined;
+  do {
+    const res = await classroom.courses.courseWork.list({ courseId, pageSize: 250, pageToken });
+    (res.data.courseWork ?? []).forEach(cw => { if (cw.title) titles.add(cw.title); });
+    pageToken = res.data.nextPageToken ?? undefined;
+  } while (pageToken);
+  return titles;
+}
+
 // Derives the Classroom item type from the lesson's type field.
 // assessment → quiz assignment (form is primary); lesson/review → material; everything else → assignment
 function classroomItemTypeFor(lessonType?: string): "assignment" | "material" | "quiz" {
@@ -655,8 +710,7 @@ export async function pushLessonToClassroom(params: {
 
   if (itemType === "material") {
     // Read-only reference post — no submission required
-    const existing = await classroom.courses.courseWorkMaterials.list({ courseId: params.classroomId, pageSize: 250 });
-    const existingTitles = new Set((existing.data.courseWorkMaterial ?? []).map(m => m.title));
+    const existingTitles = await listAllCourseWorkMaterialTitles(classroom, params.classroomId);
     let title = params.title;
     if (existingTitles.has(title)) title = `${title} (Copy)`;
 
@@ -680,8 +734,7 @@ export async function pushLessonToClassroom(params: {
 
   if (itemType === "quiz") {
     // Assignment where the quiz form is the primary item; slides/doc are supplementary
-    const existing = await classroom.courses.courseWork.list({ courseId: params.classroomId, pageSize: 250 });
-    const existingTitles = new Set((existing.data.courseWork ?? []).map(cw => cw.title));
+    const existingTitles = await listAllCourseWorkTitles(classroom, params.classroomId);
     let title = params.title;
     if (existingTitles.has(title)) title = `${title} (Copy)`;
 
@@ -705,8 +758,7 @@ export async function pushLessonToClassroom(params: {
   }
 
   // Default: assignment with all attachments
-  const existing = await classroom.courses.courseWork.list({ courseId: params.classroomId, pageSize: 250 });
-  const existingTitles = new Set((existing.data.courseWork ?? []).map(cw => cw.title));
+  const existingTitles = await listAllCourseWorkTitles(classroom, params.classroomId);
   let title = params.title;
   if (existingTitles.has(title)) title = `${title} (Copy)`;
 

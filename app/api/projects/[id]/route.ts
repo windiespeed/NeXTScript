@@ -1,14 +1,15 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { projectStore } from "@/lib/projectStore";
+import { canAccessProject, canAccessCourseId } from "@/lib/access";
 
 async function getAuthed(id: string) {
   const session = await auth();
   if (!session?.user?.email) return { error: "Not authenticated.", status: 401 } as const;
   const project = await projectStore.getById(id);
   if (!project) return { error: "Not found.", status: 404 } as const;
-  if (project.userId !== session.user.email) return { error: "Forbidden.", status: 403 } as const;
-  return { project };
+  if (!(await canAccessProject(project, session.user.email))) return { error: "Forbidden.", status: 403 } as const;
+  return { project, email: session.user.email };
 }
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -23,6 +24,18 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   const result = await getAuthed(id);
   if ("error" in result) return NextResponse.json({ error: result.error }, { status: result.status });
   const patch = await req.json();
+
+  // Immutable/ownership fields must never be reassignable via a plain patch.
+  delete patch.id;
+  delete patch.userId;
+  delete patch.createdAt;
+
+  if (patch.courseId && patch.courseId !== result.project.courseId) {
+    if (!(await canAccessCourseId(patch.courseId, result.email))) {
+      return NextResponse.json({ error: "Forbidden: no access to the destination course." }, { status: 403 });
+    }
+  }
+
   const updated = await projectStore.update(id, patch);
   return NextResponse.json(updated);
 }

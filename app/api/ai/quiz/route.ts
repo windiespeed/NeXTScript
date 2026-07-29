@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { userSettings } from "@/lib/userSettings";
 import { courseStore } from "@/lib/courseStore";
+import { canAccessCourse } from "@/lib/access";
 import { generateQuizQuestions } from "@/lib/ai";
 import { DEFAULT_SECTION_LABELS } from "@/lib/sectionLabels";
 
@@ -25,7 +26,8 @@ export async function POST(req: Request) {
       courseId?: string;
     };
 
-    const course = courseId ? await courseStore.getById(courseId) : undefined;
+    const rawCourse = courseId ? await courseStore.getById(courseId) : undefined;
+    const course = rawCourse && canAccessCourse(rawCourse, session.user.email) ? rawCourse : undefined;
     const industry = (course?.settings?.industry || settings.industry) ?? "";
     const subject  = (course?.settings?.subject  || settings.subject)  ?? "";
     const labels = {

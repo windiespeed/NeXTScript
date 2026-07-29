@@ -15,8 +15,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     const course = await courseStore.getById(id);
     if (!course) return NextResponse.json({ error: "Not found." }, { status: 404 });
 
-    // Fetch all lessons in this course, return only released ones
-    const allLessons = await store.getAll(course.userId, id);
+    // Fetch all lessons in this course (any collaborator's), return only released ones
+    const allLessons = await store.getAllByCourse(id);
     const releasedLessons = allLessons
       .filter((l) => l.released)
       .map(({ id, title, subtitle, topics, deadline, tag, status, folderUrl }) => ({

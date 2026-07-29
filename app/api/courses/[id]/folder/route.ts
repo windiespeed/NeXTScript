@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { courseStore } from "@/lib/courseStore";
-import { createCourseFolder } from "@/lib/google";
+import { canAccessCourse } from "@/lib/access";
+import { createCourseFolder, shareDriveFile } from "@/lib/google";
 
 export const dynamic = "force-dynamic";
 
@@ -24,10 +25,18 @@ export async function POST(
     const { id } = await params;
     const course = await courseStore.getById(id);
     if (!course) return NextResponse.json({ error: "Not found." }, { status: 404 });
-    if (course.userId !== session.user.email)
+    if (!canAccessCourse(course, session.user.email))
       return NextResponse.json({ error: "Forbidden." }, { status: 403 });
 
     const folder = await createCourseFolder(course.title, accessToken);
+
+    // Share the new folder with any existing collaborators (best-effort)
+    if (course.collaborators?.length) {
+      await Promise.all(
+        course.collaborators.map((email) => shareDriveFile(folder.id, email, accessToken).catch(() => {}))
+      );
+    }
+
     const updated = await courseStore.update(id, {
       driveFolderId: folder.id,
       driveFolderUrl: folder.webViewLink,

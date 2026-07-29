@@ -1,4 +1,5 @@
 import { getDb } from "@/lib/firebase";
+import type { FieldValue } from "firebase-admin/firestore";
 import { DEFAULT_SECTION_LABELS, type SectionLabels } from "@/lib/sectionLabels";
 
 export { DEFAULT_SECTION_LABELS, type SectionLabels };
@@ -28,8 +29,11 @@ export const userSettings = {
     return doc.data() as UserSettings;
   },
 
-  async save(userId: string, settings: Partial<UserSettings>): Promise<void> {
-    await getDb().collection(COLLECTION).doc(userId).set(settings, { merge: true });
+  // A field value of FieldValue.delete() clears that field entirely — passing `undefined`
+  // instead throws, since Firestore rejects literal undefined values unless
+  // ignoreUndefinedProperties is enabled (it isn't, here).
+  async save(userId: string, settings: { [K in keyof UserSettings]?: UserSettings[K] | FieldValue }): Promise<void> {
+    await getDb().collection(COLLECTION).doc(userId).set(settings as Partial<UserSettings>, { merge: true });
   },
 
   async getAnthropicKey(userId: string): Promise<string | null> {

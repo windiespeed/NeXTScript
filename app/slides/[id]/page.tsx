@@ -30,7 +30,7 @@ export default function EditSlidesPage() {
 
   useEffect(() => {
     Promise.all([
-      fetch(`/api/lessons/${id}`).then(r => r.json()),
+      fetch(`/api/lessons/${id}`).then(r => r.ok ? r.json() : null),
       fetch("/api/user/settings").then(r => r.json()),
       fetch("/api/courses").then(r => r.json()),
     ]).then(([lessonData, settings, coursesData]) => {

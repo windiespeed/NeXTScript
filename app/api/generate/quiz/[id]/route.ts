@@ -2,7 +2,10 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { projectStore } from "@/lib/projectStore";
 import { courseStore } from "@/lib/courseStore";
-import { buildQuiz, createCourseFolder } from "@/lib/google";
+import { store } from "@/lib/store";
+import { canAccessProject } from "@/lib/access";
+import { buildQuiz, createCourseFolder, addFileToFolders } from "@/lib/google";
+import { ensureLessonFolderId } from "@/lib/lessonFolders";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +24,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
 
   const quiz = await projectStore.getById(id);
   if (!quiz) return NextResponse.json({ error: "Quiz not found." }, { status: 404 });
-  if (quiz.userId !== session.user.email) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+  if (!(await canAccessProject(quiz, session.user.email))) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
 
   if (!quiz.questions?.length) {
     return NextResponse.json({ error: "Quiz has no questions. Add questions before generating." }, { status: 400 });
@@ -40,6 +43,18 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
 
     const syntheticLesson = { title: quiz.title ?? "Quiz", quizQuestions: quiz.questions };
     const formId = await buildQuiz(syntheticLesson as any, accessToken, folderId);
+
+    // A quiz covering multiple lessons also gets added to each of those lessons' own folders,
+    // in addition to the course folder, so it shows up wherever a teacher browses for it.
+    if (quiz.lessonIds && quiz.lessonIds.length > 1) {
+      const lessonFolderIds: string[] = [];
+      for (const lessonId of quiz.lessonIds) {
+        const lesson = await store.getById(lessonId);
+        if (lesson) lessonFolderIds.push(await ensureLessonFolderId(lesson, folderId, accessToken));
+      }
+      await addFileToFolders(formId, lessonFolderIds, accessToken).catch(() => {});
+    }
+
     const url = `https://docs.google.com/forms/d/${formId}/edit`;
     await projectStore.update(id, { status: "generated", url });
     return NextResponse.json({ url });

@@ -17,6 +17,25 @@ export const exerciseStore = {
       });
   },
 
+  /** All exercises in a course, regardless of which collaborator authored them. */
+  async getAllByCourse(courseId: string, concept?: string): Promise<Exercise[]> {
+    let query = getDb().collection(COLLECTION).where("courseId", "==", courseId) as FirebaseFirestore.Query;
+    if (concept) query = query.where("concept", "==", concept);
+    const snapshot = await query.get();
+    return snapshot.docs
+      .map((doc) => doc.data() as Exercise)
+      .sort((a, b) => {
+        if (a.concept !== b.concept) return a.concept.localeCompare(b.concept);
+        return a.order - b.order;
+      });
+  },
+
+  /** A teacher's exercises that haven't been assigned to a course yet (legacy data cleanup). */
+  async getUnassigned(userId: string): Promise<Exercise[]> {
+    const all = await this.getAll(userId);
+    return all.filter((e) => !e.courseId);
+  },
+
   async getById(id: string): Promise<Exercise | undefined> {
     const doc = await getDb().collection(COLLECTION).doc(id).get();
     if (!doc.exists) return undefined;
@@ -30,14 +49,14 @@ export const exerciseStore = {
     return exercise;
   },
 
-  async createMany(inputs: ExerciseInput[], userId: string): Promise<void> {
+  async createMany(inputs: ExerciseInput[], userId: string, courseId: string): Promise<void> {
     const now = new Date().toISOString();
     const db = getDb();
     const BATCH_SIZE = 400;
     for (let i = 0; i < inputs.length; i += BATCH_SIZE) {
       const batch = db.batch();
       inputs.slice(i, i + BATCH_SIZE).forEach((input) => {
-        const exercise: Exercise = { ...input, id: uuidv4(), userId, createdAt: now, updatedAt: now };
+        const exercise: Exercise = { ...input, id: uuidv4(), userId, courseId, createdAt: now, updatedAt: now };
         batch.set(db.collection(COLLECTION).doc(exercise.id), exercise);
       });
       await batch.commit();
@@ -60,9 +79,9 @@ export const exerciseStore = {
     return true;
   },
 
-  async hasSeeded(userId: string): Promise<boolean> {
+  async hasSeededCourse(courseId: string): Promise<boolean> {
     const snap = await getDb().collection(COLLECTION)
-      .where("userId", "==", userId)
+      .where("courseId", "==", courseId)
       .where("isSeeded", "==", true)
       .limit(1)
       .get();

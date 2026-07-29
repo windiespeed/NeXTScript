@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { userSettings, getMergedLabels } from "@/lib/userSettings";
 import { courseStore } from "@/lib/courseStore";
+import { canAccessCourse } from "@/lib/access";
 import { fillLesson } from "@/lib/ai";
 import { DEFAULT_SECTION_LABELS } from "@/lib/sectionLabels";
 
@@ -20,8 +21,9 @@ export async function POST(req: Request) {
 
     const lesson = await req.json();
 
-    // Fetch course settings if this lesson belongs to a course
-    const course = lesson.courseId ? await courseStore.getById(lesson.courseId) : undefined;
+    // Fetch course settings if this lesson belongs to a course the caller can access
+    const rawCourse = lesson.courseId ? await courseStore.getById(lesson.courseId) : undefined;
+    const course = rawCourse && canAccessCourse(rawCourse, session.user.email) ? rawCourse : undefined;
 
     // Merge: defaults → user profile → course settings (course wins)
     const industry = (course?.settings?.industry || settings.industry) ?? "";

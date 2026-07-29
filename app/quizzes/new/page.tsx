@@ -162,27 +162,40 @@ function NewQuizPageInner() {
     }
   }
 
+  /** Creates the draft on first save, updates it in place on every subsequent save. */
+  async function saveDraft(): Promise<string> {
+    const payload = {
+      title: quizTitle.trim(),
+      lessonIds: resolvedLessonIds,
+      moduleId: selectedModuleId || undefined,
+      courseId: selectedCourseId || undefined,
+      questions,
+    };
+    const res = savedDraftId
+      ? await fetch(`/api/projects/${savedDraftId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        })
+      : await fetch("/api/quizzes", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to save quiz draft.");
+    const id: string = data.id ?? savedDraftId;
+    setSavedDraftId(id);
+    return id;
+  }
+
   async function handleSaveDraft() {
     if (!quizTitle.trim()) { setSaveError("Quiz title is required."); return; }
     if (questions.length === 0) { setSaveError("Add at least one question."); return; }
     setSaving(true);
     setSaveError("");
-    setSavedDraftId("");
     try {
-      const res = await fetch("/api/quizzes", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: quizTitle.trim(),
-          lessonIds: resolvedLessonIds,
-          moduleId: selectedModuleId || undefined,
-          courseId: selectedCourseId || undefined,
-          questions,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to save quiz draft.");
-      setSavedDraftId(data.id);
+      await saveDraft();
     } catch (err: any) {
       setSaveError(err.message);
     } finally {
@@ -196,30 +209,15 @@ function NewQuizPageInner() {
     setGenerating(true);
     setSaveError("");
     setGenerateError("");
-    let draftId = savedDraftId;
-    const isNewDraft = !draftId;
-    if (!draftId) {
-      try {
-        const saveRes = await fetch("/api/quizzes", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            title: quizTitle.trim(),
-            lessonIds: resolvedLessonIds,
-            moduleId: selectedModuleId || undefined,
-            courseId: selectedCourseId || undefined,
-            questions,
-          }),
-        });
-        const saveData = await saveRes.json();
-        if (!saveRes.ok) throw new Error(saveData.error || "Failed to save quiz draft.");
-        draftId = saveData.id;
-        setSavedDraftId(saveData.id);
-      } catch (err: any) {
-        setGenerateError(err.message);
-        setGenerating(false);
-        return;
-      }
+    const isNewDraft = !savedDraftId;
+    let draftId: string;
+    try {
+      // Always (re-)save first so the form is generated from the latest edits, not a stale draft.
+      draftId = await saveDraft();
+    } catch (err: any) {
+      setGenerateError(err.message);
+      setGenerating(false);
+      return;
     }
     try {
       const genRes = await fetch(`/api/generate/quiz/${draftId}`, { method: "POST" });

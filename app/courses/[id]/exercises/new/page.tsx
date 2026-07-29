@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import type { ExerciseDifficulty, ExerciseType, ExerciseTest } from "@/types/exercise";
 import type { Concept } from "@/types/concept";
@@ -15,9 +15,10 @@ const inputClass = "w-full rounded-lg px-3 py-1.5 text-xs focus:outline-none foc
 const inputStyle = { background: "var(--bg-card-hover)", color: "var(--text-primary)", border: "1px solid var(--border)" };
 const textareaClass = `${inputClass} resize-none font-mono`;
 
-export default function NewExercisePage() {
+export default function NewCourseExercisePage() {
   useSession({ required: true });
   const router = useRouter();
+  const { id: courseId } = useParams<{ id: string }>();
 
   const [concepts, setConcepts] = useState<Concept[]>([]);
   const [title, setTitle] = useState("");
@@ -25,15 +26,12 @@ export default function NewExercisePage() {
   const [concept, setConcept] = useState<string>("");
 
   useEffect(() => {
-    fetch("/api/concepts").then(r => r.json()).then(data => {
+    fetch(`/api/concepts?courseId=${courseId}`).then(r => r.json()).then(data => {
       const list: Concept[] = Array.isArray(data) ? data : [];
-      // Deduplicate by slug — same slug may appear in multiple classes
-      const seen = new Set<string>();
-      const deduped = list.filter(c => { if (seen.has(c.slug)) return false; seen.add(c.slug); return true; });
-      setConcepts(deduped);
-      if (deduped.length > 0) setConcept(deduped[0].slug);
+      setConcepts(list);
+      if (list.length > 0) setConcept(list[0].slug);
     });
-  }, []);
+  }, [courseId]);
   const [difficulty, setDifficulty] = useState<ExerciseDifficulty>("beginner");
   const [type, setType] = useState<ExerciseType>("exercise");
   const [order, setOrder] = useState(1);
@@ -76,10 +74,11 @@ export default function NewExercisePage() {
         hints: hints.filter(h => h.trim()),
         tests: tests.filter(t => t.description.trim() && t.code.trim()),
         isSeeded: false,
+        courseId,
       }),
     });
     if (res.ok) {
-      router.push("/exercises");
+      router.push(`/courses/${courseId}/exercises`);
     } else {
       const data = await res.json();
       setError(data.error || "Failed to save.");
@@ -91,7 +90,7 @@ export default function NewExercisePage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Link href="/exercises" className="text-sm hover:underline" style={{ color: "#0cc0df" }}>
+        <Link href={`/courses/${courseId}/exercises`} className="text-sm hover:underline" style={{ color: "#0cc0df" }}>
           ← Exercises
         </Link>
         <span style={{ color: "var(--border)" }}>/</span>
@@ -127,7 +126,7 @@ export default function NewExercisePage() {
               <label className="text-xs mb-1 block" style={{ color: "var(--text-muted)" }}>Concept</label>
               <select value={concept} onChange={e => setConcept(e.target.value)}
                 className={inputClass} style={inputStyle}>
-                {concepts.length === 0 && <option value="">No concepts — add them first</option>}
+                {concepts.length === 0 && <option value="">No concepts — add them in Course Settings first</option>}
                 {concepts.map(c => <option key={c.id} value={c.slug}>{c.label}</option>)}
               </select>
             </div>
@@ -233,7 +232,7 @@ export default function NewExercisePage() {
           style={{ background: "#0cc0df", color: "#0a0b13" }}>
           {saving ? "Saving…" : "Save Exercise"}
         </button>
-        <Link href="/exercises"
+        <Link href={`/courses/${courseId}/exercises`}
           className="rounded-full px-6 py-2.5 text-sm font-semibold transition hover:opacity-80"
           style={{ background: "var(--bg-card-hover)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}>
           Cancel
