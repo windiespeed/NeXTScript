@@ -61,6 +61,12 @@ const Icons = {
       <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
     </svg>
   ),
+  ingest: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 3v4M12 17v4M3 12h4M17 12h4"/>
+      <path d="M6.5 6.5l2.5 2.5M15 15l2.5 2.5M6.5 17.5L9 15M15 9l2.5-2.5"/>
+    </svg>
+  ),
   profile: (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="3"/>
@@ -73,6 +79,7 @@ const DEFAULT_NAV: NavItem[] = [
   { label: "Dashboard", href: "/",          icon: Icons.dashboard },
   { label: "Courses",   href: "/courses",   icon: Icons.courses   },
   { label: "Slides",    href: "/slides",    icon: Icons.slides    },
+  { label: "AI Ingest", href: "/ingest",    icon: Icons.ingest    },
   { label: "Quizzes",   href: "/quizzes",   icon: Icons.quizzes   },
   { label: "Schedule",  href: "/schedule",  icon: Icons.schedule  },
   { label: "Resources", href: "/resources", icon: Icons.resources },

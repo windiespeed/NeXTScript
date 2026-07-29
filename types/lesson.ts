@@ -1,4 +1,5 @@
 import type { FormQuestion } from "./form";
+import type { PresentationAST } from "./slideAst";
 
 export interface LessonResource {
   id: string;
@@ -52,6 +53,11 @@ export interface Lesson {
   concept?: string;               // Assigned concept from the course's concept list
   progressMode?: "sequential" | "locked" | "free";  // Per-lesson override (falls back to module setting)
   solutionRevealAttempts?: number | null;            // Per-lesson override (falls back to module setting)
+
+  // Gamma-style web presentation pipeline (components/slides/*) — independent of the Google
+  // Slides deck tracked via SavedProject; a lesson can have either, both, or neither.
+  presentationAST?: PresentationAST; // Component-tree structure generated/edited via /ingest
+  selectedTheme?: string;            // Active ThemeConfig id (see types/theme.ts) for the AST renderer
 }
 
 export type LessonInput = Omit<

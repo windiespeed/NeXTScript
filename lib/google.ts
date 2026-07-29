@@ -7,9 +7,19 @@
  */
 
 import { google } from "googleapis";
+import type { slides_v1 } from "googleapis";
 import type { Lesson } from "@/types/lesson";
 import type { FormQuestion } from "@/types/form";
 import { DEFAULT_SECTION_LABELS, type SectionLabels } from "@/lib/userSettings";
+import type {
+  PresentationAST,
+  SlideNode,
+  StandardTextSlide,
+  SplitColumnSlide,
+  CodeExplainerSlide,
+  CalloutCardSlide,
+  StepGridSlide,
+} from "@/types/slideAst";
 
 function getAuthClient(accessToken: string) {
   const auth = new google.auth.OAuth2();
@@ -358,6 +368,419 @@ export async function buildSlideDeck(lesson: Lesson, accessToken: string, templa
     await slides.presentations.batchUpdate({ presentationId: deckId, requestBody: { requests: titleRequests } });
   }
   await slides.presentations.batchUpdate({ presentationId: deckId, requestBody: { requests: contentRequests } });
+
+  return deckId;
+}
+
+// ─── AST-to-Slides Deck (Gamma-style ingestion pipeline) ────────────────────
+//
+// Renders a `PresentationAST` (see types/slideAst.ts) as a real Google Slides
+// deck. Every slide is a blank slide with manually-positioned shapes rather
+// than a named `predefinedLayout` (other than the initial title-slide reuse
+// below) — a copied user template's master may not define exotic layouts like
+// TITLE_AND_TWO_COLUMNS, so hand-positioned shapes are the only approach that
+// behaves the same whether or not a template was supplied.
+//
+// Assumes the standard 720×405pt (10in × 5.625in, 16:9) Slides page size —
+// the same assumption `buildSlideDeck`'s success-slide already makes above.
+
+type RgbColor = { red: number; green: number; blue: number };
+type SlideRequest = slides_v1.Schema$Request;
+
+const AST_PAGE_WIDTH = 720;
+const AST_PAGE_HEIGHT = 405;
+const AST_MARGIN = 40;
+const AST_CONTENT_WIDTH = AST_PAGE_WIDTH - AST_MARGIN * 2;
+
+const AST_ACCENT_CYAN:   RgbColor = { red: 0.047, green: 0.753, blue: 0.874 }; // #0cc0df
+const AST_ACCENT_ORANGE: RgbColor = { red: 1,     green: 0.549, blue: 0.290 }; // #ff8c4a
+const AST_ACCENT_PURPLE: RgbColor = { red: 0.388, green: 0.400, blue: 0.945 }; // #6366f1
+const AST_TEXT_PRIMARY:   RgbColor = { red: 0.051, green: 0.082, blue: 0.188 }; // #0d1530
+const AST_TEXT_SECONDARY: RgbColor = { red: 0.176, green: 0.231, blue: 0.369 }; // #2d3b5e
+const AST_CARD_BG:        RgbColor = { red: 0.937, green: 0.945, blue: 0.969 }; // #eef0f7
+const AST_CODE_PANEL_BG:  RgbColor = { red: 0.051, green: 0.067, blue: 0.090 }; // #0d1117
+const AST_CODE_LABEL:     RgbColor = { red: 0.6,   green: 0.62,  blue: 0.66 };
+const AST_WHITE:           RgbColor = { red: 1, green: 1, blue: 1 };
+const AST_WARNING_BG: RgbColor = { red: 1,     green: 0.937, blue: 0.898 }; // ~#fff0e6
+const AST_TIP_BG:     RgbColor = { red: 0.882, green: 0.976, blue: 0.988 }; // ~#e1f9fc
+const AST_NOTE_BG:    RgbColor = { red: 0.925, green: 0.925, blue: 0.996 }; // ~#ecebfe
+
+const AST_CALLOUT_VARIANTS: Record<CalloutCardSlide["variant"], { label: string; accent: RgbColor; bg: RgbColor }> = {
+  warning:            { label: "HEADS UP",         accent: AST_ACCENT_ORANGE, bg: AST_WARNING_BG },
+  tip:                { label: "PRO TIP",           accent: AST_ACCENT_CYAN,   bg: AST_TIP_BG },
+  "instructor-note":  { label: "INSTRUCTOR NOTE",  accent: AST_ACCENT_PURPLE, bg: AST_NOTE_BG },
+};
+
+function astCreateBlankSlideRequest(slideId: string, blankLayout: slides_v1.Schema$Page | null): SlideRequest {
+  return {
+    createSlide: {
+      objectId: slideId,
+      ...(blankLayout?.objectId ? { slideLayoutReference: { layoutId: blankLayout.objectId } } : {}),
+    },
+  };
+}
+
+function astShapeRequest(objectId: string, slideId: string, shapeType: string, x: number, y: number, w: number, h: number): SlideRequest {
+  return {
+    createShape: {
+      objectId,
+      shapeType,
+      elementProperties: {
+        pageObjectId: slideId,
+        size: { width: { magnitude: w, unit: "PT" }, height: { magnitude: h, unit: "PT" } },
+        transform: { scaleX: 1, scaleY: 1, translateX: x, translateY: y, unit: "PT" },
+      },
+    },
+  };
+}
+
+function astInsertText(objectId: string, text: string): SlideRequest {
+  return { insertText: { objectId, insertionIndex: 0, text } };
+}
+
+function astTextStyle(objectId: string, style: slides_v1.Schema$TextStyle, fields: string, range: slides_v1.Schema$Range = { type: "ALL" }): SlideRequest {
+  return { updateTextStyle: { objectId, textRange: range, style, fields } };
+}
+
+function astParagraphAlign(objectId: string, alignment: "START" | "CENTER" | "END", range: slides_v1.Schema$Range = { type: "ALL" }): SlideRequest {
+  return { updateParagraphStyle: { objectId, textRange: range, style: { alignment }, fields: "alignment" } };
+}
+
+function astBullets(objectId: string, range: slides_v1.Schema$Range = { type: "ALL" }): SlideRequest {
+  return { createParagraphBullets: { objectId, textRange: range, bulletPreset: "BULLET_DISC_CIRCLE_SQUARE" } };
+}
+
+function astShapeFill(objectId: string, rgbColor: RgbColor): SlideRequest {
+  return {
+    updateShapeProperties: {
+      objectId,
+      shapeProperties: { shapeBackgroundFill: { solidFill: { color: { rgbColor } } } },
+      fields: "shapeBackgroundFill.solidFill.color",
+    },
+  };
+}
+
+/** Title (+ optional subtitle) header shared by every slide type. Returns the y-coordinate content should start at. */
+function astTitleHeader(slideId: string, title: string, subtitle?: string): { requests: SlideRequest[]; contentStartY: number } {
+  const requests: SlideRequest[] = [];
+  const titleId = uid("t");
+  requests.push(
+    astShapeRequest(titleId, slideId, "TEXT_BOX", AST_MARGIN, 28, AST_CONTENT_WIDTH, 50),
+    astInsertText(titleId, title),
+    astTextStyle(titleId, { bold: true, fontSize: { magnitude: 22, unit: "PT" }, foregroundColor: { opaqueColor: { rgbColor: AST_TEXT_PRIMARY } } }, "bold,fontSize,foregroundColor"),
+  );
+
+  let y = 80;
+  if (subtitle) {
+    const subId = uid("st");
+    requests.push(
+      astShapeRequest(subId, slideId, "TEXT_BOX", AST_MARGIN, y, AST_CONTENT_WIDTH, 24),
+      astInsertText(subId, subtitle),
+      astTextStyle(subId, { italic: true, fontSize: { magnitude: 13, unit: "PT" }, foregroundColor: { opaqueColor: { rgbColor: AST_TEXT_SECONDARY } } }, "italic,fontSize,foregroundColor"),
+    );
+    y += 30;
+  }
+
+  return { requests, contentStartY: y + 6 };
+}
+
+function astStandardSlideRequests(slide: StandardTextSlide, blankLayout: slides_v1.Schema$Page | null): SlideRequest[] {
+  const slideId = uid("s");
+  const requests: SlideRequest[] = [astCreateBlankSlideRequest(slideId, blankLayout)];
+  const { requests: headerReqs, contentStartY } = astTitleHeader(slideId, slide.title, slide.subtitle);
+  requests.push(...headerReqs);
+
+  const paragraphText = slide.paragraphs.map(p => p.trim()).filter(Boolean).join("\n\n");
+  const bulletItems = (slide.bulletPoints ?? []).map(stripBullets).filter(Boolean);
+  const bulletsText = bulletItems.join("\n");
+
+  let fullText = paragraphText;
+  let bulletStart = -1;
+  if (bulletsText) {
+    if (paragraphText) {
+      bulletStart = paragraphText.length + 2; // length of the "\n\n" separator
+      fullText = `${paragraphText}\n\n${bulletsText}`;
+    } else {
+      bulletStart = 0;
+      fullText = bulletsText;
+    }
+  }
+
+  if (fullText) {
+    const bodyId = uid("b");
+    const bodyH = AST_PAGE_HEIGHT - contentStartY - AST_MARGIN;
+    requests.push(
+      astShapeRequest(bodyId, slideId, "TEXT_BOX", AST_MARGIN, contentStartY, AST_CONTENT_WIDTH, bodyH),
+      astInsertText(bodyId, fullText),
+      astTextStyle(bodyId, { fontSize: { magnitude: 13, unit: "PT" }, foregroundColor: { opaqueColor: { rgbColor: AST_TEXT_SECONDARY } } }, "fontSize,foregroundColor"),
+    );
+    if (bulletStart >= 0) {
+      requests.push(astBullets(bodyId, { type: "FIXED_RANGE", startIndex: bulletStart, endIndex: fullText.length }));
+    }
+  }
+
+  return requests;
+}
+
+function astSplitColumnSlideRequests(slide: SplitColumnSlide, blankLayout: slides_v1.Schema$Page | null): SlideRequest[] {
+  const slideId = uid("s");
+  const requests: SlideRequest[] = [astCreateBlankSlideRequest(slideId, blankLayout)];
+  const { requests: headerReqs, contentStartY } = astTitleHeader(slideId, slide.title, slide.subtitle);
+  requests.push(...headerReqs);
+
+  const gap = 20;
+  const colWidth = (AST_CONTENT_WIDTH - gap) / 2;
+  const colHeight = AST_PAGE_HEIGHT - contentStartY - AST_MARGIN;
+
+  function column(x: number, heading: string, content: string[], accent: RgbColor) {
+    const items = content.map(stripBullets).filter(Boolean);
+    const cardId = uid("c");
+    requests.push(
+      astShapeRequest(cardId, slideId, "ROUND_RECTANGLE", x, contentStartY, colWidth, colHeight),
+      astShapeFill(cardId, AST_CARD_BG),
+    );
+    const headingLine = heading.toUpperCase();
+    const text = items.length > 0 ? `${headingLine}\n${items.join("\n")}` : headingLine;
+    requests.push(
+      astInsertText(cardId, text),
+      astTextStyle(cardId, { bold: true, fontSize: { magnitude: 11, unit: "PT" }, foregroundColor: { opaqueColor: { rgbColor: accent } } }, "bold,fontSize,foregroundColor", { type: "FIXED_RANGE", startIndex: 0, endIndex: headingLine.length }),
+    );
+    if (items.length > 0) {
+      requests.push(
+        astTextStyle(cardId, { fontSize: { magnitude: 12, unit: "PT" }, foregroundColor: { opaqueColor: { rgbColor: AST_TEXT_SECONDARY } } }, "fontSize,foregroundColor", { type: "FIXED_RANGE", startIndex: headingLine.length + 1, endIndex: text.length }),
+        astBullets(cardId, { type: "FIXED_RANGE", startIndex: headingLine.length + 1, endIndex: text.length }),
+      );
+    }
+  }
+
+  column(AST_MARGIN, slide.leftColumn.heading, slide.leftColumn.content, AST_ACCENT_CYAN);
+  column(AST_MARGIN + colWidth + gap, slide.rightColumn.heading, slide.rightColumn.content, AST_ACCENT_ORANGE);
+
+  return requests;
+}
+
+function astCodeExplainerSlideRequests(slide: CodeExplainerSlide, blankLayout: slides_v1.Schema$Page | null): SlideRequest[] {
+  const slideId = uid("s");
+  const requests: SlideRequest[] = [astCreateBlankSlideRequest(slideId, blankLayout)];
+  const { requests: headerReqs, contentStartY } = astTitleHeader(slideId, slide.title, slide.subtitle);
+  requests.push(...headerReqs);
+
+  const gap = 20;
+  const colWidth = (AST_CONTENT_WIDTH - gap) / 2;
+  const colHeight = AST_PAGE_HEIGHT - contentStartY - AST_MARGIN;
+
+  // Code panel — dark fill + monospace text, mirroring the React CodeExplainerSlide's code panel.
+  const codeId = uid("code");
+  const langLabel = slide.language.toUpperCase();
+  const codeText = `${langLabel}\n${slide.codeSnippet}`;
+  requests.push(
+    astShapeRequest(codeId, slideId, "TEXT_BOX", AST_MARGIN, contentStartY, colWidth, colHeight),
+    astShapeFill(codeId, AST_CODE_PANEL_BG),
+    astInsertText(codeId, codeText),
+    astTextStyle(codeId, { fontFamily: "Courier New", fontSize: { magnitude: 11, unit: "PT" }, foregroundColor: { opaqueColor: { rgbColor: AST_WHITE } } }, "fontFamily,fontSize,foregroundColor"),
+    astTextStyle(codeId, { bold: true, foregroundColor: { opaqueColor: { rgbColor: AST_CODE_LABEL } } }, "bold,foregroundColor", { type: "FIXED_RANGE", startIndex: 0, endIndex: langLabel.length }),
+  );
+
+  // Explanation column
+  const explId = uid("expl");
+  const explHeading = "EXPLANATION";
+  const points = slide.explanationPoints.map(stripBullets).filter(Boolean);
+  const explText = points.length > 0 ? `${explHeading}\n${points.join("\n")}` : explHeading;
+  requests.push(
+    astShapeRequest(explId, slideId, "TEXT_BOX", AST_MARGIN + colWidth + gap, contentStartY, colWidth, colHeight),
+    astInsertText(explId, explText),
+    astTextStyle(explId, { bold: true, fontSize: { magnitude: 11, unit: "PT" }, foregroundColor: { opaqueColor: { rgbColor: AST_ACCENT_CYAN } } }, "bold,fontSize,foregroundColor", { type: "FIXED_RANGE", startIndex: 0, endIndex: explHeading.length }),
+  );
+  if (points.length > 0) {
+    requests.push(
+      astTextStyle(explId, { fontSize: { magnitude: 12, unit: "PT" }, foregroundColor: { opaqueColor: { rgbColor: AST_TEXT_SECONDARY } } }, "fontSize,foregroundColor", { type: "FIXED_RANGE", startIndex: explHeading.length + 1, endIndex: explText.length }),
+      astBullets(explId, { type: "FIXED_RANGE", startIndex: explHeading.length + 1, endIndex: explText.length }),
+    );
+  }
+
+  return requests;
+}
+
+function astCalloutSlideRequests(slide: CalloutCardSlide, blankLayout: slides_v1.Schema$Page | null): SlideRequest[] {
+  const slideId = uid("s");
+  const requests: SlideRequest[] = [astCreateBlankSlideRequest(slideId, blankLayout)];
+  const config = AST_CALLOUT_VARIANTS[slide.variant];
+
+  const panelX = 80, panelY = 55, panelW = AST_PAGE_WIDTH - 160, panelH = AST_PAGE_HEIGHT - 110;
+  const panelId = uid("panel");
+  requests.push(
+    astShapeRequest(panelId, slideId, "ROUND_RECTANGLE", panelX, panelY, panelW, panelH),
+    astShapeFill(panelId, config.bg),
+  );
+
+  let y = panelY + 26;
+  const labelId = uid("label");
+  requests.push(
+    astShapeRequest(labelId, slideId, "TEXT_BOX", panelX, y, panelW, 20),
+    astInsertText(labelId, config.label),
+    astTextStyle(labelId, { bold: true, fontSize: { magnitude: 11, unit: "PT" }, foregroundColor: { opaqueColor: { rgbColor: config.accent } } }, "bold,fontSize,foregroundColor"),
+    astParagraphAlign(labelId, "CENTER"),
+  );
+  y += 30;
+
+  const titleId = uid("title");
+  requests.push(
+    astShapeRequest(titleId, slideId, "TEXT_BOX", panelX, y, panelW, 40),
+    astInsertText(titleId, slide.title),
+    astTextStyle(titleId, { bold: true, fontSize: { magnitude: 22, unit: "PT" }, foregroundColor: { opaqueColor: { rgbColor: AST_TEXT_PRIMARY } } }, "bold,fontSize,foregroundColor"),
+    astParagraphAlign(titleId, "CENTER"),
+  );
+  y += 48;
+
+  if (slide.subtitle) {
+    const subId = uid("sub");
+    requests.push(
+      astShapeRequest(subId, slideId, "TEXT_BOX", panelX, y, panelW, 24),
+      astInsertText(subId, slide.subtitle),
+      astTextStyle(subId, { italic: true, fontSize: { magnitude: 13, unit: "PT" }, foregroundColor: { opaqueColor: { rgbColor: AST_TEXT_SECONDARY } } }, "italic,fontSize,foregroundColor"),
+      astParagraphAlign(subId, "CENTER"),
+    );
+    y += 30;
+  }
+
+  const contentId = uid("content");
+  const contentH = Math.max(panelY + panelH - y - 20, 40);
+  requests.push(
+    astShapeRequest(contentId, slideId, "TEXT_BOX", panelX + 30, y, panelW - 60, contentH),
+    astInsertText(contentId, slide.content),
+    astTextStyle(contentId, { fontSize: { magnitude: 14, unit: "PT" }, foregroundColor: { opaqueColor: { rgbColor: AST_TEXT_PRIMARY } } }, "fontSize,foregroundColor"),
+    astParagraphAlign(contentId, "CENTER"),
+  );
+
+  return requests;
+}
+
+function astStepGridSlideRequests(slide: StepGridSlide, blankLayout: slides_v1.Schema$Page | null): SlideRequest[] {
+  const slideId = uid("s");
+  const requests: SlideRequest[] = [astCreateBlankSlideRequest(slideId, blankLayout)];
+  const { requests: headerReqs, contentStartY } = astTitleHeader(slideId, slide.title, slide.subtitle);
+  requests.push(...headerReqs);
+
+  const steps = [...slide.steps].sort((a, b) => a.stepNumber - b.stepNumber);
+  if (steps.length === 0) return requests;
+
+  const cols = Math.min(3, steps.length);
+  const rows = Math.ceil(steps.length / cols);
+  const gap = 16;
+  const cardW = (AST_CONTENT_WIDTH - gap * (cols - 1)) / cols;
+  const availableH = AST_PAGE_HEIGHT - contentStartY - AST_MARGIN;
+  const cardH = (availableH - gap * (rows - 1)) / rows;
+
+  steps.forEach((step, i) => {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    const x = AST_MARGIN + col * (cardW + gap);
+    const y = contentStartY + row * (cardH + gap);
+
+    const cardId = uid("card");
+    const heading = `${step.stepNumber}. ${step.title}`;
+    const text = `${heading}\n${step.description}`;
+    requests.push(
+      astShapeRequest(cardId, slideId, "ROUND_RECTANGLE", x, y, cardW, cardH),
+      astShapeFill(cardId, AST_CARD_BG),
+      astInsertText(cardId, text),
+      astTextStyle(cardId, { bold: true, fontSize: { magnitude: 12, unit: "PT" }, foregroundColor: { opaqueColor: { rgbColor: AST_TEXT_PRIMARY } } }, "bold,fontSize,foregroundColor", { type: "FIXED_RANGE", startIndex: 0, endIndex: heading.length }),
+      astTextStyle(cardId, { fontSize: { magnitude: 11, unit: "PT" }, foregroundColor: { opaqueColor: { rgbColor: AST_TEXT_SECONDARY } } }, "fontSize,foregroundColor", { type: "FIXED_RANGE", startIndex: heading.length + 1, endIndex: text.length }),
+    );
+  });
+
+  return requests;
+}
+
+/** Routes a single AST node to its request-builder — mirrors the exhaustive switch in components/slides/SlideRenderer.tsx. */
+function astSlideRequests(slide: SlideNode, blankLayout: slides_v1.Schema$Page | null): SlideRequest[] {
+  switch (slide.type) {
+    case "standard": return astStandardSlideRequests(slide, blankLayout);
+    case "split-column": return astSplitColumnSlideRequests(slide, blankLayout);
+    case "code-explainer": return astCodeExplainerSlideRequests(slide, blankLayout);
+    case "callout": return astCalloutSlideRequests(slide, blankLayout);
+    case "step-grid": return astStepGridSlideRequests(slide, blankLayout);
+    default: {
+      const _exhaustive: never = slide;
+      return _exhaustive;
+    }
+  }
+}
+
+/**
+ * Renders a `PresentationAST` as a real Google Slides presentation and returns the new file's ID.
+ * Mirrors `buildSlideDeck`'s copy-template-or-create-blank + title-slide-reuse structure above.
+ */
+export async function buildSlideDeckFromAst(ast: PresentationAST, accessToken: string, templateId?: string): Promise<string> {
+  _idSeq = 0; // reset counter for each deck build
+  const drive  = google.drive({ version: "v3", auth: getAuthClient(accessToken) });
+  const slides = google.slides({ version: "v1", auth: getAuthClient(accessToken) });
+
+  // 1. Copy template if provided, otherwise create a fresh blank presentation
+  let deckId: string;
+  if (templateId) {
+    const copy = await drive.files.copy({
+      fileId: templateId,
+      requestBody: { name: `Deck: ${ast.lessonTitle}` },
+      fields: "id",
+    });
+    deckId = copy.data.id!;
+  } else {
+    const created = await slides.presentations.create({
+      requestBody: { title: `Deck: ${ast.lessonTitle}` },
+    });
+    deckId = created.data.presentationId!;
+  }
+
+  // 2. Fetch the presentation to read existing slides/masters
+  const pres = await slides.presentations.get({ presentationId: deckId });
+  // `layouts` isn't modeled on Schema$Page even though that's where the API actually nests it
+  // under a master — same `as any` traversal buildSlideDeck's success-slide lookup uses above.
+  const masterLayouts = ((pres.data.masters || [])[0] as any)?.layouts || [];
+  const blankLayout: slides_v1.Schema$Page | null =
+    masterLayouts.find((l: any) => l.layoutProperties?.name?.toLowerCase().includes("blank"))
+    ?? masterLayouts[masterLayouts.length - 1]
+    ?? null;
+  const existingSlides = pres.data.slides || [];
+
+  // 3. If a template was copied, reuse its first slide as the title slide (same placeholder
+  // detection as buildSlideDeck) and drop any other pre-existing slides. A fresh blank
+  // presentation's single default slide is dropped outright — the AST supplies its own opener.
+  const titleRequests: SlideRequest[] = [];
+  let slidesToDelete: string[];
+  if (templateId && existingSlides.length > 0) {
+    const titleSlide = existingSlides[0];
+    for (const el of titleSlide.pageElements || []) {
+      const placeholderType = el.shape?.placeholder?.type ?? undefined;
+      const text = el.shape?.text?.textElements?.map((t) => t.textRun?.content || "").join("").toLowerCase() ?? "";
+      const hasContent = text.length > 0;
+      if (placeholderType === "CENTERED_TITLE" || placeholderType === "TITLE") {
+        titleRequests.push(...replaceText(el.objectId!, ast.lessonTitle, hasContent));
+      } else if (placeholderType === "SUBTITLE") {
+        titleRequests.push(...replaceText(el.objectId!, ast.targetAudience, hasContent));
+      }
+    }
+    slidesToDelete = existingSlides.slice(1).map(s => s.objectId).filter((id): id is string => !!id);
+  } else {
+    slidesToDelete = existingSlides.map(s => s.objectId).filter((id): id is string => !!id);
+  }
+
+  // 4. Build every content slide from the AST
+  const contentRequests: SlideRequest[] = [];
+  for (const slide of ast.slides) {
+    contentRequests.push(...astSlideRequests(slide, blankLayout));
+  }
+
+  // ── Batch updates ────────────────────────────────────────────────────────
+  if (titleRequests.length > 0) {
+    await slides.presentations.batchUpdate({ presentationId: deckId, requestBody: { requests: titleRequests } });
+  }
+  // New slides are queued before the deleteObject requests so the presentation is never left
+  // with zero slides at any point while this batch is applied (Slides API forbids that state).
+  await slides.presentations.batchUpdate({
+    presentationId: deckId,
+    requestBody: { requests: [...contentRequests, ...slidesToDelete.map(objectId => ({ deleteObject: { objectId } }))] },
+  });
 
   return deckId;
 }

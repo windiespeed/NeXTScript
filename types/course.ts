@@ -7,6 +7,7 @@ export interface CourseSettings {
   industry: string;               // e.g. "Healthcare", "Coding", "Business"
   subject: string;                // e.g. "JavaScript", "Nursing 101"
   studentLevel: "beginner" | "intermediate" | "advanced" | "";
+  requiredSlideTopics: string;    // Mandatory AI-ingest slide topics/headings for this course, one per line
   sectionLabels: {
     lessonOverview: string;
     learningTargets: string;
@@ -28,6 +29,7 @@ export const DEFAULT_COURSE_SETTINGS: CourseSettings = {
   industry: "",
   subject: "",
   studentLevel: "",
+  requiredSlideTopics: "",
   sectionLabels: {
     lessonOverview: "Lesson Overview",
     learningTargets: "Learning Targets",
