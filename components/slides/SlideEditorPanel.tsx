@@ -37,7 +37,7 @@ function blankSlide(type: SlideType): SlideNode {
         rightColumn: { heading: "Right", content: [""] },
       };
     case "code-explainer":
-      return { id, type: "code-explainer", title: "New Slide", language: "javascript", codeSnippet: "", explanationPoints: [""] };
+      return { id, type: "code-explainer", title: "New Slide", language: "", codeSnippet: "", explanationPoints: [""] };
     case "callout":
       return { id, type: "callout", title: "New Slide", variant: "tip", content: "" };
     case "step-grid":
@@ -165,7 +165,12 @@ function CodeExplainerEditor({ slide, onChange }: { slide: CodeExplainerSlideNod
       <TitleSubtitleFields slide={slide} onChange={patch => onChange({ ...slide, ...patch })} />
       <div>
         <label className={labelClass} style={labelStyle}>Language</label>
-        <input value={slide.language} onChange={e => onChange({ ...slide, language: e.target.value })} className={inputClass} style={inputStyle} />
+        <input
+          value={slide.language}
+          onChange={e => onChange({ ...slide, language: e.target.value })}
+          placeholder="e.g. python, javascript, java, sql"
+          className={inputClass} style={inputStyle}
+        />
       </div>
       <div>
         <label className={labelClass} style={labelStyle}>Code Snippet</label>

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Lesson, LessonInput } from "@/types/lesson";
 import { DEFAULT_SECTION_LABELS, type SectionLabels } from "@/lib/sectionLabels";
+import { STUDENT_LEVEL_UI_HINTS } from "@/lib/studentLevel";
 
 const cardClass = "rounded-3xl p-5 space-y-4";
 const cardStyle = { background: "var(--bg-card)", border: "1px solid var(--border)" };
@@ -280,51 +281,6 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
         </div>
       )}
 
-      {/* ── AI Fill ──────────────────────────────────────────────────── */}
-      {hasAiKey && (
-        <div className={`relative rounded-3xl px-5 py-4 transition-all ${aiFilling ? "border-[#0cc0df]" : ""}`} style={{ background: aiFilling ? "var(--accent-bg)" : "var(--bg-card)", border: aiFilling ? "1px solid #0cc0df" : "1px solid var(--border)" }}>
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="text-sm font-semibold flex items-center gap-2" style={{ color: "var(--text-primary)" }}>
-                AI Fill
-                {aiFilledFields.size > 0 && !aiFilling && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-[#0cc0df] px-2 py-0.5 text-[10px] font-bold text-[#0a0b13] shadow-sm">
-                    ✦ {aiFilledFields.size} field{aiFilledFields.size !== 1 ? "s" : ""} AI-generated
-                  </span>
-                )}
-              </p>
-              <p className="text-xs mt-0.5" style={{ color: "var(--text-secondary)" }}>
-                {aiFilling
-                  ? "Generating content — this may take a few seconds…"
-                  : "Fills only empty fields. Existing content is never overwritten."}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={handleAiFill}
-              disabled={aiFilling || saving || !form.title.trim()}
-              title={!form.title.trim() ? "Enter a lesson title before using AI Fill" : undefined}
-              className="rounded-md bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-white shadow hover:opacity-90 disabled:opacity-50 transition whitespace-nowrap"
-            >
-              {aiFilling ? (
-                <span className="flex items-center gap-2">
-                  <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
-                  </svg>
-                  Generating…
-                </span>
-              ) : "AI Fill"}
-            </button>
-          </div>
-          {aiFilling && (
-            <div className="mt-2 h-1 w-full rounded-full bg-[#0cc0df]/20 overflow-hidden">
-              <div className="h-full bg-[#0cc0df] rounded-full animate-pulse" style={{ width: "60%" }} />
-            </div>
-          )}
-        </div>
-      )}
-
       {/* ── Lesson Info ──────────────────────────────────────────────── */}
       <div className={cardClass} style={cardStyle}>
         <div className="flex items-center justify-between">
@@ -449,13 +405,56 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
               ))}
             </div>
             <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
-              {(form.studentLevel ?? "beginner") === "beginner" && "No coding experience — simple language, extra explanation, no assumed knowledge."}
-              {form.studentLevel === "intermediate" && "Some coding experience — moderate complexity, references prior knowledge."}
-              {form.studentLevel === "advanced" && "Strong coding background — technical depth, industry terminology."}
+              {STUDENT_LEVEL_UI_HINTS[form.studentLevel ?? "beginner"]}
             </p>
           </div>
         )}
       </div>
+
+      {/* ── AI Fill ──────────────────────────────────────────────────── */}
+      {hasAiKey && (
+        <div className={`relative rounded-3xl px-5 py-4 transition-all ${aiFilling ? "border-[#0cc0df]" : ""}`} style={{ background: aiFilling ? "var(--accent-bg)" : "var(--bg-card)", border: aiFilling ? "1px solid #0cc0df" : "1px solid var(--border)" }}>
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold flex items-center gap-2" style={{ color: "var(--text-primary)" }}>
+                AI Fill
+                {aiFilledFields.size > 0 && !aiFilling && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-[#0cc0df] px-2 py-0.5 text-[10px] font-bold text-[#0a0b13] shadow-sm">
+                    ✦ {aiFilledFields.size} field{aiFilledFields.size !== 1 ? "s" : ""} AI-generated
+                  </span>
+                )}
+              </p>
+              <p className="text-xs mt-0.5" style={{ color: "var(--text-secondary)" }}>
+                {aiFilling
+                  ? "Generating content — this may take a few seconds…"
+                  : "Fills only empty fields. Existing content is never overwritten."}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleAiFill}
+              disabled={aiFilling || saving || !form.title.trim()}
+              title={!form.title.trim() ? "Enter a lesson title before using AI Fill" : undefined}
+              className="rounded-md bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-white shadow hover:opacity-90 disabled:opacity-50 transition whitespace-nowrap"
+            >
+              {aiFilling ? (
+                <span className="flex items-center gap-2">
+                  <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                  </svg>
+                  Generating…
+                </span>
+              ) : "AI Fill"}
+            </button>
+          </div>
+          {aiFilling && (
+            <div className="mt-2 h-1 w-full rounded-full bg-[#0cc0df]/20 overflow-hidden">
+              <div className="h-full bg-[#0cc0df] rounded-full animate-pulse" style={{ width: "60%" }} />
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── Content Overview ─────────────────────────────────────────── */}
       <div className={cardClass} style={cardStyle}>

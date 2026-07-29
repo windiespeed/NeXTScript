@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { v4 as uuidv4 } from "uuid";
 import type { PresentationAST, SlideNode, SlideType } from "@/types/slideAst";
+import { STUDENT_LEVEL_GUIDANCE, type StudentLevel } from "@/lib/studentLevel";
 
 /**
  * System prompt for the ingestion pipeline. Kept as its own exported constant
@@ -11,7 +12,7 @@ export const CURRICULUM_ARCHITECT_SYSTEM_PROMPT = `You are a Senior Curriculum A
 
 Core Objectives:
 1. Semantic Chunking: Logically break the input text down into logical instructional sections.
-2. Instructional Expansion: Do not leave points sparse. If a user writes a brief note (e.g., "talk about vite proxies"), expand it by adding:
+2. Instructional Expansion: Do not leave points sparse. If a user writes a brief note (e.g., "talk about error handling"), expand it by adding:
    - A concise technical definition.
    - A real-world use case or "why it matters".
    - An "Instructor Note" or pro-tip to help the educator deliver the concept effectively.
@@ -35,12 +36,21 @@ const VALID_SLIDE_TYPES: SlideType[] = [
 ];
 
 interface IngestionOptions {
-  /** Known audience if the caller already has it (e.g. from course settings). Otherwise the model infers it. */
+  /** Known audience if the caller already has it (e.g. a grade level or prior-course context). Otherwise the model infers it. */
   targetAudience?: string;
   /** Soft guidance on how many slides to produce; the model may deviate slightly to fit the content. */
   slideCount?: number;
   /** Course-level mandatory headings/topics (e.g. course.settings.requiredSlideTopics) — each gets its own slide, never omitted. */
   requiredTopics?: string[];
+  /** Same three-tier level as Lesson.studentLevel — resolved into full guidance text, mirroring how fillLesson uses it in lib/ai.ts. */
+  studentLevel?: StudentLevel;
+  /** Known lesson title/subtitle from Lesson Info — given as background context, not copied verbatim (the notes may warrant a different in-deck title). */
+  lessonTitle?: string;
+  lessonSubtitle?: string;
+  /** Comma-separated topics from Lesson Info — same context role "Topics" plays in fillLesson's prompt. */
+  topics?: string;
+  /** Reference URLs from Lesson Info (one per line) — same context role "Sources" plays in fillLesson's prompt. */
+  sources?: string;
 }
 
 // Restating the schema as a compact JSON-shape reference (rather than pasting the .ts file)
@@ -70,23 +80,37 @@ const SCHEMA_REFERENCE = `{
 function buildUserPrompt(rawText: string, opts: IngestionOptions): string {
   const audienceLine = opts.targetAudience
     ? `The target audience is already known: ${opts.targetAudience}. Use this exact value for "targetAudience" unless the raw notes clearly contradict it.`
-    : `Infer "targetAudience" (e.g. "complete beginners", "intermediate developers") from the raw notes.`;
+    : `Infer "targetAudience" from the raw notes and the student level guidance below.`;
   const countLine = opts.slideCount
     ? `Aim for approximately ${opts.slideCount} slides — prioritize instructional clarity over hitting this exactly.`
     : `Choose however many slides the content naturally warrants — don't pad or compress just to hit a round number.`;
   const requiredTopicsLine = opts.requiredTopics && opts.requiredTopics.length > 0
     ? `\nThis course REQUIRES a dedicated slide for each of the following topics — do not omit any of them, even if the raw notes don't mention them directly (use your own instructional judgment to cover a required topic the notes are silent on):\n${opts.requiredTopics.map(t => `- ${t}`).join("\n")}\n`
     : "";
+  const levelLine = opts.studentLevel
+    ? `\nStudent Level Guidance: ${STUDENT_LEVEL_GUIDANCE[opts.studentLevel]}\n`
+    : "";
+
+  // Same context role Title/Subtitle/Topics/Sources play in fillLesson's prompt (lib/ai.ts) —
+  // background for framing, not raw material to transcribe onto slides.
+  const contextLines: string[] = [];
+  if (opts.lessonTitle) contextLines.push(`Lesson Title: ${opts.lessonTitle}`);
+  if (opts.lessonSubtitle) contextLines.push(`Lesson Subtitle: ${opts.lessonSubtitle}`);
+  if (opts.topics) contextLines.push(`Topics: ${opts.topics}`);
+  if (opts.sources) contextLines.push(`Reference Sources:\n${opts.sources}`);
+  const lessonContextBlock = contextLines.length > 0
+    ? `\n--- LESSON CONTEXT (background/framing only — the raw content below is still the primary source of slide material) ---\n${contextLines.join("\n")}\n--- END LESSON CONTEXT ---\n`
+    : "";
 
   return `Transform the following raw content into a PresentationAST.
-
+${lessonContextBlock}
 --- RAW CONTENT ---
 ${rawText}
 --- END RAW CONTENT ---
 
 ${audienceLine}
 ${countLine}
-${requiredTopicsLine}Give every slide a unique "id" (a short unique string is fine — it does not need to be a real UUID).
+${levelLine}${requiredTopicsLine}Give every slide a unique "id" (a short unique string is fine — it does not need to be a real UUID).
 
 Respond with ONLY the JSON object — no markdown code fences, no commentary before or after. It must match this exact shape (the "type" field determines which of the sibling keys are present on that slide):
 

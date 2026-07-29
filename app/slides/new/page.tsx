@@ -63,10 +63,13 @@ function NewSlidesInner() {
   }, [selectedCourseId, courses, settingsLoaded]);
 
   async function postLesson(data: LessonInput): Promise<string> {
+    if (!selectedCourseId) {
+      throw new Error("Select a course before saving this lesson — slides created without one are easy to lose track of.");
+    }
     const res = await fetch("/api/lessons", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...data, courseId: selectedCourseId || undefined }),
+      body: JSON.stringify({ ...data, courseId: selectedCourseId }),
     });
     if (!res.ok) {
       const err = await res.json();
@@ -126,14 +129,17 @@ function NewSlidesInner() {
         <p className={sectionLabel}>Assignment</p>
 
         <div>
-          <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Course</label>
+          <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
+            Course <span className="text-red-500">*</span>
+          </label>
           <select
+            required
             value={selectedCourseId}
             onChange={e => setSelectedCourseId(e.target.value)}
             className={inputClass}
             style={inputStyle}
           >
-            <option value="">— No course —</option>
+            <option value="">— Select a course —</option>
             {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
           </select>
         </div>

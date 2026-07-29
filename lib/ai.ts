@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import type { LessonInput } from "@/types/lesson";
 import type { FormQuestion } from "@/types/form";
 import { DEFAULT_SECTION_LABELS, type SectionLabels } from "@/lib/userSettings";
+import { STUDENT_LEVEL_GUIDANCE } from "@/lib/studentLevel";
 
 interface CurriculumContext {
   industry?: string;
@@ -26,12 +27,6 @@ type AiFillResult = Pick<
   slides: { title: string; body: string }[];
 };
 
-const LEVEL_INSTRUCTIONS: Record<string, string> = {
-  beginner: "The target audience is complete beginners with NO prior coding experience (typically high school students). Use plain, simple language. Avoid jargon — if you must use a technical term, define it immediately. Break every step down to the smallest possible action. Assume the student has never opened a code editor before.",
-  intermediate: "The target audience has some coding experience (completed at least one introductory course). Use standard technical language, reference concepts they likely know (variables, functions, loops), and keep explanations moderately detailed.",
-  advanced: "The target audience is experienced developers. Use precise technical terminology, assume familiarity with common tools and patterns, and focus on depth, edge cases, and industry best practices.",
-};
-
 export async function fillLesson(
   apiKey: string,
   lesson: Partial<LessonInput>,
@@ -41,7 +36,7 @@ export async function fillLesson(
   const client = new Anthropic({ apiKey });
 
   const level = lesson.studentLevel ?? "beginner";
-  const levelInstruction = LEVEL_INSTRUCTIONS[level] ?? LEVEL_INSTRUCTIONS.beginner;
+  const levelInstruction = STUDENT_LEVEL_GUIDANCE[level] ?? STUDENT_LEVEL_GUIDANCE.beginner;
   const labels = ctx.labels ?? DEFAULT_SECTION_LABELS;
   const industryLine = ctx.industry ? `Industry: ${ctx.industry}` : "";
   const subjectLine = ctx.subject ? `Subject Area: ${ctx.subject}` : "";
@@ -119,7 +114,7 @@ export async function generateQuizQuestions(
   const numQuestions = mcCount + saCount;
 
   const level = lesson.studentLevel ?? "beginner";
-  const levelInstruction = LEVEL_INSTRUCTIONS[level] ?? LEVEL_INSTRUCTIONS.beginner;
+  const levelInstruction = STUDENT_LEVEL_GUIDANCE[level] ?? STUDENT_LEVEL_GUIDANCE.beginner;
   const programDesc = [ctx.industry, ctx.subject].filter(Boolean).join(" — ") || "an educational program";
 
   // Build content block — works with just topics if full lesson content isn't available

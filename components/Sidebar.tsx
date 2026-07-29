@@ -79,7 +79,7 @@ const DEFAULT_NAV: NavItem[] = [
   { label: "Dashboard", href: "/",          icon: Icons.dashboard },
   { label: "Courses",   href: "/courses",   icon: Icons.courses   },
   { label: "Slides",    href: "/slides",    icon: Icons.slides    },
-  { label: "AI Ingest", href: "/ingest",    icon: Icons.ingest    },
+  { label: "Notes to Slides", href: "/ingest", icon: Icons.ingest },
   { label: "Quizzes",   href: "/quizzes",   icon: Icons.quizzes   },
   { label: "Schedule",  href: "/schedule",  icon: Icons.schedule  },
   { label: "Resources", href: "/resources", icon: Icons.resources },

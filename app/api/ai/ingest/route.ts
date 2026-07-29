@@ -2,8 +2,11 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { userSettings } from "@/lib/userSettings";
 import { ingestRawContent } from "@/lib/ingestionService";
+import type { StudentLevel } from "@/lib/studentLevel";
 
 export const dynamic = "force-dynamic";
+
+const VALID_STUDENT_LEVELS: StudentLevel[] = ["beginner", "intermediate", "advanced"];
 
 export async function POST(req: Request) {
   try {
@@ -23,8 +26,15 @@ export async function POST(req: Request) {
     const requiredTopics = Array.isArray(body.requiredTopics)
       ? body.requiredTopics.filter((t: unknown): t is string => typeof t === "string" && t.trim().length > 0)
       : undefined;
+    const studentLevel = VALID_STUDENT_LEVELS.includes(body.studentLevel) ? (body.studentLevel as StudentLevel) : undefined;
+    const lessonTitle = typeof body.lessonTitle === "string" && body.lessonTitle.trim() ? body.lessonTitle.trim() : undefined;
+    const lessonSubtitle = typeof body.lessonSubtitle === "string" && body.lessonSubtitle.trim() ? body.lessonSubtitle.trim() : undefined;
+    const topics = typeof body.topics === "string" && body.topics.trim() ? body.topics.trim() : undefined;
+    const sources = typeof body.sources === "string" && body.sources.trim() ? body.sources.trim() : undefined;
 
-    const ast = await ingestRawContent(apiKey, rawText, { targetAudience, slideCount, requiredTopics });
+    const ast = await ingestRawContent(apiKey, rawText, {
+      targetAudience, slideCount, requiredTopics, studentLevel, lessonTitle, lessonSubtitle, topics, sources,
+    });
     return NextResponse.json(ast);
   } catch (err: any) {
     // Surface Anthropic billing/auth errors clearly

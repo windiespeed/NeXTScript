@@ -7,6 +7,7 @@ import SlideRenderer from "@/components/slides/SlideRenderer";
 import SlideEditorPanel from "@/components/slides/SlideEditorPanel";
 import ThemePicker from "@/components/ThemePicker";
 import { DEFAULT_THEME_ID, getTheme } from "@/lib/themes";
+import { STUDENT_LEVEL_UI_HINTS, type StudentLevel } from "@/lib/studentLevel";
 import type { PresentationAST } from "@/types/slideAst";
 import type { Course, CourseModule } from "@/types/course";
 import type { LessonInput } from "@/types/lesson";
@@ -24,7 +25,7 @@ const SPINNER = (
   </svg>
 );
 
-// Every other required LessonInput field defaults quietly — AI Ingest only surfaces the
+// Every other required LessonInput field defaults quietly — Notes to Slides only surfaces the
 // same "Lesson Info" fields LessonForm does, matching its own EMPTY defaults for the rest.
 const EMPTY_LESSON_DEFAULTS: LessonInput = {
   title: "", subtitle: "", topics: "", deadline: "", tag: "", notes: "",
@@ -34,14 +35,7 @@ const EMPTY_LESSON_DEFAULTS: LessonInput = {
   studentLevel: "beginner",
 };
 
-type StudentLevel = "beginner" | "intermediate" | "advanced";
 type LessonType = NonNullable<LessonInput["lessonType"]>;
-
-const STUDENT_LEVEL_HINTS: Record<StudentLevel, string> = {
-  beginner: "No coding experience — simple language, extra explanation, no assumed knowledge.",
-  intermediate: "Some coding experience — moderate complexity, references prior knowledge.",
-  advanced: "Strong coding background — technical depth, industry terminology.",
-};
 
 export default function IngestPage() {
   useSession({ required: true });
@@ -166,7 +160,7 @@ export default function IngestPage() {
         lessonType,
         sources,
         studentLevel,
-        ...(selectedCourseId ? { courseId: selectedCourseId } : {}),
+        courseId: selectedCourseId,
       }),
     });
     const data = await res.json();
@@ -192,7 +186,7 @@ export default function IngestPage() {
   }
 
   async function handleGenerate() {
-    if (!rawText.trim() || !title.trim() || generating) return;
+    if (!rawText.trim() || !title.trim() || !selectedCourseId || generating) return;
     setGenerating(true);
     setError(null);
     startProgressAnimation();
@@ -207,6 +201,11 @@ export default function IngestPage() {
           targetAudience: targetAudience.trim() || undefined,
           slideCount: slideCount ? Number(slideCount) : undefined,
           requiredTopics: requiredTopics.length > 0 ? requiredTopics : undefined,
+          studentLevel,
+          lessonTitle: title.trim() || undefined,
+          lessonSubtitle: subtitle.trim() || undefined,
+          topics: topics.trim() || undefined,
+          sources: sources.trim() || undefined,
         }),
       });
       const data = await res.json();
@@ -296,7 +295,7 @@ export default function IngestPage() {
     <div className="space-y-6">
       <div>
         <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: "var(--text-muted)" }}>Content</p>
-        <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>AI Ingest</h1>
+        <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>Notes to Slides</h1>
         <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>
           Paste rough notes or a brain-dump and get an instantly-rendered, presentation-ready slide deck.
         </p>
@@ -319,9 +318,11 @@ export default function IngestPage() {
           <div className={cardClass} style={cardStyle}>
             <p className={sectionLabel}>Assignment</p>
             <div>
-              <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Course</label>
-              <select value={selectedCourseId} onChange={e => setSelectedCourseId(e.target.value)} className={inputClass} style={inputStyle}>
-                <option value="">— No course —</option>
+              <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
+                Course <span className="text-red-500">*</span>
+              </label>
+              <select required value={selectedCourseId} onChange={e => setSelectedCourseId(e.target.value)} className={inputClass} style={inputStyle}>
+                <option value="">— Select a course —</option>
                 {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
               </select>
             </div>
@@ -387,7 +388,7 @@ export default function IngestPage() {
               <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
                 Topics {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "#0cc0df" }}>· used by AI</span>}
               </label>
-              <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>Comma-separated. Extra context passed to AI Ingest alongside your raw notes.</p>
+              <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>Comma-separated. Extra context passed to Notes to Slides alongside your raw notes.</p>
               <input
                 type="text"
                 value={topics}
@@ -472,7 +473,7 @@ export default function IngestPage() {
                     </label>
                   ))}
                 </div>
-                <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>{STUDENT_LEVEL_HINTS[studentLevel]}</p>
+                <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>{STUDENT_LEVEL_UI_HINTS[studentLevel]}</p>
               </div>
             )}
           </div>
@@ -493,7 +494,7 @@ export default function IngestPage() {
               <div>
                 <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Required Slide Topics</label>
                 <p className="text-xs mb-1.5" style={{ color: "var(--text-muted)" }}>
-                  AI Ingest guarantees a slide for each of these. One per line.
+                  Notes to Slides guarantees a slide for each of these. One per line.
                 </p>
                 <textarea
                   value={requiredTopicsText}
@@ -506,9 +507,9 @@ export default function IngestPage() {
             </div>
           )}
 
-          {/* ── Raw Content ── */}
+          {/* ── Your Notes ── */}
           <div className={cardClass} style={cardStyle}>
-            <p className={sectionLabel}>Raw Content</p>
+            <p className={sectionLabel}>Your Notes</p>
 
             <div>
               <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
@@ -518,7 +519,7 @@ export default function IngestPage() {
                 value={rawText}
                 onChange={e => setRawText(e.target.value)}
                 rows={12}
-                placeholder={"e.g.\n- talk about vite proxies\n- compare useState vs useReducer\n- steps to set up a dev environment"}
+                placeholder={"e.g.\n- explain the core concept\n- compare two approaches or viewpoints\n- steps to complete the process"}
                 className={inputClass}
                 style={{ ...inputStyle, resize: "vertical" }}
               />
@@ -527,13 +528,16 @@ export default function IngestPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
-                  Target Audience <span className="font-normal" style={{ color: "var(--text-muted)" }}>(optional — inferred if left blank)</span>
+                  Target Audience <span className="font-normal" style={{ color: "var(--text-muted)" }}>(optional)</span>
                 </label>
+                <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>
+                  Only needed if Student Level above isn&apos;t specific enough — e.g. a grade level or prior-course context.
+                </p>
                 <input
                   type="text"
                   value={targetAudience}
                   onChange={e => setTargetAudience(e.target.value)}
-                  placeholder="e.g. complete beginners"
+                  placeholder="e.g. 9th graders who just finished Intro to Python"
                   className={inputClass}
                   style={inputStyle}
                 />
@@ -560,8 +564,8 @@ export default function IngestPage() {
             <div className="flex items-center gap-3">
               <button
                 onClick={handleGenerate}
-                disabled={generating || !rawText.trim() || !title.trim()}
-                title={!title.trim() ? "Add a lesson title first" : undefined}
+                disabled={generating || !rawText.trim() || !title.trim() || !selectedCourseId}
+                title={!selectedCourseId ? "Select a course first" : !title.trim() ? "Add a lesson title first" : undefined}
                 className="shrink-0 rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50 transition"
               >
                 {generating ? (

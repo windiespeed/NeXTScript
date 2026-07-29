@@ -419,9 +419,9 @@ export default function CourseSettingsPage() {
             <input type="url" value={editSettings.defaultTemplateUrl} onChange={e => patchSettings({ defaultTemplateUrl: e.target.value })} placeholder="https://docs.google.com/presentation/d/…" className={inputClass} style={inputStyle} />
           </div>
           <div>
-            <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Required Slide Topics {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "#0cc0df" }}>· used by AI Ingest</span>}</label>
+            <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Required Slide Topics {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "#0cc0df" }}>· used by Notes to Slides</span>}</label>
             <p className="text-xs mb-1.5" style={{ color: "var(--text-muted)" }}>
-              Mandatory headings AI Ingest must always produce a slide for in this course. One topic per line.
+              Mandatory headings Notes to Slides must always produce a slide for in this course. One topic per line.
             </p>
             <textarea value={editSettings.requiredSlideTopics} onChange={e => patchSettings({ requiredSlideTopics: e.target.value })}
               rows={3} placeholder={"Academic Integrity Policy\nRequired Reading"}
