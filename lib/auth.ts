@@ -2,7 +2,7 @@ import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 
 // Bump this number whenever scope changes require all users to re-authenticate.
-const SESSION_VERSION = 2;
+const SESSION_VERSION = 3;
 
 async function refreshAccessToken(token: any) {
   try {
@@ -48,6 +48,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             "https://www.googleapis.com/auth/classroom.coursework.students",
             "https://www.googleapis.com/auth/classroom.courseworkmaterials",
             "https://www.googleapis.com/auth/classroom.topics",
+            "https://www.googleapis.com/auth/classroom.rosters.readonly",
+            "https://www.googleapis.com/auth/classroom.profile.emails",
           ].join(" "),
           access_type: "offline",
           prompt: "consent",

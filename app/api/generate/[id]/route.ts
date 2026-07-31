@@ -5,7 +5,7 @@ import { projectStore } from "@/lib/projectStore";
 import { courseStore } from "@/lib/courseStore";
 import { canAccessLesson } from "@/lib/access";
 import { userSettings, getMergedLabels } from "@/lib/userSettings";
-import { generateBundleSelective, generateBundleAsDownload, buildQuiz, createCourseFolder, addFileToFolders, shareCourseFolderWithMembers } from "@/lib/google";
+import { generateBundleSelective, generateBundleAsDownload, buildQuiz, createCourseFolder, addFileToFolders, shareCourseFolderWithMembers, listClassroomTeacherEmails } from "@/lib/google";
 import { ensureLessonFolderId } from "@/lib/lessonFolders";
 import { generateQuizQuestions } from "@/lib/ai";
 import { DEFAULT_SECTION_LABELS } from "@/lib/sectionLabels";
@@ -71,11 +71,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   let courseFolderId = course?.driveFolderId;
   if (course && !courseFolderId && destination === "drive") {
     const folder = await createCourseFolder(course.title, accessToken);
-    await courseStore.update(course.id, { driveFolderId: folder.id, driveFolderUrl: folder.webViewLink });
+    await courseStore.update(course.id, { driveFolderId: folder.id, driveFolderUrl: folder.webViewLink, driveFolderShared: true });
     courseFolderId = folder.id;
-    // Whoever generates first owns this folder in their own Drive — share it with the
-    // rest of the course's members so their own generated content can land here too.
-    await shareCourseFolderWithMembers(folder.id, course, session.user!.email!, accessToken);
+    // Whoever generates first owns this folder in their own Drive — share it with the rest of
+    // the course's members, plus any co-teacher who only has access via Google Classroom.
+    const classroomTeacherEmails = course.googleClassroomId
+      ? await listClassroomTeacherEmails(course.googleClassroomId, accessToken)
+      : [];
+    await shareCourseFolderWithMembers(folder.id, course, session.user!.email!, accessToken, classroomTeacherEmails);
   }
 
   // Course settings override user settings when non-empty

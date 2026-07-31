@@ -71,6 +71,7 @@ export interface Course {
   lessonIds: string[];  // ordered list of lesson IDs belonging to this course
   driveFolderId?: string;
   driveFolderUrl?: string;
+  driveFolderShared?: boolean; // true once the folder has been explicitly (re-)shared with all course members
   resources?: CourseResource[];
   modules?: CourseModule[];  // ordered list of modules grouping lessons within this course
   moduleId?: string;         // legacy: linked NeXTBox class id (removed after migration)

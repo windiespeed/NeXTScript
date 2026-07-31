@@ -113,11 +113,12 @@ export async function shareCourseFolderWithMembers(
   folderId: string,
   course: { userId: string; collaborators?: string[] },
   actingEmail: string,
-  accessToken: string
+  accessToken: string,
+  extraEmails: string[] = []
 ): Promise<void> {
   const acting = actingEmail.toLowerCase();
   const seen = new Set<string>();
-  const recipients = [course.userId, ...(course.collaborators ?? [])].filter((email) => {
+  const recipients = [course.userId, ...(course.collaborators ?? []), ...extraEmails].filter((email) => {
     const e = email.toLowerCase();
     if (e === acting || seen.has(e)) return false;
     seen.add(e);
@@ -1106,6 +1107,24 @@ export async function listGoogleClassrooms(accessToken: string): Promise<{ id: s
   const classroom = google.classroom({ version: "v1", auth: getAuthClient(accessToken) });
   const res = await classroom.courses.list({ teacherId: "me", courseStates: ["ACTIVE"], pageSize: 50 });
   return (res.data.courses ?? []).map(c => ({ id: c.id!, name: c.name! }));
+}
+
+/**
+ * Emails of every teacher on a linked Google Classroom course — used to grant Drive folder
+ * access to co-teachers who only have access via Classroom (never added as a NeXTScript
+ * collaborator). Best-effort: returns [] on failure (e.g. missing scope, no access) so
+ * callers can still fall back to sharing with just the course's own recorded members.
+ */
+export async function listClassroomTeacherEmails(classroomId: string, accessToken: string): Promise<string[]> {
+  try {
+    const classroom = google.classroom({ version: "v1", auth: getAuthClient(accessToken) });
+    const res = await classroom.courses.teachers.list({ courseId: classroomId, pageSize: 100 });
+    return (res.data.teachers ?? [])
+      .map(t => t.profile?.emailAddress)
+      .filter((e): e is string => !!e);
+  } catch {
+    return [];
+  }
 }
 
 export async function getOrCreateClassroomTopic(

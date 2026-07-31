@@ -703,9 +703,9 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                 {creatingFolder ? "Creating…" : "Create Drive Folder"}
               </button>
             )}
-            {course.driveFolderId && (course.collaborators?.length ?? 0) > 0 && (
+            {course.driveFolderId && !course.driveFolderShared && (
               <button onClick={handleCreateCourseFolder} disabled={creatingFolder}
-                title="Re-share the course folder with all current collaborators — use this if a collaborator can't see it in Drive"
+                title="Re-share the course folder with everyone on this course — use this if someone can't see it in Drive"
                 className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition hover:bg-[var(--bg-card)] disabled:opacity-50"
                 style={{ border: "1px solid var(--border)", color: "var(--text-muted)" }}>
                 {creatingFolder ? "Fixing…" : "Fix Folder Sharing"}

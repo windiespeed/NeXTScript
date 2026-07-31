@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { courseStore } from "@/lib/courseStore";
 import { canAccessCourse } from "@/lib/access";
-import { createCourseFolder, shareCourseFolderWithMembers, hasDriveAccess } from "@/lib/google";
+import { createCourseFolder, shareCourseFolderWithMembers, hasDriveAccess, listClassroomTeacherEmails } from "@/lib/google";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +28,13 @@ export async function POST(
     if (!canAccessCourse(course, session.user.email))
       return NextResponse.json({ error: "Forbidden." }, { status: 403 });
 
+    // Co-teachers who only have access via the linked Google Classroom (never added as a
+    // NeXTScript collaborator) still need Drive access to this folder — pull them from the
+    // Classroom roster so they're included alongside the app's own recorded members.
+    const classroomTeacherEmails = course.googleClassroomId
+      ? await listClassroomTeacherEmails(course.googleClassroomId, accessToken)
+      : [];
+
     // A folder already exists for this course (created by whoever hit this first, or by the
     // lazy-create path in the generate route) — repair its sharing instead of creating a
     // duplicate. Only whoever can already see it in their own Drive is able to grant access
@@ -40,19 +47,22 @@ export async function POST(
           { status: 403 }
         );
       }
-      await shareCourseFolderWithMembers(course.driveFolderId, course, session.user.email, accessToken);
-      return NextResponse.json(course);
+      await shareCourseFolderWithMembers(course.driveFolderId, course, session.user.email, accessToken, classroomTeacherEmails);
+      const repaired = await courseStore.update(id, { driveFolderShared: true });
+      return NextResponse.json(repaired);
     }
 
     const folder = await createCourseFolder(course.title, accessToken);
 
-    // Share the new folder with the owner and any other collaborators (best-effort) — whoever
-    // is acting here owns the folder in their own Drive; everyone else needs explicit access.
-    await shareCourseFolderWithMembers(folder.id, course, session.user.email, accessToken);
+    // Share the new folder with the owner, any other collaborators, and the Classroom roster
+    // (best-effort) — whoever is acting here owns the folder in their own Drive; everyone
+    // else needs explicit access.
+    await shareCourseFolderWithMembers(folder.id, course, session.user.email, accessToken, classroomTeacherEmails);
 
     const updated = await courseStore.update(id, {
       driveFolderId: folder.id,
       driveFolderUrl: folder.webViewLink,
+      driveFolderShared: true,
     });
     return NextResponse.json(updated);
   } catch (err: any) {
