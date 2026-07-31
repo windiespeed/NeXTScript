@@ -575,7 +575,10 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
         body: JSON.stringify({ lessonIds, courseId: id, moduleName }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Push failed.");
+      if (!res.ok) {
+        const firstError = Array.isArray(data.results) ? data.results.find((r: { ok: boolean; error?: string }) => !r.ok)?.error : undefined;
+        throw new Error(firstError || data.error || "Push failed.");
+      }
       // Only mark lessons that actually succeeded — data.results reports per-lesson outcome.
       const succeededIds: string[] = Array.isArray(data.results)
         ? data.results.filter((r: { ok: boolean }) => r.ok).map((r: { lessonId: string }) => r.lessonId)
@@ -584,8 +587,9 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
       await Promise.all(succeededIds.map(lid =>
         fetch(`/api/lessons/${lid}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ publishedToClassroom: true }) })
       ));
+      const firstError = Array.isArray(data.results) ? data.results.find((r: { ok: boolean; error?: string }) => !r.ok)?.error : undefined;
       const msg = data.failed > 0
-        ? `${data.pushed} pushed, ${data.failed} failed.`
+        ? `${data.pushed} pushed, ${data.failed} failed${firstError ? `: ${firstError}` : ""}`
         : `${data.pushed} lesson${data.pushed !== 1 ? "s" : ""} released to Classroom.`;
       setReleaseMsg({ text: msg, ok: data.failed === 0 });
     } catch (e: any) {
