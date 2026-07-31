@@ -393,9 +393,20 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
 
   async function handleCreateCourseFolder() {
     setCreatingFolder(true);
+    setReleaseMsg(null);
     const res = await fetch(`/api/courses/${id}/folder`, { method: "POST" });
+    const data = await res.json();
     setCreatingFolder(false);
-    if (res.ok) { const updated = await res.json(); setCourse(updated); }
+    if (res.ok) {
+      setCourse(data);
+      if (course?.driveFolderId) {
+        setReleaseMsg({ text: "Sharing updated for all course members.", ok: true });
+        setTimeout(() => setReleaseMsg(null), 4000);
+      }
+    } else {
+      setReleaseMsg({ text: data.error || "Failed to update folder sharing.", ok: false });
+      setTimeout(() => setReleaseMsg(null), 6000);
+    }
   }
 
   async function handleAddResource() {
@@ -690,6 +701,14 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                 style={{ border: "1px solid var(--border)", color: "var(--text-muted)" }}>
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
                 {creatingFolder ? "Creating…" : "Create Drive Folder"}
+              </button>
+            )}
+            {course.driveFolderId && (course.collaborators?.length ?? 0) > 0 && (
+              <button onClick={handleCreateCourseFolder} disabled={creatingFolder}
+                title="Re-share the course folder with all current collaborators — use this if a collaborator can't see it in Drive"
+                className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition hover:bg-[var(--bg-card)] disabled:opacity-50"
+                style={{ border: "1px solid var(--border)", color: "var(--text-muted)" }}>
+                {creatingFolder ? "Fixing…" : "Fix Folder Sharing"}
               </button>
             )}
             <button onClick={() => setAddResourceOpen(true)}

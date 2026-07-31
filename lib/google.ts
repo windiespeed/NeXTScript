@@ -91,6 +91,41 @@ export async function revokeDriveAccess(fileId: string, email: string, accessTok
   }
 }
 
+/** True if the given access token's account can currently see/access the Drive file. */
+export async function hasDriveAccess(fileId: string, accessToken: string): Promise<boolean> {
+  try {
+    const drive = google.drive({ version: "v3", auth: getAuthClient(accessToken) });
+    await drive.files.get({ fileId, fields: "id" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Shares a course's Drive folder with every course member (owner + collaborators) except
+ * whoever is currently acting — that person already owns/has access as the file's creator.
+ * Whichever course member first triggers folder creation owns it in their own Drive, so
+ * without this every other member would be unable to see or write into it. Best-effort:
+ * failures for individual recipients are swallowed so one bad email doesn't block the rest.
+ */
+export async function shareCourseFolderWithMembers(
+  folderId: string,
+  course: { userId: string; collaborators?: string[] },
+  actingEmail: string,
+  accessToken: string
+): Promise<void> {
+  const acting = actingEmail.toLowerCase();
+  const seen = new Set<string>();
+  const recipients = [course.userId, ...(course.collaborators ?? [])].filter((email) => {
+    const e = email.toLowerCase();
+    if (e === acting || seen.has(e)) return false;
+    seen.add(e);
+    return true;
+  });
+  await Promise.all(recipients.map((email) => shareDriveFile(folderId, email, accessToken).catch(() => {})));
+}
+
 /** Adds one or more folders as additional parents of a file, without removing existing parents. */
 export async function addFileToFolders(fileId: string, folderIds: string[], accessToken: string) {
   if (folderIds.length === 0) return;
@@ -956,7 +991,7 @@ export async function generateBundleSelective(
   templateId?: string,
   labels: SectionLabels = DEFAULT_SECTION_LABELS,
   parentFolderId?: string
-): Promise<{ folderUrl: string; deckId?: string; docId?: string; formId?: string }> {
+): Promise<{ folderUrl: string; folderId: string; deckId?: string; docId?: string; formId?: string }> {
   const folder = await createFolder(
     `${lesson.title}: ${lesson.subtitle}`,
     accessToken,
@@ -977,7 +1012,7 @@ export async function generateBundleSelective(
   const fileIds = [deckId, docId, formId].filter(Boolean) as string[];
   await Promise.all(fileIds.map(id => moveFileToFolder(id, folderId, accessToken)));
 
-  return { folderUrl: folder.webViewLink!, deckId, docId, formId };
+  return { folderUrl: folder.webViewLink!, folderId, deckId, docId, formId };
 }
 
 async function exportFileAsPdf(fileId: string, accessToken: string): Promise<Buffer> {
@@ -1140,7 +1175,9 @@ export async function pushLessonToClassroom(params: {
     const materials: any[] = [];
     if (slidesId) materials.push({ driveFile: { driveFile: { id: slidesId }, shareMode: "VIEW" } });
     if (docId) materials.push({ driveFile: { driveFile: { id: docId }, shareMode: "VIEW" } });
-    if (formId) materials.push({ form: { formUrl: params.formUrl } });
+    // Classroom API rejects `form` material on create (read-only, populated by Classroom itself) —
+    // a `link` to the form URL is auto-upgraded to a form attachment instead.
+    if (formId) materials.push({ link: { url: params.formUrl! } });
 
     await classroom.courses.courseWorkMaterials.create({
       courseId: params.classroomId,
@@ -1162,7 +1199,9 @@ export async function pushLessonToClassroom(params: {
     if (existingTitles.has(title)) title = `${title} (Copy)`;
 
     const materials: any[] = [];
-    if (formId) materials.push({ form: { formUrl: params.formUrl } });
+    // Classroom API rejects `form` material on create (read-only, populated by Classroom itself) —
+    // a `link` to the form URL is auto-upgraded to a form attachment instead.
+    if (formId) materials.push({ link: { url: params.formUrl! } });
     if (slidesId) materials.push({ driveFile: { driveFile: { id: slidesId }, shareMode: "VIEW" } });
     if (docId) materials.push({ driveFile: { driveFile: { id: docId }, shareMode: "VIEW" } });
 
@@ -1188,7 +1227,7 @@ export async function pushLessonToClassroom(params: {
   const materials: any[] = [];
   if (slidesId) materials.push({ driveFile: { driveFile: { id: slidesId }, shareMode: "VIEW" } });
   if (docId) materials.push({ driveFile: { driveFile: { id: docId }, shareMode: "VIEW" } });
-  if (formId) materials.push({ form: { formUrl: params.formUrl } });
+  if (formId) materials.push({ link: { url: params.formUrl! } });
 
   await classroom.courses.courseWork.create({
     courseId: params.classroomId,

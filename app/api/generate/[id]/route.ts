@@ -5,7 +5,7 @@ import { projectStore } from "@/lib/projectStore";
 import { courseStore } from "@/lib/courseStore";
 import { canAccessLesson } from "@/lib/access";
 import { userSettings, getMergedLabels } from "@/lib/userSettings";
-import { generateBundleSelective, generateBundleAsDownload, buildQuiz, createCourseFolder, addFileToFolders } from "@/lib/google";
+import { generateBundleSelective, generateBundleAsDownload, buildQuiz, createCourseFolder, addFileToFolders, shareCourseFolderWithMembers } from "@/lib/google";
 import { ensureLessonFolderId } from "@/lib/lessonFolders";
 import { generateQuizQuestions } from "@/lib/ai";
 import { DEFAULT_SECTION_LABELS } from "@/lib/sectionLabels";
@@ -73,6 +73,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const folder = await createCourseFolder(course.title, accessToken);
     await courseStore.update(course.id, { driveFolderId: folder.id, driveFolderUrl: folder.webViewLink });
     courseFolderId = folder.id;
+    // Whoever generates first owns this folder in their own Drive — share it with the
+    // rest of the course's members so their own generated content can land here too.
+    await shareCourseFolderWithMembers(folder.id, course, session.user!.email!, accessToken);
   }
 
   // Course settings override user settings when non-empty
@@ -101,7 +104,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     if (destination === "drive") {
       // ── Slides + Doc ─────────────────────────────────────────────────────
       const bundleFiles = files.filter(f => f !== "quiz") as ("slides" | "doc")[];
-      const { folderUrl, deckId, docId } = await generateBundleSelective(
+      const { folderUrl, folderId: lessonFolderId, deckId, docId } = await generateBundleSelective(
         lesson,
         bundleFiles,
         accessToken,
@@ -129,14 +132,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           for (const draft of quizDrafts) {
             try {
               const syntheticLesson = { ...lesson, quizQuestions: draft.questions ?? [] };
-              const formId = await buildQuiz(syntheticLesson, accessToken, courseFolderId);
+              // Home folder is this lesson's own Drive folder (same one slides/doc just landed in),
+              // not the course-level folder — matches where the rest of the lesson's files live.
+              const formId = await buildQuiz(syntheticLesson, accessToken, lessonFolderId);
 
-              // A quiz covering multiple lessons also gets added to each of those lessons'
-              // own folders, in addition to the course folder.
+              // A quiz covering multiple lessons also gets added to each *other* lesson's own folder.
               if (draft.lessonIds && draft.lessonIds.length > 1) {
+                const otherLessonIds = draft.lessonIds.filter(lessonId => lessonId !== id);
                 const lessonFolderIds: string[] = [];
-                for (const lessonId of draft.lessonIds) {
-                  const otherLesson = lessonId === id ? lesson : await store.getById(lessonId);
+                for (const lessonId of otherLessonIds) {
+                  const otherLesson = await store.getById(lessonId);
                   if (otherLesson) lessonFolderIds.push(await ensureLessonFolderId(otherLesson, courseFolderId, accessToken));
                 }
                 await addFileToFolders(formId, lessonFolderIds, accessToken).catch(() => {});
@@ -161,7 +166,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           }
           if (lessonToGenerate.quizQuestions?.length) {
             try {
-              const formId = await buildQuiz(lessonToGenerate, accessToken, courseFolderId);
+              const formId = await buildQuiz(lessonToGenerate, accessToken, lessonFolderId);
               const formUrl = `https://docs.google.com/forms/d/${formId}/edit`;
               // Delete any previously generated quizzes for this lesson before creating the new one
               const existingGenerated = allProjects.filter(p =>

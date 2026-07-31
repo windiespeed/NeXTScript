@@ -44,11 +44,12 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     const syntheticLesson = { title: quiz.title ?? "Quiz", quizQuestions: quiz.questions };
     const formId = await buildQuiz(syntheticLesson as any, accessToken, folderId);
 
-    // A quiz covering multiple lessons also gets added to each of those lessons' own folders,
-    // in addition to the course folder, so it shows up wherever a teacher browses for it.
-    if (quiz.lessonIds && quiz.lessonIds.length > 1) {
+    // A quiz linked to one or more lessons also gets added to each of those lessons' own
+    // folders, in addition to the course folder, so it shows up wherever a teacher browses for it.
+    const linkedLessonIds = quiz.lessonIds?.length ? quiz.lessonIds : (quiz.lessonId ? [quiz.lessonId] : []);
+    if (linkedLessonIds.length > 0) {
       const lessonFolderIds: string[] = [];
-      for (const lessonId of quiz.lessonIds) {
+      for (const lessonId of linkedLessonIds) {
         const lesson = await store.getById(lessonId);
         if (lesson) lessonFolderIds.push(await ensureLessonFolderId(lesson, folderId, accessToken));
       }
