@@ -952,10 +952,18 @@ export async function buildQuiz(lesson: Lesson, accessToken: string, folderId?: 
   }
 
   // Must make the form a quiz BEFORE adding graded items — two separate batches.
+  // VERIFIED auto-collects the respondent's email from their signed-in Google account — students
+  // opening this via Classroom are always signed in, so this identifies submissions without
+  // asking them to type anything.
   await forms.forms.batchUpdate({
     formId,
     requestBody: {
-      requests: [{ updateSettings: { settings: { quizSettings: { isQuiz: true } }, updateMask: "quizSettings" } }],
+      requests: [{
+        updateSettings: {
+          settings: { quizSettings: { isQuiz: true }, emailCollectionType: "VERIFIED" },
+          updateMask: "quizSettings,emailCollectionType",
+        },
+      }],
     },
   });
 
