@@ -7,23 +7,11 @@ import Link from "next/link";
 import type { CourseSettings } from "@/types/course";
 import type { Concept } from "@/types/concept";
 import { DEFAULT_COURSE_SETTINGS } from "@/types/course";
+import { resolveSections } from "@/lib/sections";
+import SectionsEditor from "@/components/SectionsEditor";
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const TERM_YEARS: number[] = Array.from({ length: 21 }, (_, i) => 2040 - i); // 2040 down to 2020
-
-const SECTION_LABEL_KEYS = [
-  { key: "lessonOverview",        label: "Lesson Overview" },
-  { key: "learningTargets",       label: "Learning Targets" },
-  { key: "vocabulary",            label: "Vocabulary" },
-  { key: "warmUp",                label: "Opening Activity" },
-  { key: "guidedLab",             label: "Guided Activity" },
-  { key: "selfPaced",             label: "Independent Activity" },
-  { key: "submissionChecklist",   label: "Requirements Checklist" },
-  { key: "checkpoint",            label: "Common Problems / FAQ" },
-  { key: "industryBestPractices", label: "Best Practices" },
-  { key: "devJournalPrompt",      label: "Reflection Journal" },
-  { key: "rubric",                label: "Assessment / Rubric" },
-] as const;
 
 const inputClass = "w-full rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#0cc0df] transition placeholder:text-[var(--text-muted)]";
 const inputStyle = { background: "var(--bg-card-hover)", color: "var(--text-primary)", border: "1px solid var(--border)" };
@@ -88,13 +76,6 @@ export default function CourseSettingsPage() {
 
   function patchSettings(patch: Partial<CourseSettings>) {
     setEditSettings(prev => ({ ...prev, ...patch }));
-  }
-
-  function patchSectionLabel(key: string, value: string) {
-    setEditSettings(prev => ({
-      ...prev,
-      sectionLabels: { ...prev.sectionLabels, [key]: value },
-    }));
   }
 
   async function loadConcepts() {
@@ -429,29 +410,14 @@ export default function CourseSettingsPage() {
           </div>
         </div>
 
-        {/* Section Labels */}
+        {/* Sections */}
         <div className="rounded-3xl p-6 space-y-4" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
-          <div className="flex items-center justify-between">
-            <p className={sectionHeading}>Section Labels</p>
-            <button type="button" onClick={() => patchSettings({ sectionLabels: DEFAULT_COURSE_SETTINGS.sectionLabels })}
-              className="text-xs text-[#0cc0df] hover:underline">
-              Reset to defaults
-            </button>
-          </div>
-          <p className="text-xs -mt-1" style={{ color: "var(--text-muted)" }}>
-            Customize the heading names used in generated docs for this course.
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {SECTION_LABEL_KEYS.map(({ key, label }) => (
-              <div key={key}>
-                <label className="block text-xs mb-1" style={{ color: "var(--text-muted)" }}>{label}</label>
-                <input type="text" value={editSettings.sectionLabels[key]}
-                  onChange={e => patchSectionLabel(key, e.target.value)}
-                  placeholder={DEFAULT_COURSE_SETTINGS.sectionLabels[key]}
-                  className={inputClass} style={inputStyle} />
-              </div>
-            ))}
-          </div>
+          <p className={sectionHeading}>Sections</p>
+          <SectionsEditor
+            scope="course"
+            value={resolveSections({ course: { settings: editSettings } })}
+            onChange={sections => patchSettings({ sections })}
+          />
         </div>
 
         {saveError && <p className="text-sm text-red-500">{saveError}</p>}

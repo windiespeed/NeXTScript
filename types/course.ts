@@ -1,5 +1,6 @@
 import type { ProgressMode } from "./class";
 import type { ExerciseConcept } from "./exercise";
+import type { SectionDef } from "./section";
 
 export interface CourseSettings {
   defaultSources: string;         // URLs pre-filled in lesson Sources field (one per line)
@@ -8,6 +9,11 @@ export interface CourseSettings {
   subject: string;                // e.g. "JavaScript", "Nursing 101"
   studentLevel: "beginner" | "intermediate" | "advanced" | "";
   requiredSlideTopics: string;    // Mandatory AI-ingest slide topics/headings for this course, one per line
+  // Dynamic section list (see types/section.ts) — takes precedence over `sectionLabels` below
+  // once set via the Course Settings SectionsEditor. Absent/empty means "not customized yet";
+  // see lib/sections.ts's resolveSections() for the fallback synthesis from `sectionLabels`.
+  sections?: SectionDef[];
+  /** @deprecated superseded by `sections` above — kept as a synthesis input, never migrated. */
   sectionLabels: {
     lessonOverview: string;
     learningTargets: string;

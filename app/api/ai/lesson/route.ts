@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { userSettings, getMergedLabels } from "@/lib/userSettings";
+import { userSettings } from "@/lib/userSettings";
 import { courseStore } from "@/lib/courseStore";
 import { canAccessCourse } from "@/lib/access";
 import { fillLesson } from "@/lib/ai";
-import { DEFAULT_SECTION_LABELS } from "@/lib/sectionLabels";
+import { resolveSections } from "@/lib/sections";
 
 export const dynamic = "force-dynamic";
 
@@ -28,14 +28,10 @@ export async function POST(req: Request) {
     // Merge: defaults → user profile → course settings (course wins)
     const industry = (course?.settings?.industry || settings.industry) ?? "";
     const subject  = (course?.settings?.subject  || settings.subject)  ?? "";
-    const labels = {
-      ...DEFAULT_SECTION_LABELS,
-      ...settings.sectionLabels,
-      ...(course?.settings?.sectionLabels ?? {}),
-    };
+    const sections = resolveSections({ course, userSettings: settings });
 
     const count = typeof lesson.slideCount === "number" ? Math.min(20, Math.max(1, lesson.slideCount)) : 10;
-    const result = await fillLesson(apiKey, lesson, { industry, subject, labels }, count);
+    const result = await fillLesson(apiKey, lesson, { industry, subject, sections }, count);
     return NextResponse.json(result);
   } catch (err: any) {
     // Surface Anthropic billing/auth errors clearly

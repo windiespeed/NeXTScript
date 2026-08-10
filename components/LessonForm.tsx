@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { Lesson, LessonInput } from "@/types/lesson";
-import { DEFAULT_SECTION_LABELS, type SectionLabels } from "@/lib/sectionLabels";
 import { STUDENT_LEVEL_UI_HINTS } from "@/lib/studentLevel";
+import { DEFAULT_SECTIONS, type SectionDef } from "@/types/section";
+import { resolveSections, getSectionContent } from "@/lib/sections";
 
 const cardClass = "rounded-3xl p-5 space-y-4";
 const cardStyle = { background: "var(--bg-card)", border: "1px solid var(--border)" };
@@ -62,30 +63,8 @@ const EMPTY: LessonInput = {
   rubric: "",
   sources: "",
   studentLevel: "beginner",
+  sections: {},
 };
-
-type SectionField = { key: keyof LessonInput; label: string; hint: string; rows: number };
-
-function buildPreSlideFields(l: SectionLabels): SectionField[] {
-  return [
-    { key: "overview",        label: "Lesson Overview",  hint: "Paragraph overview of everything covered in this lesson.", rows: 4 },
-    { key: "learningTargets", label: "Learning Targets", hint: "3–8 bullet points of specific, measurable learning objectives.", rows: 4 },
-    { key: "vocabulary",      label: "Vocabulary",       hint: "Key terms and definitions students need to know for this lesson.", rows: 4 },
-    { key: "warmUp",          label: l.warmUp,           hint: "3–5 questions to engage students at the start of class.", rows: 4 },
-  ];
-}
-
-function buildPostSlideFields(l: SectionLabels): SectionField[] {
-  return [
-    { key: "guidedLab",             label: l.guidedLab,             hint: "In-class instructor-led exercise. Must be step-by-step.", rows: 6 },
-    { key: "selfPaced",             label: l.selfPaced,             hint: "Independent student exercise. Must be step-by-step.", rows: 6 },
-    { key: "submissionChecklist",   label: l.submissionChecklist,   hint: "Specific requirements students must meet and turn in.", rows: 4 },
-    { key: "checkpoint",            label: l.checkpoint,            hint: "Common problems and challenges students may face, with suggested solutions.", rows: 4 },
-    { key: "industryBestPractices", label: l.industryBestPractices, hint: "Standards, best practices, and tips & tricks for this topic.", rows: 4 },
-    { key: "devJournalPrompt",      label: l.devJournalPrompt,      hint: "3–5 specific, evidence-based reflection questions.", rows: 4 },
-    { key: "rubric",                label: l.rubric,                hint: "Checklist used to assess student submissions.", rows: 4 },
-  ];
-}
 
 export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSave, onCancel, submitLabel = "Save Lesson", hasAiKey = false, isEditing = false }: Props) {
   const [form, setForm] = useState<LessonInput>({ ...EMPTY, ...initial });
@@ -103,7 +82,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
   const [aiFilledFields, setAiFilledFields] = useState<Set<string>>(new Set());
   const [error, setError] = useState("");
   const [autoSaveStatus, setAutoSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
-  const [labels, setLabels] = useState<SectionLabels>(DEFAULT_SECTION_LABELS);
+  const [sections, setSections] = useState<SectionDef[]>(DEFAULT_SECTIONS);
 
   function clearForm() {
     if (!confirm("Clear all fields? This cannot be undone.")) return;
@@ -128,6 +107,23 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
     extra?.();
   }
 
+  function setSection(id: string, value: string) {
+    setForm(f => ({ ...f, sections: { ...f.sections, [id]: value } }));
+  }
+
+  function clearSections(ids: string[]) {
+    setForm(f => {
+      const nextSections = { ...f.sections };
+      for (const id of ids) nextSections[id] = "";
+      return { ...f, sections: nextSections };
+    });
+    setAiFilledFields(prev => {
+      const next = new Set(prev);
+      ids.forEach(id => next.delete(id));
+      return next;
+    });
+  }
+
   function SectionClearBtn({ onClick }: { onClick: () => void }) {
     return (
       <button
@@ -141,17 +137,36 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
     );
   }
 
+  // Resolves the active section list (course-level > user-level > synthesized defaults) and,
+  // for a lesson that predates the dynamic-sections model (no `initial.sections` at all),
+  // seeds `form.sections` from its legacy fixed fields — the write that actually migrates it,
+  // with zero Firestore backfill needed for lessons nobody opens.
   useEffect(() => {
-    fetch("/api/user/settings")
-      .then(r => r.json())
-      .then(s => {
-        if (s.sectionLabels) setLabels({ ...DEFAULT_SECTION_LABELS, ...s.sectionLabels });
-      })
-      .catch(() => {});
+    const courseId = initial.courseId;
+    Promise.all([
+      fetch("/api/user/settings").then(r => r.json()).catch(() => ({})),
+      courseId ? fetch(`/api/courses/${courseId}`).then(r => r.ok ? r.json() : null).catch(() => null) : Promise.resolve(null),
+    ]).then(([userSettingsData, course]) => {
+      const resolved = resolveSections({ course, userSettings: userSettingsData });
+      setSections(resolved);
+      if (!initial.sections) {
+        setForm(f => {
+          const seeded: Record<string, string> = { ...f.sections };
+          for (const s of resolved) {
+            if (!seeded[s.id]) {
+              const legacyContent = getSectionContent(initial as Lesson, s.id);
+              if (legacyContent) seeded[s.id] = legacyContent;
+            }
+          }
+          return { ...f, sections: seeded };
+        });
+      }
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const PRE_SLIDE_FIELDS = buildPreSlideFields(labels);
-  const POST_SLIDE_FIELDS = buildPostSlideFields(labels);
+  const preSlideSections = sections.filter(s => (s.position ?? "after-slides") === "before-slides");
+  const postSlideSections = sections.filter(s => (s.position ?? "after-slides") === "after-slides");
 
   const autoSaveRef = useRef(autoSave);
   useEffect(() => { autoSaveRef.current = autoSave; }, [autoSave]);
@@ -218,19 +233,19 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...form, slideContent: serializeSlides(slides), slideCount }),
       });
-      const data = await res.json();
+      const data = await res.json() as { slides?: Slide[]; sections?: Record<string, string>; error?: string };
       if (!res.ok) throw new Error(data.error || "AI fill failed.");
-      const { slides: aiSlides, ...fields } = data;
+      const { slides: aiSlides, sections: aiSections } = data;
       const filled = new Set<string>();
       setForm((f) => {
-        const next = { ...f };
-        for (const [key, value] of Object.entries(fields)) {
-          if (!f[key as keyof LessonInput]) {
-            (next as any)[key] = value;
-            filled.add(key);
+        const nextSections = { ...f.sections };
+        for (const [id, value] of Object.entries(aiSections ?? {})) {
+          if (!nextSections[id]) {
+            nextSections[id] = value;
+            filled.add(id);
           }
         }
-        return next;
+        return { ...f, sections: nextSections };
       });
       const currentSlideContent = serializeSlides(slides).trim();
       if (aiSlides?.length && !currentSlideContent) {
@@ -460,23 +475,23 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
       <div className={cardClass} style={cardStyle}>
         <div className="flex items-center justify-between">
           <p className={sectionLabel}>Content Overview</p>
-          <SectionClearBtn onClick={() => clearSection(PRE_SLIDE_FIELDS.map(f => f.key))} />
+          <SectionClearBtn onClick={() => clearSections(preSlideSections.map(s => s.id))} />
         </div>
-        {PRE_SLIDE_FIELDS.map(({ key, label, hint, rows }) => (
-          <div key={key}>
+        {preSlideSections.map(({ id, label, hint, rows }) => (
+          <div key={id}>
             <label className="flex items-center gap-2 text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
               {label}
-              {aiFilledFields.has(key) && (
+              {aiFilledFields.has(id) && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-[#0cc0df] px-2 py-0.5 text-[10px] font-bold text-[#0a0b13] shadow-sm">✦ AI</span>
               )}
             </label>
-            <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>{hint}</p>
+            {hint && <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>{hint}</p>}
             <textarea
-              value={form[key] as string}
-              onChange={(e) => { set(key, e.target.value); setAiFilledFields(prev => { const next = new Set(prev); next.delete(key); return next; }); }}
-              rows={rows}
-              className={`${inputClass} font-mono ${aiFilledFields.has(key) ? "ring-1 ring-[#0cc0df]/50" : ""}`}
-              style={{ ...inputStyle, borderColor: aiFilledFields.has(key) ? "rgba(12,192,223,0.4)" : "var(--border)" }}
+              value={form.sections?.[id] ?? ""}
+              onChange={(e) => { setSection(id, e.target.value); setAiFilledFields(prev => { const next = new Set(prev); next.delete(id); return next; }); }}
+              rows={rows ?? 4}
+              className={`${inputClass} font-mono ${aiFilledFields.has(id) ? "ring-1 ring-[#0cc0df]/50" : ""}`}
+              style={{ ...inputStyle, borderColor: aiFilledFields.has(id) ? "rgba(12,192,223,0.4)" : "var(--border)" }}
             />
           </div>
         ))}
@@ -571,23 +586,23 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
       <div className={cardClass} style={cardStyle}>
         <div className="flex items-center justify-between">
           <p className={sectionLabel}>Activities & Assessment</p>
-          <SectionClearBtn onClick={() => clearSection(POST_SLIDE_FIELDS.map(f => f.key))} />
+          <SectionClearBtn onClick={() => clearSections(postSlideSections.map(s => s.id))} />
         </div>
-        {POST_SLIDE_FIELDS.map(({ key, label, hint, rows }) => (
-          <div key={key}>
+        {postSlideSections.map(({ id, label, hint, rows }) => (
+          <div key={id}>
             <label className="flex items-center gap-2 text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
               {label}
-              {aiFilledFields.has(key) && (
+              {aiFilledFields.has(id) && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-[#0cc0df] px-2 py-0.5 text-[10px] font-bold text-[#0a0b13] shadow-sm">✦ AI</span>
               )}
             </label>
-            <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>{hint}</p>
+            {hint && <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>{hint}</p>}
             <textarea
-              value={form[key] as string}
-              onChange={(e) => { set(key, e.target.value); setAiFilledFields(prev => { const next = new Set(prev); next.delete(key); return next; }); }}
-              rows={rows}
-              className={`${inputClass} font-mono ${aiFilledFields.has(key) ? "ring-1 ring-[#0cc0df]/50" : ""}`}
-              style={{ ...inputStyle, borderColor: aiFilledFields.has(key) ? "rgba(12,192,223,0.4)" : "var(--border)" }}
+              value={form.sections?.[id] ?? ""}
+              onChange={(e) => { setSection(id, e.target.value); setAiFilledFields(prev => { const next = new Set(prev); next.delete(id); return next; }); }}
+              rows={rows ?? 4}
+              className={`${inputClass} font-mono ${aiFilledFields.has(id) ? "ring-1 ring-[#0cc0df]/50" : ""}`}
+              style={{ ...inputStyle, borderColor: aiFilledFields.has(id) ? "rgba(12,192,223,0.4)" : "var(--border)" }}
             />
           </div>
         ))}

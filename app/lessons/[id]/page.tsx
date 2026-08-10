@@ -584,6 +584,13 @@ export default function LessonHubPage() {
                             </span>
                           ) : "Generate to Drive"}
                         </button>
+                        <Link
+                          href={`/ingest?lessonId=${id}`}
+                          className="w-full sm:w-auto text-center rounded-full px-5 py-2.5 text-sm font-semibold transition hover:opacity-80"
+                          style={{ background: "rgba(12,192,223,0.12)", border: "1px solid rgba(12,192,223,0.35)", color: "#0cc0df" }}
+                        >
+                          Notes to Slides →
+                        </Link>
                         {lesson.folderUrl && (
                           <a
                             href={lesson.folderUrl}

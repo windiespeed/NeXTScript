@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import SlideRenderer from "@/components/slides/SlideRenderer";
@@ -10,7 +11,9 @@ import { DEFAULT_THEME_ID, getTheme } from "@/lib/themes";
 import { STUDENT_LEVEL_UI_HINTS, type StudentLevel } from "@/lib/studentLevel";
 import type { PresentationAST } from "@/types/slideAst";
 import type { Course, CourseModule } from "@/types/course";
-import type { LessonInput } from "@/types/lesson";
+import type { Lesson, LessonInput } from "@/types/lesson";
+import type { SectionDef } from "@/types/section";
+import { resolveSections } from "@/lib/sections";
 
 const inputClass = "w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0cc0df] transition placeholder:text-[var(--text-muted)]";
 const inputStyle = { background: "var(--bg-card-hover)", color: "var(--text-primary)", border: "1px solid var(--border)" };
@@ -32,13 +35,15 @@ const EMPTY_LESSON_DEFAULTS: LessonInput = {
   overview: "", learningTargets: "", vocabulary: "", warmUp: "", slideContent: "",
   guidedLab: "", selfPaced: "", submissionChecklist: "", checkpoint: "",
   industryBestPractices: "", devJournalPrompt: "", rubric: "", sources: "",
-  studentLevel: "beginner",
+  studentLevel: "beginner", sections: {},
 };
 
 type LessonType = NonNullable<LessonInput["lessonType"]>;
 
-export default function IngestPage() {
+function IngestPageInner() {
   useSession({ required: true });
+  const searchParams = useSearchParams();
+  const lessonIdParam = searchParams.get("lessonId") ?? "";
 
   const [hasAiKey, setHasAiKey] = useState(false);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
@@ -50,6 +55,14 @@ export default function IngestPage() {
   const [selectedModuleId, setSelectedModuleId] = useState("");
   const selectedCourse = courses.find(c => c.id === selectedCourseId);
 
+  // Attach to an existing lesson instead of creating a new one — either deep-linked via
+  // ?lessonId= (from a lesson's own hub page, locked) or picked from the dropdown below.
+  const [existingLessonId, setExistingLessonId] = useState<string | null>(null);
+  const [attachedLessonTitle, setAttachedLessonTitle] = useState("");
+  const [lockedFromQuery, setLockedFromQuery] = useState(false);
+  const [courseLessons, setCourseLessons] = useState<Lesson[]>([]);
+  const [selectedExistingLessonId, setSelectedExistingLessonId] = useState("");
+
   // Lesson info (mirrors LessonForm's "Lesson Info" section)
   const [title, setTitle] = useState("");
   const [subtitle, setSubtitle] = useState("");
@@ -59,6 +72,7 @@ export default function IngestPage() {
   const [sources, setSources] = useState("");
   const [studentLevel, setStudentLevel] = useState<StudentLevel>("beginner");
   const [userDefaultSources, setUserDefaultSources] = useState("");
+  const [userSectionSettings, setUserSectionSettings] = useState<{ sectionLabels?: Record<string, string>; sections?: SectionDef[] }>({});
 
   // Course defaults pulled in once a course is picked — user can verify/adjust before generating
   const [requiredTopicsText, setRequiredTopicsText] = useState("");
@@ -96,6 +110,7 @@ export default function IngestPage() {
       setHasAiKey(settings.hasKey ?? false);
       setUserDefaultSources(settings.defaultSources ?? "");
       setSources(settings.defaultSources ?? "");
+      setUserSectionSettings({ sectionLabels: settings.sectionLabels, sections: settings.sections });
       setCourses(Array.isArray(coursesData) ? coursesData : []);
     }).catch(() => {}).finally(() => setSettingsLoaded(true));
   }, []);
@@ -105,9 +120,64 @@ export default function IngestPage() {
     const course = courses.find(c => c.id === selectedCourseId);
     setModules(Array.isArray(course?.modules) ? course!.modules : []);
     setSelectedModuleId("");
-    setRequiredTopicsText(course?.settings?.requiredSlideTopics ?? "");
+    // Explicit "Required Slide Topics" wins; otherwise default to the course's active section
+    // list so every deck covers the standard curriculum sections without extra configuration.
+    const explicitTopics = course?.settings?.requiredSlideTopics?.trim();
+    const sectionTopics = resolveSections({ course, userSettings: userSectionSettings }).map(s => s.label).filter(Boolean).join("\n");
+    setRequiredTopicsText(explicitTopics || sectionTopics);
     setSources(course?.settings?.defaultSources || userDefaultSources);
-  }, [selectedCourseId, courses, userDefaultSources]);
+  }, [selectedCourseId, courses, userDefaultSources, userSectionSettings]);
+
+  // Deep-link: ?lessonId= arrives from an existing lesson's own hub page — pre-fill
+  // everything from that lesson and lock the attachment so it can't be picked away by accident.
+  useEffect(() => {
+    if (!lessonIdParam) return;
+    fetch(`/api/lessons/${lessonIdParam}`).then(r => r.ok ? r.json() : null).then((lesson: Lesson | null) => {
+      if (!lesson) return;
+      setExistingLessonId(lesson.id);
+      setSelectedExistingLessonId(lesson.id);
+      setAttachedLessonTitle(lesson.title);
+      setLockedFromQuery(true);
+      setSelectedCourseId(lesson.courseId ?? "");
+      setTitle(lesson.title);
+      setSubtitle(lesson.subtitle ?? "");
+      setTopics(lesson.topics ?? "");
+      setDeadline(lesson.deadline ?? "");
+      setLessonType((lesson.lessonType as LessonType) ?? "lesson");
+      if (lesson.sources) setSources(lesson.sources);
+      setStudentLevel(lesson.studentLevel ?? "beginner");
+    }).catch(() => {});
+  }, [lessonIdParam]);
+
+  // Populate the "attach to existing lesson" picker with this course's lessons
+  useEffect(() => {
+    if (!selectedCourseId) { setCourseLessons([]); return; }
+    fetch(`/api/lessons?courseId=${selectedCourseId}`).then(r => r.json()).then(data => {
+      setCourseLessons(Array.isArray(data) ? data : []);
+    }).catch(() => {});
+  }, [selectedCourseId]);
+
+  function handlePickExistingLesson(id: string) {
+    setSelectedExistingLessonId(id);
+    if (!id) { setExistingLessonId(null); return; }
+    const lesson = courseLessons.find(l => l.id === id);
+    if (!lesson) return;
+    setExistingLessonId(lesson.id);
+    setTitle(lesson.title);
+    setSubtitle(lesson.subtitle ?? "");
+    setTopics(lesson.topics ?? "");
+    setDeadline(lesson.deadline ?? "");
+    setLessonType((lesson.lessonType as LessonType) ?? "lesson");
+    if (lesson.sources) setSources(lesson.sources);
+    setStudentLevel(lesson.studentLevel ?? "beginner");
+  }
+
+  function handleDetachLesson() {
+    setExistingLessonId(null);
+    setSelectedExistingLessonId("");
+    setLockedFromQuery(false);
+    setAttachedLessonTitle("");
+  }
 
   // Stop the fake progress animation if the page is left mid-generation
   useEffect(() => {
@@ -145,27 +215,51 @@ export default function IngestPage() {
     setProgress(finalValue);
   }
 
-  /** Creates the draft lesson this generation will be saved onto (once per session — reused on regenerate). */
+  /** Creates (or reuses an attached) lesson this generation will be saved onto — once per session, reused on regenerate. */
   async function ensureLesson(): Promise<string> {
     if (lessonId) return lessonId;
-    const res = await fetch("/api/lessons", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...EMPTY_LESSON_DEFAULTS,
-        title: title.trim(),
-        subtitle: subtitle.trim(),
-        topics: topics.trim(),
-        deadline,
-        lessonType,
-        sources,
-        studentLevel,
-        courseId: selectedCourseId,
-      }),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "Failed to create the lesson.");
-    const newLessonId = data.id as string;
+
+    let newLessonId: string;
+    if (existingLessonId) {
+      // Attached to an existing lesson — update it in place with whatever's in Lesson Info
+      // rather than creating a duplicate.
+      const res = await fetch(`/api/lessons/${existingLessonId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: title.trim(),
+          subtitle: subtitle.trim(),
+          topics: topics.trim(),
+          deadline,
+          lessonType,
+          sources,
+          studentLevel,
+          courseId: selectedCourseId,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update the lesson.");
+      newLessonId = existingLessonId;
+    } else {
+      const res = await fetch("/api/lessons", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...EMPTY_LESSON_DEFAULTS,
+          title: title.trim(),
+          subtitle: subtitle.trim(),
+          topics: topics.trim(),
+          deadline,
+          lessonType,
+          sources,
+          studentLevel,
+          courseId: selectedCourseId,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to create the lesson.");
+      newLessonId = data.id as string;
+    }
     setLessonId(newLessonId);
 
     if (selectedCourseId && selectedModuleId && selectedCourse) {
@@ -321,12 +415,12 @@ export default function IngestPage() {
               <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
                 Course <span className="text-red-500">*</span>
               </label>
-              <select required value={selectedCourseId} onChange={e => setSelectedCourseId(e.target.value)} className={inputClass} style={inputStyle}>
+              <select required disabled={lockedFromQuery} value={selectedCourseId} onChange={e => setSelectedCourseId(e.target.value)} className={inputClass} style={inputStyle}>
                 <option value="">— Select a course —</option>
                 {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
               </select>
             </div>
-            {selectedCourseId && modules.length > 0 && (
+            {selectedCourseId && modules.length > 0 && !lockedFromQuery && (
               <div>
                 <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
                   Module <span className="font-normal" style={{ color: "var(--text-muted)" }}>(optional)</span>
@@ -335,6 +429,31 @@ export default function IngestPage() {
                   <option value="">— No module —</option>
                   {modules.map(m => <option key={m.id} value={m.id}>{m.title}</option>)}
                 </select>
+              </div>
+            )}
+            {lockedFromQuery ? (
+              <div className="flex items-center justify-between gap-2 rounded-lg px-3 py-2" style={{ background: "var(--accent-purple-bg)" }}>
+                <p className="text-xs font-semibold" style={{ color: "var(--accent-purple)" }}>
+                  Attached to lesson: {attachedLessonTitle}
+                </p>
+                <button type="button" onClick={handleDetachLesson} className="text-[10px] font-semibold shrink-0 hover:underline" style={{ color: "var(--accent-purple)" }}>
+                  Detach
+                </button>
+              </div>
+            ) : selectedCourseId && (
+              <div>
+                <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
+                  Attach to Lesson <span className="font-normal" style={{ color: "var(--text-muted)" }}>(optional)</span>
+                </label>
+                <select value={selectedExistingLessonId} onChange={e => handlePickExistingLesson(e.target.value)} className={inputClass} style={inputStyle}>
+                  <option value="">— Create new lesson —</option>
+                  {courseLessons.map(l => <option key={l.id} value={l.id}>{l.title}{l.subtitle ? ` — ${l.subtitle}` : ""}</option>)}
+                </select>
+                <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
+                  {selectedExistingLessonId
+                    ? "Generating will replace this lesson's Lesson Info with what's below and add the deck to its Documents."
+                    : "Leave as-is to create a new lesson, or pick an existing one to generate a deck for it instead."}
+                </p>
               </div>
             )}
           </div>
@@ -494,7 +613,8 @@ export default function IngestPage() {
               <div>
                 <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Required Slide Topics</label>
                 <p className="text-xs mb-1.5" style={{ color: "var(--text-muted)" }}>
-                  Notes to Slides guarantees a slide for each of these. One per line.
+                  Notes to Slides guarantees a slide for each of these. One per line. Defaults to this
+                  course&apos;s Section Labels unless a custom list is set in Course Settings.
                 </p>
                 <textarea
                   value={requiredTopicsText}
@@ -711,5 +831,13 @@ export default function IngestPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function IngestPage() {
+  return (
+    <Suspense>
+      <IngestPageInner />
+    </Suspense>
   );
 }

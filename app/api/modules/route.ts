@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { courseStore } from "@/lib/courseStore";
+import { DEFAULT_COURSE_SETTINGS } from "@/types/course";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +29,11 @@ export async function POST(req: Request) {
         description: "",
         gradeLevel: "",
         term: "",
-        settings: { defaultSources: "", defaultTemplateUrl: "", industry: "", subject: "", studentLevel: "", requiredSlideTopics: "", sectionLabels: { lessonOverview: "", learningTargets: "", vocabulary: "", warmUp: "", guidedLab: "", selfPaced: "", submissionChecklist: "", checkpoint: "", industryBestPractices: "", devJournalPrompt: "", rubric: "" } },
+        // Was previously an inline object with every sectionLabels value blanked out, which
+        // shallow-merge-overrode DEFAULT_COURSE_SETTINGS' nice defaults with empty strings —
+        // courses created here ended up with blank section labels everywhere. Use the real
+        // defaults instead.
+        settings: DEFAULT_COURSE_SETTINGS,
         lessonIds: [],
         language: body.language,
         progressMode: body.progressMode,

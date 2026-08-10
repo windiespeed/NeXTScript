@@ -10,7 +10,8 @@ import { google } from "googleapis";
 import type { slides_v1 } from "googleapis";
 import type { Lesson } from "@/types/lesson";
 import type { FormQuestion } from "@/types/form";
-import { DEFAULT_SECTION_LABELS, type SectionLabels } from "@/lib/userSettings";
+import { DEFAULT_SECTIONS, type SectionDef } from "@/types/section";
+import { getSectionContent } from "@/lib/sections";
 import type {
   PresentationAST,
   SlideNode,
@@ -282,7 +283,12 @@ function getRubric(lesson: Lesson): string {
   return lesson.rubric ?? (lesson as any).taChecklist ?? "";
 }
 
-export async function buildSlideDeck(lesson: Lesson, accessToken: string, templateId?: string, labels: SectionLabels = DEFAULT_SECTION_LABELS): Promise<string> {
+/** getSectionContent() plus the rubric/taChecklist legacy fallback getRubric() already handles. */
+function sectionSlideContent(lesson: Lesson, sectionId: string): string {
+  return sectionId === "rubric" ? getRubric(lesson) : getSectionContent(lesson, sectionId);
+}
+
+export async function buildSlideDeck(lesson: Lesson, accessToken: string, templateId?: string, sections: SectionDef[] = DEFAULT_SECTIONS): Promise<string> {
   _idSeq = 0; // reset counter for each deck build
   const drive  = google.drive({ version: "v3", auth: getAuthClient(accessToken) });
   const slides = google.slides({ version: "v1", auth: getAuthClient(accessToken) });
@@ -330,20 +336,23 @@ export async function buildSlideDeck(lesson: Lesson, accessToken: string, templa
       } else if (placeholderType === "SUBTITLE") {
         titleRequests.push(...replaceText(el.objectId!, lesson.subtitle, hasContent));
       } else if (text.includes("goal:")) {
-        titleRequests.push(...replaceText(el.objectId!, `Goal: ${lesson.overview.replace(/\n+/g, " ")}`, hasContent));
+        titleRequests.push(...replaceText(el.objectId!, `Goal: ${getSectionContent(lesson, "lessonOverview").replace(/\n+/g, " ")}`, hasContent));
       } else if (text.includes("reminder:")) {
-        titleRequests.push(...replaceText(el.objectId!, `Reminder: ${lesson.submissionChecklist.replace(/\n+/g, " · ")}`, hasContent));
+        titleRequests.push(...replaceText(el.objectId!, `Reminder: ${getSectionContent(lesson, "submissionChecklist").replace(/\n+/g, " · ")}`, hasContent));
       }
     }
   }
 
   // ── Section slides — matches Google Doc template order ──────────────────
-  const contentRequests: any[] = [
-    ...slideRequests(labels.lessonOverview.toUpperCase(),  lesson.overview),
-    ...slideRequests(labels.learningTargets.toUpperCase(), lesson.learningTargets),
-    ...(lesson.vocabulary ? slideRequests(labels.vocabulary.toUpperCase(), lesson.vocabulary) : []),
-    ...slideRequests(labels.warmUp.toUpperCase(),          lesson.warmUp),
-  ];
+  const beforeSlideSections = sections.filter(s => (s.position ?? "after-slides") === "before-slides");
+  const afterSlideSections = sections.filter(s => (s.position ?? "after-slides") === "after-slides");
+
+  const contentRequests: any[] = [];
+  for (const s of beforeSlideSections) {
+    const content = sectionSlideContent(lesson, s.id);
+    if (s.skipIfEmpty && !content) continue;
+    contentRequests.push(...slideRequests(s.label.toUpperCase(), content));
+  }
 
   // ── Custom slide content blocks (--- = slide break, first line = title) ─
   const slideSep = /\n---\n/;
@@ -357,15 +366,11 @@ export async function buildSlideDeck(lesson: Lesson, accessToken: string, templa
   }
 
   // ── Post-content section slides ─────────────────────────────────────────
-  contentRequests.push(
-    ...slideRequests(labels.guidedLab.toUpperCase(),              lesson.guidedLab),
-    ...slideRequests(labels.selfPaced.toUpperCase(),              lesson.selfPaced),
-    ...slideRequests(labels.submissionChecklist.toUpperCase(),    lesson.submissionChecklist),
-    ...slideRequests(labels.checkpoint.toUpperCase(),             lesson.checkpoint),
-    ...slideRequests(labels.industryBestPractices.toUpperCase(),  lesson.industryBestPractices),
-    ...slideRequests(labels.devJournalPrompt.toUpperCase(),       lesson.devJournalPrompt),
-    ...slideRequests(labels.rubric.toUpperCase(),                 getRubric(lesson)),
-  );
+  for (const s of afterSlideSections) {
+    const content = sectionSlideContent(lesson, s.id);
+    if (s.skipIfEmpty && !content) continue;
+    contentRequests.push(...slideRequests(s.label.toUpperCase(), content));
+  }
 
   // ── Success slide ───────────────────────────────────────────────────────
   const successSlideId = uid("ss");
@@ -447,11 +452,14 @@ const AST_CALLOUT_VARIANTS: Record<CalloutCardSlide["variant"], { label: string;
   "instructor-note":  { label: "INSTRUCTOR NOTE",  accent: AST_ACCENT_PURPLE, bg: AST_NOTE_BG },
 };
 
-function astCreateBlankSlideRequest(slideId: string, blankLayout: slides_v1.Schema$Page | null): SlideRequest {
+// Always requests Slides' predefined BLANK layout rather than guessing a "blank-looking" layout
+// from the template's master — a guessed layout can carry its own placeholder shapes ("Click to
+// add title"/"Click to add text") that then sit behind the AST builder's own text boxes.
+function astCreateBlankSlideRequest(slideId: string): SlideRequest {
   return {
     createSlide: {
       objectId: slideId,
-      ...(blankLayout?.objectId ? { slideLayoutReference: { layoutId: blankLayout.objectId } } : {}),
+      slideLayoutReference: { predefinedLayout: "BLANK" },
     },
   };
 }
@@ -520,9 +528,9 @@ function astTitleHeader(slideId: string, title: string, subtitle?: string): { re
   return { requests, contentStartY: y + 6 };
 }
 
-function astStandardSlideRequests(slide: StandardTextSlide, blankLayout: slides_v1.Schema$Page | null): SlideRequest[] {
+function astStandardSlideRequests(slide: StandardTextSlide): SlideRequest[] {
   const slideId = uid("s");
-  const requests: SlideRequest[] = [astCreateBlankSlideRequest(slideId, blankLayout)];
+  const requests: SlideRequest[] = [astCreateBlankSlideRequest(slideId)];
   const { requests: headerReqs, contentStartY } = astTitleHeader(slideId, slide.title, slide.subtitle);
   requests.push(...headerReqs);
 
@@ -558,9 +566,9 @@ function astStandardSlideRequests(slide: StandardTextSlide, blankLayout: slides_
   return requests;
 }
 
-function astSplitColumnSlideRequests(slide: SplitColumnSlide, blankLayout: slides_v1.Schema$Page | null): SlideRequest[] {
+function astSplitColumnSlideRequests(slide: SplitColumnSlide): SlideRequest[] {
   const slideId = uid("s");
-  const requests: SlideRequest[] = [astCreateBlankSlideRequest(slideId, blankLayout)];
+  const requests: SlideRequest[] = [astCreateBlankSlideRequest(slideId)];
   const { requests: headerReqs, contentStartY } = astTitleHeader(slideId, slide.title, slide.subtitle);
   requests.push(...headerReqs);
 
@@ -595,9 +603,9 @@ function astSplitColumnSlideRequests(slide: SplitColumnSlide, blankLayout: slide
   return requests;
 }
 
-function astCodeExplainerSlideRequests(slide: CodeExplainerSlide, blankLayout: slides_v1.Schema$Page | null): SlideRequest[] {
+function astCodeExplainerSlideRequests(slide: CodeExplainerSlide): SlideRequest[] {
   const slideId = uid("s");
-  const requests: SlideRequest[] = [astCreateBlankSlideRequest(slideId, blankLayout)];
+  const requests: SlideRequest[] = [astCreateBlankSlideRequest(slideId)];
   const { requests: headerReqs, contentStartY } = astTitleHeader(slideId, slide.title, slide.subtitle);
   requests.push(...headerReqs);
 
@@ -637,9 +645,9 @@ function astCodeExplainerSlideRequests(slide: CodeExplainerSlide, blankLayout: s
   return requests;
 }
 
-function astCalloutSlideRequests(slide: CalloutCardSlide, blankLayout: slides_v1.Schema$Page | null): SlideRequest[] {
+function astCalloutSlideRequests(slide: CalloutCardSlide): SlideRequest[] {
   const slideId = uid("s");
-  const requests: SlideRequest[] = [astCreateBlankSlideRequest(slideId, blankLayout)];
+  const requests: SlideRequest[] = [astCreateBlankSlideRequest(slideId)];
   const config = AST_CALLOUT_VARIANTS[slide.variant];
 
   const panelX = 80, panelY = 55, panelW = AST_PAGE_WIDTH - 160, panelH = AST_PAGE_HEIGHT - 110;
@@ -691,9 +699,9 @@ function astCalloutSlideRequests(slide: CalloutCardSlide, blankLayout: slides_v1
   return requests;
 }
 
-function astStepGridSlideRequests(slide: StepGridSlide, blankLayout: slides_v1.Schema$Page | null): SlideRequest[] {
+function astStepGridSlideRequests(slide: StepGridSlide): SlideRequest[] {
   const slideId = uid("s");
-  const requests: SlideRequest[] = [astCreateBlankSlideRequest(slideId, blankLayout)];
+  const requests: SlideRequest[] = [astCreateBlankSlideRequest(slideId)];
   const { requests: headerReqs, contentStartY } = astTitleHeader(slideId, slide.title, slide.subtitle);
   requests.push(...headerReqs);
 
@@ -729,13 +737,13 @@ function astStepGridSlideRequests(slide: StepGridSlide, blankLayout: slides_v1.S
 }
 
 /** Routes a single AST node to its request-builder — mirrors the exhaustive switch in components/slides/SlideRenderer.tsx. */
-function astSlideRequests(slide: SlideNode, blankLayout: slides_v1.Schema$Page | null): SlideRequest[] {
+function astSlideRequests(slide: SlideNode): SlideRequest[] {
   switch (slide.type) {
-    case "standard": return astStandardSlideRequests(slide, blankLayout);
-    case "split-column": return astSplitColumnSlideRequests(slide, blankLayout);
-    case "code-explainer": return astCodeExplainerSlideRequests(slide, blankLayout);
-    case "callout": return astCalloutSlideRequests(slide, blankLayout);
-    case "step-grid": return astStepGridSlideRequests(slide, blankLayout);
+    case "standard": return astStandardSlideRequests(slide);
+    case "split-column": return astSplitColumnSlideRequests(slide);
+    case "code-explainer": return astCodeExplainerSlideRequests(slide);
+    case "callout": return astCalloutSlideRequests(slide);
+    case "step-grid": return astStepGridSlideRequests(slide);
     default: {
       const _exhaustive: never = slide;
       return _exhaustive;
@@ -768,15 +776,8 @@ export async function buildSlideDeckFromAst(ast: PresentationAST, accessToken: s
     deckId = created.data.presentationId!;
   }
 
-  // 2. Fetch the presentation to read existing slides/masters
+  // 2. Fetch the presentation to read existing slides
   const pres = await slides.presentations.get({ presentationId: deckId });
-  // `layouts` isn't modeled on Schema$Page even though that's where the API actually nests it
-  // under a master — same `as any` traversal buildSlideDeck's success-slide lookup uses above.
-  const masterLayouts = ((pres.data.masters || [])[0] as any)?.layouts || [];
-  const blankLayout: slides_v1.Schema$Page | null =
-    masterLayouts.find((l: any) => l.layoutProperties?.name?.toLowerCase().includes("blank"))
-    ?? masterLayouts[masterLayouts.length - 1]
-    ?? null;
   const existingSlides = pres.data.slides || [];
 
   // 3. If a template was copied, reuse its first slide as the title slide (same placeholder
@@ -804,7 +805,7 @@ export async function buildSlideDeckFromAst(ast: PresentationAST, accessToken: s
   // 4. Build every content slide from the AST
   const contentRequests: SlideRequest[] = [];
   for (const slide of ast.slides) {
-    contentRequests.push(...astSlideRequests(slide, blankLayout));
+    contentRequests.push(...astSlideRequests(slide));
   }
 
   // ── Batch updates ────────────────────────────────────────────────────────
@@ -823,49 +824,12 @@ export async function buildSlideDeckFromAst(ast: PresentationAST, accessToken: s
 
 // ─── Docs (Assessment/Assignment Sheet) ──────────────────────────────────────
 
-export async function buildPosterDoc(lesson: Lesson, accessToken: string, labels: SectionLabels = DEFAULT_SECTION_LABELS): Promise<string> {
-  const docs  = google.docs({ version: "v1", auth: getAuthClient(accessToken) });
-
-  const doc = await docs.documents.create({
-    requestBody: { title: `OVERVIEW: ${lesson.title} — ${lesson.subtitle}` },
-  });
-  const docId = doc.data.documentId!;
-
-  const text = [
-    lesson.title,
-    lesson.subtitle,
-    `Deadline: ${lesson.deadline}`,
-    "",
-    "VOCABULARY",
-    stripBullets(lesson.vocabulary ?? ""),
-    "",
-    "LEARNING TARGETS",
-    stripBullets(lesson.learningTargets),
-    "",
-    labels.submissionChecklist.toUpperCase(),
-    stripBullets(lesson.submissionChecklist),
-    "",
-    labels.devJournalPrompt.toUpperCase(),
-    stripBullets(lesson.devJournalPrompt),
-  ].join("\n");
-
-  await docs.documents.batchUpdate({
-    documentId: docId,
-    requestBody: {
-      requests: [
-        { insertText: { location: { index: 1 }, text } },
-      ],
-    },
-  });
-
-  return docId;
-}
-
-export async function buildOverviewDoc(lesson: Lesson, accessToken: string, labels: SectionLabels = DEFAULT_SECTION_LABELS): Promise<string> {
+export async function buildOverviewDoc(lesson: Lesson, accessToken: string, sections: SectionDef[] = DEFAULT_SECTIONS): Promise<string> {
   const docs = google.docs({ version: "v1", auth: getAuthClient(accessToken) });
 
+  const overviewLabel = sections.find(s => s.id === "lessonOverview")?.label ?? "Lesson Overview";
   const doc = await docs.documents.create({
-    requestBody: { title: `${labels.lessonOverview.toUpperCase()}: ${lesson.title} — ${lesson.subtitle}` },
+    requestBody: { title: `${overviewLabel.toUpperCase()}: ${lesson.title} — ${lesson.subtitle}` },
   });
   const docId = doc.data.documentId!;
 
@@ -883,14 +847,16 @@ export async function buildOverviewDoc(lesson: Lesson, accessToken: string, labe
     ? allSlides.filter((_, i) => mask[i] !== false)
     : allSlides;
 
+  // Course-level "Include in Overview Doc" toggle — additive on top of the default
+  // (learningTargets only), so a course that's never touched the toggle sees identical output.
+  const overviewSections = sections.filter(s => s.includeInOverviewDoc);
+
   const lines: string[] = [
     lesson.title,
     ...(lesson.subtitle ? [lesson.subtitle] : []),
     ...(lesson.deadline ? [`Deadline: ${lesson.deadline}`] : []),
     "",
-    labels.learningTargets.toUpperCase(),
-    lesson.learningTargets ?? "",
-    "",
+    ...overviewSections.flatMap(s => [s.label.toUpperCase(), sectionSlideContent(lesson, s.id) ?? "", ""]),
     "LESSON SUMMARY",
     ...selectedSlides.flatMap(slide => [
       slide.title,
@@ -998,7 +964,7 @@ export async function generateBundleSelective(
   files: FileChoice[],
   accessToken: string,
   templateId?: string,
-  labels: SectionLabels = DEFAULT_SECTION_LABELS,
+  sections: SectionDef[] = DEFAULT_SECTIONS,
   parentFolderId?: string
 ): Promise<{ folderUrl: string; folderId: string; deckId?: string; docId?: string; formId?: string }> {
   const folder = await createFolder(
@@ -1013,8 +979,8 @@ export async function generateBundleSelective(
   let formId: string | undefined;
 
   await Promise.all([
-    files.includes("slides") ? buildSlideDeck(lesson, accessToken, templateId, labels).then(id => { deckId = id; }) : null,
-    files.includes("doc")    ? buildOverviewDoc(lesson, accessToken, labels).then(id => { docId = id; })              : null,
+    files.includes("slides") ? buildSlideDeck(lesson, accessToken, templateId, sections).then(id => { deckId = id; }) : null,
+    files.includes("doc")    ? buildOverviewDoc(lesson, accessToken, sections).then(id => { docId = id; })              : null,
     files.includes("quiz")   ? buildQuiz(lesson, accessToken).then(id => { formId = id; })                          : null,
   ]);
 
@@ -1043,11 +1009,11 @@ export async function generateBundleAsDownload(
   files: Exclude<FileChoice, "quiz">[],
   accessToken: string,
   templateId?: string,
-  labels: SectionLabels = DEFAULT_SECTION_LABELS
+  sections: SectionDef[] = DEFAULT_SECTIONS
 ): Promise<{ filename: string; data: string }[]> {
   const createTasks: { key: string; promise: Promise<string> }[] = [];
-  if (files.includes("slides")) createTasks.push({ key: "slides", promise: buildSlideDeck(lesson, accessToken, templateId, labels) });
-  if (files.includes("doc"))    createTasks.push({ key: "doc",    promise: buildOverviewDoc(lesson, accessToken, labels) });
+  if (files.includes("slides")) createTasks.push({ key: "slides", promise: buildSlideDeck(lesson, accessToken, templateId, sections) });
+  if (files.includes("doc"))    createTasks.push({ key: "doc",    promise: buildOverviewDoc(lesson, accessToken, sections) });
 
   const fileIds = await Promise.all(createTasks.map(t => t.promise));
 

@@ -2,7 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useSession, signOut } from "next-auth/react";
-import { DEFAULT_SECTION_LABELS, type SectionLabels } from "@/lib/sectionLabels";
+import { DEFAULT_SECTIONS, type SectionDef } from "@/types/section";
+import { resolveSections } from "@/lib/sections";
+import SectionsEditor from "@/components/SectionsEditor";
 import { useTheme } from "@/context/Theme";
 
 function initials(name?: string | null, email?: string | null): string {
@@ -56,7 +58,7 @@ export default function ProfilePage() {
 
   const [industry, setIndustry] = useState("");
   const [subject, setSubject] = useState("");
-  const [sectionLabels, setSectionLabels] = useState<SectionLabels>(DEFAULT_SECTION_LABELS);
+  const [sections, setSections] = useState<SectionDef[]>(DEFAULT_SECTIONS);
   const [savingCurriculum, setSavingCurriculum] = useState(false);
 
   const [hasKey, setHasKey] = useState(false);
@@ -78,7 +80,7 @@ export default function ProfilePage() {
         setDefaultSources(data.defaultSources ?? "");
         setIndustry(data.industry ?? "");
         setSubject(data.subject ?? "");
-        if (data.sectionLabels) setSectionLabels({ ...DEFAULT_SECTION_LABELS, ...data.sectionLabels });
+        setSections(resolveSections({ userSettings: { sectionLabels: data.sectionLabels, sections: data.sections } }));
       });
   }, []);
 
@@ -141,7 +143,7 @@ export default function ProfilePage() {
     const res = await fetch("/api/user/settings", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ industry, subject, sectionLabels }),
+      body: JSON.stringify({ industry, subject, sections }),
     });
     setSavingCurriculum(false);
     if (res.ok) flash("Curriculum settings saved.");
@@ -339,43 +341,8 @@ export default function ProfilePage() {
           </div>
 
           <div>
-            <p className="text-sm font-semibold mb-3" style={{ color: "var(--text-primary)" }}>Section Labels</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {(Object.keys(DEFAULT_SECTION_LABELS) as (keyof SectionLabels)[]).map(key => (
-                <div key={key}>
-                  <label className="block text-xs mb-1" style={{ color: "var(--text-muted)" }}>
-                    {{
-                      lessonOverview:        "Lesson Overview",
-                      learningTargets:       "Learning Targets",
-                      vocabulary:            "Vocabulary",
-                      warmUp:                "Opening Activity",
-                      guidedLab:             "Guided Activity",
-                      selfPaced:             "Independent Activity",
-                      submissionChecklist:   "Requirements Checklist",
-                      checkpoint:            "Common Problems / FAQ",
-                      industryBestPractices: "Best Practices",
-                      devJournalPrompt:      "Reflection Journal",
-                      rubric:                "Assessment / Rubric",
-                    }[key]}
-                  </label>
-                  <input
-                    type="text"
-                    value={sectionLabels[key]}
-                    onChange={e => setSectionLabels(prev => ({ ...prev, [key]: e.target.value }))}
-                    placeholder={DEFAULT_SECTION_LABELS[key]}
-                    className={inputCls}
-                    style={inputSty}
-                  />
-                </div>
-              ))}
-            </div>
-            <button
-              type="button"
-              onClick={() => setSectionLabels(DEFAULT_SECTION_LABELS)}
-              className="mt-2 text-xs text-[#0cc0df] hover:underline"
-            >
-              Reset to defaults
-            </button>
+            <p className="text-sm font-semibold mb-3" style={{ color: "var(--text-primary)" }}>Sections</p>
+            <SectionsEditor scope="user" value={sections} onChange={setSections} />
           </div>
 
           <button

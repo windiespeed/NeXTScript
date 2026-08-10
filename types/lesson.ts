@@ -58,6 +58,12 @@ export interface Lesson {
   // Slides deck tracked via SavedProject; a lesson can have either, both, or neither.
   presentationAST?: PresentationAST; // Component-tree structure generated/edited via /ingest
   selectedTheme?: string;            // Active ThemeConfig id (see types/theme.ts) for the AST renderer
+
+  // Dynamic content sections (see types/section.ts), keyed by SectionDef.id. Supersedes the
+  // fixed fields above (overview, learningTargets, vocabulary, ...) once a lesson has been
+  // saved through the new LessonForm — see lib/sections.ts's getSectionContent() for how old
+  // lessons (no `sections` map yet) fall back to those fixed fields with zero migration.
+  sections?: Record<string, string>;
 }
 
 export type LessonInput = Omit<

@@ -4,11 +4,11 @@ import { store } from "@/lib/store";
 import { projectStore } from "@/lib/projectStore";
 import { courseStore } from "@/lib/courseStore";
 import { canAccessLesson } from "@/lib/access";
-import { userSettings, getMergedLabels } from "@/lib/userSettings";
-import { generateBundleSelective, generateBundleAsDownload, buildQuiz, createCourseFolder, addFileToFolders, shareCourseFolderWithMembers, listClassroomTeacherEmails } from "@/lib/google";
-import { ensureLessonFolderId } from "@/lib/lessonFolders";
+import { userSettings } from "@/lib/userSettings";
+import { generateBundleSelective, generateBundleAsDownload, buildQuiz, addFileToFolders } from "@/lib/google";
+import { ensureLessonFolderId, ensureCourseFolderId } from "@/lib/lessonFolders";
 import { generateQuizQuestions } from "@/lib/ai";
-import { DEFAULT_SECTION_LABELS } from "@/lib/sectionLabels";
+import { resolveSections } from "@/lib/sections";
 
 export const dynamic = "force-dynamic";
 
@@ -70,27 +70,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   // Ensure the course has a Drive folder so slides/docs/quizzes all land in one place
   let courseFolderId = course?.driveFolderId;
   if (course && !courseFolderId && destination === "drive") {
-    const folder = await createCourseFolder(course.title, accessToken);
-    await courseStore.update(course.id, { driveFolderId: folder.id, driveFolderUrl: folder.webViewLink, driveFolderShared: true });
-    courseFolderId = folder.id;
-    // Whoever generates first owns this folder in their own Drive — share it with the rest of
-    // the course's members, plus any co-teacher who only has access via Google Classroom.
-    const classroomTeacherEmails = course.googleClassroomId
-      ? await listClassroomTeacherEmails(course.googleClassroomId, accessToken)
-      : [];
-    await shareCourseFolderWithMembers(folder.id, course, session.user!.email!, accessToken, classroomTeacherEmails);
+    courseFolderId = await ensureCourseFolderId(course, accessToken, session.user!.email!);
   }
 
   // Course settings override user settings when non-empty
   const industry = (course?.settings?.industry || uSettings.industry) ?? "";
   const subject  = (course?.settings?.subject  || uSettings.subject)  ?? "";
 
-  // Merge section labels: defaults → user labels → course labels
-  const mergedLabels = {
-    ...DEFAULT_SECTION_LABELS,
-    ...uSettings.sectionLabels,
-    ...(course?.settings?.sectionLabels ?? {}),
-  };
+  // Resolve the active section list: course-level > user-level > synthesized from labels
+  // (defaults → user labels → course labels), so old courses/users behave identically.
+  const sections = resolveSections({ course, userSettings: uSettings });
 
   // If no templateId from the request, fall back to the course's default template URL
   if (!templateId && course?.settings?.defaultTemplateUrl) {
@@ -101,7 +90,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     templateId = extractPresentationId(uSettings.defaultTemplateUrl);
   }
 
-  const curriculumCtx = { industry, subject, labels: mergedLabels };
+  const curriculumCtx = { industry, subject, sections };
 
   try {
     if (destination === "drive") {
@@ -112,7 +101,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         bundleFiles,
         accessToken,
         templateId,
-        mergedLabels,
+        sections,
         courseFolderId
       );
 
@@ -192,7 +181,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json(updated);
     } else {
       const downloadFiles = files.filter(f => f !== "quiz") as ("slides" | "doc")[];
-      const downloads = await generateBundleAsDownload(lesson, downloadFiles, accessToken, templateId, mergedLabels);
+      const downloads = await generateBundleAsDownload(lesson, downloadFiles, accessToken, templateId, sections);
       await store.update(id, { status: "done" });
       return NextResponse.json({ downloads });
     }

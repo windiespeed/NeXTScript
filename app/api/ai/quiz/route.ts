@@ -4,7 +4,7 @@ import { userSettings } from "@/lib/userSettings";
 import { courseStore } from "@/lib/courseStore";
 import { canAccessCourse } from "@/lib/access";
 import { generateQuizQuestions } from "@/lib/ai";
-import { DEFAULT_SECTION_LABELS } from "@/lib/sectionLabels";
+import { resolveSections } from "@/lib/sections";
 
 export const dynamic = "force-dynamic";
 
@@ -30,17 +30,13 @@ export async function POST(req: Request) {
     const course = rawCourse && canAccessCourse(rawCourse, session.user.email) ? rawCourse : undefined;
     const industry = (course?.settings?.industry || settings.industry) ?? "";
     const subject  = (course?.settings?.subject  || settings.subject)  ?? "";
-    const labels = {
-      ...DEFAULT_SECTION_LABELS,
-      ...settings.sectionLabels,
-      ...(course?.settings?.sectionLabels ?? {}),
-    };
+    const sections = resolveSections({ course, userSettings: settings });
 
     const mc = Math.min(50, Math.max(0, mcCount ?? 8));
     const sa = Math.min(50, Math.max(0, saCount ?? 2));
     if (mc + sa === 0)
       return NextResponse.json({ error: "Please set at least 1 question." }, { status: 400 });
-    const questions = await generateQuizQuestions(settings.anthropicKey, lesson, { industry, subject, labels }, mc, sa);
+    const questions = await generateQuizQuestions(settings.anthropicKey, lesson, { industry, subject, sections }, mc, sa);
 
     if (questions.length === 0)
       return NextResponse.json({ error: "AI failed to generate questions. Try adding more topic detail." }, { status: 500 });

@@ -1,31 +1,20 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { LessonInput } from "@/types/lesson";
 import type { FormQuestion } from "@/types/form";
-import { DEFAULT_SECTION_LABELS, type SectionLabels } from "@/lib/userSettings";
 import { STUDENT_LEVEL_GUIDANCE } from "@/lib/studentLevel";
+import { getSectionContent } from "@/lib/sections";
+import { DEFAULT_SECTIONS, BUILTIN_AI_INSTRUCTIONS, isBuiltinId, type SectionDef } from "@/types/section";
 
 interface CurriculumContext {
   industry?: string;
   subject?: string;
-  labels?: SectionLabels;
+  sections?: SectionDef[];
 }
 
-type AiFillResult = Pick<
-  LessonInput,
-  | "overview"
-  | "learningTargets"
-  | "vocabulary"
-  | "warmUp"
-  | "guidedLab"
-  | "selfPaced"
-  | "submissionChecklist"
-  | "checkpoint"
-  | "industryBestPractices"
-  | "devJournalPrompt"
-  | "rubric"
-> & {
+interface AiFillResult {
+  sections: Record<string, string>;
   slides: { title: string; body: string }[];
-};
+}
 
 export async function fillLesson(
   apiKey: string,
@@ -37,10 +26,19 @@ export async function fillLesson(
 
   const level = lesson.studentLevel ?? "beginner";
   const levelInstruction = STUDENT_LEVEL_GUIDANCE[level] ?? STUDENT_LEVEL_GUIDANCE.beginner;
-  const labels = ctx.labels ?? DEFAULT_SECTION_LABELS;
+  const sections = ctx.sections ?? DEFAULT_SECTIONS;
   const industryLine = ctx.industry ? `Industry: ${ctx.industry}` : "";
   const subjectLine = ctx.subject ? `Subject Area: ${ctx.subject}` : "";
   const programDesc = [ctx.industry, ctx.subject].filter(Boolean).join(" — ") || "an educational program";
+
+  const sectionSchemaLines = sections
+    .map(s => {
+      const instruction = isBuiltinId(s.id)
+        ? BUILTIN_AI_INSTRUCTIONS[s.id]
+        : `Generate helpful content for the "${s.label}" section`;
+      return `  "${s.id}": "${instruction} — label this section '${s.label}'"`;
+    })
+    .join(",\n");
 
   const prompt = `You are a curriculum designer for ${programDesc}. Generate content for a lesson with the following details:
 
@@ -58,20 +56,10 @@ Generate each of the following sections. Tailor ALL content to the student level
 
 Return ONLY a valid JSON object with these exact keys (no markdown, no explanation):
 {
-  "overview": "3-4 sentence paragraph overview of the lesson",
-  "learningTargets": "5-7 bullet points (one per line, starting with •) of specific measurable objectives",
-  "vocabulary": "8-12 key terms with concise definitions, formatted as 'Term: Definition' (one per line)",
-  "warmUp": "3-5 questions (numbered) to engage students at the start of class — label this section '${labels.warmUp}'",
+${sectionSchemaLines},
   "slides": [
     { "title": "Slide title", "body": "Slide content — write as plain concise sentences or relevant examples. Do NOT use bullet characters (•, -, *) or any list symbols. Wrap inline code in backticks." }
-  ],
-  "guidedLab": "Step-by-step instructor-led exercise (numbered steps) — label this section '${labels.guidedLab}'",
-  "selfPaced": "Step-by-step independent exercise (numbered steps) — label this section '${labels.selfPaced}'",
-  "submissionChecklist": "Specific requirements students must meet (bullet points starting with •) — label this section '${labels.submissionChecklist}'",
-  "checkpoint": "3-5 common problems students may face with solutions — label this section '${labels.checkpoint}'",
-  "industryBestPractices": "3-5 standards and best practices for this topic (bullet points) — label this section '${labels.industryBestPractices}'",
-  "devJournalPrompt": "3-5 specific reflection questions — label this section '${labels.devJournalPrompt}'",
-  "rubric": "Comprehension and objective checklist (bullet points with point values) — label this section '${labels.rubric}'"
+  ]
 }
 
 For "slides": generate exactly ${slideCount} slides that cover the lesson's main concepts in a logical teaching sequence. Each slide should have a concise title and a body with 3-5 plain-text sentences or a brief example. Do NOT use bullet characters (•, -, *) or list symbols anywhere in slide bodies. The first slide should be an intro/agenda slide.`;
@@ -88,19 +76,34 @@ For "slides": generate exactly ${slideCount} slides that cover the lesson's main
   const start = stripped.indexOf("{");
   const end = stripped.lastIndexOf("}");
   const jsonStr = start !== -1 && end > start ? stripped.slice(start, end + 1) : stripped;
+
+  let parsed: Record<string, unknown>;
   try {
-    return JSON.parse(jsonStr) as AiFillResult;
+    parsed = JSON.parse(jsonStr);
   } catch {
     // AI sometimes returns literal newlines inside JSON strings — normalize and retry
     const cleaned = jsonStr.replace(/:\s*"([\s\S]*?)"\s*([,}])/g, (_, val, tail) =>
       `: "${val.replace(/\n/g, "\\n").replace(/\r/g, "").replace(/"/g, '\\"')}"${tail}`
     );
     try {
-      return JSON.parse(cleaned) as AiFillResult;
+      parsed = JSON.parse(cleaned);
     } catch {
       throw new Error(`AI Fill failed to generate valid content. Please make sure the lesson has a title and try again.`);
     }
   }
+
+  const { slides, ...sectionValues } = parsed;
+  // Only keep keys that match a known section id — discards anything the model hallucinated.
+  const knownIds = new Set(sections.map(s => s.id));
+  const resultSections: Record<string, string> = {};
+  for (const [key, value] of Object.entries(sectionValues)) {
+    if (knownIds.has(key) && typeof value === "string") resultSections[key] = value;
+  }
+
+  return {
+    sections: resultSections,
+    slides: Array.isArray(slides) ? (slides as { title: string; body: string }[]) : [],
+  };
 }
 
 export async function generateQuizQuestions(
@@ -117,27 +120,17 @@ export async function generateQuizQuestions(
   const levelInstruction = STUDENT_LEVEL_GUIDANCE[level] ?? STUDENT_LEVEL_GUIDANCE.beginner;
   const programDesc = [ctx.industry, ctx.subject].filter(Boolean).join(" — ") || "an educational program";
 
+  const quizSections = (ctx.sections ?? DEFAULT_SECTIONS).filter(s => s.includeInQuizContext !== false);
+  const sectionContentLines = quizSections.map(s => `${s.label}:\n${getSectionContent(lesson, s.id)}`);
+
   // Build content block — works with just topics if full lesson content isn't available
-  const hasFullContent = !!(lesson.learningTargets || lesson.overview || lesson.slideContent);
+  const hasFullContent = quizSections.some(s => getSectionContent(lesson, s.id)) || !!lesson.slideContent;
   const contentBlock = hasFullContent
     ? `--- LESSON CONTENT ---
-Learning Targets:
-${lesson.learningTargets || ""}
-
-Vocabulary:
-${lesson.vocabulary || ""}
-
-Overview:
-${lesson.overview || ""}
+${sectionContentLines.join("\n\n")}
 
 Slide Content:
 ${lesson.slideContent || ""}
-
-Guided Lab:
-${lesson.guidedLab || ""}
-
-Industry Best Practices:
-${lesson.industryBestPractices || ""}
 --- END LESSON CONTENT ---
 
 Generate questions drawn directly from the lesson content above.`

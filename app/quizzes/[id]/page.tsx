@@ -7,6 +7,7 @@ import type { Course, CourseModule } from "@/types/course";
 import type { Lesson } from "@/types/lesson";
 import type { FormQuestion } from "@/types/form";
 import { emptyQuestion } from "@/types/form";
+import { getSectionContent } from "@/lib/sections";
 
 const inputClass = "w-full rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#0cc0df] transition placeholder:text-[var(--text-muted)]";
 const inputStyle = { background: "var(--bg-card-hover)", color: "var(--text-primary)", border: "1px solid var(--border)" };
@@ -83,15 +84,18 @@ export default function EditQuizPage() {
 
   function buildMergedLesson() {
     const targetLessons = allLessons.filter(l => lessonIds.includes(l.id));
+    // Read via getSectionContent(), not the legacy field directly — a lesson edited through
+    // the new dynamic-sections LessonForm has its real content in `sections`, and the flat
+    // field would be stale/blank for it.
     return {
       title: quizTitle || targetLessons.map(l => l.title).join(", "),
       topics: targetLessons.map(l => l.topics).filter(Boolean).join(", "),
-      learningTargets: targetLessons.map(l => l.learningTargets).filter(Boolean).join("\n\n"),
-      vocabulary: targetLessons.map(l => l.vocabulary).filter(Boolean).join("\n\n"),
-      overview: targetLessons.map(l => l.overview).filter(Boolean).join("\n\n"),
+      learningTargets: targetLessons.map(l => getSectionContent(l, "learningTargets")).filter(Boolean).join("\n\n"),
+      vocabulary: targetLessons.map(l => getSectionContent(l, "vocabulary")).filter(Boolean).join("\n\n"),
+      overview: targetLessons.map(l => getSectionContent(l, "lessonOverview")).filter(Boolean).join("\n\n"),
       slideContent: targetLessons.map(l => l.slideContent).filter(Boolean).join("\n\n"),
-      guidedLab: targetLessons.map(l => l.guidedLab).filter(Boolean).join("\n\n"),
-      industryBestPractices: targetLessons.map(l => l.industryBestPractices).filter(Boolean).join("\n\n"),
+      guidedLab: targetLessons.map(l => getSectionContent(l, "guidedLab")).filter(Boolean).join("\n\n"),
+      industryBestPractices: targetLessons.map(l => getSectionContent(l, "industryBestPractices")).filter(Boolean).join("\n\n"),
       studentLevel: targetLessons[0]?.studentLevel,
     };
   }

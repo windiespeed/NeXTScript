@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import type { Course, CourseModule } from "@/types/course";
 import type { Lesson } from "@/types/lesson";
+import { getSectionContent } from "@/lib/sections";
 
 const inputClass = "rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#0cc0df] transition";
 const inputStyle = { background: "var(--bg-card-hover)", color: "var(--text-primary)", border: "1px solid var(--border)" };
@@ -142,22 +143,27 @@ export default function BatchGeneratePage() {
             updatedSlideContent = serializeSlides(data.slides);
             updatedSlideCount = data.slides.length;
 
+            // fillLesson now returns { sections: Record<id, content>, slides } rather than
+            // flat fields. Seed this lesson's real current content (legacy fixed fields, for a
+            // lesson that predates the dynamic-sections model) before `sections` becomes
+            // authoritative, then fill only genuinely-empty sections with the AI response —
+            // "existing content is never overwritten", same as LessonForm's own AI Fill.
+            const preMigration = !lesson.sections;
+            const nextSections: Record<string, string> = { ...(lesson.sections ?? {}) };
+            for (const [sectionId, value] of Object.entries(data.sections ?? {})) {
+              if (preMigration) {
+                const legacy = getSectionContent(lesson, sectionId);
+                if (legacy) nextSections[sectionId] = legacy;
+              }
+              if (!nextSections[sectionId] && typeof value === "string") nextSections[sectionId] = value;
+            }
+
             setLessonProgress(lesson.id, "saving", "Saving content…");
             const saveRes = await fetch(`/api/lessons/${lesson.id}`, {
               method: "PUT",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
-                overview: data.overview ?? lesson.overview,
-                learningTargets: data.learningTargets ?? lesson.learningTargets,
-                vocabulary: data.vocabulary ?? lesson.vocabulary,
-                warmUp: data.warmUp ?? lesson.warmUp,
-                guidedLab: data.guidedLab ?? lesson.guidedLab,
-                selfPaced: data.selfPaced ?? lesson.selfPaced,
-                submissionChecklist: data.submissionChecklist ?? lesson.submissionChecklist,
-                checkpoint: data.checkpoint ?? lesson.checkpoint,
-                industryBestPractices: data.industryBestPractices ?? lesson.industryBestPractices,
-                devJournalPrompt: data.devJournalPrompt ?? lesson.devJournalPrompt,
-                rubric: data.rubric ?? lesson.rubric,
+                sections: nextSections,
                 slideContent: updatedSlideContent,
                 slideCount: updatedSlideCount,
                 overviewSlides: Array(data.slides.length).fill(false),

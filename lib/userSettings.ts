@@ -1,6 +1,7 @@
 import { getDb } from "@/lib/firebase";
 import type { FieldValue } from "firebase-admin/firestore";
 import { DEFAULT_SECTION_LABELS, type SectionLabels } from "@/lib/sectionLabels";
+import type { SectionDef } from "@/types/section";
 
 export { DEFAULT_SECTION_LABELS, type SectionLabels };
 
@@ -10,7 +11,7 @@ export function getMergedLabels(settings: { sectionLabels?: Partial<SectionLabel
   return { ...DEFAULT_SECTION_LABELS, ...settings.sectionLabels };
 }
 
-interface UserSettings {
+export interface UserSettings {
   anthropicKey?: string;
   avatarUrl?: string;
   defaultSources?: string;
@@ -19,7 +20,9 @@ interface UserSettings {
   lessonOrder?: string[];
   industry?: string;
   subject?: string;
+  /** @deprecated superseded by `sections` below — kept as a synthesis input, never migrated. */
   sectionLabels?: Partial<SectionLabels>;
+  sections?: SectionDef[];
 }
 
 export const userSettings = {

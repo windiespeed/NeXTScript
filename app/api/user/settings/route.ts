@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { userSettings } from "@/lib/userSettings";
 import { FieldValue } from "firebase-admin/firestore";
+import type { SectionDef } from "@/types/section";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,7 @@ export async function GET() {
       industry: s.industry ?? "",
       subject: s.subject ?? "",
       sectionLabels: s.sectionLabels ?? {},
+      sections: s.sections ?? [],
     });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
@@ -34,7 +36,7 @@ export async function PUT(req: Request) {
     if (!session?.user?.email) return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
 
     const body = await req.json();
-    const update: Record<string, string | string[] | undefined> = {};
+    const update: Record<string, string | string[] | SectionDef[] | undefined> = {};
 
     if ("anthropicKey" in body) {
       if (typeof body.anthropicKey !== "string" || !body.anthropicKey.trim()) {
@@ -69,6 +71,10 @@ export async function PUT(req: Request) {
 
     if ("sectionLabels" in body) {
       update.sectionLabels = typeof body.sectionLabels === "object" ? body.sectionLabels : {};
+    }
+
+    if ("sections" in body) {
+      update.sections = Array.isArray(body.sections) ? body.sections : [];
     }
 
     await userSettings.save(session.user.email, update);

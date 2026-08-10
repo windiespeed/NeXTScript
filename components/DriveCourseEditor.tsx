@@ -241,6 +241,10 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
       devJournalPrompt: full.devJournalPrompt ?? "", rubric: full.rubric ?? "",
       sources: full.sources ?? "", studentLevel: full.studentLevel, quizQuestions: full.quizQuestions,
       lessonType: full.lessonType,
+      // A lesson edited through the new dynamic-sections LessonForm has its real content here —
+      // the legacy fields above are frozen at whatever they were before that, so this must be
+      // copied too or the duplicate would silently inherit stale/blank legacy content.
+      sections: full.sections,
       courseId: id, released: false, folder: full.folder ?? "",
     };
     // POST /api/lessons already registers the new lesson in this course's lessonIds
