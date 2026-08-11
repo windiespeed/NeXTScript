@@ -204,10 +204,15 @@ export async function ingestRawContent(
     ],
   };
 
-  let message = await client.messages.create({
+  // Streaming (not .create()) — at this max_tokens the SDK refuses a non-streaming call
+  // outright ("Streaming is required for operations that may take longer than 10 minutes"),
+  // and streaming is the right call anyway given thinking + tool use can run long.
+  // .finalMessage() drives the stream to completion internally and returns the same
+  // Message shape .create() would have.
+  let message = await client.messages.stream({
     ...requestParams,
     messages: [{ role: "user", content: userContent }],
-  });
+  }).finalMessage();
 
   // The server-side web_fetch/web_search tool loop can hit its internal iteration cap
   // mid-task and pause with stop_reason "pause_turn" before ever producing final text —
@@ -216,13 +221,13 @@ export async function ingestRawContent(
   // pathological loop can't run away and rack up cost indefinitely.
   let continuations = 0;
   while (message.stop_reason === "pause_turn" && continuations < 3) {
-    message = await client.messages.create({
+    message = await client.messages.stream({
       ...requestParams,
       messages: [
         { role: "user", content: userContent },
         { role: "assistant", content: message.content },
       ],
-    });
+    }).finalMessage();
     continuations++;
   }
 
