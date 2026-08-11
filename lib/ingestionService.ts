@@ -23,7 +23,7 @@ Core Objectives:
    - Use \`callout\` for crucial warnings, best practices, tips, or instructor call-outs — anything that reads as an aside rather than core content.
    - Use \`step-grid\` for chronological workflows, setup instructions, or sequential guides.
 4. Mandatory Topic Coverage: If the user turn lists required topics or headings, create one dedicated slide per topic, titled to clearly match that topic (verbatim or near-verbatim). Never omit a required topic and don't silently merge two of them into a single slide unless they are genuinely inseparable — you may still add extra slides beyond the required ones for anything else the raw notes cover.
-5. Source Verification: If "Reference Sources" URLs are listed under LESSON CONTEXT, use the web_fetch tool to read the ones relevant to what the raw notes cover before writing those slides — don't rely on training data alone when a source is right there. Use the web_search tool sparingly, only when the raw notes reference specific current facts (recent versions, prices, dates, statistics) you're not confident about — don't search for general concepts you already know well.
+5. Source Verification: If "Reference Sources" URLs are listed under LESSON CONTEXT, use the web_fetch tool on at most the 2-3 most relevant ones before writing those slides — don't rely on training data alone when a source is right there, but don't fetch every source listed either. Use the web_search tool sparingly and at most once or twice, only when the raw notes reference specific current facts (recent versions, prices, dates, statistics) you're not confident about — don't search for general concepts you already know well. These tools are a supplement, not a research project: prioritize finishing the presentation over exhaustively verifying every claim.
 
 Output Requirements:
 - You must output strictly valid JSON matching the PresentationAST TypeScript schema structure.`;
@@ -192,24 +192,45 @@ export async function ingestRawContent(
   if (!rawText.trim()) throw new Error("Nothing to ingest — the input was empty.");
 
   const client = new Anthropic({ apiKey });
-
-  const message = await client.messages.create({
-    model: "claude-opus-5",
-    max_tokens: 16000,
-    thinking: { type: "adaptive" },
+  const userContent = buildUserPrompt(rawText, opts);
+  const requestParams = {
+    model: "claude-opus-5" as const,
+    max_tokens: 24000,
+    thinking: { type: "adaptive" as const },
     system: CURRICULUM_ARCHITECT_SYSTEM_PROMPT,
-    messages: [{ role: "user", content: buildUserPrompt(rawText, opts) }],
     tools: [
-      { type: "web_fetch_20260209", name: "web_fetch", max_uses: 5 },
-      { type: "web_search_20260209", name: "web_search", max_uses: 3 },
+      { type: "web_fetch_20260209" as const, name: "web_fetch" as const, max_uses: 5 },
+      { type: "web_search_20260209" as const, name: "web_search" as const, max_uses: 3 },
     ],
+  };
+
+  let message = await client.messages.create({
+    ...requestParams,
+    messages: [{ role: "user", content: userContent }],
   });
+
+  // The server-side web_fetch/web_search tool loop can hit its internal iteration cap
+  // mid-task and pause with stop_reason "pause_turn" before ever producing final text —
+  // billed tokens with nothing to show for it if left unhandled. Resend (per Anthropic's
+  // documented pause_turn pattern) so it picks up where it left off, bounded so a
+  // pathological loop can't run away and rack up cost indefinitely.
+  let continuations = 0;
+  while (message.stop_reason === "pause_turn" && continuations < 3) {
+    message = await client.messages.create({
+      ...requestParams,
+      messages: [
+        { role: "user", content: userContent },
+        { role: "assistant", content: message.content },
+      ],
+    });
+    continuations++;
+  }
 
   // With server-side tools enabled, earlier text blocks may be commentary/search
   // narration rather than the final answer — the last text block is the real one.
   const textBlock = [...message.content].reverse().find((block) => block.type === "text");
   if (!textBlock || textBlock.type !== "text") {
-    throw new Error("The AI did not return a text response.");
+    throw new Error(`The AI did not return a text response (stopped: ${message.stop_reason}). Please try again.`);
   }
 
   let parsed: unknown;
