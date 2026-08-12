@@ -262,6 +262,9 @@ function Dashboard() {
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   const modalLesson = lessons.find(l => l.id === modalLessonId) ?? null;
+  const modalLessonHasQuizDraft = modalLesson
+    ? projects.some(p => p.type === "form" && p.status === "draft" && (p.lessonId === modalLesson.id || p.lessonIds?.includes(modalLesson.id)))
+    : false;
   const scheduleRef = useDragScroll();
 
   // ── Computed stats ──────────────────────────────────────────────────────────
@@ -835,7 +838,7 @@ function Dashboard() {
       )}
 
 
-      <GenerateModal lesson={modalLesson} onClose={() => setModalLessonId(null)} onGenerate={handleGenerateWithOptions} />
+      <GenerateModal lesson={modalLesson} hasQuizDraft={modalLessonHasQuizDraft} onClose={() => setModalLessonId(null)} onGenerate={handleGenerateWithOptions} />
 
       {toast && (
         <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-3xl px-5 py-3.5 shadow-2xl text-sm font-semibold transition-all ${toast.type === "success" ? "bg-[#2dd4a0] text-[#0a0b13]" : "bg-red-500 text-white"}`}>

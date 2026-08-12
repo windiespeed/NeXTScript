@@ -9,6 +9,7 @@ type ModalStatus = "idle" | "loading";
 
 interface Props {
   lesson: Lesson | null;
+  hasQuizDraft: boolean;
   onClose: () => void;
   onGenerate: (id: string, files: FileChoice[], destination: Destination, templateId?: string) => Promise<void>;
 }
@@ -18,29 +19,40 @@ function extractPresentationId(url: string): string | null {
   return match ? match[1] : null;
 }
 
-export default function GenerateModal({ lesson, onClose, onGenerate }: Props) {
-  const [selectedFiles, setSelectedFiles] = useState<FileChoice[]>(["slides", "doc", "quiz"]);
+export default function GenerateModal({ lesson, hasQuizDraft, onClose, onGenerate }: Props) {
+  // Quiz defaults off — unlike Slides/Doc, checking it can silently trigger a billed AI call
+  // (see the warning below) when there's no draft or manually-entered questions to use instead.
+  const [selectedFiles, setSelectedFiles] = useState<FileChoice[]>(["slides", "doc"]);
   const [destination, setDestination] = useState<Destination>("drive");
   const [modalStatus] = useState<ModalStatus>("idle");
   const [templateUrl, setTemplateUrl] = useState("");
+  const [hasAiKey, setHasAiKey] = useState(false);
 
-  // Load saved template URL once on mount
+  // Load saved template URL + AI key status once on mount
   useEffect(() => {
     fetch("/api/user/settings")
       .then(r => r.json())
-      .then(data => { if (data.defaultTemplateUrl) setTemplateUrl(data.defaultTemplateUrl); })
+      .then(data => {
+        if (data.defaultTemplateUrl) setTemplateUrl(data.defaultTemplateUrl);
+        setHasAiKey(data.hasKey ?? false);
+      })
       .catch(() => {});
   }, []);
 
   // Reset file/destination state whenever a new lesson opens the modal
   useEffect(() => {
     if (lesson) {
-      setSelectedFiles(["slides", "doc", "quiz"]);
+      setSelectedFiles(["slides", "doc"]);
       setDestination("drive");
     }
   }, [lesson?.id]);
 
   if (!lesson) return null;
+
+  // Mirrors the server's exact fallback condition in app/api/generate/[id]/route.ts — if
+  // none of these already have quiz content, checking "Quiz" will call Claude to write
+  // questions from scratch rather than silently doing nothing.
+  const willAiGenerateQuiz = hasAiKey && !hasQuizDraft && !(lesson.quizQuestions?.length);
 
   const quizDisabled = destination === "download";
   const effectiveFiles = destination === "download"
@@ -144,6 +156,11 @@ export default function GenerateModal({ lesson, onClose, onGenerate }: Props) {
               />
               Quiz <span className="text-xs" style={{ color: "var(--text-muted)" }}>{quizDisabled ? "(not available as PDF)" : "(Google Forms)"}</span>
             </label>
+            {selectedFiles.includes("quiz") && willAiGenerateQuiz && (
+              <p className="text-xs pl-6 -mt-1" style={{ color: "#ff8c4a" }}>
+                No quiz drafted for this lesson yet — checking this will use AI to generate questions from scratch.
+              </p>
+            )}
           </div>
         </div>
 

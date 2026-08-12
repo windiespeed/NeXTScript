@@ -533,7 +533,7 @@ export default function LessonHubPage() {
               url={q.url} editHref={`/quizzes/${q.id}`} editLabel="Edit Quiz" />
           ))}
           {!deck && quizProjects.length === 0 && !lesson.overviewUrl && (
-            <p className="text-xs text-center py-4" style={{ color: "var(--text-muted)" }}>No documents generated yet — use the Generate panel above.</p>
+            <p className="text-xs text-center py-4" style={{ color: "var(--text-muted)" }}>No documents generated yet — use the Generate panel below.</p>
           )}
         </div>
       </div>
@@ -571,6 +571,11 @@ export default function LessonHubPage() {
                           </button>
                         ))}
                       </div>
+                      {genQuiz && quizDrafts.length === 0 && !lesson?.quizQuestions?.length && hasAiKey && (
+                        <p className="text-xs w-full text-center sm:text-left" style={{ color: "#ff8c4a" }}>
+                          No quiz drafted for this lesson yet — generating will use AI to write questions from scratch.
+                        </p>
+                      )}
                       <div className={`flex flex-col gap-2 ${hubSizes["generate"] >= 2 ? "sm:flex-row sm:shrink-0" : ""}`}>
                         <button
                           onClick={handleGenerate}
