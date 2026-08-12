@@ -8,11 +8,13 @@ import { canAccessLesson, canAccessCourseId } from "@/lib/access";
 import { buildSlideDeckFromAst, moveFileToFolder } from "@/lib/google";
 import { ensureLessonFolderId, ensureCourseFolderId } from "@/lib/lessonFolders";
 import { assertValidAst } from "@/lib/ingestionService";
+import { DEFAULT_THEME_ID } from "@/lib/themes";
 import type { PresentationAST } from "@/types/slideAst";
 import type { SavedProject } from "@/types/project";
 import type { Lesson } from "@/types/lesson";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 
 function extractPresentationId(url: string): string | undefined {
   const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
@@ -69,7 +71,14 @@ export async function POST(req: Request) {
       if (settings.defaultTemplateUrl) templateId = extractPresentationId(settings.defaultTemplateUrl);
     }
 
-    const deckId = await buildSlideDeckFromAst(ast, accessToken, templateId);
+    // Theme precedence: request body (whatever's picked in ThemePicker for this generation) →
+    // course default → fixed global fallback. No user-level tier — a course either has a
+    // branded default or every export uses the same theme, by design.
+    const themeId: string = typeof body.themeId === "string" && body.themeId
+      ? body.themeId
+      : (course?.settings?.defaultThemeId || DEFAULT_THEME_ID);
+
+    const deckId = await buildSlideDeckFromAst(ast, accessToken, templateId, themeId);
 
     // File the deck the same place the classic lesson generator would — nested in the lesson's
     // Drive folder (itself nested in the course's folder) — instead of leaving it at Drive's root.

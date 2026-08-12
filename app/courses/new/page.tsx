@@ -7,6 +7,9 @@ import { DEFAULT_COURSE_SETTINGS } from "@/types/course";
 import type { CourseSettings } from "@/types/course";
 import { resolveSections } from "@/lib/sections";
 import SectionsEditor from "@/components/SectionsEditor";
+import ThemePicker from "@/components/ThemePicker";
+import { clearDraft } from "@/lib/draftStorage";
+import { useDraftAutosave, useDraftRestore } from "@/hooks/useDraftAutosave";
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const TERM_YEARS: number[] = Array.from({ length: 21 }, (_, i) => 2040 - i);
@@ -14,6 +17,16 @@ const TERM_YEARS: number[] = Array.from({ length: 21 }, (_, i) => 2040 - i);
 const inputClass = "w-full rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#0cc0df] transition placeholder:text-[var(--text-muted)]";
 const inputStyle = { background: "var(--bg-card-hover)", color: "var(--text-primary)", border: "1px solid var(--border)" };
 const sectionHeading = "text-xs font-semibold uppercase tracking-widest text-[#0cc0df] mb-3";
+
+interface NewCourseDraft {
+  title: string;
+  description: string;
+  gradeLevel: string;
+  termMonth: string;
+  termYear: string;
+  semester: string;
+  settings: CourseSettings;
+}
 
 export default function NewCoursePage() {
   useSession({ required: true });
@@ -28,6 +41,20 @@ export default function NewCoursePage() {
   const [settings, setSettings] = useState<CourseSettings>(DEFAULT_COURSE_SETTINGS);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  const draftKey = "course:new";
+  useDraftRestore<NewCourseDraft>(draftKey, (draft) => {
+    setTitle(draft.title);
+    setDescription(draft.description);
+    setGradeLevel(draft.gradeLevel);
+    setTermMonth(draft.termMonth);
+    setTermYear(draft.termYear);
+    setSemester(draft.semester);
+    setSettings(draft.settings);
+  });
+  useDraftAutosave<NewCourseDraft>(draftKey, {
+    title, description, gradeLevel, termMonth, termYear, semester, settings,
+  });
 
   function patchSettings(patch: Partial<CourseSettings>) {
     setSettings((prev) => ({ ...prev, ...patch }));
@@ -51,6 +78,7 @@ export default function NewCoursePage() {
       return;
     }
     const course = await res.json();
+    clearDraft(draftKey);
     await fetch(`/api/courses/${course.id}/folder`, { method: "POST" }).catch(() => {});
     router.push(`/courses/${course.id}`);
   }
@@ -163,6 +191,14 @@ export default function NewCoursePage() {
             <input type="url" value={settings.defaultTemplateUrl}
               onChange={(e) => patchSettings({ defaultTemplateUrl: e.target.value })}
               placeholder="https://docs.google.com/presentation/d/…" className={inputClass} style={inputStyle} />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
+              Default Theme <span className="font-normal text-[10px]" style={{ color: "#0cc0df" }}>· used by Notes to Slides</span>
+            </label>
+            <p className="text-xs mb-1.5" style={{ color: "var(--text-muted)" }}>Every generated deck for this course defaults to this theme. Leave unset to always use Pearl.</p>
+            <ThemePicker value={settings.defaultThemeId ?? ""} onChange={(id) => patchSettings({ defaultThemeId: id })} />
           </div>
         </div>
 

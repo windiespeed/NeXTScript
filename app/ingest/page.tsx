@@ -14,6 +14,8 @@ import type { Course, CourseModule } from "@/types/course";
 import type { Lesson, LessonInput } from "@/types/lesson";
 import type { SectionDef } from "@/types/section";
 import { resolveSections } from "@/lib/sections";
+import { clearDraft } from "@/lib/draftStorage";
+import { useDraftAutosave, useDraftRestore } from "@/hooks/useDraftAutosave";
 
 const inputClass = "w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0cc0df] transition placeholder:text-[var(--text-muted)]";
 const inputStyle = { background: "var(--bg-card-hover)", color: "var(--text-primary)", border: "1px solid var(--border)" };
@@ -39,6 +41,30 @@ const EMPTY_LESSON_DEFAULTS: LessonInput = {
 };
 
 type LessonType = NonNullable<LessonInput["lessonType"]>;
+
+// Whitelist of fields worth restoring after a refresh. Deliberately excludes every
+// transient/in-flight flag (generating, saving, exporting, progress, error, etc.) so a
+// restore always lands in a stable "ready to act" state, never a phantom mid-run one.
+interface IngestDraft {
+  selectedCourseId: string;
+  selectedModuleId: string;
+  selectedExistingLessonId: string;
+  title: string;
+  subtitle: string;
+  topics: string;
+  deadline: string;
+  lessonType: LessonType;
+  sources: string;
+  studentLevel: StudentLevel;
+  requiredTopicsText: string;
+  rawText: string;
+  targetAudience: string;
+  slideCount: string;
+  ast: PresentationAST | null;
+  activeIndex: number;
+  viewMode: "preview" | "edit";
+  selectedThemeId: string;
+}
 
 function IngestPageInner() {
   useSession({ required: true });
@@ -102,6 +128,39 @@ function IngestPageInner() {
   const [exportError, setExportError] = useState<string | null>(null);
   const [exportedUrl, setExportedUrl] = useState<string | null>(null);
 
+  // Keyed by whichever lesson this generation is (or will be) attached to — once ensureLesson()
+  // resolves a real id, the draft moves under that id so it stays tied to the right lesson.
+  const draftKey = `ingest:${existingLessonId || lessonId || lessonIdParam || "new"}`;
+  // Restore only after the initial settings/courses fetch (and, if deep-linked, the lesson
+  // fetch) has landed — otherwise those async .then() callbacks resolve after restore and
+  // silently overwrite the just-restored fields with server defaults.
+  useDraftRestore<IngestDraft>(settingsLoaded && (!lessonIdParam || existingLessonId) ? draftKey : null, (draft) => {
+    setSelectedCourseId(draft.selectedCourseId);
+    setSelectedModuleId(draft.selectedModuleId);
+    setSelectedExistingLessonId(draft.selectedExistingLessonId);
+    setTitle(draft.title);
+    setSubtitle(draft.subtitle);
+    setTopics(draft.topics);
+    setDeadline(draft.deadline);
+    setLessonType(draft.lessonType);
+    setSources(draft.sources);
+    setStudentLevel(draft.studentLevel);
+    setRequiredTopicsText(draft.requiredTopicsText);
+    setRawText(draft.rawText);
+    setTargetAudience(draft.targetAudience);
+    setSlideCount(draft.slideCount);
+    setAst(draft.ast);
+    setActiveIndex(draft.activeIndex);
+    setViewMode(draft.viewMode);
+    setSelectedThemeId(draft.selectedThemeId);
+  });
+  useDraftAutosave<IngestDraft>(draftKey, {
+    selectedCourseId, selectedModuleId, selectedExistingLessonId,
+    title, subtitle, topics, deadline, lessonType, sources, studentLevel,
+    requiredTopicsText, rawText, targetAudience, slideCount,
+    ast, activeIndex, viewMode, selectedThemeId,
+  });
+
   useEffect(() => {
     Promise.all([
       fetch("/api/user/settings").then(r => r.json()),
@@ -126,6 +185,7 @@ function IngestPageInner() {
     const sectionTopics = resolveSections({ course, userSettings: userSectionSettings }).map(s => s.label).filter(Boolean).join("\n");
     setRequiredTopicsText(explicitTopics || sectionTopics);
     setSources(course?.settings?.defaultSources || userDefaultSources);
+    setSelectedThemeId(course?.settings?.defaultThemeId || DEFAULT_THEME_ID);
   }, [selectedCourseId, courses, userDefaultSources, userSectionSettings]);
 
   // Deep-link: ?lessonId= arrives from an existing lesson's own hub page — pre-fill
@@ -349,6 +409,7 @@ function IngestPageInner() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to save to the lesson.");
+      clearDraft(draftKey);
       setSavedJustNow(true);
       setTimeout(() => setSavedJustNow(false), 2500);
     } catch (err) {
@@ -372,7 +433,7 @@ function IngestPageInner() {
       const res = await fetch("/api/ai/ingest/export", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ast, lessonId: lessonId ?? undefined, courseId: selectedCourseId || undefined }),
+        body: JSON.stringify({ ast, lessonId: lessonId ?? undefined, courseId: selectedCourseId || undefined, themeId: selectedThemeId }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to create the Google Slides deck.");

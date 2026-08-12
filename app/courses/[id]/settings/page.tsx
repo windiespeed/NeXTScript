@@ -9,6 +9,9 @@ import type { Concept } from "@/types/concept";
 import { DEFAULT_COURSE_SETTINGS } from "@/types/course";
 import { resolveSections } from "@/lib/sections";
 import SectionsEditor from "@/components/SectionsEditor";
+import ThemePicker from "@/components/ThemePicker";
+import { clearDraft } from "@/lib/draftStorage";
+import { useDraftAutosave, useDraftRestore } from "@/hooks/useDraftAutosave";
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const TERM_YEARS: number[] = Array.from({ length: 21 }, (_, i) => 2040 - i); // 2040 down to 2020
@@ -19,6 +22,25 @@ const sectionHeading = "text-xs font-semibold uppercase tracking-widest text-[#0
 
 function slugify(label: string): string {
   return label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+
+// One combined draft for the whole page — the several independent sub-forms here are all
+// small enough that a single key is simpler than per-sub-form keys. Excludes concept
+// edit-in-place fields (editLabel/editDesc/editId) since those're tied to a specific
+// already-saved concept and low-value to protect for a quick inline edit.
+interface CourseSettingsDraft {
+  editTitle: string;
+  editDescription: string;
+  editGradeLevel: string;
+  editTermMonth: string;
+  editTermYear: string;
+  editSemester: string;
+  editSettings: CourseSettings;
+  newCollaboratorEmail: string;
+  showAddForm: boolean;
+  newLabel: string;
+  newSlug: string;
+  newDesc: string;
 }
 
 export default function CourseSettingsPage() {
@@ -73,6 +95,28 @@ export default function CourseSettingsPage() {
   const [editLabel, setEditLabel] = useState("");
   const [editDesc, setEditDesc] = useState("");
   const [editSaving, setEditSaving] = useState(false);
+
+  const draftKey = `course-settings:${courseId}`;
+  // Restore only after the initial course fetch hydrates the form — otherwise its .then()
+  // would overwrite the just-restored draft with the last-saved version from Firestore.
+  useDraftRestore<CourseSettingsDraft>(!loading ? draftKey : null, (draft) => {
+    setEditTitle(draft.editTitle);
+    setEditDescription(draft.editDescription);
+    setEditGradeLevel(draft.editGradeLevel);
+    setEditTermMonth(draft.editTermMonth);
+    setEditTermYear(draft.editTermYear);
+    setEditSemester(draft.editSemester);
+    setEditSettings(draft.editSettings);
+    setNewCollaboratorEmail(draft.newCollaboratorEmail);
+    setShowAddForm(draft.showAddForm);
+    setNewLabel(draft.newLabel);
+    setNewSlug(draft.newSlug);
+    setNewDesc(draft.newDesc);
+  });
+  useDraftAutosave<CourseSettingsDraft>(draftKey, {
+    editTitle, editDescription, editGradeLevel, editTermMonth, editTermYear, editSemester, editSettings,
+    newCollaboratorEmail, showAddForm, newLabel, newSlug, newDesc,
+  }, !loading);
 
   function patchSettings(patch: Partial<CourseSettings>) {
     setEditSettings(prev => ({ ...prev, ...patch }));
@@ -211,6 +255,7 @@ export default function CourseSettingsPage() {
     setSaving(false);
     if (res.ok) {
       setCourseName(editTitle);
+      clearDraft(draftKey);
       setSaveMsg("Settings saved.");
       setTimeout(() => setSaveMsg(""), 3000);
     } else {
@@ -398,6 +443,22 @@ export default function CourseSettingsPage() {
               Slides Template URL <span className="font-normal" style={{ color: "var(--text-muted)" }}>(optional)</span>
             </label>
             <input type="url" value={editSettings.defaultTemplateUrl} onChange={e => patchSettings({ defaultTemplateUrl: e.target.value })} placeholder="https://docs.google.com/presentation/d/…" className={inputClass} style={inputStyle} />
+          </div>
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+                Default Theme <span className="font-normal text-[10px]" style={{ color: "#0cc0df" }}>· used by Notes to Slides</span>
+              </label>
+              {editSettings.defaultThemeId && (
+                <button type="button" onClick={() => patchSettings({ defaultThemeId: "" })} className="text-[10px] font-semibold hover:underline" style={{ color: "var(--text-muted)" }}>
+                  Clear
+                </button>
+              )}
+            </div>
+            <p className="text-xs mb-1.5" style={{ color: "var(--text-muted)" }}>
+              Every generated deck for this course defaults to this theme. Leave unset to always use Pearl.
+            </p>
+            <ThemePicker value={editSettings.defaultThemeId ?? ""} onChange={id => patchSettings({ defaultThemeId: id })} />
           </div>
           <div>
             <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Required Slide Topics {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "#0cc0df" }}>· used by Notes to Slides</span>}</label>

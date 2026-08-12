@@ -12,6 +12,7 @@ import type { Lesson } from "@/types/lesson";
 import type { FormQuestion } from "@/types/form";
 import { DEFAULT_SECTIONS, type SectionDef } from "@/types/section";
 import { getSectionContent } from "@/lib/sections";
+import { getTheme, DEFAULT_THEME_ID } from "@/lib/themes";
 import type {
   PresentationAST,
   SlideNode,
@@ -309,15 +310,9 @@ export async function buildSlideDeck(lesson: Lesson, accessToken: string, templa
     deckId = created.data.presentationId!;
   }
 
-  // 2. Fetch the presentation to read existing title-slide shape IDs and master layouts
+  // 2. Fetch the presentation to read existing title-slide shape IDs
   const pres = await slides.presentations.get({ presentationId: deckId });
   const titleSlide = (pres.data.slides || [])[0];
-
-  // Find a blank-ish layout from the template master to use for the success slide
-  const masterLayouts = ((pres.data.masters || [])[0] as any)?.layouts || [];
-  const blankLayout = masterLayouts.find(
-    (l: any) => l.layoutProperties?.name?.toLowerCase().includes("blank")
-  ) ?? masterLayouts[masterLayouts.length - 1] ?? null;
 
   // ── Title slide replacements ────────────────────────────────────────────
   const titleRequests: any[] = [];
@@ -379,7 +374,7 @@ export async function buildSlideDeck(lesson: Lesson, accessToken: string, templa
     {
       createSlide: {
         objectId: successSlideId,
-        ...(blankLayout?.objectId ? { slideLayoutReference: { layoutId: blankLayout.objectId } } : {}),
+        slideLayoutReference: { predefinedLayout: "BLANK" },
       },
     },
     {
@@ -433,24 +428,64 @@ const AST_PAGE_HEIGHT = 405;
 const AST_MARGIN = 40;
 const AST_CONTENT_WIDTH = AST_PAGE_WIDTH - AST_MARGIN * 2;
 
-const AST_ACCENT_CYAN:   RgbColor = { red: 0.047, green: 0.753, blue: 0.874 }; // #0cc0df
-const AST_ACCENT_ORANGE: RgbColor = { red: 1,     green: 0.549, blue: 0.290 }; // #ff8c4a
-const AST_ACCENT_PURPLE: RgbColor = { red: 0.388, green: 0.400, blue: 0.945 }; // #6366f1
-const AST_TEXT_PRIMARY:   RgbColor = { red: 0.051, green: 0.082, blue: 0.188 }; // #0d1530
-const AST_TEXT_SECONDARY: RgbColor = { red: 0.176, green: 0.231, blue: 0.369 }; // #2d3b5e
-const AST_CARD_BG:        RgbColor = { red: 0.937, green: 0.945, blue: 0.969 }; // #eef0f7
+// Code panels always render dark regardless of theme — mirrors the browser preview's own
+// convention (components/slides/CodeExplainerSlide.tsx hardcodes #0d1117 the same way).
 const AST_CODE_PANEL_BG:  RgbColor = { red: 0.051, green: 0.067, blue: 0.090 }; // #0d1117
 const AST_CODE_LABEL:     RgbColor = { red: 0.6,   green: 0.62,  blue: 0.66 };
 const AST_WHITE:           RgbColor = { red: 1, green: 1, blue: 1 };
-const AST_WARNING_BG: RgbColor = { red: 1,     green: 0.937, blue: 0.898 }; // ~#fff0e6
-const AST_TIP_BG:     RgbColor = { red: 0.882, green: 0.976, blue: 0.988 }; // ~#e1f9fc
-const AST_NOTE_BG:    RgbColor = { red: 0.925, green: 0.925, blue: 0.996 }; // ~#ecebfe
 
-const AST_CALLOUT_VARIANTS: Record<CalloutCardSlide["variant"], { label: string; accent: RgbColor; bg: RgbColor }> = {
-  warning:            { label: "HEADS UP",         accent: AST_ACCENT_ORANGE, bg: AST_WARNING_BG },
-  tip:                { label: "PRO TIP",           accent: AST_ACCENT_CYAN,   bg: AST_TIP_BG },
-  "instructor-note":  { label: "INSTRUCTOR NOTE",  accent: AST_ACCENT_PURPLE, bg: AST_NOTE_BG },
+// The color roles that vary by theme — derived from a ThemeConfig (lib/themes.ts) so an exported
+// deck actually matches what was previewed in-browser, instead of one fixed hardcoded palette.
+type AstPalette = {
+  accentCyan: RgbColor;
+  accentOrange: RgbColor;
+  accentPurple: RgbColor;
+  textPrimary: RgbColor;
+  textSecondary: RgbColor;
+  cardBg: RgbColor;
 };
+
+function hexToRgbColor(hex: string): RgbColor {
+  const clean = hex.replace("#", "");
+  const r = parseInt(clean.slice(0, 2), 16) / 255;
+  const g = parseInt(clean.slice(2, 4), 16) / 255;
+  const b = parseInt(clean.slice(4, 6), 16) / 255;
+  return { red: r || 0, green: g || 0, blue: b || 0 };
+}
+
+/** Blends a color toward white — approximates the ~10% opacity tint technique
+ * components/slides/CalloutSlide.tsx uses in the browser (`${accent}1a`), since Slides shape
+ * fills don't support alpha the same way. */
+function tint(rgb: RgbColor, amount: number): RgbColor {
+  return {
+    red: rgb.red + (1 - rgb.red) * amount,
+    green: rgb.green + (1 - rgb.green) * amount,
+    blue: rgb.blue + (1 - rgb.blue) * amount,
+  };
+}
+
+function paletteForTheme(themeId: string): AstPalette {
+  const theme = getTheme(themeId);
+  return {
+    accentCyan: hexToRgbColor(theme.accent.primary),
+    accentOrange: hexToRgbColor(theme.accent.secondary),
+    accentPurple: hexToRgbColor(theme.accent.tertiary),
+    textPrimary: hexToRgbColor(theme.text.primary),
+    textSecondary: hexToRgbColor(theme.text.secondary),
+    cardBg: hexToRgbColor(theme.background.cardAlt),
+  };
+}
+
+// Variant→accent-slot mapping mirrors components/slides/CalloutSlide.tsx's own convention exactly
+// (tip→primary, warning→secondary, instructor-note→tertiary). Backgrounds are a light tint of
+// that same accent rather than a fixed pastel constant, so callouts stay legible on dark themes.
+function astCalloutVariants(palette: AstPalette): Record<CalloutCardSlide["variant"], { label: string; accent: RgbColor; bg: RgbColor }> {
+  return {
+    warning:            { label: "HEADS UP",        accent: palette.accentOrange, bg: tint(palette.accentOrange, 0.9) },
+    tip:                { label: "PRO TIP",          accent: palette.accentCyan,   bg: tint(palette.accentCyan, 0.9) },
+    "instructor-note":  { label: "INSTRUCTOR NOTE",  accent: palette.accentPurple, bg: tint(palette.accentPurple, 0.9) },
+  };
+}
 
 // Always requests Slides' predefined BLANK layout rather than guessing a "blank-looking" layout
 // from the template's master — a guessed layout can carry its own placeholder shapes ("Click to
@@ -505,13 +540,13 @@ function astShapeFill(objectId: string, rgbColor: RgbColor): SlideRequest {
 }
 
 /** Title (+ optional subtitle) header shared by every slide type. Returns the y-coordinate content should start at. */
-function astTitleHeader(slideId: string, title: string, subtitle?: string): { requests: SlideRequest[]; contentStartY: number } {
+function astTitleHeader(slideId: string, title: string, subtitle: string | undefined, palette: AstPalette): { requests: SlideRequest[]; contentStartY: number } {
   const requests: SlideRequest[] = [];
   const titleId = uid("t");
   requests.push(
     astShapeRequest(titleId, slideId, "TEXT_BOX", AST_MARGIN, 28, AST_CONTENT_WIDTH, 50),
     astInsertText(titleId, title),
-    astTextStyle(titleId, { bold: true, fontSize: { magnitude: 22, unit: "PT" }, foregroundColor: { opaqueColor: { rgbColor: AST_TEXT_PRIMARY } } }, "bold,fontSize,foregroundColor"),
+    astTextStyle(titleId, { bold: true, fontSize: { magnitude: 22, unit: "PT" }, foregroundColor: { opaqueColor: { rgbColor: palette.textPrimary } } }, "bold,fontSize,foregroundColor"),
   );
 
   let y = 80;
@@ -520,7 +555,7 @@ function astTitleHeader(slideId: string, title: string, subtitle?: string): { re
     requests.push(
       astShapeRequest(subId, slideId, "TEXT_BOX", AST_MARGIN, y, AST_CONTENT_WIDTH, 24),
       astInsertText(subId, subtitle),
-      astTextStyle(subId, { italic: true, fontSize: { magnitude: 13, unit: "PT" }, foregroundColor: { opaqueColor: { rgbColor: AST_TEXT_SECONDARY } } }, "italic,fontSize,foregroundColor"),
+      astTextStyle(subId, { italic: true, fontSize: { magnitude: 13, unit: "PT" }, foregroundColor: { opaqueColor: { rgbColor: palette.textSecondary } } }, "italic,fontSize,foregroundColor"),
     );
     y += 30;
   }
@@ -528,10 +563,10 @@ function astTitleHeader(slideId: string, title: string, subtitle?: string): { re
   return { requests, contentStartY: y + 6 };
 }
 
-function astStandardSlideRequests(slide: StandardTextSlide): SlideRequest[] {
+function astStandardSlideRequests(slide: StandardTextSlide, palette: AstPalette): SlideRequest[] {
   const slideId = uid("s");
   const requests: SlideRequest[] = [astCreateBlankSlideRequest(slideId)];
-  const { requests: headerReqs, contentStartY } = astTitleHeader(slideId, slide.title, slide.subtitle);
+  const { requests: headerReqs, contentStartY } = astTitleHeader(slideId, slide.title, slide.subtitle, palette);
   requests.push(...headerReqs);
 
   const paragraphText = slide.paragraphs.map(p => p.trim()).filter(Boolean).join("\n\n");
@@ -556,7 +591,7 @@ function astStandardSlideRequests(slide: StandardTextSlide): SlideRequest[] {
     requests.push(
       astShapeRequest(bodyId, slideId, "TEXT_BOX", AST_MARGIN, contentStartY, AST_CONTENT_WIDTH, bodyH),
       astInsertText(bodyId, fullText),
-      astTextStyle(bodyId, { fontSize: { magnitude: 13, unit: "PT" }, foregroundColor: { opaqueColor: { rgbColor: AST_TEXT_SECONDARY } } }, "fontSize,foregroundColor"),
+      astTextStyle(bodyId, { fontSize: { magnitude: 13, unit: "PT" }, foregroundColor: { opaqueColor: { rgbColor: palette.textSecondary } } }, "fontSize,foregroundColor"),
     );
     if (bulletStart >= 0) {
       requests.push(astBullets(bodyId, { type: "FIXED_RANGE", startIndex: bulletStart, endIndex: fullText.length }));
@@ -566,10 +601,10 @@ function astStandardSlideRequests(slide: StandardTextSlide): SlideRequest[] {
   return requests;
 }
 
-function astSplitColumnSlideRequests(slide: SplitColumnSlide): SlideRequest[] {
+function astSplitColumnSlideRequests(slide: SplitColumnSlide, palette: AstPalette): SlideRequest[] {
   const slideId = uid("s");
   const requests: SlideRequest[] = [astCreateBlankSlideRequest(slideId)];
-  const { requests: headerReqs, contentStartY } = astTitleHeader(slideId, slide.title, slide.subtitle);
+  const { requests: headerReqs, contentStartY } = astTitleHeader(slideId, slide.title, slide.subtitle, palette);
   requests.push(...headerReqs);
 
   const gap = 20;
@@ -581,7 +616,7 @@ function astSplitColumnSlideRequests(slide: SplitColumnSlide): SlideRequest[] {
     const cardId = uid("c");
     requests.push(
       astShapeRequest(cardId, slideId, "ROUND_RECTANGLE", x, contentStartY, colWidth, colHeight),
-      astShapeFill(cardId, AST_CARD_BG),
+      astShapeFill(cardId, palette.cardBg),
     );
     const headingLine = heading.toUpperCase();
     const text = items.length > 0 ? `${headingLine}\n${items.join("\n")}` : headingLine;
@@ -591,22 +626,22 @@ function astSplitColumnSlideRequests(slide: SplitColumnSlide): SlideRequest[] {
     );
     if (items.length > 0) {
       requests.push(
-        astTextStyle(cardId, { fontSize: { magnitude: 12, unit: "PT" }, foregroundColor: { opaqueColor: { rgbColor: AST_TEXT_SECONDARY } } }, "fontSize,foregroundColor", { type: "FIXED_RANGE", startIndex: headingLine.length + 1, endIndex: text.length }),
+        astTextStyle(cardId, { fontSize: { magnitude: 12, unit: "PT" }, foregroundColor: { opaqueColor: { rgbColor: palette.textSecondary } } }, "fontSize,foregroundColor", { type: "FIXED_RANGE", startIndex: headingLine.length + 1, endIndex: text.length }),
         astBullets(cardId, { type: "FIXED_RANGE", startIndex: headingLine.length + 1, endIndex: text.length }),
       );
     }
   }
 
-  column(AST_MARGIN, slide.leftColumn.heading, slide.leftColumn.content, AST_ACCENT_CYAN);
-  column(AST_MARGIN + colWidth + gap, slide.rightColumn.heading, slide.rightColumn.content, AST_ACCENT_ORANGE);
+  column(AST_MARGIN, slide.leftColumn.heading, slide.leftColumn.content, palette.accentCyan);
+  column(AST_MARGIN + colWidth + gap, slide.rightColumn.heading, slide.rightColumn.content, palette.accentOrange);
 
   return requests;
 }
 
-function astCodeExplainerSlideRequests(slide: CodeExplainerSlide): SlideRequest[] {
+function astCodeExplainerSlideRequests(slide: CodeExplainerSlide, palette: AstPalette): SlideRequest[] {
   const slideId = uid("s");
   const requests: SlideRequest[] = [astCreateBlankSlideRequest(slideId)];
-  const { requests: headerReqs, contentStartY } = astTitleHeader(slideId, slide.title, slide.subtitle);
+  const { requests: headerReqs, contentStartY } = astTitleHeader(slideId, slide.title, slide.subtitle, palette);
   requests.push(...headerReqs);
 
   const gap = 20;
@@ -633,11 +668,11 @@ function astCodeExplainerSlideRequests(slide: CodeExplainerSlide): SlideRequest[
   requests.push(
     astShapeRequest(explId, slideId, "TEXT_BOX", AST_MARGIN + colWidth + gap, contentStartY, colWidth, colHeight),
     astInsertText(explId, explText),
-    astTextStyle(explId, { bold: true, fontSize: { magnitude: 11, unit: "PT" }, foregroundColor: { opaqueColor: { rgbColor: AST_ACCENT_CYAN } } }, "bold,fontSize,foregroundColor", { type: "FIXED_RANGE", startIndex: 0, endIndex: explHeading.length }),
+    astTextStyle(explId, { bold: true, fontSize: { magnitude: 11, unit: "PT" }, foregroundColor: { opaqueColor: { rgbColor: palette.accentCyan } } }, "bold,fontSize,foregroundColor", { type: "FIXED_RANGE", startIndex: 0, endIndex: explHeading.length }),
   );
   if (points.length > 0) {
     requests.push(
-      astTextStyle(explId, { fontSize: { magnitude: 12, unit: "PT" }, foregroundColor: { opaqueColor: { rgbColor: AST_TEXT_SECONDARY } } }, "fontSize,foregroundColor", { type: "FIXED_RANGE", startIndex: explHeading.length + 1, endIndex: explText.length }),
+      astTextStyle(explId, { fontSize: { magnitude: 12, unit: "PT" }, foregroundColor: { opaqueColor: { rgbColor: palette.textSecondary } } }, "fontSize,foregroundColor", { type: "FIXED_RANGE", startIndex: explHeading.length + 1, endIndex: explText.length }),
       astBullets(explId, { type: "FIXED_RANGE", startIndex: explHeading.length + 1, endIndex: explText.length }),
     );
   }
@@ -645,10 +680,10 @@ function astCodeExplainerSlideRequests(slide: CodeExplainerSlide): SlideRequest[
   return requests;
 }
 
-function astCalloutSlideRequests(slide: CalloutCardSlide): SlideRequest[] {
+function astCalloutSlideRequests(slide: CalloutCardSlide, palette: AstPalette): SlideRequest[] {
   const slideId = uid("s");
   const requests: SlideRequest[] = [astCreateBlankSlideRequest(slideId)];
-  const config = AST_CALLOUT_VARIANTS[slide.variant];
+  const config = astCalloutVariants(palette)[slide.variant];
 
   const panelX = 80, panelY = 55, panelW = AST_PAGE_WIDTH - 160, panelH = AST_PAGE_HEIGHT - 110;
   const panelId = uid("panel");
@@ -671,7 +706,7 @@ function astCalloutSlideRequests(slide: CalloutCardSlide): SlideRequest[] {
   requests.push(
     astShapeRequest(titleId, slideId, "TEXT_BOX", panelX, y, panelW, 40),
     astInsertText(titleId, slide.title),
-    astTextStyle(titleId, { bold: true, fontSize: { magnitude: 22, unit: "PT" }, foregroundColor: { opaqueColor: { rgbColor: AST_TEXT_PRIMARY } } }, "bold,fontSize,foregroundColor"),
+    astTextStyle(titleId, { bold: true, fontSize: { magnitude: 22, unit: "PT" }, foregroundColor: { opaqueColor: { rgbColor: palette.textPrimary } } }, "bold,fontSize,foregroundColor"),
     astParagraphAlign(titleId, "CENTER"),
   );
   y += 48;
@@ -681,7 +716,7 @@ function astCalloutSlideRequests(slide: CalloutCardSlide): SlideRequest[] {
     requests.push(
       astShapeRequest(subId, slideId, "TEXT_BOX", panelX, y, panelW, 24),
       astInsertText(subId, slide.subtitle),
-      astTextStyle(subId, { italic: true, fontSize: { magnitude: 13, unit: "PT" }, foregroundColor: { opaqueColor: { rgbColor: AST_TEXT_SECONDARY } } }, "italic,fontSize,foregroundColor"),
+      astTextStyle(subId, { italic: true, fontSize: { magnitude: 13, unit: "PT" }, foregroundColor: { opaqueColor: { rgbColor: palette.textSecondary } } }, "italic,fontSize,foregroundColor"),
       astParagraphAlign(subId, "CENTER"),
     );
     y += 30;
@@ -692,17 +727,17 @@ function astCalloutSlideRequests(slide: CalloutCardSlide): SlideRequest[] {
   requests.push(
     astShapeRequest(contentId, slideId, "TEXT_BOX", panelX + 30, y, panelW - 60, contentH),
     astInsertText(contentId, slide.content),
-    astTextStyle(contentId, { fontSize: { magnitude: 14, unit: "PT" }, foregroundColor: { opaqueColor: { rgbColor: AST_TEXT_PRIMARY } } }, "fontSize,foregroundColor"),
+    astTextStyle(contentId, { fontSize: { magnitude: 14, unit: "PT" }, foregroundColor: { opaqueColor: { rgbColor: palette.textPrimary } } }, "fontSize,foregroundColor"),
     astParagraphAlign(contentId, "CENTER"),
   );
 
   return requests;
 }
 
-function astStepGridSlideRequests(slide: StepGridSlide): SlideRequest[] {
+function astStepGridSlideRequests(slide: StepGridSlide, palette: AstPalette): SlideRequest[] {
   const slideId = uid("s");
   const requests: SlideRequest[] = [astCreateBlankSlideRequest(slideId)];
-  const { requests: headerReqs, contentStartY } = astTitleHeader(slideId, slide.title, slide.subtitle);
+  const { requests: headerReqs, contentStartY } = astTitleHeader(slideId, slide.title, slide.subtitle, palette);
   requests.push(...headerReqs);
 
   const steps = [...slide.steps].sort((a, b) => a.stepNumber - b.stepNumber);
@@ -726,10 +761,10 @@ function astStepGridSlideRequests(slide: StepGridSlide): SlideRequest[] {
     const text = `${heading}\n${step.description}`;
     requests.push(
       astShapeRequest(cardId, slideId, "ROUND_RECTANGLE", x, y, cardW, cardH),
-      astShapeFill(cardId, AST_CARD_BG),
+      astShapeFill(cardId, palette.cardBg),
       astInsertText(cardId, text),
-      astTextStyle(cardId, { bold: true, fontSize: { magnitude: 12, unit: "PT" }, foregroundColor: { opaqueColor: { rgbColor: AST_TEXT_PRIMARY } } }, "bold,fontSize,foregroundColor", { type: "FIXED_RANGE", startIndex: 0, endIndex: heading.length }),
-      astTextStyle(cardId, { fontSize: { magnitude: 11, unit: "PT" }, foregroundColor: { opaqueColor: { rgbColor: AST_TEXT_SECONDARY } } }, "fontSize,foregroundColor", { type: "FIXED_RANGE", startIndex: heading.length + 1, endIndex: text.length }),
+      astTextStyle(cardId, { bold: true, fontSize: { magnitude: 12, unit: "PT" }, foregroundColor: { opaqueColor: { rgbColor: palette.textPrimary } } }, "bold,fontSize,foregroundColor", { type: "FIXED_RANGE", startIndex: 0, endIndex: heading.length }),
+      astTextStyle(cardId, { fontSize: { magnitude: 11, unit: "PT" }, foregroundColor: { opaqueColor: { rgbColor: palette.textSecondary } } }, "fontSize,foregroundColor", { type: "FIXED_RANGE", startIndex: heading.length + 1, endIndex: text.length }),
     );
   });
 
@@ -737,13 +772,13 @@ function astStepGridSlideRequests(slide: StepGridSlide): SlideRequest[] {
 }
 
 /** Routes a single AST node to its request-builder — mirrors the exhaustive switch in components/slides/SlideRenderer.tsx. */
-function astSlideRequests(slide: SlideNode): SlideRequest[] {
+function astSlideRequests(slide: SlideNode, palette: AstPalette): SlideRequest[] {
   switch (slide.type) {
-    case "standard": return astStandardSlideRequests(slide);
-    case "split-column": return astSplitColumnSlideRequests(slide);
-    case "code-explainer": return astCodeExplainerSlideRequests(slide);
-    case "callout": return astCalloutSlideRequests(slide);
-    case "step-grid": return astStepGridSlideRequests(slide);
+    case "standard": return astStandardSlideRequests(slide, palette);
+    case "split-column": return astSplitColumnSlideRequests(slide, palette);
+    case "code-explainer": return astCodeExplainerSlideRequests(slide, palette);
+    case "callout": return astCalloutSlideRequests(slide, palette);
+    case "step-grid": return astStepGridSlideRequests(slide, palette);
     default: {
       const _exhaustive: never = slide;
       return _exhaustive;
@@ -755,8 +790,9 @@ function astSlideRequests(slide: SlideNode): SlideRequest[] {
  * Renders a `PresentationAST` as a real Google Slides presentation and returns the new file's ID.
  * Mirrors `buildSlideDeck`'s copy-template-or-create-blank + title-slide-reuse structure above.
  */
-export async function buildSlideDeckFromAst(ast: PresentationAST, accessToken: string, templateId?: string): Promise<string> {
+export async function buildSlideDeckFromAst(ast: PresentationAST, accessToken: string, templateId?: string, themeId: string = DEFAULT_THEME_ID): Promise<string> {
   _idSeq = 0; // reset counter for each deck build
+  const palette = paletteForTheme(themeId);
   const drive  = google.drive({ version: "v3", auth: getAuthClient(accessToken) });
   const slides = google.slides({ version: "v1", auth: getAuthClient(accessToken) });
 
@@ -805,7 +841,7 @@ export async function buildSlideDeckFromAst(ast: PresentationAST, accessToken: s
   // 4. Build every content slide from the AST
   const contentRequests: SlideRequest[] = [];
   for (const slide of ast.slides) {
-    contentRequests.push(...astSlideRequests(slide));
+    contentRequests.push(...astSlideRequests(slide, palette));
   }
 
   // ── Batch updates ────────────────────────────────────────────────────────

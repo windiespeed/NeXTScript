@@ -5,6 +5,8 @@ import type { SectionDef } from "./section";
 export interface CourseSettings {
   defaultSources: string;         // URLs pre-filled in lesson Sources field (one per line)
   defaultTemplateUrl: string;     // Google Slides template URL for generation
+  /** Notes to Slides theme id (lib/themes.ts) used when generating for this course. Absent = fixed global default (Pearl). */
+  defaultThemeId?: string;
   industry: string;               // e.g. "Healthcare", "Coding", "Business"
   subject: string;                // e.g. "JavaScript", "Nursing 101"
   studentLevel: "beginner" | "intermediate" | "advanced" | "";
