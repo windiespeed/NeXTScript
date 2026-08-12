@@ -38,18 +38,16 @@ export async function POST(req: Request) {
     if (!body.title?.trim()) {
       return NextResponse.json({ error: "Title is required." }, { status: 400 });
     }
-
-    if (body.courseId) {
-      const course = await courseStore.getById(body.courseId);
-      if (!course) return NextResponse.json({ error: "Course not found." }, { status: 404 });
-      if (!canAccessCourse(course, session.user.email)) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+    if (!body.courseId) {
+      return NextResponse.json({ error: "Course is required." }, { status: 400 });
     }
+
+    const course = await courseStore.getById(body.courseId);
+    if (!course) return NextResponse.json({ error: "Course not found." }, { status: 404 });
+    if (!canAccessCourse(course, session.user.email)) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
 
     const lesson = await store.create(body, session.user.email);
-    // If lesson belongs to a course, register it in the course's lessonIds
-    if (body.courseId) {
-      await courseStore.addLesson(body.courseId, lesson.id);
-    }
+    await courseStore.addLesson(body.courseId, lesson.id);
     return NextResponse.json(lesson, { status: 201 });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });

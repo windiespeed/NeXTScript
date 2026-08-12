@@ -29,6 +29,7 @@ export async function POST(req: Request) {
 
     if (!title?.trim()) return NextResponse.json({ error: "Quiz title is required." }, { status: 400 });
     if (!questions?.length) return NextResponse.json({ error: "Add at least one question." }, { status: 400 });
+    if (!courseId) return NextResponse.json({ error: "Course is required." }, { status: 400 });
 
     // Save as a draft — no Google Form is created yet.
     // Generation happens when the user hits Generate on the lesson hub page.
@@ -40,8 +41,8 @@ export async function POST(req: Request) {
       url: "",              // populated on generation
       questions,
       lessonIds: lessonIds ?? [],
+      courseId,
       ...(moduleId ? { moduleId } : {}),
-      ...(courseId ? { courseId } : {}),
     }, session.user.email);
 
     return NextResponse.json({ id: project.id, status: "draft" });

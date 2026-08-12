@@ -11,6 +11,7 @@ import { emptyQuestion } from "@/types/form";
 import { getSectionContent } from "@/lib/sections";
 import { clearDraft } from "@/lib/draftStorage";
 import { useDraftAutosave, useDraftRestore } from "@/hooks/useDraftAutosave";
+import { parsePastedQuestions } from "@/lib/parseQuestions";
 
 type Scope = "lesson" | "module" | "course" | "standalone";
 
@@ -64,6 +65,8 @@ function NewQuizPageInner() {
   const [questions, setQuestions] = useState<FormQuestion[]>([]);
   const [mcCount, setMcCount] = useState(8);
   const [saCount, setSaCount] = useState(2);
+  const [showImport, setShowImport] = useState(false);
+  const [importText, setImportText] = useState("");
 
   // Status
   const [aiGenerating, setAiGenerating] = useState(false);
@@ -129,7 +132,8 @@ function NewQuizPageInner() {
 
   function handleScopeChange(s: Scope) {
     setScope(s);
-    setSelectedCourseId("");
+    // Course selection persists across scope changes — every scope requires one, so there's
+    // no reason to make someone re-pick it. Only the scope-specific selections reset.
     setSelectedModuleId("");
     setSelectedLessonIds(new Set());
     setQuizTitle("");
@@ -236,6 +240,7 @@ function NewQuizPageInner() {
   async function handleSaveDraft() {
     if (!quizTitle.trim()) { setSaveError("Quiz title is required."); return; }
     if (questions.length === 0) { setSaveError("Add at least one question."); return; }
+    if (!selectedCourseId) { setSaveError("Course is required."); return; }
     setSaving(true);
     setSaveError("");
     try {
@@ -250,6 +255,7 @@ function NewQuizPageInner() {
   async function handleGenerateForm() {
     if (!quizTitle.trim()) { setSaveError("Quiz title is required."); return; }
     if (questions.length === 0) { setSaveError("Add at least one question."); return; }
+    if (!selectedCourseId) { setSaveError("Course is required."); return; }
     setGenerating(true);
     setSaveError("");
     setGenerateError("");
@@ -283,6 +289,10 @@ function NewQuizPageInner() {
     setQuestions(prev => [...prev, emptyQuestion(`q_${Date.now()}`)]);
   }
 
+  function importQuestions(parsed: FormQuestion[]) {
+    setQuestions(prev => [...prev, ...parsed]);
+  }
+
   function updateQuestion(id: string, patch: Partial<FormQuestion>) {
     setQuestions(prev => prev.map(q => q.id === id ? { ...q, ...patch } : q));
   }
@@ -309,7 +319,8 @@ function NewQuizPageInner() {
 
   const canAiGenerate = hasAiKey && (scope === "standalone" || resolvedLessonIds.length > 0 || selectedLessonIds.size > 0);
   const needsModule = (scope === "lesson" || scope === "module") && modules.length > 0;
-  const canSave = quizTitle.trim() && questions.length > 0 && (!needsModule || !!selectedModuleId);
+  const canSave = quizTitle.trim() && questions.length > 0 && !!selectedCourseId && (!needsModule || !!selectedModuleId);
+  const importPreview = importText.trim() ? parsePastedQuestions(importText) : [];
 
   return (
     <div className="space-y-6">
@@ -346,86 +357,91 @@ function NewQuizPageInner() {
       </div>
 
       {/* ── Selection ── */}
-      {scope !== "standalone" && (
-        <div className={cardClass} style={cardStyle}>
-          <p className={sectionLabel}>
-            {scope === "lesson" ? "Select Lessons" : scope === "module" ? "Select Module" : "Select Course"}
-          </p>
+      <div className={cardClass} style={cardStyle}>
+        <p className={sectionLabel}>
+          {scope === "lesson" ? "Select Lessons" : scope === "module" ? "Select Module" : "Select Course"}
+        </p>
 
-          <div>
-            <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Course</label>
-            <select value={selectedCourseId} onChange={e => handleCourseChange(e.target.value)} className={inputClass} style={inputStyle}>
-              <option value="">— Select a course —</option>
-              {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
-            </select>
-          </div>
-
-          {scope === "module" && selectedCourseId && (
-            <div>
-              <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Module</label>
-              {modules.length === 0 ? (
-                <p className="text-xs" style={{ color: "var(--text-muted)" }}>This course has no modules yet.</p>
-              ) : (
-                <select value={selectedModuleId} onChange={e => handleModuleChange(e.target.value)} className={inputClass} style={inputStyle}>
-                  <option value="">— Select a module —</option>
-                  {modules.map(m => <option key={m.id} value={m.id}>{m.title} ({m.lessonIds.length} lessons)</option>)}
-                </select>
-              )}
-            </div>
-          )}
-
-          {scope === "lesson" && selectedCourseId && modules.length > 0 && (
-            <div>
-              <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Module <span className="text-red-500">*</span></label>
-              <select value={selectedModuleId} onChange={e => setSelectedModuleId(e.target.value)} className={inputClass} style={inputStyle}>
-                <option value="">— Select a module —</option>
-                {modules.map(m => <option key={m.id} value={m.id}>{m.title}</option>)}
-              </select>
-            </div>
-          )}
-
-          {scope === "lesson" && selectedCourseId && (
-            <div>
-              <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Lessons</label>
-              {courseLessons.length === 0 ? (
-                <p className="text-xs" style={{ color: "var(--text-muted)" }}>No lessons in this course.</p>
-              ) : (
-                <div className="space-y-1 max-h-60 overflow-y-auto rounded-2xl p-1" style={{ border: "1px solid var(--border)" }}>
-                  {courseLessons.map(lesson => (
-                    <button
-                      key={lesson.id}
-                      onClick={() => toggleLesson(lesson.id)}
-                      className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left transition hover:bg-[var(--bg-card-hover)]"
-                    >
-                      <div
-                        className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition ${selectedLessonIds.has(lesson.id) ? "bg-[#0cc0df] border-[#0cc0df]" : "border-[var(--border)]"}`}
-                        style={selectedLessonIds.has(lesson.id) ? {} : { background: "var(--bg-body)" }}
-                      >
-                        {selectedLessonIds.has(lesson.id) && (
-                          <svg xmlns="http://www.w3.org/2000/svg" className="w-2.5 h-2.5 text-[#0a0b13]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium truncate" style={{ color: "var(--text-primary)" }}>{lesson.title}</p>
-                        {lesson.subtitle && <p className="text-[10px] truncate" style={{ color: "var(--text-muted)" }}>{lesson.subtitle}</p>}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
-              {selectedLessonIds.size > 0 && (
-                <p className="text-[10px] mt-1" style={{ color: "var(--text-muted)" }}>{selectedLessonIds.size} lesson{selectedLessonIds.size !== 1 ? "s" : ""} selected</p>
-              )}
-            </div>
-          )}
-
-          {scope === "course" && selectedCourseId && (
-            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-              {courseLessons.length} lesson{courseLessons.length !== 1 ? "s" : ""} in this course will be used for AI generation.
+        <div>
+          <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
+            Course <span className="text-red-500">*</span>
+          </label>
+          <select value={selectedCourseId} onChange={e => handleCourseChange(e.target.value)} className={inputClass} style={inputStyle}>
+            <option value="">— Select a course —</option>
+            {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
+          </select>
+          {scope === "standalone" && (
+            <p className="text-[10px] mt-1" style={{ color: "var(--text-muted)" }}>
+              Not linked to a specific lesson, but every quiz still belongs to a course.
             </p>
           )}
         </div>
-      )}
+
+        {scope === "module" && selectedCourseId && (
+          <div>
+            <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Module</label>
+            {modules.length === 0 ? (
+              <p className="text-xs" style={{ color: "var(--text-muted)" }}>This course has no modules yet.</p>
+            ) : (
+              <select value={selectedModuleId} onChange={e => handleModuleChange(e.target.value)} className={inputClass} style={inputStyle}>
+                <option value="">— Select a module —</option>
+                {modules.map(m => <option key={m.id} value={m.id}>{m.title} ({m.lessonIds.length} lessons)</option>)}
+              </select>
+            )}
+          </div>
+        )}
+
+        {scope === "lesson" && selectedCourseId && modules.length > 0 && (
+          <div>
+            <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Module <span className="text-red-500">*</span></label>
+            <select value={selectedModuleId} onChange={e => setSelectedModuleId(e.target.value)} className={inputClass} style={inputStyle}>
+              <option value="">— Select a module —</option>
+              {modules.map(m => <option key={m.id} value={m.id}>{m.title}</option>)}
+            </select>
+          </div>
+        )}
+
+        {scope === "lesson" && selectedCourseId && (
+          <div>
+            <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Lessons</label>
+            {courseLessons.length === 0 ? (
+              <p className="text-xs" style={{ color: "var(--text-muted)" }}>No lessons in this course.</p>
+            ) : (
+              <div className="space-y-1 max-h-60 overflow-y-auto rounded-2xl p-1" style={{ border: "1px solid var(--border)" }}>
+                {courseLessons.map(lesson => (
+                  <button
+                    key={lesson.id}
+                    onClick={() => toggleLesson(lesson.id)}
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left transition hover:bg-[var(--bg-card-hover)]"
+                  >
+                    <div
+                      className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition ${selectedLessonIds.has(lesson.id) ? "bg-[#0cc0df] border-[#0cc0df]" : "border-[var(--border)]"}`}
+                      style={selectedLessonIds.has(lesson.id) ? {} : { background: "var(--bg-body)" }}
+                    >
+                      {selectedLessonIds.has(lesson.id) && (
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-2.5 h-2.5 text-[#0a0b13]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium truncate" style={{ color: "var(--text-primary)" }}>{lesson.title}</p>
+                      {lesson.subtitle && <p className="text-[10px] truncate" style={{ color: "var(--text-muted)" }}>{lesson.subtitle}</p>}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+            {selectedLessonIds.size > 0 && (
+              <p className="text-[10px] mt-1" style={{ color: "var(--text-muted)" }}>{selectedLessonIds.size} lesson{selectedLessonIds.size !== 1 ? "s" : ""} selected</p>
+            )}
+          </div>
+        )}
+
+        {scope === "course" && selectedCourseId && (
+          <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+            {courseLessons.length} lesson{courseLessons.length !== 1 ? "s" : ""} in this course will be used for AI generation.
+          </p>
+        )}
+      </div>
 
       {/* ── Quiz Info ── */}
       <div className={cardClass} style={cardStyle}>
@@ -481,18 +497,59 @@ function NewQuizPageInner() {
       <div className={cardClass} style={cardStyle}>
         <div className="flex items-center justify-between">
           <p className={sectionLabel}>Questions ({questions.length})</p>
-          <button
-            onClick={addQuestion}
-            className="rounded-full px-3 py-1.5 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)]"
-            style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
-          >
-            + Add Question
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowImport(v => !v)}
+              className="rounded-full px-3 py-1.5 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)]"
+              style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+            >
+              {showImport ? "Cancel Import" : "Import Questions"}
+            </button>
+            <button
+              onClick={addQuestion}
+              className="rounded-full px-3 py-1.5 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)]"
+              style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+            >
+              + Add Question
+            </button>
+          </div>
         </div>
+
+        {showImport && (
+          <div className="rounded-2xl p-4 space-y-3" style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)" }}>
+            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+              Paste questions, one per blank line (or numbered &lsquo;1.&rsquo;, &lsquo;2.&rsquo;...). Lines starting with &lsquo;a)&rsquo;, &lsquo;-&rsquo;, or &lsquo;*&rsquo; become
+              multiple-choice options — mark the correct one with a trailing *. Questions with no options become short-answer.
+            </p>
+            <textarea
+              value={importText}
+              onChange={e => setImportText(e.target.value)}
+              rows={8}
+              placeholder={"What is the capital of France?\na) London\nb) Paris*\nc) Berlin\nd) Madrid\n\nExplain the water cycle in your own words."}
+              className={`${inputClass} font-mono`}
+              style={inputStyle}
+            />
+            {importText.trim() && (
+              <p className="text-[10px]" style={{ color: importPreview.length > 0 ? "#2dd4a0" : "#ef4444" }}>
+                {importPreview.length > 0
+                  ? `${importPreview.length} question${importPreview.length !== 1 ? "s" : ""} detected`
+                  : "No questions detected — check the format above."}
+              </p>
+            )}
+            <button
+              onClick={() => { importQuestions(importPreview); setImportText(""); setShowImport(false); }}
+              disabled={importPreview.length === 0}
+              className="rounded-full px-4 py-1.5 text-xs font-bold transition hover:opacity-90 disabled:opacity-40"
+              style={{ background: "#0cc0df", color: "#0a0b13" }}
+            >
+              Add {importPreview.length || ""} Question{importPreview.length !== 1 ? "s" : ""}
+            </button>
+          </div>
+        )}
 
         {questions.length === 0 ? (
           <p className="text-xs text-center py-6" style={{ color: "var(--text-muted)" }}>
-            No questions yet — use AI Generate above or add manually.
+            No questions yet — use AI Generate above, add manually, or import from pasted text.
           </p>
         ) : (
           <div className="space-y-4">

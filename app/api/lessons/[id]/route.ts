@@ -29,6 +29,11 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     if (!existing) return NextResponse.json({ error: "Not found." }, { status: 404 });
     if (!(await canAccessLesson(existing, session.user.email))) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
     const body: Partial<Lesson> = await req.json();
+    // "courseId" omitted entirely = not touching it (most PUTs here are partial saves that never
+    // mention course). Only reject an explicit attempt to clear it — every lesson must stay assigned.
+    if ("courseId" in body && !body.courseId) {
+      return NextResponse.json({ error: "Course is required — a lesson can't be unassigned." }, { status: 400 });
+    }
     if (body.courseId && body.courseId !== existing.courseId) {
       if (!(await canAccessCourseId(body.courseId, session.user.email))) {
         return NextResponse.json({ error: "Forbidden: no access to the destination course." }, { status: 403 });

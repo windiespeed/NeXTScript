@@ -26,7 +26,7 @@ import type { Lesson } from "@/types/lesson";
 import type { SavedProject } from "@/types/project";
 import type { Course } from "@/types/course";
 
-type FileChoice = "slides" | "doc" | "quiz";
+type FileChoice = "slides" | "quiz";
 type Destination = "drive" | "download";
 type WidgetId = "activity" | "progress" | "activeCourse" | "schedule";
 const DEFAULT_WIDGET_ORDER: WidgetId[] = ["activity", "progress", "activeCourse", "schedule"];
@@ -414,11 +414,11 @@ function Dashboard() {
     // The legacy fixed fields below are the pre-migration fallback — a lesson edited through
     // the new dynamic-sections LessonForm has its real content in `sections` instead, so that
     // must be copied too or the duplicate would silently inherit stale/blank legacy fields.
-    const { title, subtitle, topics, deadline, tag, overview, learningTargets, vocabulary, warmUp, guidedLab, selfPaced, submissionChecklist, checkpoint, industryBestPractices, slideContent, devJournalPrompt, rubric, taChecklist, sources, studentLevel, quizQuestions, sections } = lesson;
+    const { title, subtitle, topics, deadline, tag, overview, learningTargets, vocabulary, warmUp, guidedLab, selfPaced, submissionChecklist, checkpoint, industryBestPractices, slideContent, devJournalPrompt, rubric, taChecklist, sources, studentLevel, quizQuestions, sections, courseId } = lesson;
     const copy = await fetch("/api/lessons", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: `Copy of ${title}`, subtitle, topics, deadline, tag, overview, learningTargets, vocabulary, warmUp, guidedLab, selfPaced, submissionChecklist, checkpoint, industryBestPractices, slideContent, devJournalPrompt, rubric: rubric ?? taChecklist ?? "", sources: sources || defaultSources, studentLevel, quizQuestions, sections }),
+      body: JSON.stringify({ title: `Copy of ${title}`, subtitle, topics, deadline, tag, overview, learningTargets, vocabulary, warmUp, guidedLab, selfPaced, submissionChecklist, checkpoint, industryBestPractices, slideContent, devJournalPrompt, rubric: rubric ?? taChecklist ?? "", sources: sources || defaultSources, studentLevel, quizQuestions, sections, courseId }),
     }).then(r => r.json());
     setLessons(prev => [copy, ...prev]);
   }

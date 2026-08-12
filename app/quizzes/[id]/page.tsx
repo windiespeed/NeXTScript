@@ -10,6 +10,7 @@ import { emptyQuestion } from "@/types/form";
 import { getSectionContent } from "@/lib/sections";
 import { clearDraft } from "@/lib/draftStorage";
 import { useDraftAutosave, useDraftRestore } from "@/hooks/useDraftAutosave";
+import { parsePastedQuestions } from "@/lib/parseQuestions";
 
 const inputClass = "w-full rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#0cc0df] transition placeholder:text-[var(--text-muted)]";
 const inputStyle = { background: "var(--bg-card-hover)", color: "var(--text-primary)", border: "1px solid var(--border)" };
@@ -44,6 +45,8 @@ export default function EditQuizPage() {
   const [lessonIds, setLessonIds] = useState<string[]>([]);
   const [courseId, setCourseId] = useState("");
   const [moduleId, setModuleId] = useState("");
+  const [showImport, setShowImport] = useState(false);
+  const [importText, setImportText] = useState("");
 
   // AI
   const [mcCount, setMcCount] = useState(8);
@@ -155,6 +158,7 @@ export default function EditQuizPage() {
   async function handleSave() {
     if (!quizTitle.trim()) { setSaveError("Quiz title is required."); return; }
     if (questions.length === 0) { setSaveError("Add at least one question."); return; }
+    if (!courseId) { setSaveError("Course is required."); return; }
     setSaving(true);
     setSaveError("");
     setSaved(false);
@@ -166,7 +170,7 @@ export default function EditQuizPage() {
           title: quizTitle.trim(),
           questions,
           lessonIds,
-          ...(courseId ? { courseId } : { courseId: "" }),
+          courseId,
           ...(moduleId ? { moduleId } : { moduleId: "" }),
         }),
       });
@@ -183,6 +187,7 @@ export default function EditQuizPage() {
   async function handleGenerateForm() {
     if (!quizTitle.trim()) { setSaveError("Quiz title is required before generating."); return; }
     if (questions.length === 0) { setSaveError("Add at least one question before generating."); return; }
+    if (!courseId) { setSaveError("Course is required before generating."); return; }
     setGenerating(true);
     setGenerateError("");
     // Auto-save first so the API sees the latest questions
@@ -194,7 +199,7 @@ export default function EditQuizPage() {
           title: quizTitle.trim(),
           questions,
           lessonIds,
-          ...(courseId ? { courseId } : { courseId: "" }),
+          courseId,
           ...(moduleId ? { moduleId } : { moduleId: "" }),
         }),
       });
@@ -220,6 +225,10 @@ export default function EditQuizPage() {
 
   function addQuestion() {
     setQuestions(prev => [...prev, emptyQuestion(`q_${Date.now()}`)]);
+  }
+
+  function importQuestions(parsed: FormQuestion[]) {
+    setQuestions(prev => [...prev, ...parsed]);
   }
 
   function updateQuestion(qid: string, patch: Partial<FormQuestion>) {
@@ -250,6 +259,7 @@ export default function EditQuizPage() {
   if (notFound) return <p className="text-sm text-red-500 mt-10">Quiz not found.</p>;
 
   const canAiGenerate = hasAiKey && lessonIds.length > 0;
+  const importPreview = importText.trim() ? parsePastedQuestions(importText) : [];
 
   return (
     <div className="space-y-6">
@@ -269,14 +279,14 @@ export default function EditQuizPage() {
         <p className={sectionLabel}>Assignment</p>
 
         <div>
-          <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Course</label>
+          <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Course <span className="text-red-500">*</span></label>
           <select
             value={courseId}
             onChange={e => { setCourseId(e.target.value); setModuleId(""); setLessonIds([]); }}
             className={inputClass}
             style={inputStyle}
           >
-            <option value="">— Standalone (no course) —</option>
+            <option value="">— Select a course —</option>
             {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
           </select>
         </div>
@@ -377,18 +387,59 @@ export default function EditQuizPage() {
       <div className={cardClass} style={cardStyle}>
         <div className="flex items-center justify-between">
           <p className={sectionLabel}>Questions ({questions.length})</p>
-          <button
-            onClick={addQuestion}
-            className="rounded-full px-3 py-1.5 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)]"
-            style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
-          >
-            + Add Question
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowImport(v => !v)}
+              className="rounded-full px-3 py-1.5 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)]"
+              style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+            >
+              {showImport ? "Cancel Import" : "Import Questions"}
+            </button>
+            <button
+              onClick={addQuestion}
+              className="rounded-full px-3 py-1.5 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)]"
+              style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+            >
+              + Add Question
+            </button>
+          </div>
         </div>
+
+        {showImport && (
+          <div className="rounded-2xl p-4 space-y-3" style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)" }}>
+            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+              Paste questions, one per blank line (or numbered &lsquo;1.&rsquo;, &lsquo;2.&rsquo;...). Lines starting with &lsquo;a)&rsquo;, &lsquo;-&rsquo;, or &lsquo;*&rsquo; become
+              multiple-choice options — mark the correct one with a trailing *. Questions with no options become short-answer.
+            </p>
+            <textarea
+              value={importText}
+              onChange={e => setImportText(e.target.value)}
+              rows={8}
+              placeholder={"What is the capital of France?\na) London\nb) Paris*\nc) Berlin\nd) Madrid\n\nExplain the water cycle in your own words."}
+              className={`${inputClass} font-mono`}
+              style={inputStyle}
+            />
+            {importText.trim() && (
+              <p className="text-[10px]" style={{ color: importPreview.length > 0 ? "#2dd4a0" : "#ef4444" }}>
+                {importPreview.length > 0
+                  ? `${importPreview.length} question${importPreview.length !== 1 ? "s" : ""} detected`
+                  : "No questions detected — check the format above."}
+              </p>
+            )}
+            <button
+              onClick={() => { importQuestions(importPreview); setImportText(""); setShowImport(false); }}
+              disabled={importPreview.length === 0}
+              className="rounded-full px-4 py-1.5 text-xs font-bold transition hover:opacity-90 disabled:opacity-40"
+              style={{ background: "#0cc0df", color: "#0a0b13" }}
+            >
+              Add {importPreview.length || ""} Question{importPreview.length !== 1 ? "s" : ""}
+            </button>
+          </div>
+        )}
 
         {questions.length === 0 ? (
           <p className="text-xs text-center py-6" style={{ color: "var(--text-muted)" }}>
-            No questions yet — use AI Generate above or add manually.
+            No questions yet — use AI Generate above, add manually, or import from pasted text.
           </p>
         ) : (
           <div className="space-y-4">
@@ -471,14 +522,14 @@ export default function EditQuizPage() {
         <div className="flex items-center gap-3 flex-wrap">
           <button
             onClick={handleSave}
-            disabled={saving || !quizTitle.trim() || questions.length === 0 || (modules.length > 0 && !moduleId)}
+            disabled={saving || !quizTitle.trim() || questions.length === 0 || !courseId || (modules.length > 0 && !moduleId)}
             className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-6 py-2.5 text-sm font-bold text-white hover:opacity-90 disabled:opacity-50 transition shadow"
           >
             {saving ? "Saving…" : "Save Changes"}
           </button>
           <button
             onClick={handleGenerateForm}
-            disabled={generating || saving || !quizTitle.trim() || questions.length === 0 || (modules.length > 0 && !moduleId)}
+            disabled={generating || saving || !quizTitle.trim() || questions.length === 0 || !courseId || (modules.length > 0 && !moduleId)}
             className="rounded-full px-6 py-2.5 text-sm font-bold transition hover:opacity-90 disabled:opacity-50 shadow"
             style={{ background: "#0cc0df", color: "#0a0b13" }}
           >
