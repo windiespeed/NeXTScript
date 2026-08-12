@@ -27,7 +27,6 @@ interface BatchDraft {
   selectedIds: string[];
   doAiFill: boolean;
   doGenerate: boolean;
-  doGenerateDoc: boolean;
   doGenerateQuiz: boolean;
   doPublishNextbox: boolean;
   slideCount: number;
@@ -68,7 +67,6 @@ export default function BatchGeneratePage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [doAiFill, setDoAiFill] = useState(true);
   const [doGenerate, setDoGenerate] = useState(true);
-  const [doGenerateDoc, setDoGenerateDoc] = useState(false);
   const [doGenerateQuiz, setDoGenerateQuiz] = useState(false);
   const [doPublishNextbox, setDoPublishNextbox] = useState(false);
   const [slideCount, setSlideCount] = useState(10);
@@ -82,14 +80,13 @@ export default function BatchGeneratePage() {
     setSelectedIds(new Set(draft.selectedIds));
     setDoAiFill(draft.doAiFill);
     setDoGenerate(draft.doGenerate);
-    setDoGenerateDoc(draft.doGenerateDoc);
     setDoGenerateQuiz(draft.doGenerateQuiz);
     setDoPublishNextbox(draft.doPublishNextbox);
     setSlideCount(draft.slideCount);
   });
   useDraftAutosave<BatchDraft>(draftKey, {
     selectedIds: Array.from(selectedIds),
-    doAiFill, doGenerate, doGenerateDoc, doGenerateQuiz, doPublishNextbox, slideCount,
+    doAiFill, doGenerate, doGenerateQuiz, doPublishNextbox, slideCount,
   }, !running);
 
   useEffect(() => {
@@ -140,7 +137,7 @@ export default function BatchGeneratePage() {
   }
 
   async function handleRun() {
-    const anyEnabled = doAiFill || doGenerate || doGenerateDoc || doGenerateQuiz || doPublishNextbox;
+    const anyEnabled = doAiFill || doGenerate || doGenerateQuiz || doPublishNextbox;
     if (selectedIds.size === 0 || !anyEnabled) return;
     setRunning(true);
     setFinished(false);
@@ -227,23 +224,7 @@ export default function BatchGeneratePage() {
         }
       }
 
-      // Step 3: Generate Overview Doc
-      if (!failed && doGenerateDoc) {
-        setLessonProgress(lesson.id, "generating", "Generating Overview Doc…");
-        try {
-          const res = await fetch(`/api/generate/${lesson.id}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ files: ["doc"], destination: "drive" }),
-          });
-          if (!res.ok) throw new Error("Overview doc generation failed.");
-        } catch (e: any) {
-          setLessonProgress(lesson.id, "error", e.message || "Overview doc generation failed.");
-          failed = true;
-        }
-      }
-
-      // Step 4: Generate Quiz
+      // Step 3: Generate Quiz
       if (!failed && doGenerateQuiz) {
         setLessonProgress(lesson.id, "generating", "Generating Quiz…");
         try {
@@ -259,7 +240,7 @@ export default function BatchGeneratePage() {
         }
       }
 
-      // Step 5: Publish to NeXTBox
+      // Step 4: Publish to NeXTBox
       if (!failed && doPublishNextbox) {
         setLessonProgress(lesson.id, "generating", "Publishing to NeXTBox…");
         try {
@@ -279,7 +260,6 @@ export default function BatchGeneratePage() {
         const parts: string[] = [];
         if (doAiFill) parts.push("content filled");
         if (doGenerate) parts.push("slides generated");
-        if (doGenerateDoc) parts.push("doc generated");
         if (doGenerateQuiz) parts.push("quiz generated");
         if (doPublishNextbox) parts.push("published to NeXTBox");
         setLessonProgress(lesson.id, "done", `Done — ${parts.join(", ")}.`);
@@ -294,7 +274,7 @@ export default function BatchGeneratePage() {
   const doneCount = Object.values(progress).filter(p => p.status === "done").length;
   const errorCount = Object.values(progress).filter(p => p.status === "error").length;
   const totalSelected = selectedIds.size;
-  const anyEnabled = doAiFill || doGenerate || doGenerateDoc || doGenerateQuiz || doPublishNextbox;
+  const anyEnabled = doAiFill || doGenerate || doGenerateQuiz || doPublishNextbox;
   const canRun = totalSelected > 0 && anyEnabled && !running;
 
   function renderLessonRow(lesson: Lesson) {
@@ -427,12 +407,6 @@ export default function BatchGeneratePage() {
                 <span className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>Generate Google Slides</span>
               </label>
 
-              {/* Generate Overview Doc */}
-              <label className="flex items-center gap-2.5 cursor-pointer">
-                <input type="checkbox" checked={doGenerateDoc} onChange={e => setDoGenerateDoc(e.target.checked)} disabled={running} className="accent-[#0cc0df] w-3.5 h-3.5" />
-                <span className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>Generate Overview Doc</span>
-              </label>
-
               {/* Generate Quiz */}
               <div>
                 <label className="flex items-center gap-2.5 cursor-pointer">
@@ -441,10 +415,13 @@ export default function BatchGeneratePage() {
                 </label>
                 {doGenerateQuiz && (
                   <p className="text-[10px] ml-6 mt-0.5" style={{ color: "var(--text-muted)" }}>
-                    Uses saved quiz drafts or lesson questions.{!hasAiKey && " Add an AI key for auto-generation."}
+                    Only pushes an already-saved quiz draft to a Google Form — lessons without one are skipped. Create drafts on the Quizzes page first.
                   </p>
                 )}
               </div>
+              <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+                Overview Docs aren&rsquo;t batchable — generate one per lesson from its own page, where you pick which decks/quizzes it summarizes.
+              </p>
             </div>
 
             <div className="border-t pt-3" style={{ borderColor: "var(--border)" }}>

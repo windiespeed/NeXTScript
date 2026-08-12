@@ -5,7 +5,7 @@ import { projectStore } from "@/lib/projectStore";
 import { store } from "@/lib/store";
 import { courseStore } from "@/lib/courseStore";
 import { canAccessLesson, canAccessCourseId } from "@/lib/access";
-import { buildSlideDeckFromAst, moveFileToFolder } from "@/lib/google";
+import { buildSlideDeckFromAst, moveFileToFolder, autoDeckName } from "@/lib/google";
 import { ensureLessonFolderId, ensureCourseFolderId } from "@/lib/lessonFolders";
 import { assertValidAst } from "@/lib/ingestionService";
 import { DEFAULT_THEME_ID } from "@/lib/themes";
@@ -101,9 +101,10 @@ export async function POST(req: Request) {
 
     const projectInput: Omit<SavedProject, "id" | "createdAt" | "userId"> = {
       type: "deck",
-      title: ast.lessonTitle,
+      title: autoDeckName(),
       subtitle: ast.targetAudience,
       url,
+      presentationAST: ast,
       ...(lessonId ? { lessonId } : {}),
       ...(courseId ? { courseId } : {}),
     };

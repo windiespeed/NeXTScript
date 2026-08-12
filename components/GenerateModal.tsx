@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react";
 import type { Lesson } from "@/types/lesson";
 
-type FileChoice = "slides" | "doc" | "quiz";
+// Overview Doc isn't a bundle option — generate it from the lesson page instead, where you
+// can pick which decks/quizzes it summarizes.
+type FileChoice = "slides" | "quiz";
 type Destination = "drive" | "download";
 type ModalStatus = "idle" | "loading";
 
@@ -20,21 +22,19 @@ function extractPresentationId(url: string): string | null {
 }
 
 export default function GenerateModal({ lesson, hasQuizDraft, onClose, onGenerate }: Props) {
-  // Quiz defaults off — unlike Slides/Doc, checking it can silently trigger a billed AI call
-  // (see the warning below) when there's no draft or manually-entered questions to use instead.
-  const [selectedFiles, setSelectedFiles] = useState<FileChoice[]>(["slides", "doc"]);
+  // Quiz defaults off — the server only ever pushes an existing quiz draft to a Google Form,
+  // it never writes quiz content itself, so checking it does nothing unless a draft exists.
+  const [selectedFiles, setSelectedFiles] = useState<FileChoice[]>(["slides"]);
   const [destination, setDestination] = useState<Destination>("drive");
   const [modalStatus] = useState<ModalStatus>("idle");
   const [templateUrl, setTemplateUrl] = useState("");
-  const [hasAiKey, setHasAiKey] = useState(false);
 
-  // Load saved template URL + AI key status once on mount
+  // Load saved template URL once on mount
   useEffect(() => {
     fetch("/api/user/settings")
       .then(r => r.json())
       .then(data => {
         if (data.defaultTemplateUrl) setTemplateUrl(data.defaultTemplateUrl);
-        setHasAiKey(data.hasKey ?? false);
       })
       .catch(() => {});
   }, []);
@@ -42,20 +42,15 @@ export default function GenerateModal({ lesson, hasQuizDraft, onClose, onGenerat
   // Reset file/destination state whenever a new lesson opens the modal
   useEffect(() => {
     if (lesson) {
-      setSelectedFiles(["slides", "doc"]);
+      setSelectedFiles(["slides"]);
       setDestination("drive");
     }
   }, [lesson?.id]);
 
   if (!lesson) return null;
 
-  // Mirrors the server's exact fallback condition in app/api/generate/[id]/route.ts — if
-  // none of these already have quiz content, checking "Quiz" will call Claude to write
-  // questions from scratch rather than silently doing nothing.
-  const willAiGenerateQuiz = hasAiKey && !hasQuizDraft && !(lesson.quizQuestions?.length);
-
-  const quizDisabled = destination === "download";
-  const effectiveFiles = destination === "download"
+  const quizDisabled = destination === "download" || !hasQuizDraft;
+  const effectiveFiles = (destination === "download" || !hasQuizDraft)
     ? selectedFiles.filter(f => f !== "quiz")
     : selectedFiles;
   const canGenerate = effectiveFiles.length > 0;
@@ -134,15 +129,6 @@ export default function GenerateModal({ lesson, hasQuizDraft, onClose, onGenerat
               />
               Slides <span className="text-xs" style={{ color: "var(--text-muted)" }}>(Google Slides)</span>
             </label>
-            <label className={labelClass} style={{ color: "var(--text-primary)" }}>
-              <input
-                type="checkbox"
-                checked={selectedFiles.includes("doc")}
-                onChange={() => toggleFile("doc")}
-                className="w-4 h-4 accent-[#0cc0df]"
-              />
-              Assessment Doc <span className="text-xs" style={{ color: "var(--text-muted)" }}>(Google Doc)</span>
-            </label>
             <label
               className={`flex items-center gap-2.5 text-sm cursor-pointer select-none ${quizDisabled ? "opacity-40 cursor-not-allowed" : ""}`}
               style={{ color: "var(--text-primary)" }}
@@ -154,14 +140,14 @@ export default function GenerateModal({ lesson, hasQuizDraft, onClose, onGenerat
                 disabled={quizDisabled}
                 className="w-4 h-4 accent-[#0cc0df]"
               />
-              Quiz <span className="text-xs" style={{ color: "var(--text-muted)" }}>{quizDisabled ? "(not available as PDF)" : "(Google Forms)"}</span>
+              Quiz <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+                {destination === "download" ? "(not available as PDF)" : !hasQuizDraft ? "(no draft yet — create one on the Quizzes page)" : "(Google Forms)"}
+              </span>
             </label>
-            {selectedFiles.includes("quiz") && willAiGenerateQuiz && (
-              <p className="text-xs pl-6 -mt-1" style={{ color: "#ff8c4a" }}>
-                No quiz drafted for this lesson yet — checking this will use AI to generate questions from scratch.
-              </p>
-            )}
           </div>
+          <p className="text-xs mt-2" style={{ color: "var(--text-muted)" }}>
+            Overview Doc moved to its own button on the lesson page, so you can pick which decks/quizzes it summarizes.
+          </p>
         </div>
 
         {/* Destination */}

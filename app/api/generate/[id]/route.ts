@@ -5,15 +5,16 @@ import { projectStore } from "@/lib/projectStore";
 import { courseStore } from "@/lib/courseStore";
 import { canAccessLesson } from "@/lib/access";
 import { userSettings } from "@/lib/userSettings";
-import { generateBundleSelective, generateBundleAsDownload, buildQuiz, addFileToFolders } from "@/lib/google";
+import { generateBundleSelective, generateBundleAsDownload, buildQuiz, addFileToFolders, autoDeckName } from "@/lib/google";
 import { ensureLessonFolderId, ensureCourseFolderId } from "@/lib/lessonFolders";
-import { generateQuizQuestions } from "@/lib/ai";
 import { resolveSections } from "@/lib/sections";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
-type FileChoice = "slides" | "doc" | "quiz";
+// Overview Doc isn't a bundle option — it needs a source-selection step (see
+// app/lessons/[id]/page.tsx's dedicated Generate Overview Doc flow instead).
+type FileChoice = "slides" | "quiz";
 type Destination = "drive" | "download";
 
 function extractPresentationId(url: string): string | undefined {
@@ -47,7 +48,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
 
   // Parse body — fall back to "all files, drive" if body is absent (backwards compat)
-  let files: FileChoice[] = ["slides", "doc", "quiz"];
+  let files: FileChoice[] = ["slides", "quiz"];
   let destination: Destination = "drive";
   let templateId: string | undefined;
   try {
@@ -74,10 +75,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     courseFolderId = await ensureCourseFolderId(course, accessToken, session.user!.email!);
   }
 
-  // Course settings override user settings when non-empty
-  const industry = (course?.settings?.industry || uSettings.industry) ?? "";
-  const subject  = (course?.settings?.subject  || uSettings.subject)  ?? "";
-
   // Resolve the active section list: course-level > user-level > synthesized from labels
   // (defaults → user labels → course labels), so old courses/users behave identically.
   const sections = resolveSections({ course, userSettings: uSettings });
@@ -91,13 +88,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     templateId = extractPresentationId(uSettings.defaultTemplateUrl);
   }
 
-  const curriculumCtx = { industry, subject, sections };
-
   try {
     if (destination === "drive") {
-      // ── Slides + Doc ─────────────────────────────────────────────────────
-      const bundleFiles = files.filter(f => f !== "quiz") as ("slides" | "doc")[];
-      const { folderUrl, folderId: lessonFolderId, deckId, docId } = await generateBundleSelective(
+      // ── Slides ────────────────────────────────────────────────────────────
+      const bundleFiles: ("slides")[] = files.includes("slides") ? ["slides"] : [];
+      const { folderUrl, folderId: lessonFolderId, deckId } = await generateBundleSelective(
         lesson,
         bundleFiles,
         accessToken,
@@ -106,13 +101,22 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         courseFolderId
       );
 
-      // Save deck and overview doc as projects
-      const overviewUrl = docId ? `https://docs.google.com/document/d/${docId}/edit` : undefined;
+      // Save deck as a project
       await Promise.all([
-        deckId ? projectStore.create({ type: "deck", lessonId: id, title: lesson.title, subtitle: lesson.subtitle, url: `https://docs.google.com/presentation/d/${deckId}/edit` }, session.user!.email!) : null,
+        deckId ? projectStore.create({
+          type: "deck",
+          lessonId: id,
+          title: autoDeckName(),
+          subtitle: lesson.subtitle,
+          url: `https://docs.google.com/presentation/d/${deckId}/edit`,
+          slideContent: lesson.slideContent,
+        }, session.user!.email!) : null,
       ]);
 
       // ── Quiz ──────────────────────────────────────────────────────────────
+      // Requires an existing quiz draft — this bundle action only pushes already-drafted
+      // questions to a Google Form, it never writes quiz content itself. Picking which
+      // lessons/modules a quiz covers is what the dedicated Quiz pages are for.
       if (files.includes("quiz")) {
         const allProjects = await projectStore.getAll(session.user!.email!);
         const quizDrafts = allProjects.filter(p =>
@@ -120,68 +124,36 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           (p.lessonId === id || (p.lessonIds?.includes(id) ?? false))
         );
 
-        if (quizDrafts.length > 0) {
-          // Generate each saved quiz draft to a Google Form
-          for (const draft of quizDrafts) {
-            try {
-              const syntheticLesson = { ...lesson, quizQuestions: draft.questions ?? [] };
-              // Home folder is this lesson's own Drive folder (same one slides/doc just landed in),
-              // not the course-level folder — matches where the rest of the lesson's files live.
-              const formId = await buildQuiz(syntheticLesson, accessToken, lessonFolderId);
+        for (const draft of quizDrafts) {
+          try {
+            const syntheticLesson = { ...lesson, quizQuestions: draft.questions ?? [] };
+            // Home folder is this lesson's own Drive folder (same one slides/doc just landed in),
+            // not the course-level folder — matches where the rest of the lesson's files live.
+            const formId = await buildQuiz(syntheticLesson, accessToken, lessonFolderId);
 
-              // A quiz covering multiple lessons also gets added to each *other* lesson's own folder.
-              if (draft.lessonIds && draft.lessonIds.length > 1) {
-                const otherLessonIds = draft.lessonIds.filter(lessonId => lessonId !== id);
-                const lessonFolderIds: string[] = [];
-                for (const lessonId of otherLessonIds) {
-                  const otherLesson = await store.getById(lessonId);
-                  if (otherLesson) lessonFolderIds.push(await ensureLessonFolderId(otherLesson, courseFolderId, accessToken));
-                }
-                await addFileToFolders(formId, lessonFolderIds, accessToken).catch(() => {});
+            // A quiz covering multiple lessons also gets added to each *other* lesson's own folder.
+            if (draft.lessonIds && draft.lessonIds.length > 1) {
+              const otherLessonIds = draft.lessonIds.filter(lessonId => lessonId !== id);
+              const lessonFolderIds: string[] = [];
+              for (const lessonId of otherLessonIds) {
+                const otherLesson = await store.getById(lessonId);
+                if (otherLesson) lessonFolderIds.push(await ensureLessonFolderId(otherLesson, courseFolderId, accessToken));
               }
+              await addFileToFolders(formId, lessonFolderIds, accessToken).catch(() => {});
+            }
 
-              const formUrl = `https://docs.google.com/forms/d/${formId}/edit`;
-              await projectStore.update(draft.id, { status: "generated", url: formUrl });
-            } catch {
-              // Non-fatal — continue with other drafts
-            }
-          }
-        } else {
-          // No draft exists — fall back to lesson's inline questions or AI auto-gen
-          let lessonToGenerate = lesson;
-          if (!lesson.quizQuestions?.length && uSettings.anthropicKey) {
-            try {
-              const aiQuestions = await generateQuizQuestions(uSettings.anthropicKey, lesson, curriculumCtx);
-              lessonToGenerate = { ...lesson, quizQuestions: aiQuestions };
-            } catch {
-              // proceed with empty quiz
-            }
-          }
-          if (lessonToGenerate.quizQuestions?.length) {
-            try {
-              const formId = await buildQuiz(lessonToGenerate, accessToken, lessonFolderId);
-              const formUrl = `https://docs.google.com/forms/d/${formId}/edit`;
-              // Delete any previously generated quizzes for this lesson before creating the new one
-              const existingGenerated = allProjects.filter(p =>
-                p.type === "form" && p.isQuiz &&
-                (p.lessonId === id || (p.lessonIds?.includes(id) ?? false)) &&
-                (p.status === "generated" || (!p.status && p.url))
-              );
-              await Promise.all(existingGenerated.map(p => projectStore.delete(p.id)));
-              await projectStore.create({ type: "form", lessonId: id, title: lesson.title, subtitle: lesson.subtitle, isQuiz: true, status: "generated", url: formUrl }, session.user!.email!);
-            } catch {
-              // Non-fatal
-            }
+            const formUrl = `https://docs.google.com/forms/d/${formId}/edit`;
+            await projectStore.update(draft.id, { status: "generated", url: formUrl });
+          } catch {
+            // Non-fatal — continue with other drafts
           }
         }
       }
 
-      const updatePatch: Record<string, any> = { status: "done", folderUrl };
-      if (overviewUrl) updatePatch.overviewUrl = overviewUrl;
-      const updated = await store.update(id, updatePatch);
+      const updated = await store.update(id, { status: "done", folderUrl });
       return NextResponse.json(updated);
     } else {
-      const downloadFiles = files.filter(f => f !== "quiz") as ("slides" | "doc")[];
+      const downloadFiles: ("slides")[] = files.includes("slides") ? ["slides"] : [];
       const downloads = await generateBundleAsDownload(lesson, downloadFiles, accessToken, templateId, sections);
       await store.update(id, { status: "done" });
       return NextResponse.json({ downloads });

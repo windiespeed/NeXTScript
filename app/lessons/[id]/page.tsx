@@ -117,7 +117,6 @@ export default function LessonHubPage() {
 
   // Generate state
   const [genSlides, setGenSlides] = useState(true);
-  const [genOverview, setGenOverview] = useState(true);
   const [genQuiz, setGenQuiz] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState("");
@@ -148,6 +147,14 @@ export default function LessonHubPage() {
   const [metaDeadline, setMetaDeadline] = useState("");
   const [metaType, setMetaType] = useState("lesson");
   const [savingMeta, setSavingMeta] = useState(false);
+
+  // Overview Doc generation — always single-instance (deleted + replaced), built from
+  // whichever decks/quizzes are selected here rather than the lesson's own content fields.
+  const [overviewModalOpen, setOverviewModalOpen] = useState(false);
+  const [selectedDeckIds, setSelectedDeckIds] = useState<Set<string>>(new Set());
+  const [selectedQuizIds, setSelectedQuizIds] = useState<Set<string>>(new Set());
+  const [generatingOverview, setGeneratingOverview] = useState(false);
+  const [overviewError, setOverviewError] = useState("");
 
   // Widget order + sizes
   const [hubOrder, setHubOrder] = useState<HubWidgetId[]>(DEFAULT_HUB_ORDER);
@@ -240,8 +247,7 @@ export default function LessonHubPage() {
   async function handleGenerate() {
     const files: string[] = [];
     if (genSlides) files.push("slides");
-    if (genOverview) files.push("doc");
-    if (genQuiz) files.push("quiz");
+    if (genQuiz && quizDrafts.length > 0) files.push("quiz");
     if (files.length === 0) { setGenerateError("Select at least one item to generate."); return; }
 
     setGenerating(true);
@@ -353,22 +359,76 @@ export default function LessonHubPage() {
     setLesson(prev => prev ? { ...prev, resources: (prev.resources ?? []).filter(r => r.id !== rid) } : prev);
   }
 
+  async function handleDeleteProject(projectId: string, label: string) {
+    if (!confirm(`Delete "${label}"? This also removes the file from Google Drive.`)) return;
+    const res = await fetch(`/api/projects/${projectId}`, { method: "DELETE" });
+    if (res.ok) setProjects(prev => prev.filter(p => p.id !== projectId));
+  }
+
   if (loading) return <p className="text-sm text-[#0cc0df] mt-10">Loading…</p>;
   if (!lesson) return <p className="text-sm text-red-500 mt-10">Lesson not found.</p>;
 
   const currentModule = courseModules.find(m => m.lessonIds.includes(id));
   const backHref = lesson.courseId ? `/courses/${lesson.courseId}` : "/slides";
 
-  const deck = projects.find(p => p.type === "deck" && (p.lessonId === id || p.lessonIds?.includes(id)));
-  const hasSlideDraft = !deck && !!lesson.presentationAST;
+  // A lesson can now have several decks (every Generate/Export click adds a new, distinctly
+  // named one instead of silently replacing the last) — already sorted newest-first by
+  // projectStore.getAll. The unexported draft (if any) is independent of how many exist.
+  const decks = projects.filter(p => p.type === "deck" && (p.lessonId === id || p.lessonIds?.includes(id)));
+  const hasSlideDraft = !!lesson.presentationAST;
   const quizProjects = projects.filter(p => p.type === "form" && p.isQuiz && (p.lessonId === id || p.lessonIds?.includes(id)));
   const quizDrafts = quizProjects.filter(p => p.status === "draft");
   const quizGenerated = quizProjects.filter(p => p.status === "generated" || (!p.status && p.url));
   const isMultiLesson = (p: typeof projects[0]) => Array.isArray(p.lessonIds) && p.lessonIds.length > 1;
-  const singleLessonQuizDrafts = quizDrafts.filter(p => !isMultiLesson(p));
   const multiLessonQuizDrafts = quizDrafts.filter(isMultiLesson);
   const multiLessonQuizGenerated = quizGenerated.filter(isMultiLesson);
   const typeColors = TYPE_COLORS[lesson.lessonType ?? "lesson"];
+  const overviewSources = [...quizDrafts, ...quizGenerated];
+
+  function openOverviewModal() {
+    // Defaults to everything currently available, so generating with no manual changes
+    // reproduces roughly today's "include everything" behavior.
+    setSelectedDeckIds(new Set(decks.map(d => d.id)));
+    setSelectedQuizIds(new Set(overviewSources.map(q => q.id)));
+    setOverviewError("");
+    setOverviewModalOpen(true);
+  }
+
+  function toggleDeckSelection(deckId: string) {
+    setSelectedDeckIds(prev => {
+      const next = new Set(prev);
+      next.has(deckId) ? next.delete(deckId) : next.add(deckId);
+      return next;
+    });
+  }
+
+  function toggleQuizSelection(quizId: string) {
+    setSelectedQuizIds(prev => {
+      const next = new Set(prev);
+      next.has(quizId) ? next.delete(quizId) : next.add(quizId);
+      return next;
+    });
+  }
+
+  async function handleGenerateOverview() {
+    setGeneratingOverview(true);
+    setOverviewError("");
+    try {
+      const res = await fetch(`/api/lessons/${id}/overview-doc`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deckIds: Array.from(selectedDeckIds), quizIds: Array.from(selectedQuizIds) }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to generate the Overview Doc.");
+      setLesson(prev => prev ? { ...prev, overviewUrl: data.url } : prev);
+      setOverviewModalOpen(false);
+    } catch (err: any) {
+      setOverviewError(err.message || "Failed to generate the Overview Doc.");
+    } finally {
+      setGeneratingOverview(false);
+    }
+  }
 
   return (
     <div className="space-y-5">
@@ -500,45 +560,126 @@ export default function LessonHubPage() {
         </div>
       )}
 
+      {/* ── Generate Overview Doc Modal ─────────────────────────────────── */}
+      {overviewModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setOverviewModalOpen(false)} />
+          <div className="relative w-full max-w-md rounded-3xl p-6 space-y-4" style={{ background: "var(--bg-card)", boxShadow: "var(--shadow-float)" }}>
+            <div>
+              <h2 className="text-base font-bold" style={{ color: "var(--text-primary)" }}>Generate Overview Doc</h2>
+              <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
+                Pick which decks and quizzes it summarizes. Regenerating always replaces the existing Overview Doc.
+              </p>
+            </div>
+
+            <div className="space-y-3 max-h-72 overflow-y-auto">
+              <div>
+                <p className="text-xs font-semibold mb-1.5" style={{ color: "var(--text-primary)" }}>Slide Decks</p>
+                {decks.length === 0 ? (
+                  <p className="text-xs" style={{ color: "var(--text-muted)" }}>No decks generated for this lesson yet.</p>
+                ) : (
+                  <div className="space-y-1">
+                    {decks.map(d => (
+                      <label key={d.id} className="flex items-center gap-2.5 text-xs cursor-pointer" style={{ color: "var(--text-primary)" }}>
+                        <input type="checkbox" checked={selectedDeckIds.has(d.id)} onChange={() => toggleDeckSelection(d.id)} className="accent-[#0cc0df] w-3.5 h-3.5" />
+                        {d.title}
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div>
+                <p className="text-xs font-semibold mb-1.5" style={{ color: "var(--text-primary)" }}>Quizzes</p>
+                {overviewSources.length === 0 ? (
+                  <p className="text-xs" style={{ color: "var(--text-muted)" }}>No quizzes for this lesson yet.</p>
+                ) : (
+                  <div className="space-y-1">
+                    {overviewSources.map(q => (
+                      <label key={q.id} className="flex items-center gap-2.5 text-xs cursor-pointer" style={{ color: "var(--text-primary)" }}>
+                        <input type="checkbox" checked={selectedQuizIds.has(q.id)} onChange={() => toggleQuizSelection(q.id)} className="accent-[#0cc0df] w-3.5 h-3.5" />
+                        {q.title} {q.status === "draft" && <span style={{ color: "var(--text-muted)" }}>(draft)</span>}
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {overviewError && <p className="text-xs text-red-500">{overviewError}</p>}
+
+            <div className="flex gap-2 pt-2">
+              <button onClick={() => setOverviewModalOpen(false)} className="flex-1 rounded-full py-2 text-sm font-semibold transition" style={{ border: "1px solid var(--border)", color: "var(--text-primary)" }}>
+                Cancel
+              </button>
+              <button
+                onClick={handleGenerateOverview}
+                disabled={generatingOverview || (selectedDeckIds.size === 0 && selectedQuizIds.size === 0)}
+                className="flex-1 rounded-full bg-[#0cc0df] py-2 text-sm font-semibold text-[#0a0b13] hover:opacity-90 disabled:opacity-50 transition"
+              >
+                {generatingOverview ? "Generating…" : "Generate"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Documents ───────────────────────────────────────────────────── */}
       <div className={cardClass} style={cardStyle}>
         <div className="flex items-center justify-between">
           <p className={sectionLabel}>Documents</p>
-          <Link href="/quizzes" className="text-[10px] font-semibold hover:underline" style={{ color: "#0cc0df" }}>
-            View All Quizzes →
-          </Link>
+          <div className="flex items-center gap-3">
+            {lesson.folderUrl && (
+              <a href={lesson.folderUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] font-semibold hover:underline" style={{ color: "#0cc0df" }}>
+                Open in Drive ↗
+              </a>
+            )}
+            <Link href="/quizzes" className="text-[10px] font-semibold hover:underline" style={{ color: "#0cc0df" }}>
+              View All Quizzes →
+            </Link>
+          </div>
         </div>
         <div className="space-y-2">
-          {deck ? (
-            <DocRow icon={RESOURCE_ICON.slides} color="var(--accent-purple)" label="Slide Deck" badge="Generated" badgeColor="#2dd4a0" url={deck.url} editHref={`/slides/${id}`} editLabel="Edit Slides" />
-          ) : hasSlideDraft ? (
+          {decks.map(d => (
+            <DocRow key={d.id} icon={RESOURCE_ICON.slides} color="var(--accent-purple)"
+              label={d.title}
+              sublabel={d.presentationAST ? "Notes to Slides" : "Classic pipeline"}
+              badge="Generated" badgeColor="#2dd4a0"
+              url={d.url} editHref={`/slides/${id}`} editLabel="Edit Slides"
+              onDelete={() => handleDeleteProject(d.id, d.title)} />
+          ))}
+          {hasSlideDraft && (
             <DocRow icon={RESOURCE_ICON.slides} color="#ff8c4a" label="Slide Deck"
-              sublabel={`${lesson.presentationAST!.slides.length} slide${lesson.presentationAST!.slides.length !== 1 ? "s" : ""} · Notes to Slides`}
+              sublabel={`${lesson.presentationAST!.slides.length} slide${lesson.presentationAST!.slides.length !== 1 ? "s" : ""} · Notes to Slides draft, not yet exported`}
               badge="Draft" badgeColor="#ff8c4a"
               editHref={`/ingest?lessonId=${id}`} editLabel="Edit Draft →" />
-          ) : (
+          )}
+          {decks.length === 0 && !hasSlideDraft && (
             <DocRow icon={RESOURCE_ICON.slides} color="var(--text-muted)" label="Slide Deck" badge="Not generated" badgeColor="var(--text-muted)" editHref={`/slides/${id}`} editLabel="Edit Slides" />
           )}
           {lesson.overviewUrl ? (
-            <DocRow icon={RESOURCE_ICON.doc} color="#0cc0df" label="Overview Doc" badge="Generated" badgeColor="#2dd4a0" url={lesson.overviewUrl} />
+            <DocRow icon={RESOURCE_ICON.doc} color="#0cc0df" label="Overview Doc" badge="Generated" badgeColor="#2dd4a0" url={lesson.overviewUrl}
+              onAction={openOverviewModal} actionLabel="Regenerate" />
           ) : (
-            <DocRow icon={RESOURCE_ICON.doc} color="var(--text-muted)" label="Overview Doc" badge="Not generated" badgeColor="var(--text-muted)" />
+            <DocRow icon={RESOURCE_ICON.doc} color="var(--text-muted)" label="Overview Doc" badge="Not generated" badgeColor="var(--text-muted)"
+              onAction={openOverviewModal} actionLabel="Generate" />
           )}
           {quizDrafts.map(q => (
             <DocRow key={q.id} icon={RESOURCE_ICON.form} color="#ff8c4a"
               label={q.title}
               sublabel={isMultiLesson(q) ? `Covers ${q.lessonIds!.length} lessons` : "This lesson only"}
               badge="Quiz Draft" badgeColor="#ff8c4a"
-              editHref={`/quizzes/${q.id}`} editLabel={isMultiLesson(q) ? "Edit & Generate" : "Edit Quiz"} />
+              editHref={`/quizzes/${q.id}`} editLabel={isMultiLesson(q) ? "Edit & Generate" : "Edit Quiz"}
+              onDelete={() => handleDeleteProject(q.id, q.title)} />
           ))}
           {quizGenerated.map(q => (
             <DocRow key={q.id} icon={RESOURCE_ICON.form} color="#ff8c4a"
               label={q.title}
               sublabel={isMultiLesson(q) ? `Covers ${q.lessonIds!.length} lessons` : "This lesson only"}
               badge="Quiz" badgeColor="#2dd4a0"
-              url={q.url} editHref={`/quizzes/${q.id}`} editLabel="Edit Quiz" />
+              url={q.url} editHref={`/quizzes/${q.id}`} editLabel="Edit Quiz"
+              onDelete={() => handleDeleteProject(q.id, q.title)} />
           ))}
-          {!deck && !hasSlideDraft && quizProjects.length === 0 && !lesson.overviewUrl && (
+          {decks.length === 0 && !hasSlideDraft && quizProjects.length === 0 && !lesson.overviewUrl && (
             <p className="text-xs text-center py-4" style={{ color: "var(--text-muted)" }}>No documents generated yet — use the Generate panel below.</p>
           )}
         </div>
@@ -560,15 +701,22 @@ export default function LessonHubPage() {
                     <div className={`flex flex-col gap-2 ${hubSizes["generate"] >= 2 ? "sm:flex-row sm:flex-wrap sm:items-center" : ""}`}>
                       <div className={`flex flex-wrap gap-2 ${hubSizes["generate"] >= 2 ? "justify-center sm:justify-start sm:flex-1" : "justify-center"}`}>
                         {([
-                          { key: "slides", label: "Slide Deck", state: genSlides, set: setGenSlides },
-                          { key: "overview", label: "Overview Doc", state: genOverview, set: setGenOverview },
-                          { key: "quiz", label: `Quiz${singleLessonQuizDrafts.length > 0 ? ` (${singleLessonQuizDrafts.length} draft${singleLessonQuizDrafts.length > 1 ? "s" : ""})` : ""}`, state: genQuiz, set: setGenQuiz },
-                        ] as const).map(({ key, label, state, set }) => (
+                          { key: "slides", label: "Slide Deck", state: genSlides, set: setGenSlides, disabled: false },
+                          {
+                            key: "quiz",
+                            label: quizDrafts.length > 0
+                              ? `Quiz (${quizDrafts.length} draft${quizDrafts.length !== 1 ? "s" : ""})`
+                              : "Quiz (no draft)",
+                            state: genQuiz, set: setGenQuiz, disabled: quizDrafts.length === 0,
+                          },
+                        ] as const).map(({ key, label, state, set, disabled }) => (
                           <button
                             key={key}
-                            onClick={() => set(!state)}
-                            className="rounded-full px-3 py-1.5 text-xs font-semibold transition"
-                            style={state
+                            onClick={() => !disabled && set(!state)}
+                            disabled={disabled}
+                            title={disabled ? "Create a quiz draft on the Quizzes page first" : undefined}
+                            className="rounded-full px-3 py-1.5 text-xs font-semibold transition disabled:opacity-40 disabled:cursor-not-allowed"
+                            style={state && !disabled
                               ? { background: "#0cc0df", color: "#0a0b13" }
                               : { background: "var(--bg-card-hover)", border: "1px solid var(--border)", color: "var(--text-secondary)" }
                             }
@@ -577,15 +725,10 @@ export default function LessonHubPage() {
                           </button>
                         ))}
                       </div>
-                      {genQuiz && quizDrafts.length === 0 && !lesson?.quizQuestions?.length && hasAiKey && (
-                        <p className="text-xs w-full text-center sm:text-left" style={{ color: "#ff8c4a" }}>
-                          No quiz drafted for this lesson yet — generating will use AI to write questions from scratch.
-                        </p>
-                      )}
                       <div className={`flex flex-col gap-2 ${hubSizes["generate"] >= 2 ? "sm:flex-row sm:shrink-0" : ""}`}>
                         <button
                           onClick={handleGenerate}
-                          disabled={generating || (!genSlides && !genOverview && !genQuiz)}
+                          disabled={generating || (!genSlides && !genQuiz)}
                           className="w-full sm:w-auto rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-6 py-2.5 text-sm font-bold text-white hover:opacity-90 disabled:opacity-50 transition shadow"
                         >
                           {generating ? (
@@ -764,7 +907,7 @@ export default function LessonHubPage() {
 
 // ── Helper component ──────────────────────────────────────────────────────────
 
-function DocRow({ icon, color, label, sublabel, badge, badgeColor, url, editHref, editLabel }: {
+function DocRow({ icon, color, label, sublabel, badge, badgeColor, url, editHref, editLabel, onAction, actionLabel, onDelete }: {
   icon: React.ReactNode;
   color: string;
   label: string;
@@ -774,6 +917,9 @@ function DocRow({ icon, color, label, sublabel, badge, badgeColor, url, editHref
   url?: string;
   editHref?: string;
   editLabel?: string;
+  onAction?: () => void;
+  actionLabel?: string;
+  onDelete?: () => void;
 }) {
   return (
     <div className="flex items-center gap-3 rounded-2xl px-3 py-2.5" style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)" }}>
@@ -785,6 +931,16 @@ function DocRow({ icon, color, label, sublabel, badge, badgeColor, url, editHref
       <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0" style={{ background: badgeColor + "20", color: badgeColor }}>
         {badge}
       </span>
+      {onAction && (
+        <button
+          type="button"
+          onClick={onAction}
+          className="rounded-full px-2.5 py-1 text-[10px] font-semibold shrink-0 transition hover:opacity-80"
+          style={{ background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+        >
+          {actionLabel}
+        </button>
+      )}
       {editHref && (
         <Link
           href={editHref}
@@ -798,6 +954,17 @@ function DocRow({ icon, color, label, sublabel, badge, badgeColor, url, editHref
         <a href={url} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold shrink-0 hover:underline" style={{ color: "#0cc0df" }}>
           Open ↗
         </a>
+      )}
+      {onDelete && (
+        <button
+          type="button"
+          onClick={onDelete}
+          title="Delete"
+          className="p-1 rounded-full transition hover:text-red-500 hover:bg-red-500/10 shrink-0"
+          style={{ color: "var(--text-muted)" }}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+        </button>
       )}
     </div>
   );

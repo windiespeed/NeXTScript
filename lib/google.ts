@@ -13,6 +13,7 @@ import type { FormQuestion } from "@/types/form";
 import { DEFAULT_SECTIONS, type SectionDef } from "@/types/section";
 import { getSectionContent } from "@/lib/sections";
 import { getTheme, DEFAULT_THEME_ID } from "@/lib/themes";
+import type { SavedProject } from "@/types/project";
 import type {
   PresentationAST,
   SlideNode,
@@ -374,7 +375,7 @@ export async function buildSlideDeck(lesson: Lesson, accessToken: string, templa
     {
       createSlide: {
         objectId: successSlideId,
-        slideLayoutReference: { predefinedLayout: "BLANK" },
+        slideLayoutReference: resolveBlankLayoutRef(pres.data.layouts, !!templateId),
       },
     },
     {
@@ -487,14 +488,34 @@ function astCalloutVariants(palette: AstPalette): Record<CalloutCardSlide["varia
   };
 }
 
-// Always requests Slides' predefined BLANK layout rather than guessing a "blank-looking" layout
-// from the template's master — a guessed layout can carry its own placeholder shapes ("Click to
-// add title"/"Click to add text") that then sit behind the AST builder's own text boxes.
-function astCreateBlankSlideRequest(slideId: string): SlideRequest {
+/** Resolves a layout reference guaranteed to actually exist on this presentation, instead of
+ * assuming `predefinedLayout: "BLANK"` is always defined — a custom Slides Template's master
+ * may not tag any layout with that predefined type at all, which Slides rejects outright
+ * ("The predefined layout (BLANK) is not present in the current master"). A fresh,
+ * template-less presentation always uses Google's default theme, which does define it, so
+ * this only needs to search when a template was actually copied. Prefers the layout with the
+ * fewest page elements (ideally zero) — guaranteed present since it's read from the
+ * presentation's own data, and least likely to leak inherited placeholder shapes/text. */
+function resolveBlankLayoutRef(
+  layouts: slides_v1.Schema$Page[] | undefined,
+  usedTemplate: boolean
+): slides_v1.Schema$LayoutReference {
+  if (!usedTemplate) return { predefinedLayout: "BLANK" };
+  const candidates = (layouts ?? []).filter(l => !!l.objectId);
+  if (candidates.length === 0) return { predefinedLayout: "BLANK" }; // nothing to pick from — best effort
+  const best = [...candidates].sort((a, b) => (a.pageElements?.length ?? 0) - (b.pageElements?.length ?? 0))[0];
+  return { layoutId: best.objectId };
+}
+
+// Uses whichever layout reference resolveBlankLayoutRef() found, rather than guessing a
+// "blank-looking" layout by name from the template's master — a guessed layout can carry its
+// own placeholder shapes ("Click to add title"/"Click to add text") that then sit behind the
+// AST builder's own text boxes.
+function astCreateBlankSlideRequest(slideId: string, layoutRef: slides_v1.Schema$LayoutReference): SlideRequest {
   return {
     createSlide: {
       objectId: slideId,
-      slideLayoutReference: { predefinedLayout: "BLANK" },
+      slideLayoutReference: layoutRef,
     },
   };
 }
@@ -563,9 +584,9 @@ function astTitleHeader(slideId: string, title: string, subtitle: string | undef
   return { requests, contentStartY: y + 6 };
 }
 
-function astStandardSlideRequests(slide: StandardTextSlide, palette: AstPalette): SlideRequest[] {
+function astStandardSlideRequests(slide: StandardTextSlide, palette: AstPalette, layoutRef: slides_v1.Schema$LayoutReference): SlideRequest[] {
   const slideId = uid("s");
-  const requests: SlideRequest[] = [astCreateBlankSlideRequest(slideId)];
+  const requests: SlideRequest[] = [astCreateBlankSlideRequest(slideId, layoutRef)];
   const { requests: headerReqs, contentStartY } = astTitleHeader(slideId, slide.title, slide.subtitle, palette);
   requests.push(...headerReqs);
 
@@ -601,9 +622,9 @@ function astStandardSlideRequests(slide: StandardTextSlide, palette: AstPalette)
   return requests;
 }
 
-function astSplitColumnSlideRequests(slide: SplitColumnSlide, palette: AstPalette): SlideRequest[] {
+function astSplitColumnSlideRequests(slide: SplitColumnSlide, palette: AstPalette, layoutRef: slides_v1.Schema$LayoutReference): SlideRequest[] {
   const slideId = uid("s");
-  const requests: SlideRequest[] = [astCreateBlankSlideRequest(slideId)];
+  const requests: SlideRequest[] = [astCreateBlankSlideRequest(slideId, layoutRef)];
   const { requests: headerReqs, contentStartY } = astTitleHeader(slideId, slide.title, slide.subtitle, palette);
   requests.push(...headerReqs);
 
@@ -638,9 +659,9 @@ function astSplitColumnSlideRequests(slide: SplitColumnSlide, palette: AstPalett
   return requests;
 }
 
-function astCodeExplainerSlideRequests(slide: CodeExplainerSlide, palette: AstPalette): SlideRequest[] {
+function astCodeExplainerSlideRequests(slide: CodeExplainerSlide, palette: AstPalette, layoutRef: slides_v1.Schema$LayoutReference): SlideRequest[] {
   const slideId = uid("s");
-  const requests: SlideRequest[] = [astCreateBlankSlideRequest(slideId)];
+  const requests: SlideRequest[] = [astCreateBlankSlideRequest(slideId, layoutRef)];
   const { requests: headerReqs, contentStartY } = astTitleHeader(slideId, slide.title, slide.subtitle, palette);
   requests.push(...headerReqs);
 
@@ -680,9 +701,9 @@ function astCodeExplainerSlideRequests(slide: CodeExplainerSlide, palette: AstPa
   return requests;
 }
 
-function astCalloutSlideRequests(slide: CalloutCardSlide, palette: AstPalette): SlideRequest[] {
+function astCalloutSlideRequests(slide: CalloutCardSlide, palette: AstPalette, layoutRef: slides_v1.Schema$LayoutReference): SlideRequest[] {
   const slideId = uid("s");
-  const requests: SlideRequest[] = [astCreateBlankSlideRequest(slideId)];
+  const requests: SlideRequest[] = [astCreateBlankSlideRequest(slideId, layoutRef)];
   const config = astCalloutVariants(palette)[slide.variant];
 
   const panelX = 80, panelY = 55, panelW = AST_PAGE_WIDTH - 160, panelH = AST_PAGE_HEIGHT - 110;
@@ -734,9 +755,9 @@ function astCalloutSlideRequests(slide: CalloutCardSlide, palette: AstPalette): 
   return requests;
 }
 
-function astStepGridSlideRequests(slide: StepGridSlide, palette: AstPalette): SlideRequest[] {
+function astStepGridSlideRequests(slide: StepGridSlide, palette: AstPalette, layoutRef: slides_v1.Schema$LayoutReference): SlideRequest[] {
   const slideId = uid("s");
-  const requests: SlideRequest[] = [astCreateBlankSlideRequest(slideId)];
+  const requests: SlideRequest[] = [astCreateBlankSlideRequest(slideId, layoutRef)];
   const { requests: headerReqs, contentStartY } = astTitleHeader(slideId, slide.title, slide.subtitle, palette);
   requests.push(...headerReqs);
 
@@ -772,13 +793,13 @@ function astStepGridSlideRequests(slide: StepGridSlide, palette: AstPalette): Sl
 }
 
 /** Routes a single AST node to its request-builder — mirrors the exhaustive switch in components/slides/SlideRenderer.tsx. */
-function astSlideRequests(slide: SlideNode, palette: AstPalette): SlideRequest[] {
+function astSlideRequests(slide: SlideNode, palette: AstPalette, layoutRef: slides_v1.Schema$LayoutReference): SlideRequest[] {
   switch (slide.type) {
-    case "standard": return astStandardSlideRequests(slide, palette);
-    case "split-column": return astSplitColumnSlideRequests(slide, palette);
-    case "code-explainer": return astCodeExplainerSlideRequests(slide, palette);
-    case "callout": return astCalloutSlideRequests(slide, palette);
-    case "step-grid": return astStepGridSlideRequests(slide, palette);
+    case "standard": return astStandardSlideRequests(slide, palette, layoutRef);
+    case "split-column": return astSplitColumnSlideRequests(slide, palette, layoutRef);
+    case "code-explainer": return astCodeExplainerSlideRequests(slide, palette, layoutRef);
+    case "callout": return astCalloutSlideRequests(slide, palette, layoutRef);
+    case "step-grid": return astStepGridSlideRequests(slide, palette, layoutRef);
     default: {
       const _exhaustive: never = slide;
       return _exhaustive;
@@ -839,9 +860,10 @@ export async function buildSlideDeckFromAst(ast: PresentationAST, accessToken: s
   }
 
   // 4. Build every content slide from the AST
+  const layoutRef = resolveBlankLayoutRef(pres.data.layouts, !!templateId);
   const contentRequests: SlideRequest[] = [];
   for (const slide of ast.slides) {
-    contentRequests.push(...astSlideRequests(slide, palette));
+    contentRequests.push(...astSlideRequests(slide, palette, layoutRef));
   }
 
   // ── Batch updates ────────────────────────────────────────────────────────
@@ -860,7 +882,63 @@ export async function buildSlideDeckFromAst(ast: PresentationAST, accessToken: s
 
 // ─── Docs (Assessment/Assignment Sheet) ──────────────────────────────────────
 
-export async function buildOverviewDoc(lesson: Lesson, accessToken: string, sections: SectionDef[] = DEFAULT_SECTIONS): Promise<string> {
+/** Splits a classic-pipeline slideContent string into {title, body} blocks — shared by the
+ * classic Slide Deck builder's own slide loop and the Overview Doc's per-deck summaries. */
+function parseSlideContentBlocks(raw: string): { title: string; body: string }[] {
+  const sep = /\n---\n/;
+  const blocks = sep.test(raw) ? raw.split(sep) : raw.split(/\n\n+/);
+  return blocks.map(block => {
+    const lines = block.trim().split("\n");
+    return { title: lines[0] ?? "", body: lines.slice(1).join("\n").trim() };
+  }).filter(s => s.title);
+}
+
+/** Flattens one AST slide node (any of the 5 layout types) into plain {title, body} text —
+ * mirrors the exhaustive switch in astSlideRequests, but for text extraction instead of
+ * Slides API requests. Used by the Overview Doc to summarize a Notes-to-Slides deck. */
+function flattenAstSlide(slide: SlideNode): { title: string; body: string } {
+  switch (slide.type) {
+    case "standard": {
+      const bullets = (slide.bulletPoints ?? []).map(b => `• ${b}`);
+      return { title: slide.title, body: [...slide.paragraphs, ...bullets].filter(Boolean).join("\n") };
+    }
+    case "split-column": {
+      const left = [slide.leftColumn.heading, ...slide.leftColumn.content.map(c => `• ${c}`)].join("\n");
+      const right = [slide.rightColumn.heading, ...slide.rightColumn.content.map(c => `• ${c}`)].join("\n");
+      return { title: slide.title, body: `${left}\n\n${right}` };
+    }
+    case "code-explainer": {
+      const body = [`[${slide.language}]`, slide.codeSnippet, "", ...slide.explanationPoints.map(p => `• ${p}`)].join("\n");
+      return { title: slide.title, body };
+    }
+    case "callout":
+      return { title: slide.title, body: slide.content };
+    case "step-grid": {
+      const steps = [...slide.steps]
+        .sort((a, b) => a.stepNumber - b.stepNumber)
+        .map(s => `${s.stepNumber}. ${s.title} — ${s.description}`);
+      return { title: slide.title, body: steps.join("\n") };
+    }
+    default: {
+      const _exhaustive: never = slide;
+      return _exhaustive;
+    }
+  }
+}
+
+/**
+ * Builds the lesson's Overview Doc from specifically selected decks and quizzes (not the
+ * lesson's own content fields) — each deck/quiz carries its own snapshotted content
+ * (SavedProject.slideContent/presentationAST/questions), so the doc always reflects exactly
+ * what was picked regardless of what the lesson's fields say now.
+ */
+export async function buildOverviewDoc(
+  lesson: Lesson,
+  accessToken: string,
+  selectedDecks: SavedProject[],
+  selectedQuizzes: SavedProject[],
+  sections: SectionDef[] = DEFAULT_SECTIONS
+): Promise<string> {
   const docs = google.docs({ version: "v1", auth: getAuthClient(accessToken) });
 
   const overviewLabel = sections.find(s => s.id === "lessonOverview")?.label ?? "Lesson Overview";
@@ -868,20 +946,6 @@ export async function buildOverviewDoc(lesson: Lesson, accessToken: string, sect
     requestBody: { title: `${overviewLabel.toUpperCase()}: ${lesson.title} — ${lesson.subtitle}` },
   });
   const docId = doc.data.documentId!;
-
-  // Parse slides from slideContent and filter by overviewSlides mask
-  const sep = /\n---\n/;
-  const raw = lesson.slideContent ?? "";
-  const blocks = sep.test(raw) ? raw.split(sep) : raw.split(/\n\n+/);
-  const allSlides = blocks.map(block => {
-    const lines = block.trim().split("\n");
-    return { title: lines[0] ?? "", body: lines.slice(1).join("\n").trim() };
-  }).filter(s => s.title);
-
-  const mask = lesson.overviewSlides;
-  const selectedSlides = mask
-    ? allSlides.filter((_, i) => mask[i] !== false)
-    : allSlides;
 
   // Course-level "Include in Overview Doc" toggle — additive on top of the default
   // (learningTargets only), so a course that's never touched the toggle sees identical output.
@@ -893,11 +957,24 @@ export async function buildOverviewDoc(lesson: Lesson, accessToken: string, sect
     ...(lesson.deadline ? [`Deadline: ${lesson.deadline}`] : []),
     "",
     ...overviewSections.flatMap(s => [s.label.toUpperCase(), sectionSlideContent(lesson, s.id) ?? "", ""]),
-    "LESSON SUMMARY",
-    ...selectedSlides.flatMap(slide => [
-      slide.title,
-      slide.body,
+    ...selectedDecks.flatMap(deck => {
+      const deckSlides = deck.presentationAST
+        ? deck.presentationAST.slides.map(flattenAstSlide)
+        : parseSlideContentBlocks(deck.slideContent ?? "");
+      return [
+        deck.title.toUpperCase(),
+        "",
+        ...deckSlides.flatMap(s => [s.title, s.body, ""]),
+      ];
+    }),
+    ...selectedQuizzes.flatMap(quiz => [
+      quiz.title.toUpperCase(),
       "",
+      ...(quiz.questions ?? []).flatMap((q, i) => [
+        `${i + 1}. ${q.text}`,
+        ...(q.type === "multiple_choice" ? q.options.map(o => `   ${o === q.correctAnswer && o.trim() ? "✓" : "-"} ${o}`) : []),
+        "",
+      ]),
     ]),
   ];
 
@@ -992,8 +1069,11 @@ export async function buildQuiz(lesson: Lesson, accessToken: string, folderId?: 
 }
 
 // ─── Selective / download bundle generators ──────────────────────────────────
+// Overview Doc is deliberately not part of this bundle — it now requires picking which decks/
+// quizzes it summarizes (see buildOverviewDoc above), which doesn't fit a one-click bundle
+// action. It has its own dedicated generation path instead (app/lessons/[id]/page.tsx).
 
-type FileChoice = "slides" | "doc" | "quiz";
+type FileChoice = "slides" | "quiz";
 
 export async function generateBundleSelective(
   lesson: Lesson,
@@ -1002,7 +1082,7 @@ export async function generateBundleSelective(
   templateId?: string,
   sections: SectionDef[] = DEFAULT_SECTIONS,
   parentFolderId?: string
-): Promise<{ folderUrl: string; folderId: string; deckId?: string; docId?: string; formId?: string }> {
+): Promise<{ folderUrl: string; folderId: string; deckId?: string; formId?: string }> {
   const folder = await createFolder(
     `${lesson.title}: ${lesson.subtitle}`,
     accessToken,
@@ -1011,19 +1091,17 @@ export async function generateBundleSelective(
   const folderId = folder.id!;
 
   let deckId: string | undefined;
-  let docId: string | undefined;
   let formId: string | undefined;
 
   await Promise.all([
     files.includes("slides") ? buildSlideDeck(lesson, accessToken, templateId, sections).then(id => { deckId = id; }) : null,
-    files.includes("doc")    ? buildOverviewDoc(lesson, accessToken, sections).then(id => { docId = id; })              : null,
     files.includes("quiz")   ? buildQuiz(lesson, accessToken).then(id => { formId = id; })                          : null,
   ]);
 
-  const fileIds = [deckId, docId, formId].filter(Boolean) as string[];
+  const fileIds = [deckId, formId].filter(Boolean) as string[];
   await Promise.all(fileIds.map(id => moveFileToFolder(id, folderId, accessToken)));
 
-  return { folderUrl: folder.webViewLink!, folderId, deckId, docId, formId };
+  return { folderUrl: folder.webViewLink!, folderId, deckId, formId };
 }
 
 async function exportFileAsPdf(fileId: string, accessToken: string): Promise<Buffer> {
@@ -1035,68 +1113,42 @@ async function exportFileAsPdf(fileId: string, accessToken: string): Promise<Buf
   return Buffer.from(res.data as ArrayBuffer);
 }
 
-async function deleteFile(fileId: string, accessToken: string): Promise<void> {
+export async function deleteFile(fileId: string, accessToken: string): Promise<void> {
   const drive = google.drive({ version: "v3", auth: getAuthClient(accessToken) });
   await drive.files.delete({ fileId });
 }
 
+/** Extracts a Drive file id from any of the URL shapes this app generates (Slides/Docs/Forms). */
+export function extractDriveFileId(url: string): string | undefined {
+  return url.match(/\/d\/([a-zA-Z0-9_-]+)/)?.[1];
+}
+
+/** Auto-generated, distinguishing name for a new deck — no user input needed, and every
+ * generation gets a genuinely different name since a lesson can now have several. */
+export function autoDeckName(): string {
+  const stamp = new Date().toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  return `Slide Deck — ${stamp}`;
+}
+
 export async function generateBundleAsDownload(
   lesson: Lesson,
-  files: Exclude<FileChoice, "quiz">[],
+  files: Extract<FileChoice, "slides">[],
   accessToken: string,
   templateId?: string,
   sections: SectionDef[] = DEFAULT_SECTIONS
 ): Promise<{ filename: string; data: string }[]> {
-  const createTasks: { key: string; promise: Promise<string> }[] = [];
-  if (files.includes("slides")) createTasks.push({ key: "slides", promise: buildSlideDeck(lesson, accessToken, templateId, sections) });
-  if (files.includes("doc"))    createTasks.push({ key: "doc",    promise: buildOverviewDoc(lesson, accessToken, sections) });
+  if (!files.includes("slides")) return [];
 
-  const fileIds = await Promise.all(createTasks.map(t => t.promise));
-
-  const results = await Promise.all(
-    fileIds.map(async (fileId, i) => {
-      const key = createTasks[i].key;
-      try {
-        const pdfBuffer = await exportFileAsPdf(fileId, accessToken);
-        return { key, pdfBuffer };
-      } finally {
-        await deleteFile(fileId, accessToken).catch(() => {});
-      }
-    })
-  );
+  const fileId = await buildSlideDeck(lesson, accessToken, templateId, sections);
+  let pdfBuffer: Buffer;
+  try {
+    pdfBuffer = await exportFileAsPdf(fileId, accessToken);
+  } finally {
+    await deleteFile(fileId, accessToken).catch(() => {});
+  }
 
   const safeTitle = lesson.title.replace(/[^a-z0-9]/gi, "_").slice(0, 40);
-  return results.map(({ key, pdfBuffer }) => ({
-    filename: `${safeTitle}_${key === "slides" ? "Slides" : "Assessment_Doc"}.pdf`,
-    data: pdfBuffer.toString("base64"),
-  }));
-}
-
-// ─── Main bundle generator ───────────────────────────────────────────────────
-
-export async function generateBundle(
-  lesson: Lesson,
-  accessToken: string
-): Promise<{ folderUrl: string; slideCount: number }> {
-  const folder = await createFolder(
-    `${lesson.title}: ${lesson.subtitle}`,
-    accessToken
-  );
-  const folderId = folder.id!;
-
-  const [deckId, docId, formId] = await Promise.all([
-    buildSlideDeck(lesson, accessToken),
-    buildOverviewDoc(lesson, accessToken),
-    buildQuiz(lesson, accessToken),
-  ]);
-
-  await Promise.all([
-    moveFileToFolder(deckId, folderId, accessToken),
-    moveFileToFolder(docId, folderId, accessToken),
-    moveFileToFolder(formId, folderId, accessToken),
-  ]);
-
-  return { folderUrl: folder.webViewLink!, slideCount: 0 };
+  return [{ filename: `${safeTitle}_Slides.pdf`, data: pdfBuffer.toString("base64") }];
 }
 
 // ─── Google Classroom ───────────────────────────────���──────────────────────
