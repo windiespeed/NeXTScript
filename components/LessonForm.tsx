@@ -5,6 +5,15 @@ import type { Lesson, LessonInput } from "@/types/lesson";
 import { STUDENT_LEVEL_UI_HINTS } from "@/lib/studentLevel";
 import { DEFAULT_SECTIONS, type SectionDef } from "@/types/section";
 import { resolveSections, getSectionContent } from "@/lib/sections";
+import { clearDraft } from "@/lib/draftStorage";
+import { useDraftAutosave, useDraftRestore } from "@/hooks/useDraftAutosave";
+
+interface LessonDraft {
+  form: LessonInput;
+  slides: Slide[];
+  slideCount: number;
+  overviewSlides: boolean[];
+}
 
 const cardClass = "rounded-3xl p-5 space-y-4";
 const cardStyle = { background: "var(--bg-card)", border: "1px solid var(--border)" };
@@ -83,6 +92,18 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
   const [error, setError] = useState("");
   const [autoSaveStatus, setAutoSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const [sections, setSections] = useState<SectionDef[]>(DEFAULT_SECTIONS);
+
+  // Only for brand-new, unsaved lessons — edit mode already has real Firestore
+  // autosave (below) firing into the actual doc, so a second localStorage draft
+  // would just be a second, conflicting source of truth for the same content.
+  const draftKey = isEditing ? null : "lesson:new";
+  useDraftRestore<LessonDraft>(draftKey, (draft) => {
+    setForm(f => ({ ...f, ...draft.form }));
+    setSlides(draft.slides);
+    setSlideCount(draft.slideCount);
+    setOverviewSlides(draft.overviewSlides);
+  });
+  useDraftAutosave<LessonDraft>(draftKey, { form, slides, slideCount, overviewSlides });
 
   function clearForm() {
     if (!confirm("Clear all fields? This cannot be undone.")) return;
@@ -280,6 +301,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
     setSaving(true);
     try {
       await onSubmit({ ...form, slideContent: serializeSlides(slides), slideCount, overviewSlides });
+      if (draftKey) clearDraft(draftKey);
     } catch (err: any) {
       setError(err.message || "Something went wrong.");
     } finally {

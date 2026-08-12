@@ -4,6 +4,8 @@ import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import type { Course, CourseModule } from "@/types/course";
+import { clearDraft } from "@/lib/draftStorage";
+import { useDraftAutosave, useDraftRestore } from "@/hooks/useDraftAutosave";
 
 const inputClass = "w-full rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#0cc0df] transition placeholder:text-[var(--text-muted)]";
 const inputStyle = { background: "var(--bg-card-hover)", color: "var(--text-primary)", border: "1px solid var(--border)" };
@@ -18,6 +20,16 @@ const LESSON_TYPES = [
   { value: "assessment",label: "Assessment" },
   { value: "review",    label: "Review" },
 ] as const;
+
+interface NewLessonDraft {
+  title: string;
+  subtitle: string;
+  lessonType: string;
+  topics: string;
+  deadline: string;
+  selectedCourseId: string;
+  selectedModuleId: string;
+}
 
 function NewLessonInner() {
   useSession({ required: true });
@@ -39,6 +51,23 @@ function NewLessonInner() {
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
   const [hasAiKey, setHasAiKey] = useState(false);
+  const [dataLoaded, setDataLoaded] = useState(false);
+
+  const draftKey = "lesson:new-hub";
+  // Restore only after the courses fetch lands — the module-reset effect below fires again
+  // once `courses` populates and would otherwise wipe a just-restored selectedModuleId.
+  useDraftRestore<NewLessonDraft>(dataLoaded ? draftKey : null, (draft) => {
+    setTitle(draft.title);
+    setSubtitle(draft.subtitle);
+    setLessonType(draft.lessonType);
+    setTopics(draft.topics);
+    setDeadline(draft.deadline);
+    setSelectedCourseId(draft.selectedCourseId);
+    setSelectedModuleId(draft.selectedModuleId);
+  });
+  useDraftAutosave<NewLessonDraft>(draftKey, {
+    title, subtitle, lessonType, topics, deadline, selectedCourseId, selectedModuleId,
+  });
 
   useEffect(() => {
     Promise.all([
@@ -47,7 +76,7 @@ function NewLessonInner() {
     ]).then(([coursesData, settings]) => {
       if (Array.isArray(coursesData)) setCourses(coursesData);
       setHasAiKey(settings.hasKey ?? false);
-    }).catch(() => {});
+    }).catch(() => {}).finally(() => setDataLoaded(true));
   }, []);
 
   useEffect(() => {
@@ -80,6 +109,7 @@ function NewLessonInner() {
         throw new Error(err.error || "Failed to create lesson.");
       }
       const lesson = await res.json();
+      clearDraft(draftKey);
 
       // Assign to module if selected
       if (selectedCourseId && selectedModuleId) {

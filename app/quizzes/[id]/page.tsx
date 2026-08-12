@@ -8,12 +8,24 @@ import type { Lesson } from "@/types/lesson";
 import type { FormQuestion } from "@/types/form";
 import { emptyQuestion } from "@/types/form";
 import { getSectionContent } from "@/lib/sections";
+import { clearDraft } from "@/lib/draftStorage";
+import { useDraftAutosave, useDraftRestore } from "@/hooks/useDraftAutosave";
 
 const inputClass = "w-full rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#0cc0df] transition placeholder:text-[var(--text-muted)]";
 const inputStyle = { background: "var(--bg-card-hover)", color: "var(--text-primary)", border: "1px solid var(--border)" };
 const cardClass = "rounded-3xl p-5 space-y-4";
 const cardStyle = { background: "var(--bg-card)", border: "1px solid var(--border)" };
 const sectionLabel = "text-xs font-semibold uppercase tracking-widest text-[#0cc0df]";
+
+interface QuizEditDraft {
+  quizTitle: string;
+  questions: FormQuestion[];
+  lessonIds: string[];
+  courseId: string;
+  moduleId: string;
+  mcCount: number;
+  saCount: number;
+}
 
 export default function EditQuizPage() {
   useSession({ required: true });
@@ -48,6 +60,23 @@ export default function EditQuizPage() {
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState("");
   const [formUrl, setFormUrl] = useState("");
+
+  const draftKey = `quiz:edit:${id}`;
+  // Restore only after the initial fetch has hydrated the form from Firestore — otherwise the
+  // fetch's later .then() would overwrite the just-restored draft with the last-saved version,
+  // silently discarding whatever unsaved edits the draft was protecting.
+  useDraftRestore<QuizEditDraft>(!loading && !notFound ? draftKey : null, (draft) => {
+    setQuizTitle(draft.quizTitle);
+    setQuestions(draft.questions);
+    setLessonIds(draft.lessonIds);
+    setCourseId(draft.courseId);
+    setModuleId(draft.moduleId);
+    setMcCount(draft.mcCount);
+    setSaCount(draft.saCount);
+  });
+  useDraftAutosave<QuizEditDraft>(draftKey, {
+    quizTitle, questions, lessonIds, courseId, moduleId, mcCount, saCount,
+  }, !loading);
 
   useEffect(() => {
     Promise.all([
@@ -142,6 +171,7 @@ export default function EditQuizPage() {
         }),
       });
       if (!res.ok) throw new Error("Failed to save.");
+      clearDraft(draftKey);
       setSaved(true);
     } catch (err: any) {
       setSaveError(err.message);
@@ -169,6 +199,7 @@ export default function EditQuizPage() {
         }),
       });
       if (!saveRes.ok) throw new Error("Failed to save before generating.");
+      clearDraft(draftKey);
       setSaved(true);
     } catch (err: any) {
       setGenerateError(err.message);

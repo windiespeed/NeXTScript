@@ -6,6 +6,8 @@ import { DEFAULT_SECTIONS, type SectionDef } from "@/types/section";
 import { resolveSections } from "@/lib/sections";
 import SectionsEditor from "@/components/SectionsEditor";
 import { useTheme } from "@/context/Theme";
+import { clearDraft } from "@/lib/draftStorage";
+import { useDraftAutosave, useDraftRestore } from "@/hooks/useDraftAutosave";
 
 function initials(name?: string | null, email?: string | null): string {
   if (name) {
@@ -69,6 +71,24 @@ export default function ProfilePage() {
 
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [dataLoaded, setDataLoaded] = useState(false);
+
+  // Two independent forms, two independent drafts — sharing one key would mean saving
+  // either form wipes the other's still-unsaved edits. keyInput (the raw pasted API key)
+  // and the avatar File are deliberately never persisted: a secret credential and a
+  // non-serializable Blob don't belong in localStorage.
+  const sourcesDraftKey = "profile:sources";
+  const curriculumDraftKey = "profile:curriculum";
+  useDraftRestore<{ defaultSources: string }>(dataLoaded ? sourcesDraftKey : null, (draft) => {
+    setDefaultSources(draft.defaultSources);
+  });
+  useDraftAutosave(sourcesDraftKey, { defaultSources }, dataLoaded);
+  useDraftRestore<{ industry: string; subject: string; sections: SectionDef[] }>(dataLoaded ? curriculumDraftKey : null, (draft) => {
+    setIndustry(draft.industry);
+    setSubject(draft.subject);
+    setSections(draft.sections);
+  });
+  useDraftAutosave(curriculumDraftKey, { industry, subject, sections }, dataLoaded);
 
   useEffect(() => {
     fetch("/api/user/settings")
@@ -81,7 +101,8 @@ export default function ProfilePage() {
         setIndustry(data.industry ?? "");
         setSubject(data.subject ?? "");
         setSections(resolveSections({ userSettings: { sectionLabels: data.sectionLabels, sections: data.sections } }));
-      });
+      })
+      .finally(() => setDataLoaded(true));
   }, []);
 
   function flash(msg: string, isError = false) {
@@ -132,7 +153,7 @@ export default function ProfilePage() {
       body: JSON.stringify({ defaultSources }),
     });
     setSavingSources(false);
-    if (res.ok) flash("Default sources saved.");
+    if (res.ok) { clearDraft(sourcesDraftKey); flash("Default sources saved."); }
     else { const d = await res.json(); flash(d.error || "Failed to save.", true); }
   }
 
@@ -146,7 +167,7 @@ export default function ProfilePage() {
       body: JSON.stringify({ industry, subject, sections }),
     });
     setSavingCurriculum(false);
-    if (res.ok) flash("Curriculum settings saved.");
+    if (res.ok) { clearDraft(curriculumDraftKey); flash("Curriculum settings saved."); }
     else { const d = await res.json(); flash(d.error || "Failed to save.", true); }
   }
 

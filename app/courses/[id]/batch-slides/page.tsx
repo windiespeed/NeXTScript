@@ -7,6 +7,8 @@ import Link from "next/link";
 import type { Course, CourseModule } from "@/types/course";
 import type { Lesson } from "@/types/lesson";
 import { getSectionContent } from "@/lib/sections";
+import { clearDraft } from "@/lib/draftStorage";
+import { useDraftAutosave, useDraftRestore } from "@/hooks/useDraftAutosave";
 
 const inputClass = "rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#0cc0df] transition";
 const inputStyle = { background: "var(--bg-card-hover)", color: "var(--text-primary)", border: "1px solid var(--border)" };
@@ -17,6 +19,18 @@ type LessonStatus = "idle" | "filling" | "saving" | "generating" | "done" | "err
 interface LessonProgress {
   status: LessonStatus;
   message: string;
+}
+
+// Just the run configuration — never `running`/`progress`/`finished`, so a refresh always
+// lands back at "configure and press run," never a stuck mid-batch state.
+interface BatchDraft {
+  selectedIds: string[];
+  doAiFill: boolean;
+  doGenerate: boolean;
+  doGenerateDoc: boolean;
+  doGenerateQuiz: boolean;
+  doPublishNextbox: boolean;
+  slideCount: number;
 }
 
 function serializeSlides(slides: { title: string; body: string }[]): string {
@@ -62,6 +76,21 @@ export default function BatchGeneratePage() {
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState<Record<string, LessonProgress>>({});
   const [finished, setFinished] = useState(false);
+
+  const draftKey = `batch-slides:${courseId}`;
+  useDraftRestore<BatchDraft>(draftKey, (draft) => {
+    setSelectedIds(new Set(draft.selectedIds));
+    setDoAiFill(draft.doAiFill);
+    setDoGenerate(draft.doGenerate);
+    setDoGenerateDoc(draft.doGenerateDoc);
+    setDoGenerateQuiz(draft.doGenerateQuiz);
+    setDoPublishNextbox(draft.doPublishNextbox);
+    setSlideCount(draft.slideCount);
+  });
+  useDraftAutosave<BatchDraft>(draftKey, {
+    selectedIds: Array.from(selectedIds),
+    doAiFill, doGenerate, doGenerateDoc, doGenerateQuiz, doPublishNextbox, slideCount,
+  }, !running);
 
   useEffect(() => {
     Promise.all([
@@ -259,6 +288,7 @@ export default function BatchGeneratePage() {
 
     setRunning(false);
     setFinished(true);
+    clearDraft(draftKey);
   }
 
   const doneCount = Object.values(progress).filter(p => p.status === "done").length;

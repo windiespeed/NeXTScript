@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { Course, CourseResource, CourseModule } from "@/types/course";
 import type { Lesson } from "@/types/lesson";
+import { useDraftAutosave, useDraftRestore } from "@/hooks/useDraftAutosave";
 import {
   DndContext,
   DragOverlay,
@@ -110,6 +111,14 @@ interface Props {
   onUnlink?: () => void;
 }
 
+interface DriveEditorDraft {
+  addResourceOpen: boolean;
+  newResourceLabel: string;
+  newResourceUrl: string;
+  editingModuleId: string | null;
+  editModuleTitle: string;
+}
+
 export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
   const id = driveId;
 
@@ -160,6 +169,22 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
   const [releaseMsg, setReleaseMsg] = useState<{ text: string; ok: boolean } | null>(null);
   const [releasePickerModuleId, setReleasePickerModuleId] = useState<string | null>(null);
   const [releasePickerSelected, setReleasePickerSelected] = useState<Set<string>>(new Set());
+
+  // Only the add-resource and edit-module-title inline forms — the rest of this page is
+  // derived server data or immediate-save toggles, not typed input worth protecting.
+  // Both existing success handlers already reset these fields on save, so the ongoing
+  // autosave loop self-heals the stored draft without an explicit clearDraft() call.
+  const draftKey = `drive-course-editor:${id}`;
+  useDraftRestore<DriveEditorDraft>(!loading ? draftKey : null, (draft) => {
+    setAddResourceOpen(draft.addResourceOpen);
+    setNewResourceLabel(draft.newResourceLabel);
+    setNewResourceUrl(draft.newResourceUrl);
+    setEditingModuleId(draft.editingModuleId);
+    setEditModuleTitle(draft.editModuleTitle);
+  });
+  useDraftAutosave<DriveEditorDraft>(draftKey, {
+    addResourceOpen, newResourceLabel, newResourceUrl, editingModuleId, editModuleTitle,
+  }, !loading);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 

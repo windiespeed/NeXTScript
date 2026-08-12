@@ -9,6 +9,8 @@ import type { Lesson } from "@/types/lesson";
 import type { FormQuestion } from "@/types/form";
 import { emptyQuestion } from "@/types/form";
 import { getSectionContent } from "@/lib/sections";
+import { clearDraft } from "@/lib/draftStorage";
+import { useDraftAutosave, useDraftRestore } from "@/hooks/useDraftAutosave";
 
 type Scope = "lesson" | "module" | "course" | "standalone";
 
@@ -24,6 +26,21 @@ const inputStyle = { background: "var(--bg-card-hover)", color: "var(--text-prim
 const cardClass = "rounded-3xl p-5 space-y-4";
 const cardStyle = { background: "var(--bg-card)", border: "1px solid var(--border)" };
 const sectionLabel = "text-xs font-semibold uppercase tracking-widest text-[#0cc0df]";
+
+// savedDraftId is included (not just form fields) — if a real quiz-draft doc already exists
+// from an earlier manual "Save Quiz Draft" click, restoring it is what makes the next save
+// PUT to that same doc instead of accidentally creating a duplicate.
+interface QuizNewDraft {
+  scope: Scope;
+  selectedCourseId: string;
+  selectedModuleId: string;
+  selectedLessonIds: string[];
+  quizTitle: string;
+  questions: FormQuestion[];
+  mcCount: number;
+  saCount: number;
+  savedDraftId: string;
+}
 
 function NewQuizPageInner() {
   useSession({ required: true });
@@ -56,6 +73,28 @@ function NewQuizPageInner() {
   const [savedDraftId, setSavedDraftId] = useState("");
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState("");
+  const [dataLoaded, setDataLoaded] = useState(false);
+
+  const draftKey = "quiz:new";
+  // Restore only after the initial courses/lessons fetch lands — when arriving via ?courseId=,
+  // that fetch's .then() forces scope/selectedCourseId/quizTitle and would otherwise overwrite
+  // a just-restored draft.
+  useDraftRestore<QuizNewDraft>(dataLoaded ? draftKey : null, (draft) => {
+    setScope(draft.scope);
+    setSelectedCourseId(draft.selectedCourseId);
+    setSelectedModuleId(draft.selectedModuleId);
+    setSelectedLessonIds(new Set(draft.selectedLessonIds));
+    setQuizTitle(draft.quizTitle);
+    setQuestions(draft.questions);
+    setMcCount(draft.mcCount);
+    setSaCount(draft.saCount);
+    setSavedDraftId(draft.savedDraftId);
+  });
+  useDraftAutosave<QuizNewDraft>(draftKey, {
+    scope, selectedCourseId, selectedModuleId,
+    selectedLessonIds: Array.from(selectedLessonIds),
+    quizTitle, questions, mcCount, saCount, savedDraftId,
+  });
 
   useEffect(() => {
     Promise.all([
@@ -72,7 +111,7 @@ function NewQuizPageInner() {
         setSelectedCourseId(preselectedCourseId);
         if (course) setQuizTitle(`${course.title} — Final Quiz`);
       }
-    }).catch(() => {});
+    }).catch(() => {}).finally(() => setDataLoaded(true));
   }, []);
 
   // Derived
@@ -190,6 +229,7 @@ function NewQuizPageInner() {
     if (!res.ok) throw new Error(data.error || "Failed to save quiz draft.");
     const id: string = data.id ?? savedDraftId;
     setSavedDraftId(id);
+    clearDraft(draftKey);
     return id;
   }
 
