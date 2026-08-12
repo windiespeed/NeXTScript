@@ -206,6 +206,15 @@ function IngestPageInner() {
       setLessonType((lesson.lessonType as LessonType) ?? "lesson");
       if (lesson.sources) setSources(lesson.sources);
       setStudentLevel(lesson.studentLevel ?? "beginner");
+      // Already know which lesson this is — let Save Draft/Export use it immediately
+      // instead of waiting on ensureLesson() to resolve it again via existingLessonId.
+      setLessonId(lesson.id);
+      if (lesson.presentationAST) {
+        setAst(lesson.presentationAST);
+        setSelectedThemeId(lesson.selectedTheme || DEFAULT_THEME_ID);
+        setActiveIndex(0);
+        setViewMode("preview");
+      }
     }).catch(() => {});
   }, [lessonIdParam]);
 
@@ -219,7 +228,17 @@ function IngestPageInner() {
 
   function handlePickExistingLesson(id: string) {
     setSelectedExistingLessonId(id);
-    if (!id) { setExistingLessonId(null); return; }
+    if (!id) {
+      // Switched back to "Create new lesson" — clear anything a previously-picked
+      // lesson's draft may have restored, same as handleDetachLesson.
+      setExistingLessonId(null);
+      setLessonId(null);
+      setAst(null);
+      setActiveIndex(0);
+      setViewMode("preview");
+      setSelectedThemeId(DEFAULT_THEME_ID);
+      return;
+    }
     const lesson = courseLessons.find(l => l.id === id);
     if (!lesson) return;
     setExistingLessonId(lesson.id);
@@ -230,6 +249,18 @@ function IngestPageInner() {
     setLessonType((lesson.lessonType as LessonType) ?? "lesson");
     if (lesson.sources) setSources(lesson.sources);
     setStudentLevel(lesson.studentLevel ?? "beginner");
+    setLessonId(lesson.id);
+    // Reset first, then repopulate — otherwise switching from a lesson with a saved
+    // draft to one without would leave the previous lesson's deck lingering in state.
+    setActiveIndex(0);
+    setViewMode("preview");
+    if (lesson.presentationAST) {
+      setAst(lesson.presentationAST);
+      setSelectedThemeId(lesson.selectedTheme || DEFAULT_THEME_ID);
+    } else {
+      setAst(null);
+      setSelectedThemeId(DEFAULT_THEME_ID);
+    }
   }
 
   function handleDetachLesson() {
@@ -237,6 +268,14 @@ function IngestPageInner() {
     setSelectedExistingLessonId("");
     setLockedFromQuery(false);
     setAttachedLessonTitle("");
+    // The deep-link effect may have restored this lesson's saved draft (and pointed
+    // lessonId at it) — clear that out too, or a detached page would still silently
+    // Save Draft/Export onto the lesson just detached from.
+    setLessonId(null);
+    setAst(null);
+    setActiveIndex(0);
+    setViewMode("preview");
+    setSelectedThemeId(DEFAULT_THEME_ID);
   }
 
   // Stop the fake progress animation if the page is left mid-generation
@@ -819,7 +858,7 @@ function IngestPageInner() {
                 className="rounded-full px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50"
                 style={{ background: "var(--bg-card-hover)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}
               >
-                {saving ? "Saving…" : savedJustNow ? "Saved ✓" : "Save to Lesson"}
+                {saving ? "Saving…" : savedJustNow ? "Saved ✓" : "Save Draft"}
               </button>
               <button
                 onClick={handleToggleMode}

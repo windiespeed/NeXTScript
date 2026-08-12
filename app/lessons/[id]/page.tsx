@@ -360,6 +360,7 @@ export default function LessonHubPage() {
   const backHref = lesson.courseId ? `/courses/${lesson.courseId}` : "/slides";
 
   const deck = projects.find(p => p.type === "deck" && (p.lessonId === id || p.lessonIds?.includes(id)));
+  const hasSlideDraft = !deck && !!lesson.presentationAST;
   const quizProjects = projects.filter(p => p.type === "form" && p.isQuiz && (p.lessonId === id || p.lessonIds?.includes(id)));
   const quizDrafts = quizProjects.filter(p => p.status === "draft");
   const quizGenerated = quizProjects.filter(p => p.status === "generated" || (!p.status && p.url));
@@ -510,6 +511,11 @@ export default function LessonHubPage() {
         <div className="space-y-2">
           {deck ? (
             <DocRow icon={RESOURCE_ICON.slides} color="var(--accent-purple)" label="Slide Deck" badge="Generated" badgeColor="#2dd4a0" url={deck.url} editHref={`/slides/${id}`} editLabel="Edit Slides" />
+          ) : hasSlideDraft ? (
+            <DocRow icon={RESOURCE_ICON.slides} color="#ff8c4a" label="Slide Deck"
+              sublabel={`${lesson.presentationAST!.slides.length} slide${lesson.presentationAST!.slides.length !== 1 ? "s" : ""} · Notes to Slides`}
+              badge="Draft" badgeColor="#ff8c4a"
+              editHref={`/ingest?lessonId=${id}`} editLabel="Edit Draft →" />
           ) : (
             <DocRow icon={RESOURCE_ICON.slides} color="var(--text-muted)" label="Slide Deck" badge="Not generated" badgeColor="var(--text-muted)" editHref={`/slides/${id}`} editLabel="Edit Slides" />
           )}
@@ -532,7 +538,7 @@ export default function LessonHubPage() {
               badge="Quiz" badgeColor="#2dd4a0"
               url={q.url} editHref={`/quizzes/${q.id}`} editLabel="Edit Quiz" />
           ))}
-          {!deck && quizProjects.length === 0 && !lesson.overviewUrl && (
+          {!deck && !hasSlideDraft && quizProjects.length === 0 && !lesson.overviewUrl && (
             <p className="text-xs text-center py-4" style={{ color: "var(--text-muted)" }}>No documents generated yet — use the Generate panel below.</p>
           )}
         </div>
