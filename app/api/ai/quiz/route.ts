@@ -7,6 +7,7 @@ import { generateQuizQuestions } from "@/lib/ai";
 import { resolveSections } from "@/lib/sections";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 
 export async function POST(req: Request) {
   try {

@@ -5,6 +5,7 @@ import { ingestRawContent } from "@/lib/ingestionService";
 import type { StudentLevel } from "@/lib/studentLevel";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 
 const VALID_STUDENT_LEVELS: StudentLevel[] = ["beginner", "intermediate", "advanced"];
 

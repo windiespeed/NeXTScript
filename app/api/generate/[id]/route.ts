@@ -11,6 +11,7 @@ import { generateQuizQuestions } from "@/lib/ai";
 import { resolveSections } from "@/lib/sections";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 
 type FileChoice = "slides" | "doc" | "quiz";
 type Destination = "drive" | "download";

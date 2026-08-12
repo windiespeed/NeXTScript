@@ -8,6 +8,7 @@ import { buildQuiz, createCourseFolder, addFileToFolders } from "@/lib/google";
 import { ensureLessonFolderId } from "@/lib/lessonFolders";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
