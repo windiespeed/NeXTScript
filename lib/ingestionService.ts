@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { v4 as uuidv4 } from "uuid";
 import type { PresentationAST, SlideNode, SlideType } from "@/types/slideAst";
 import { STUDENT_LEVEL_GUIDANCE, type StudentLevel } from "@/lib/studentLevel";
+import { INGEST_MODEL_OPTIONS, DEFAULT_INGEST_MODEL, type IngestModelId } from "@/lib/ingestModels";
 
 /**
  * System prompt for the ingestion pipeline. Kept as its own exported constant
@@ -41,7 +42,7 @@ interface IngestionOptions {
   targetAudience?: string;
   /** Soft guidance on how many slides to produce; the model may deviate slightly to fit the content. */
   slideCount?: number;
-  /** Course-level mandatory headings/topics (e.g. course.settings.requiredSlideTopics) — each gets its own slide, never omitted. */
+  /** Every active section's label (course.settings.sections, resolved via lib/sections.ts) — each gets its own slide, never omitted. */
   requiredTopics?: string[];
   /** Same three-tier level as Lesson.studentLevel — resolved into full guidance text, mirroring how fillLesson uses it in lib/ai.ts. */
   studentLevel?: StudentLevel;
@@ -52,6 +53,8 @@ interface IngestionOptions {
   topics?: string;
   /** Reference URLs from Lesson Info (one per line) — same context role "Sources" plays in fillLesson's prompt. */
   sources?: string;
+  /** Which Claude model to generate with; defaults to the most capable option. */
+  model?: IngestModelId;
 }
 
 // Restating the schema as a compact JSON-shape reference (rather than pasting the .ts file)
@@ -159,11 +162,6 @@ export function assertValidAst(value: unknown): asserts value is PresentationAST
   });
 }
 
-/** Parses a course's `requiredSlideTopics` (one topic per line, same convention as `defaultSources`) into a clean list. */
-export function parseRequiredTopics(raw: string | undefined): string[] {
-  return (raw ?? "").split("\n").map(s => s.trim()).filter(Boolean);
-}
-
 /** Fills in a slide id when the model omitted or duplicated one — ids are used as React keys downstream. */
 function normalizeSlideIds(ast: PresentationAST): PresentationAST {
   const seen = new Set<string>();
@@ -193,10 +191,14 @@ export async function ingestRawContent(
 
   const client = new Anthropic({ apiKey });
   const userContent = buildUserPrompt(rawText, opts);
+  const modelId = opts.model ?? DEFAULT_INGEST_MODEL;
+  // Adaptive thinking is only supported on 4.6-tier-and-newer models — Haiku 4.5 rejects
+  // the `thinking` param outright, so it's only included for models that support it.
+  const supportsAdaptiveThinking = INGEST_MODEL_OPTIONS.find(m => m.id === modelId)?.supportsAdaptiveThinking ?? false;
   const requestParams = {
-    model: "claude-opus-5" as const,
+    model: modelId,
     max_tokens: 24000,
-    thinking: { type: "adaptive" as const },
+    ...(supportsAdaptiveThinking ? { thinking: { type: "adaptive" as const } } : {}),
     system: CURRICULUM_ARCHITECT_SYSTEM_PROMPT,
     tools: [
       { type: "web_fetch_20260209" as const, name: "web_fetch" as const, max_uses: 5 },

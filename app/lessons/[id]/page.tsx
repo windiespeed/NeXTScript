@@ -365,6 +365,31 @@ export default function LessonHubPage() {
     if (res.ok) setProjects(prev => prev.filter(p => p.id !== projectId));
   }
 
+  async function handleRenameProject(projectId: string, newTitle: string): Promise<boolean> {
+    const trimmed = newTitle.trim();
+    if (!trimmed) return false;
+    const res = await fetch(`/api/projects/${projectId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: trimmed }),
+    });
+    if (!res.ok) return false;
+    setProjects(prev => prev.map(p => p.id === projectId ? { ...p, title: trimmed } : p));
+    return true;
+  }
+
+  // The unexported Notes to Slides draft lives on the lesson itself (lesson.presentationAST),
+  // not as a SavedProject — so it can't go through handleDeleteProject/DELETE /api/projects.
+  async function handleDeleteSlideDraft() {
+    if (!confirm("Delete this Notes to Slides draft? This cannot be undone.")) return;
+    const res = await fetch(`/api/lessons/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ presentationAST: null }),
+    });
+    if (res.ok) setLesson(prev => prev ? { ...prev, presentationAST: undefined } : prev);
+  }
+
   if (loading) return <p className="text-sm text-[#0cc0df] mt-10">Loading…</p>;
   if (!lesson) return <p className="text-sm text-red-500 mt-10">Lesson not found.</p>;
 
@@ -642,16 +667,28 @@ export default function LessonHubPage() {
           {decks.map(d => (
             <DocRow key={d.id} icon={RESOURCE_ICON.slides} color="var(--accent-purple)"
               label={d.title}
-              sublabel={d.presentationAST ? "Notes to Slides" : "Classic pipeline"}
+              // Deck titles now come from the lesson's own Title/Subtitle (see autoDeckName in
+              // lib/google.ts), so multiple decks for the same lesson can share an identical
+              // title — the generation date here is what still tells them apart.
+              sublabel={`${d.presentationAST ? "Notes to Slides" : "Classic pipeline"} · ${new Date(d.createdAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`}
               badge="Generated" badgeColor="#2dd4a0"
-              url={d.url} editHref={`/slides/${id}`} editLabel="Edit Slides"
-              onDelete={() => handleDeleteProject(d.id, d.title)} />
+              url={d.url}
+              // Notes to Slides decks aren't understood by the classic /slides editor (it only
+              // reads lesson.slideContent) — route those to the Notes to Slides page instead,
+              // same destination as the Draft row's "Edit Draft" button. Note this opens the
+              // lesson's *current* draft, not necessarily this exact deck's own historical
+              // snapshot, if the draft has since been regenerated.
+              editHref={d.presentationAST ? `/ingest?lessonId=${id}` : `/slides/${id}`}
+              editLabel="Edit Slides"
+              onDelete={() => handleDeleteProject(d.id, d.title)}
+              onRename={newTitle => handleRenameProject(d.id, newTitle)} />
           ))}
           {hasSlideDraft && (
             <DocRow icon={RESOURCE_ICON.slides} color="#ff8c4a" label="Slide Deck"
               sublabel={`${lesson.presentationAST!.slides.length} slide${lesson.presentationAST!.slides.length !== 1 ? "s" : ""} · Notes to Slides draft, not yet exported`}
               badge="Draft" badgeColor="#ff8c4a"
-              editHref={`/ingest?lessonId=${id}`} editLabel="Edit Draft →" />
+              editHref={`/ingest?lessonId=${id}`} editLabel="Edit Draft →"
+              onDelete={handleDeleteSlideDraft} />
           )}
           {decks.length === 0 && !hasSlideDraft && (
             <DocRow icon={RESOURCE_ICON.slides} color="var(--text-muted)" label="Slide Deck" badge="Not generated" badgeColor="var(--text-muted)" editHref={`/slides/${id}`} editLabel="Edit Slides" />
@@ -669,7 +706,8 @@ export default function LessonHubPage() {
               sublabel={isMultiLesson(q) ? `Covers ${q.lessonIds!.length} lessons` : "This lesson only"}
               badge="Quiz Draft" badgeColor="#ff8c4a"
               editHref={`/quizzes/${q.id}`} editLabel={isMultiLesson(q) ? "Edit & Generate" : "Edit Quiz"}
-              onDelete={() => handleDeleteProject(q.id, q.title)} />
+              onDelete={() => handleDeleteProject(q.id, q.title)}
+              onRename={newTitle => handleRenameProject(q.id, newTitle)} />
           ))}
           {quizGenerated.map(q => (
             <DocRow key={q.id} icon={RESOURCE_ICON.form} color="#ff8c4a"
@@ -677,7 +715,8 @@ export default function LessonHubPage() {
               sublabel={isMultiLesson(q) ? `Covers ${q.lessonIds!.length} lessons` : "This lesson only"}
               badge="Quiz" badgeColor="#2dd4a0"
               url={q.url} editHref={`/quizzes/${q.id}`} editLabel="Edit Quiz"
-              onDelete={() => handleDeleteProject(q.id, q.title)} />
+              onDelete={() => handleDeleteProject(q.id, q.title)}
+              onRename={newTitle => handleRenameProject(q.id, newTitle)} />
           ))}
           {decks.length === 0 && !hasSlideDraft && quizProjects.length === 0 && !lesson.overviewUrl && (
             <p className="text-xs text-center py-4" style={{ color: "var(--text-muted)" }}>No documents generated yet — use the Generate panel below.</p>
@@ -714,7 +753,7 @@ export default function LessonHubPage() {
                             key={key}
                             onClick={() => !disabled && set(!state)}
                             disabled={disabled}
-                            title={disabled ? "Create a quiz draft on the Quizzes page first" : undefined}
+                            title={disabled ? "Create a quiz draft for this lesson first" : undefined}
                             className="rounded-full px-3 py-1.5 text-xs font-semibold transition disabled:opacity-40 disabled:cursor-not-allowed"
                             style={state && !disabled
                               ? { background: "#0cc0df", color: "#0a0b13" }
@@ -724,6 +763,15 @@ export default function LessonHubPage() {
                             {label}
                           </button>
                         ))}
+                        {quizDrafts.length === 0 && (
+                          <Link
+                            href={`/quizzes/new?lessonId=${id}`}
+                            className="self-center text-[10px] font-semibold hover:underline"
+                            style={{ color: "#0cc0df" }}
+                          >
+                            Create a quiz draft →
+                          </Link>
+                        )}
                       </div>
                       <div className={`flex flex-col gap-2 ${hubSizes["generate"] >= 2 ? "sm:flex-row sm:shrink-0" : ""}`}>
                         <button
@@ -907,7 +955,7 @@ export default function LessonHubPage() {
 
 // ── Helper component ──────────────────────────────────────────────────────────
 
-function DocRow({ icon, color, label, sublabel, badge, badgeColor, url, editHref, editLabel, onAction, actionLabel, onDelete }: {
+function DocRow({ icon, color, label, sublabel, badge, badgeColor, url, editHref, editLabel, onAction, actionLabel, onDelete, onRename }: {
   icon: React.ReactNode;
   color: string;
   label: string;
@@ -920,12 +968,56 @@ function DocRow({ icon, color, label, sublabel, badge, badgeColor, url, editHref
   onAction?: () => void;
   actionLabel?: string;
   onDelete?: () => void;
+  onRename?: (newTitle: string) => Promise<boolean>;
 }) {
+  const [renaming, setRenaming] = useState(false);
+  const [draftLabel, setDraftLabel] = useState(label);
+
+  function startRenaming() {
+    setDraftLabel(label);
+    setRenaming(true);
+  }
+
+  async function commitRename() {
+    setRenaming(false);
+    if (draftLabel.trim() === label.trim() || !draftLabel.trim()) return;
+    const ok = await onRename!(draftLabel);
+    if (!ok) setDraftLabel(label); // revert display value on failure — parent state stays untouched either way
+  }
+
   return (
     <div className="flex items-center gap-3 rounded-2xl px-3 py-2.5" style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)" }}>
       <span style={{ color }}>{icon}</span>
       <div className="flex-1 min-w-0">
-        <p className="text-xs font-semibold truncate" style={{ color: "var(--text-primary)" }}>{label}</p>
+        {renaming ? (
+          <input
+            autoFocus
+            value={draftLabel}
+            onChange={e => setDraftLabel(e.target.value)}
+            onBlur={commitRename}
+            onKeyDown={e => {
+              if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+              if (e.key === "Escape") { setDraftLabel(label); setRenaming(false); }
+            }}
+            className="w-full text-xs font-semibold bg-transparent focus:outline-none border-b"
+            style={{ color: "var(--text-primary)", borderColor: "var(--accent)" }}
+          />
+        ) : (
+          <div className="flex items-center gap-1 min-w-0">
+            <p className="text-xs font-semibold truncate" style={{ color: "var(--text-primary)" }}>{label}</p>
+            {onRename && (
+              <button
+                type="button"
+                onClick={startRenaming}
+                title="Rename"
+                className="p-0.5 rounded shrink-0 transition hover:opacity-70"
+                style={{ color: "var(--text-muted)" }}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+              </button>
+            )}
+          </div>
+        )}
         {sublabel && <p className="text-[10px] truncate" style={{ color: "var(--text-muted)" }}>{sublabel}</p>}
       </div>
       <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0" style={{ background: badgeColor + "20", color: badgeColor }}>

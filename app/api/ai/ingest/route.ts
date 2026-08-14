@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { userSettings } from "@/lib/userSettings";
 import { ingestRawContent } from "@/lib/ingestionService";
 import type { StudentLevel } from "@/lib/studentLevel";
+import { isIngestModelId } from "@/lib/ingestModels";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -32,9 +33,10 @@ export async function POST(req: Request) {
     const lessonSubtitle = typeof body.lessonSubtitle === "string" && body.lessonSubtitle.trim() ? body.lessonSubtitle.trim() : undefined;
     const topics = typeof body.topics === "string" && body.topics.trim() ? body.topics.trim() : undefined;
     const sources = typeof body.sources === "string" && body.sources.trim() ? body.sources.trim() : undefined;
+    const model = isIngestModelId(body.model) ? body.model : undefined;
 
     const ast = await ingestRawContent(apiKey, rawText, {
-      targetAudience, slideCount, requiredTopics, studentLevel, lessonTitle, lessonSubtitle, topics, sources,
+      targetAudience, slideCount, requiredTopics, studentLevel, lessonTitle, lessonSubtitle, topics, sources, model,
     });
     return NextResponse.json(ast);
   } catch (err: any) {

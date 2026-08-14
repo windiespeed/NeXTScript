@@ -438,6 +438,7 @@ const AST_WHITE:           RgbColor = { red: 1, green: 1, blue: 1 };
 // The color roles that vary by theme — derived from a ThemeConfig (lib/themes.ts) so an exported
 // deck actually matches what was previewed in-browser, instead of one fixed hardcoded palette.
 type AstPalette = {
+  pageBackground: RgbColor;
   accentCyan: RgbColor;
   accentOrange: RgbColor;
   accentPurple: RgbColor;
@@ -468,6 +469,7 @@ function tint(rgb: RgbColor, amount: number): RgbColor {
 function paletteForTheme(themeId: string): AstPalette {
   const theme = getTheme(themeId);
   return {
+    pageBackground: hexToRgbColor(theme.background.page),
     accentCyan: hexToRgbColor(theme.accent.primary),
     accentOrange: hexToRgbColor(theme.accent.secondary),
     accentPurple: hexToRgbColor(theme.accent.tertiary),
@@ -476,6 +478,14 @@ function paletteForTheme(themeId: string): AstPalette {
     cardBg: hexToRgbColor(theme.background.cardAlt),
   };
 }
+
+// The callout panel itself (astCalloutSlideRequests) is always filled with a light pastel tint
+// of the variant's accent color (tint() blends toward white, regardless of theme) — Slides shape
+// fills can't reproduce the browser's alpha-composited accent-over-themed-card look, so the panel
+// is intentionally light-on-any-theme instead. Text drawn on it must therefore stay dark for
+// contrast; the theme's own text colors (near-white on dark themes) would be illegible here.
+const CALLOUT_PANEL_TEXT_PRIMARY: RgbColor = hexToRgbColor("#1f2937");
+const CALLOUT_PANEL_TEXT_SECONDARY: RgbColor = hexToRgbColor("#4b5563");
 
 // Variant→accent-slot mapping mirrors components/slides/CalloutSlide.tsx's own convention exactly
 // (tip→primary, warning→secondary, instructor-note→tertiary). Backgrounds are a light tint of
@@ -511,13 +521,27 @@ function resolveBlankLayoutRef(
 // "blank-looking" layout by name from the template's master — a guessed layout can carry its
 // own placeholder shapes ("Click to add title"/"Click to add text") that then sit behind the
 // AST builder's own text boxes.
-function astCreateBlankSlideRequest(slideId: string, layoutRef: slides_v1.Schema$LayoutReference): SlideRequest {
-  return {
-    createSlide: {
-      objectId: slideId,
-      slideLayoutReference: layoutRef,
+//
+// Also paints the slide's own page background with the selected theme's page color — the
+// layout/master's background (white, or whatever a course Slides Template ships) is otherwise
+// left untouched, which is invisible on light themes but produces light text on a white page
+// for dark themes (Vortex/Twilight) since AstPalette's text colors assume a dark backdrop.
+function astCreateBlankSlideRequest(slideId: string, layoutRef: slides_v1.Schema$LayoutReference, pageBackground: RgbColor): SlideRequest[] {
+  return [
+    {
+      createSlide: {
+        objectId: slideId,
+        slideLayoutReference: layoutRef,
+      },
     },
-  };
+    {
+      updatePageProperties: {
+        objectId: slideId,
+        pageProperties: { pageBackgroundFill: { solidFill: { color: { rgbColor: pageBackground } } } },
+        fields: "pageBackgroundFill.solidFill.color",
+      },
+    },
+  ];
 }
 
 function astShapeRequest(objectId: string, slideId: string, shapeType: string, x: number, y: number, w: number, h: number): SlideRequest {
@@ -586,7 +610,7 @@ function astTitleHeader(slideId: string, title: string, subtitle: string | undef
 
 function astStandardSlideRequests(slide: StandardTextSlide, palette: AstPalette, layoutRef: slides_v1.Schema$LayoutReference): SlideRequest[] {
   const slideId = uid("s");
-  const requests: SlideRequest[] = [astCreateBlankSlideRequest(slideId, layoutRef)];
+  const requests: SlideRequest[] = [...astCreateBlankSlideRequest(slideId, layoutRef, palette.pageBackground)];
   const { requests: headerReqs, contentStartY } = astTitleHeader(slideId, slide.title, slide.subtitle, palette);
   requests.push(...headerReqs);
 
@@ -624,7 +648,7 @@ function astStandardSlideRequests(slide: StandardTextSlide, palette: AstPalette,
 
 function astSplitColumnSlideRequests(slide: SplitColumnSlide, palette: AstPalette, layoutRef: slides_v1.Schema$LayoutReference): SlideRequest[] {
   const slideId = uid("s");
-  const requests: SlideRequest[] = [astCreateBlankSlideRequest(slideId, layoutRef)];
+  const requests: SlideRequest[] = [...astCreateBlankSlideRequest(slideId, layoutRef, palette.pageBackground)];
   const { requests: headerReqs, contentStartY } = astTitleHeader(slideId, slide.title, slide.subtitle, palette);
   requests.push(...headerReqs);
 
@@ -661,7 +685,7 @@ function astSplitColumnSlideRequests(slide: SplitColumnSlide, palette: AstPalett
 
 function astCodeExplainerSlideRequests(slide: CodeExplainerSlide, palette: AstPalette, layoutRef: slides_v1.Schema$LayoutReference): SlideRequest[] {
   const slideId = uid("s");
-  const requests: SlideRequest[] = [astCreateBlankSlideRequest(slideId, layoutRef)];
+  const requests: SlideRequest[] = [...astCreateBlankSlideRequest(slideId, layoutRef, palette.pageBackground)];
   const { requests: headerReqs, contentStartY } = astTitleHeader(slideId, slide.title, slide.subtitle, palette);
   requests.push(...headerReqs);
 
@@ -703,7 +727,7 @@ function astCodeExplainerSlideRequests(slide: CodeExplainerSlide, palette: AstPa
 
 function astCalloutSlideRequests(slide: CalloutCardSlide, palette: AstPalette, layoutRef: slides_v1.Schema$LayoutReference): SlideRequest[] {
   const slideId = uid("s");
-  const requests: SlideRequest[] = [astCreateBlankSlideRequest(slideId, layoutRef)];
+  const requests: SlideRequest[] = [...astCreateBlankSlideRequest(slideId, layoutRef, palette.pageBackground)];
   const config = astCalloutVariants(palette)[slide.variant];
 
   const panelX = 80, panelY = 55, panelW = AST_PAGE_WIDTH - 160, panelH = AST_PAGE_HEIGHT - 110;
@@ -727,7 +751,7 @@ function astCalloutSlideRequests(slide: CalloutCardSlide, palette: AstPalette, l
   requests.push(
     astShapeRequest(titleId, slideId, "TEXT_BOX", panelX, y, panelW, 40),
     astInsertText(titleId, slide.title),
-    astTextStyle(titleId, { bold: true, fontSize: { magnitude: 22, unit: "PT" }, foregroundColor: { opaqueColor: { rgbColor: palette.textPrimary } } }, "bold,fontSize,foregroundColor"),
+    astTextStyle(titleId, { bold: true, fontSize: { magnitude: 22, unit: "PT" }, foregroundColor: { opaqueColor: { rgbColor: CALLOUT_PANEL_TEXT_PRIMARY } } }, "bold,fontSize,foregroundColor"),
     astParagraphAlign(titleId, "CENTER"),
   );
   y += 48;
@@ -737,7 +761,7 @@ function astCalloutSlideRequests(slide: CalloutCardSlide, palette: AstPalette, l
     requests.push(
       astShapeRequest(subId, slideId, "TEXT_BOX", panelX, y, panelW, 24),
       astInsertText(subId, slide.subtitle),
-      astTextStyle(subId, { italic: true, fontSize: { magnitude: 13, unit: "PT" }, foregroundColor: { opaqueColor: { rgbColor: palette.textSecondary } } }, "italic,fontSize,foregroundColor"),
+      astTextStyle(subId, { italic: true, fontSize: { magnitude: 13, unit: "PT" }, foregroundColor: { opaqueColor: { rgbColor: CALLOUT_PANEL_TEXT_SECONDARY } } }, "italic,fontSize,foregroundColor"),
       astParagraphAlign(subId, "CENTER"),
     );
     y += 30;
@@ -748,7 +772,7 @@ function astCalloutSlideRequests(slide: CalloutCardSlide, palette: AstPalette, l
   requests.push(
     astShapeRequest(contentId, slideId, "TEXT_BOX", panelX + 30, y, panelW - 60, contentH),
     astInsertText(contentId, slide.content),
-    astTextStyle(contentId, { fontSize: { magnitude: 14, unit: "PT" }, foregroundColor: { opaqueColor: { rgbColor: palette.textPrimary } } }, "fontSize,foregroundColor"),
+    astTextStyle(contentId, { fontSize: { magnitude: 14, unit: "PT" }, foregroundColor: { opaqueColor: { rgbColor: CALLOUT_PANEL_TEXT_PRIMARY } } }, "fontSize,foregroundColor"),
     astParagraphAlign(contentId, "CENTER"),
   );
 
@@ -757,7 +781,7 @@ function astCalloutSlideRequests(slide: CalloutCardSlide, palette: AstPalette, l
 
 function astStepGridSlideRequests(slide: StepGridSlide, palette: AstPalette, layoutRef: slides_v1.Schema$LayoutReference): SlideRequest[] {
   const slideId = uid("s");
-  const requests: SlideRequest[] = [astCreateBlankSlideRequest(slideId, layoutRef)];
+  const requests: SlideRequest[] = [...astCreateBlankSlideRequest(slideId, layoutRef, palette.pageBackground)];
   const { requests: headerReqs, contentStartY } = astTitleHeader(slideId, slide.title, slide.subtitle, palette);
   requests.push(...headerReqs);
 
@@ -1123,9 +1147,13 @@ export function extractDriveFileId(url: string): string | undefined {
   return url.match(/\/d\/([a-zA-Z0-9_-]+)/)?.[1];
 }
 
-/** Auto-generated, distinguishing name for a new deck — no user input needed, and every
- * generation gets a genuinely different name since a lesson can now have several. */
-export function autoDeckName(): string {
+/** Auto-generated deck name — no user input needed. Uses the lesson's own Title/Subtitle so
+ * decks are identifiable by content rather than a timestamp (a lesson can have several decks;
+ * the lesson page's deck row shows the generation date separately for that reason). Falls back
+ * to a timestamped generic name when there's no lesson to name it after (Notes to Slides can
+ * export a standalone deck not attached to any lesson). */
+export function autoDeckName(lessonTitle?: string, lessonSubtitle?: string): string {
+  if (lessonTitle) return lessonSubtitle ? `${lessonTitle} — ${lessonSubtitle}` : lessonTitle;
   const stamp = new Date().toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
   return `Slide Deck — ${stamp}`;
 }

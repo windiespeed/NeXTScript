@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { userSettings } from "@/lib/userSettings";
 import { projectStore } from "@/lib/projectStore";
 import { store } from "@/lib/store";
 import { courseStore } from "@/lib/courseStore";
@@ -61,14 +60,14 @@ export async function POST(req: Request) {
     }
     const course = courseId ? await courseStore.getById(courseId) : undefined;
 
-    // Template precedence mirrors app/api/generate/[id]/route.ts: request body → course default → user default.
-    let templateId: string | undefined = typeof body.templateId === "string" && body.templateId ? body.templateId : undefined;
-    if (!templateId && course?.settings?.defaultTemplateUrl) {
-      templateId = extractPresentationId(course.settings.defaultTemplateUrl);
-    }
-    if (!templateId) {
-      const settings = await userSettings.get(session.user.email);
-      if (settings.defaultTemplateUrl) templateId = extractPresentationId(settings.defaultTemplateUrl);
+    // Template: the course's own setting always wins. Only when the course has none configured
+    // can the caller supply a one-off template for just this export — it's never persisted
+    // anywhere (not to the course, not to the user), unlike the removed personal-default field.
+    let templateId = course?.settings?.defaultTemplateUrl
+      ? extractPresentationId(course.settings.defaultTemplateUrl)
+      : undefined;
+    if (!templateId && typeof body.templateUrl === "string" && body.templateUrl.trim()) {
+      templateId = extractPresentationId(body.templateUrl.trim());
     }
 
     // Theme precedence: request body (whatever's picked in ThemePicker for this generation) →
@@ -101,7 +100,7 @@ export async function POST(req: Request) {
 
     const projectInput: Omit<SavedProject, "id" | "createdAt" | "userId"> = {
       type: "deck",
-      title: autoDeckName(),
+      title: autoDeckName(lesson?.title, lesson?.subtitle),
       subtitle: ast.targetAudience,
       url,
       presentationAST: ast,

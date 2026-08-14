@@ -18,7 +18,6 @@ export async function GET() {
       avatarUrl: s.avatarUrl ?? null,
       defaultSources: s.defaultSources ?? "",
       folders: s.folders ?? [],
-      defaultTemplateUrl: s.defaultTemplateUrl ?? "",
       lessonOrder: s.lessonOrder ?? [],
       industry: s.industry ?? "",
       subject: s.subject ?? "",
@@ -51,10 +50,6 @@ export async function PUT(req: Request) {
 
     if ("folders" in body) {
       update.folders = Array.isArray(body.folders) ? body.folders : [];
-    }
-
-    if ("defaultTemplateUrl" in body) {
-      update.defaultTemplateUrl = typeof body.defaultTemplateUrl === "string" ? body.defaultTemplateUrl : "";
     }
 
     if ("lessonOrder" in body) {

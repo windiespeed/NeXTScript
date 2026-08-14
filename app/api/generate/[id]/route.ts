@@ -50,12 +50,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   // Parse body — fall back to "all files, drive" if body is absent (backwards compat)
   let files: FileChoice[] = ["slides", "quiz"];
   let destination: Destination = "drive";
-  let templateId: string | undefined;
   try {
     const body = await req.json();
     if (Array.isArray(body.files) && body.files.length > 0) files = body.files;
     if (body.destination === "download") destination = "download";
-    if (typeof body.templateId === "string" && body.templateId) templateId = body.templateId;
   } catch {
     // empty body — use defaults
   }
@@ -79,14 +77,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   // (defaults → user labels → course labels), so old courses/users behave identically.
   const sections = resolveSections({ course, userSettings: uSettings });
 
-  // If no templateId from the request, fall back to the course's default template URL
-  if (!templateId && course?.settings?.defaultTemplateUrl) {
-    templateId = extractPresentationId(course.settings.defaultTemplateUrl);
-  }
-  // Then fall back to the user's saved default template URL
-  if (!templateId && uSettings.defaultTemplateUrl) {
-    templateId = extractPresentationId(uSettings.defaultTemplateUrl);
-  }
+  // Template comes from the course's own settings only — no personal/account-level override.
+  const templateId = course?.settings?.defaultTemplateUrl
+    ? extractPresentationId(course.settings.defaultTemplateUrl)
+    : undefined;
 
   try {
     if (destination === "drive") {
@@ -106,7 +100,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         deckId ? projectStore.create({
           type: "deck",
           lessonId: id,
-          title: autoDeckName(),
+          title: autoDeckName(lesson.title, lesson.subtitle),
           subtitle: lesson.subtitle,
           url: `https://docs.google.com/presentation/d/${deckId}/edit`,
           slideContent: lesson.slideContent,

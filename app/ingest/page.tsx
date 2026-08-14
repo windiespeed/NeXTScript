@@ -9,6 +9,7 @@ import SlideEditorPanel from "@/components/slides/SlideEditorPanel";
 import ThemePicker from "@/components/ThemePicker";
 import { DEFAULT_THEME_ID, getTheme } from "@/lib/themes";
 import { STUDENT_LEVEL_UI_HINTS, type StudentLevel } from "@/lib/studentLevel";
+import { INGEST_MODEL_OPTIONS, DEFAULT_INGEST_MODEL, isIngestModelId, type IngestModelId } from "@/lib/ingestModels";
 import type { PresentationAST } from "@/types/slideAst";
 import type { Course, CourseModule } from "@/types/course";
 import type { Lesson, LessonInput } from "@/types/lesson";
@@ -56,10 +57,11 @@ interface IngestDraft {
   lessonType: LessonType;
   sources: string;
   studentLevel: StudentLevel;
-  requiredTopicsText: string;
   rawText: string;
   targetAudience: string;
   slideCount: string;
+  aiModel: IngestModelId;
+  oneOffTemplateUrl: string;
   ast: PresentationAST | null;
   activeIndex: number;
   viewMode: "preview" | "edit";
@@ -100,13 +102,20 @@ function IngestPageInner() {
   const [userDefaultSources, setUserDefaultSources] = useState("");
   const [userSectionSettings, setUserSectionSettings] = useState<{ sectionLabels?: Record<string, string>; sections?: SectionDef[] }>({});
 
-  // Course defaults pulled in once a course is picked — user can verify/adjust before generating
-  const [requiredTopicsText, setRequiredTopicsText] = useState("");
+  // One-off Slides Template for this export only — shown when the course has none configured.
+  // Never saved to the course or account; passed straight through to the export request.
+  const [oneOffTemplateUrl, setOneOffTemplateUrl] = useState("");
+
+  // Every active section (course-level, falling back to user/global defaults) is a mandatory
+  // Notes to Slides topic — no separate override; see types/course.ts's CourseSettings.sections.
+  const requiredSlideTopics = resolveSections({ course: selectedCourse, userSettings: userSectionSettings })
+    .map(s => s.label).filter(Boolean);
 
   // Raw content
   const [rawText, setRawText] = useState("");
   const [targetAudience, setTargetAudience] = useState("");
   const [slideCount, setSlideCount] = useState("");
+  const [aiModel, setAiModel] = useState<IngestModelId>(DEFAULT_INGEST_MODEL);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
@@ -145,10 +154,11 @@ function IngestPageInner() {
     setLessonType(draft.lessonType);
     setSources(draft.sources);
     setStudentLevel(draft.studentLevel);
-    setRequiredTopicsText(draft.requiredTopicsText);
     setRawText(draft.rawText);
     setTargetAudience(draft.targetAudience);
     setSlideCount(draft.slideCount);
+    setAiModel(isIngestModelId(draft.aiModel) ? draft.aiModel : DEFAULT_INGEST_MODEL);
+    setOneOffTemplateUrl(draft.oneOffTemplateUrl ?? "");
     setAst(draft.ast);
     setActiveIndex(draft.activeIndex);
     setViewMode(draft.viewMode);
@@ -157,7 +167,7 @@ function IngestPageInner() {
   useDraftAutosave<IngestDraft>(draftKey, {
     selectedCourseId, selectedModuleId, selectedExistingLessonId,
     title, subtitle, topics, deadline, lessonType, sources, studentLevel,
-    requiredTopicsText, rawText, targetAudience, slideCount,
+    rawText, targetAudience, slideCount, aiModel, oneOffTemplateUrl,
     ast, activeIndex, viewMode, selectedThemeId,
   });
 
@@ -179,14 +189,10 @@ function IngestPageInner() {
     const course = courses.find(c => c.id === selectedCourseId);
     setModules(Array.isArray(course?.modules) ? course!.modules : []);
     setSelectedModuleId("");
-    // Explicit "Required Slide Topics" wins; otherwise default to the course's active section
-    // list so every deck covers the standard curriculum sections without extra configuration.
-    const explicitTopics = course?.settings?.requiredSlideTopics?.trim();
-    const sectionTopics = resolveSections({ course, userSettings: userSectionSettings }).map(s => s.label).filter(Boolean).join("\n");
-    setRequiredTopicsText(explicitTopics || sectionTopics);
     setSources(course?.settings?.defaultSources || userDefaultSources);
     setSelectedThemeId(course?.settings?.defaultThemeId || DEFAULT_THEME_ID);
-  }, [selectedCourseId, courses, userDefaultSources, userSectionSettings]);
+    setOneOffTemplateUrl(""); // scoped to whichever course was selected when it was typed
+  }, [selectedCourseId, courses, userDefaultSources]);
 
   // Deep-link: ?lessonId= arrives from an existing lesson's own hub page — pre-fill
   // everything from that lesson and lock the attachment so it can't be picked away by accident.
@@ -385,7 +391,6 @@ function IngestPageInner() {
     startProgressAnimation();
     try {
       await ensureLesson();
-      const requiredTopics = requiredTopicsText.split("\n").map(s => s.trim()).filter(Boolean);
       const res = await fetch("/api/ai/ingest", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -393,12 +398,13 @@ function IngestPageInner() {
           rawText,
           targetAudience: targetAudience.trim() || undefined,
           slideCount: slideCount ? Number(slideCount) : undefined,
-          requiredTopics: requiredTopics.length > 0 ? requiredTopics : undefined,
+          requiredTopics: requiredSlideTopics.length > 0 ? requiredSlideTopics : undefined,
           studentLevel,
           lessonTitle: title.trim() || undefined,
           lessonSubtitle: subtitle.trim() || undefined,
           topics: topics.trim() || undefined,
           sources: sources.trim() || undefined,
+          model: aiModel,
         }),
       });
       const data = await res.json();
@@ -472,7 +478,10 @@ function IngestPageInner() {
       const res = await fetch("/api/ai/ingest/export", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ast, lessonId: lessonId ?? undefined, courseId: selectedCourseId || undefined, themeId: selectedThemeId }),
+        body: JSON.stringify({
+          ast, lessonId: lessonId ?? undefined, courseId: selectedCourseId || undefined, themeId: selectedThemeId,
+          templateUrl: oneOffTemplateUrl.trim() || undefined,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to create the Google Slides deck.");
@@ -706,23 +715,40 @@ function IngestPageInner() {
               </p>
               <div>
                 <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Slides Template</label>
-                <p className="text-xs" style={{ color: selectedCourse.settings?.defaultTemplateUrl ? "var(--text-secondary)" : "var(--text-muted)" }}>
-                  {selectedCourse.settings?.defaultTemplateUrl || "No template set — export will create a blank deck."}
-                </p>
+                {selectedCourse.settings?.defaultTemplateUrl ? (
+                  <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
+                    {selectedCourse.settings.defaultTemplateUrl}
+                  </p>
+                ) : (
+                  <>
+                    <p className="text-xs mb-1.5" style={{ color: "var(--text-muted)" }}>
+                      No template set for this course. Optionally paste one to use for just this
+                      export — it&apos;s not saved anywhere; set a permanent one in Course Settings.
+                    </p>
+                    <input
+                      type="url"
+                      value={oneOffTemplateUrl}
+                      onChange={e => setOneOffTemplateUrl(e.target.value)}
+                      placeholder="https://docs.google.com/presentation/d/…"
+                      className={inputClass}
+                      style={inputStyle}
+                    />
+                  </>
+                )}
               </div>
               <div>
                 <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Required Slide Topics</label>
                 <p className="text-xs mb-1.5" style={{ color: "var(--text-muted)" }}>
-                  Notes to Slides guarantees a slide for each of these. One per line. Defaults to this
-                  course&apos;s Section Labels unless a custom list is set in Course Settings.
+                  Notes to Slides guarantees a slide for each of this course&apos;s active Sections. Edit the
+                  list in Course Settings → Sections.
                 </p>
-                <textarea
-                  value={requiredTopicsText}
-                  onChange={e => setRequiredTopicsText(e.target.value)}
-                  rows={3}
-                  className={inputClass}
-                  style={inputStyle}
-                />
+                {requiredSlideTopics.length > 0 ? (
+                  <ul className="text-xs space-y-0.5" style={{ color: "var(--text-secondary)" }}>
+                    {requiredSlideTopics.map(topic => <li key={topic}>• {topic}</li>)}
+                  </ul>
+                ) : (
+                  <p className="text-xs" style={{ color: "var(--text-muted)" }}>No sections configured.</p>
+                )}
               </div>
             </div>
           )}
@@ -743,6 +769,16 @@ function IngestPageInner() {
                 className={inputClass}
                 style={{ ...inputStyle, resize: "vertical" }}
               />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>AI Model</label>
+              <select value={aiModel} onChange={e => setAiModel(e.target.value as IngestModelId)} className={inputClass} style={inputStyle}>
+                {INGEST_MODEL_OPTIONS.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
+              </select>
+              <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
+                {INGEST_MODEL_OPTIONS.find(m => m.id === aiModel)?.hint}
+              </p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -766,6 +802,11 @@ function IngestPageInner() {
                 <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
                   Approx. Slide Count <span className="font-normal" style={{ color: "var(--text-muted)" }}>(optional)</span>
                 </label>
+                {/* Invisible twin of the Target Audience hint (same classes/text) so both inputs
+                    stay aligned regardless of how the sibling hint wraps at a given width. */}
+                <p className="text-xs mb-1 invisible" aria-hidden="true">
+                  Only needed if Student Level above isn&apos;t specific enough — e.g. a grade level or prior-course context.
+                </p>
                 <input
                   type="number"
                   min={1}

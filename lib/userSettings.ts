@@ -16,7 +16,6 @@ export interface UserSettings {
   avatarUrl?: string;
   defaultSources?: string;
   folders?: string[];
-  defaultTemplateUrl?: string;
   lessonOrder?: string[];
   industry?: string;
   subject?: string;

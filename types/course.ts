@@ -10,10 +10,11 @@ export interface CourseSettings {
   industry: string;               // e.g. "Healthcare", "Coding", "Business"
   subject: string;                // e.g. "JavaScript", "Nursing 101"
   studentLevel: "beginner" | "intermediate" | "advanced" | "";
-  requiredSlideTopics: string;    // Mandatory AI-ingest slide topics/headings for this course, one per line
   // Dynamic section list (see types/section.ts) — takes precedence over `sectionLabels` below
   // once set via the Course Settings SectionsEditor. Absent/empty means "not customized yet";
   // see lib/sections.ts's resolveSections() for the fallback synthesis from `sectionLabels`.
+  // Also doubles as Notes to Slides' required-topics list (every active section's label
+  // becomes a mandatory slide topic) — there is no separate required-topics field.
   sections?: SectionDef[];
   /** @deprecated superseded by `sections` above — kept as a synthesis input, never migrated. */
   sectionLabels: {
@@ -37,7 +38,6 @@ export const DEFAULT_COURSE_SETTINGS: CourseSettings = {
   industry: "",
   subject: "",
   studentLevel: "",
-  requiredSlideTopics: "",
   sectionLabels: {
     lessonOverview: "Lesson Overview",
     learningTargets: "Learning Targets",

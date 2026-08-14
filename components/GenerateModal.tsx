@@ -13,12 +13,7 @@ interface Props {
   lesson: Lesson | null;
   hasQuizDraft: boolean;
   onClose: () => void;
-  onGenerate: (id: string, files: FileChoice[], destination: Destination, templateId?: string) => Promise<void>;
-}
-
-function extractPresentationId(url: string): string | null {
-  const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
-  return match ? match[1] : null;
+  onGenerate: (id: string, files: FileChoice[], destination: Destination) => Promise<void>;
 }
 
 export default function GenerateModal({ lesson, hasQuizDraft, onClose, onGenerate }: Props) {
@@ -27,17 +22,6 @@ export default function GenerateModal({ lesson, hasQuizDraft, onClose, onGenerat
   const [selectedFiles, setSelectedFiles] = useState<FileChoice[]>(["slides"]);
   const [destination, setDestination] = useState<Destination>("drive");
   const [modalStatus] = useState<ModalStatus>("idle");
-  const [templateUrl, setTemplateUrl] = useState("");
-
-  // Load saved template URL once on mount
-  useEffect(() => {
-    fetch("/api/user/settings")
-      .then(r => r.json())
-      .then(data => {
-        if (data.defaultTemplateUrl) setTemplateUrl(data.defaultTemplateUrl);
-      })
-      .catch(() => {});
-  }, []);
 
   // Reset file/destination state whenever a new lesson opens the modal
   useEffect(() => {
@@ -70,16 +54,8 @@ export default function GenerateModal({ lesson, hasQuizDraft, onClose, onGenerat
 
   async function handleGenerate() {
     if (!canGenerate) return;
-    const trimmed = templateUrl.trim();
-    const templateId = trimmed ? extractPresentationId(trimmed) ?? undefined : undefined;
-    // Persist the template URL for next time
-    fetch("/api/user/settings", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ defaultTemplateUrl: trimmed }),
-    }).catch(() => {});
     onClose();
-    onGenerate(lesson!.id, effectiveFiles, destination, templateId);
+    onGenerate(lesson!.id, effectiveFiles, destination);
   }
 
   function handleBackdropClick(e: React.MouseEvent<HTMLDivElement>) {
@@ -179,36 +155,9 @@ export default function GenerateModal({ lesson, hasQuizDraft, onClose, onGenerat
           </div>
         </div>
 
-        {/* Template URL */}
-        <div>
-          <p className={sectionLabel}>Slides Template <span className="normal-case font-normal" style={{ color: "var(--text-muted)" }}>(optional)</span></p>
-          <div className="flex gap-2">
-            <input
-              type="url"
-              value={templateUrl}
-              onChange={(e) => setTemplateUrl(e.target.value)}
-              placeholder="https://docs.google.com/presentation/d/…"
-              className="flex-1 rounded-lg text-xs px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#0cc0df] placeholder:text-[var(--text-muted)]"
-              style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
-            />
-            {templateUrl.trim() && (
-              <button
-                onClick={() => { setTemplateUrl(""); fetch("/api/user/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ defaultTemplateUrl: "" }) }).catch(() => {}); }}
-                className="rounded-full px-2.5 text-xs transition hover:opacity-80"
-                style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)", color: "var(--text-muted)" }}
-                title="Clear saved template"
-              >
-                ✕
-              </button>
-            )}
-          </div>
-          {templateUrl.trim() && !extractPresentationId(templateUrl.trim()) && (
-            <p className="text-xs text-red-400 mt-1">Could not extract a presentation ID from that URL.</p>
-          )}
-          {!templateUrl.trim() && (
-            <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>Leave blank to create a fresh presentation.</p>
-          )}
-        </div>
+        <p className="text-xs -mt-1" style={{ color: "var(--text-muted)" }}>
+          Uses this course&apos;s Slides Template, if one is set in Course Settings.
+        </p>
 
         {/* Footer */}
         <div className="flex gap-2 justify-end pt-1">

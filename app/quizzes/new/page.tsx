@@ -48,6 +48,7 @@ function NewQuizPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const preselectedCourseId = searchParams.get("courseId") ?? "";
+  const preselectedLessonId = searchParams.get("lessonId") ?? "";
 
   // Data
   const [courses, setCourses] = useState<Course[]>([]);
@@ -78,7 +79,10 @@ function NewQuizPageInner() {
   const [generateError, setGenerateError] = useState("");
   const [dataLoaded, setDataLoaded] = useState(false);
 
-  const draftKey = "quiz:new";
+  // Scoped per lesson so a lesson-shortcut draft (from a lesson's own hub page) and the generic
+  // "+ New Quiz" draft never share localStorage state — each can be in progress independently,
+  // in the same or different tabs, without one's autosave clobbering the other's.
+  const draftKey = preselectedLessonId ? `quiz:new:lesson:${preselectedLessonId}` : "quiz:new";
   // Restore only after the initial courses/lessons fetch lands — when arriving via ?courseId=,
   // that fetch's .then() forces scope/selectedCourseId/quizTitle and would otherwise overwrite
   // a just-restored draft.
@@ -93,23 +97,50 @@ function NewQuizPageInner() {
     setSaCount(draft.saCount);
     setSavedDraftId(draft.savedDraftId);
   });
-  useDraftAutosave<QuizNewDraft>(draftKey, {
+  // Stops persisting this "new quiz" slot the instant it becomes a real saved quiz — otherwise
+  // this effect's re-render (triggered by saveDraft()'s own setSavedDraftId call) fires again
+  // ~500ms later and silently re-writes savedDraftId into localStorage right after saveDraft()
+  // just cleared it, poisoning the *next* fresh "new quiz" visit into overwriting this one.
+  useDraftAutosave<QuizNewDraft>(savedDraftId ? null : draftKey, {
     scope, selectedCourseId, selectedModuleId,
     selectedLessonIds: Array.from(selectedLessonIds),
     quizTitle, questions, mcCount, saCount, savedDraftId,
   });
 
   useEffect(() => {
+    // A genuine reload (F5) should still resume an in-progress draft — but any other way of
+    // landing here (a fresh "+ New Quiz" click, browser back/forward, a bookmark) must not
+    // inherit a leftover savedDraftId from a previously finished quiz, or saving here would
+    // silently overwrite that old quiz instead of creating a new one.
+    const navEntry = typeof performance !== "undefined"
+      ? (performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined)
+      : undefined;
+    if (navEntry?.type !== "reload") clearDraft(draftKey);
     Promise.all([
       fetch("/api/courses").then(r => r.json()),
       fetch("/api/lessons").then(r => r.json()),
       fetch("/api/user/settings").then(r => r.json()),
     ]).then(([c, l, s]) => {
-      setCourses(Array.isArray(c) ? c : []);
-      setAllLessons(Array.isArray(l) ? l : []);
+      const loadedCourses: Course[] = Array.isArray(c) ? c : [];
+      const loadedLessons: Lesson[] = Array.isArray(l) ? l : [];
+      setCourses(loadedCourses);
+      setAllLessons(loadedLessons);
       setHasAiKey(s.hasKey ?? false);
-      if (preselectedCourseId) {
-        const course = (Array.isArray(c) ? c : []).find((x: { id: string; title: string }) => x.id === preselectedCourseId);
+      if (preselectedLessonId) {
+        // Arrived via a lesson's own "Create a quiz draft" link — pre-fill everything the
+        // Scope=Lesson picker would otherwise require re-selecting by hand.
+        const lesson = loadedLessons.find(x => x.id === preselectedLessonId);
+        setScope("lesson");
+        setSelectedLessonIds(new Set([preselectedLessonId]));
+        if (lesson) {
+          setSelectedCourseId(lesson.courseId ?? "");
+          const course = loadedCourses.find(x => x.id === lesson.courseId);
+          const mod = course?.modules?.find(m => m.lessonIds.includes(preselectedLessonId));
+          if (mod) setSelectedModuleId(mod.id);
+          setQuizTitle(`${lesson.title} — Quiz`);
+        }
+      } else if (preselectedCourseId) {
+        const course = loadedCourses.find(x => x.id === preselectedCourseId);
         setScope("course");
         setSelectedCourseId(preselectedCourseId);
         if (course) setQuizTitle(`${course.title} — Final Quiz`);

@@ -423,14 +423,14 @@ function Dashboard() {
     setLessons(prev => [copy, ...prev]);
   }
 
-  async function handleGenerateWithOptions(id: string, files: FileChoice[], destination: Destination, templateId?: string) {
+  async function handleGenerateWithOptions(id: string, files: FileChoice[], destination: Destination) {
     const lesson = lessons.find(l => l.id === id);
     const inProgressStatus = lesson?.status === "done" ? "regenerating" : "generating";
     setLessons(prev => prev.map(l => l.id === id ? { ...l, status: inProgressStatus } : l));
     const res = await fetch(`/api/generate/${id}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ files, destination, templateId }),
+      body: JSON.stringify({ files, destination }),
     });
     if (!res.ok) {
       const data = await res.json();
