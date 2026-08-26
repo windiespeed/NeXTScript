@@ -69,6 +69,12 @@ export default function ProfilePage() {
   const [savingKey, setSavingKey] = useState(false);
   const [removingKey, setRemovingKey] = useState(false);
 
+  const [hasGeminiKey, setHasGeminiKey] = useState(false);
+  const [maskedGeminiKey, setMaskedGeminiKey] = useState<string | null>(null);
+  const [geminiKeyInput, setGeminiKeyInput] = useState("");
+  const [savingGeminiKey, setSavingGeminiKey] = useState(false);
+  const [removingGeminiKey, setRemovingGeminiKey] = useState(false);
+
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [dataLoaded, setDataLoaded] = useState(false);
@@ -96,6 +102,8 @@ export default function ProfilePage() {
       .then((data) => {
         setHasKey(data.hasKey);
         setMaskedKey(data.maskedKey);
+        setHasGeminiKey(data.hasGeminiKey);
+        setMaskedGeminiKey(data.maskedGeminiKey);
         setAvatarUrl(data.avatarUrl ?? null);
         setDefaultSources(data.defaultSources ?? "");
         setIndustry(data.industry ?? "");
@@ -198,10 +206,44 @@ export default function ProfilePage() {
     if (!confirm("Remove your Anthropic API key? AI fill will be disabled.")) return;
     setRemovingKey(true);
     flash("");
-    await fetch("/api/user/settings", { method: "DELETE" });
+    await fetch("/api/user/settings?key=anthropic", { method: "DELETE" });
     setRemovingKey(false);
     setHasKey(false);
     setMaskedKey(null);
+    flash("API key removed.");
+  }
+
+  async function handleSaveGeminiKey(e: React.FormEvent) {
+    e.preventDefault();
+    if (!geminiKeyInput.trim()) return;
+    setSavingGeminiKey(true);
+    flash("");
+    const res = await fetch("/api/user/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ geminiKey: geminiKeyInput.trim() }),
+    });
+    setSavingGeminiKey(false);
+    if (res.ok) {
+      const k = geminiKeyInput.trim();
+      setHasGeminiKey(true);
+      setMaskedGeminiKey(`${k.slice(0, 12)}…${k.slice(-4)}`);
+      setGeminiKeyInput("");
+      flash("API key saved.");
+    } else {
+      const d = await res.json();
+      flash(d.error || "Failed to save.", true);
+    }
+  }
+
+  async function handleRemoveGeminiKey() {
+    if (!confirm("Remove your Gemini API key? Gemini will no longer be available as a model option.")) return;
+    setRemovingGeminiKey(true);
+    flash("");
+    await fetch("/api/user/settings?key=gemini", { method: "DELETE" });
+    setRemovingGeminiKey(false);
+    setHasGeminiKey(false);
+    setMaskedGeminiKey(null);
     flash("API key removed.");
   }
 
@@ -425,6 +467,59 @@ export default function ProfilePage() {
             className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-white shadow hover:opacity-90 disabled:opacity-50 transition"
           >
             {savingKey ? "Saving…" : "Save Key"}
+          </button>
+        </form>
+      </div>
+
+      {/* Gemini API key */}
+      <div className="rounded-3xl p-6 space-y-5" style={cardSty}>
+        <div>
+          <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>Gemini API Key</h2>
+          <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
+            Used for the Gemini model options on Notes to Slides. Each user provides their own key — you are only charged for your own usage.
+          </p>
+        </div>
+
+        {hasGeminiKey && maskedGeminiKey && (
+          <div className="flex items-center justify-between rounded-full px-4 py-3" style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)" }}>
+            <div>
+              <p className="text-xs uppercase tracking-wide font-semibold mb-0.5" style={{ color: "var(--text-muted)" }}>Current key</p>
+              <p className="text-sm font-mono" style={{ color: "var(--text-primary)" }}>{maskedGeminiKey}</p>
+            </div>
+            <button
+              onClick={handleRemoveGeminiKey}
+              disabled={removingGeminiKey}
+              className="text-xs text-red-500 hover:text-red-400 disabled:opacity-50 transition"
+            >
+              {removingGeminiKey ? "Removing…" : "Remove"}
+            </button>
+          </div>
+        )}
+
+        <form onSubmit={handleSaveGeminiKey} className="space-y-3">
+          <label className="block text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+            {hasGeminiKey ? "Replace key" : "Add key"}
+          </label>
+          <input
+            type="password"
+            value={geminiKeyInput}
+            onChange={(e) => setGeminiKeyInput(e.target.value)}
+            placeholder="AIzaSy…"
+            className={`${inputCls} font-mono`}
+            style={inputSty}
+          />
+          <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+            Get your key from{" "}
+            <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" className="text-[#0cc0df] hover:underline">
+              aistudio.google.com
+            </a>
+          </p>
+          <button
+            type="submit"
+            disabled={savingGeminiKey || !geminiKeyInput.trim()}
+            className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-white shadow hover:opacity-90 disabled:opacity-50 transition"
+          >
+            {savingGeminiKey ? "Saving…" : "Save Key"}
           </button>
         </form>
       </div>

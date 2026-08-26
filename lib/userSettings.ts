@@ -13,6 +13,7 @@ export function getMergedLabels(settings: { sectionLabels?: Partial<SectionLabel
 
 export interface UserSettings {
   anthropicKey?: string;
+  geminiKey?: string;
   avatarUrl?: string;
   defaultSources?: string;
   folders?: string[];
@@ -41,5 +42,10 @@ export const userSettings = {
   async getAnthropicKey(userId: string): Promise<string | null> {
     const s = await userSettings.get(userId);
     return s.anthropicKey ?? null;
+  },
+
+  async getGeminiKey(userId: string): Promise<string | null> {
+    const s = await userSettings.get(userId);
+    return s.geminiKey ?? null;
   },
 };

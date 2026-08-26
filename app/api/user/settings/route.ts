@@ -15,6 +15,8 @@ export async function GET() {
     return NextResponse.json({
       hasKey: !!s.anthropicKey,
       maskedKey: s.anthropicKey ? `${s.anthropicKey.slice(0, 12)}…${s.anthropicKey.slice(-4)}` : null,
+      hasGeminiKey: !!s.geminiKey,
+      maskedGeminiKey: s.geminiKey ? `${s.geminiKey.slice(0, 12)}…${s.geminiKey.slice(-4)}` : null,
       avatarUrl: s.avatarUrl ?? null,
       defaultSources: s.defaultSources ?? "",
       folders: s.folders ?? [],
@@ -42,6 +44,13 @@ export async function PUT(req: Request) {
         return NextResponse.json({ error: "Invalid key." }, { status: 400 });
       }
       update.anthropicKey = body.anthropicKey.trim();
+    }
+
+    if ("geminiKey" in body) {
+      if (typeof body.geminiKey !== "string" || !body.geminiKey.trim()) {
+        return NextResponse.json({ error: "Invalid key." }, { status: 400 });
+      }
+      update.geminiKey = body.geminiKey.trim();
     }
 
     if ("defaultSources" in body) {
@@ -79,12 +88,14 @@ export async function PUT(req: Request) {
   }
 }
 
-export async function DELETE() {
+export async function DELETE(req: Request) {
   try {
     const session = await auth();
     if (!session?.user?.email) return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
 
-    await userSettings.save(session.user.email, { anthropicKey: FieldValue.delete() });
+    const { searchParams } = new URL(req.url);
+    const field = searchParams.get("key") === "gemini" ? "geminiKey" : "anthropicKey";
+    await userSettings.save(session.user.email, { [field]: FieldValue.delete() });
     return NextResponse.json({ success: true });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });

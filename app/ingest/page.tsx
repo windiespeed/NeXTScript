@@ -59,6 +59,7 @@ interface IngestDraft {
   studentLevel: StudentLevel;
   rawText: string;
   targetAudience: string;
+  referenceDeckUrl: string;
   slideCount: string;
   aiModel: IngestModelId;
   oneOffTemplateUrl: string;
@@ -114,6 +115,7 @@ function IngestPageInner() {
   // Raw content
   const [rawText, setRawText] = useState("");
   const [targetAudience, setTargetAudience] = useState("");
+  const [referenceDeckUrl, setReferenceDeckUrl] = useState("");
   const [slideCount, setSlideCount] = useState("");
   const [aiModel, setAiModel] = useState<IngestModelId>(DEFAULT_INGEST_MODEL);
   const [generating, setGenerating] = useState(false);
@@ -156,6 +158,7 @@ function IngestPageInner() {
     setStudentLevel(draft.studentLevel);
     setRawText(draft.rawText);
     setTargetAudience(draft.targetAudience);
+    setReferenceDeckUrl(draft.referenceDeckUrl ?? "");
     setSlideCount(draft.slideCount);
     setAiModel(isIngestModelId(draft.aiModel) ? draft.aiModel : DEFAULT_INGEST_MODEL);
     setOneOffTemplateUrl(draft.oneOffTemplateUrl ?? "");
@@ -167,7 +170,7 @@ function IngestPageInner() {
   useDraftAutosave<IngestDraft>(draftKey, {
     selectedCourseId, selectedModuleId, selectedExistingLessonId,
     title, subtitle, topics, deadline, lessonType, sources, studentLevel,
-    rawText, targetAudience, slideCount, aiModel, oneOffTemplateUrl,
+    rawText, targetAudience, referenceDeckUrl, slideCount, aiModel, oneOffTemplateUrl,
     ast, activeIndex, viewMode, selectedThemeId,
   });
 
@@ -176,7 +179,7 @@ function IngestPageInner() {
       fetch("/api/user/settings").then(r => r.json()),
       fetch("/api/courses").then(r => r.json()),
     ]).then(([settings, coursesData]) => {
-      setHasAiKey(settings.hasKey ?? false);
+      setHasAiKey(!!(settings.hasKey || settings.hasGeminiKey));
       setUserDefaultSources(settings.defaultSources ?? "");
       setSources(settings.defaultSources ?? "");
       setUserSectionSettings({ sectionLabels: settings.sectionLabels, sections: settings.sections });
@@ -404,6 +407,7 @@ function IngestPageInner() {
           lessonSubtitle: subtitle.trim() || undefined,
           topics: topics.trim() || undefined,
           sources: sources.trim() || undefined,
+          referenceDeckUrl: referenceDeckUrl.trim() || undefined,
           model: aiModel,
         }),
       });
@@ -506,8 +510,8 @@ function IngestPageInner() {
 
       {settingsLoaded && !hasAiKey ? (
         <div className="text-center py-20 rounded-3xl" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
-          <p className="text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>No Anthropic API key configured</p>
-          <p className="text-xs mb-5" style={{ color: "var(--text-muted)" }}>Add your key to use AI ingestion.</p>
+          <p className="text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>No AI API key configured</p>
+          <p className="text-xs mb-5" style={{ color: "var(--text-muted)" }}>Add a Claude or Gemini API key to use AI ingestion.</p>
           <Link
             href="/profile"
             className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition"
@@ -774,7 +778,12 @@ function IngestPageInner() {
             <div>
               <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>AI Model</label>
               <select value={aiModel} onChange={e => setAiModel(e.target.value as IngestModelId)} className={inputClass} style={inputStyle}>
-                {INGEST_MODEL_OPTIONS.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
+                <optgroup label="Claude">
+                  {INGEST_MODEL_OPTIONS.filter(m => m.provider === "anthropic").map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
+                </optgroup>
+                <optgroup label="Gemini">
+                  {INGEST_MODEL_OPTIONS.filter(m => m.provider === "gemini").map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
+                </optgroup>
               </select>
               <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
                 {INGEST_MODEL_OPTIONS.find(m => m.id === aiModel)?.hint}
@@ -818,6 +827,23 @@ function IngestPageInner() {
                   style={inputStyle}
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
+                Reference Slides URL <span className="font-normal" style={{ color: "var(--text-muted)" }}>(optional)</span>
+              </label>
+              <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>
+                Paste a Google Slides link to have the AI mimic its tone and structure — your notes above are still the source material, this isn&apos;t copied.
+              </p>
+              <input
+                type="text"
+                value={referenceDeckUrl}
+                onChange={e => setReferenceDeckUrl(e.target.value)}
+                placeholder="https://docs.google.com/presentation/d/…"
+                className={inputClass}
+                style={inputStyle}
+              />
             </div>
 
             {error && <p className="text-xs text-red-500">{error}</p>}

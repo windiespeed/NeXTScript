@@ -6,7 +6,7 @@ import { courseStore } from "@/lib/courseStore";
 import { canAccessLesson, canAccessCourseId } from "@/lib/access";
 import { buildSlideDeckFromAst, moveFileToFolder, autoDeckName } from "@/lib/google";
 import { ensureLessonFolderId, ensureCourseFolderId } from "@/lib/lessonFolders";
-import { assertValidAst } from "@/lib/ingestionService";
+import { assertValidAst } from "@/lib/ingestionPrompt";
 import { DEFAULT_THEME_ID } from "@/lib/themes";
 import type { PresentationAST } from "@/types/slideAst";
 import type { SavedProject } from "@/types/project";
