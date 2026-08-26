@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { store } from "@/lib/store";
+import { courseStore } from "@/lib/courseStore";
 import { canAccessLesson } from "@/lib/access";
 import { createBlankFile } from "@/lib/google";
+import { ensureCourseFolderId, ensureLessonFolderId } from "@/lib/lessonFolders";
 import { v4 as uuidv4 } from "uuid";
 import type { LessonResource } from "@/types/lesson";
 
@@ -24,7 +26,18 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!name?.trim()) return NextResponse.json({ error: "name is required." }, { status: 400 });
   if (!["doc", "sheet", "slides"].includes(docType)) return NextResponse.json({ error: "Invalid docType." }, { status: 400 });
 
-  const { id: driveId, url } = await createBlankFile(name.trim(), docType, accessToken);
+  // Best-effort — if folder setup fails, the file is created at Drive root instead, same as
+  // before this fix. The course's "Repair Drive Access" action can pick it up later.
+  let lessonFolderId: string | undefined;
+  try {
+    const course = lesson.courseId ? await courseStore.getById(lesson.courseId) : undefined;
+    const courseFolderId = course ? await ensureCourseFolderId(course, accessToken, session.user.email) : undefined;
+    lessonFolderId = await ensureLessonFolderId(lesson, courseFolderId, accessToken);
+  } catch {
+    // fall through with lessonFolderId left undefined
+  }
+
+  const { id: driveId, url } = await createBlankFile(name.trim(), docType, accessToken, lessonFolderId);
 
   const resource: LessonResource = {
     id: uuidv4(),

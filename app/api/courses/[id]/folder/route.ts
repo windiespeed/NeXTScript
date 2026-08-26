@@ -1,10 +1,90 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { store } from "@/lib/store";
 import { courseStore } from "@/lib/courseStore";
+import { projectStore } from "@/lib/projectStore";
 import { canAccessCourse } from "@/lib/access";
-import { createCourseFolder, shareCourseFolderWithMembers, hasDriveAccess, listClassroomTeacherEmails } from "@/lib/google";
+import {
+  createCourseFolder, shareCourseFolderWithMembers, hasDriveAccess, listClassroomTeacherEmails,
+  moveFileToFolder, extractDriveFileId,
+} from "@/lib/google";
+import { ensureLessonFolderId } from "@/lib/lessonFolders";
+import type { SavedProject } from "@/types/project";
+import type { Course } from "@/types/course";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 120;
+
+/**
+ * Reconciles a course's Drive footprint after sharing/re-sharing its folder. Two separate gaps
+ * mean a lesson can look fully generated in the app while its actual documents are invisible to
+ * collaborators: (1) classic-pipeline decks didn't set `courseId` before this fix, so they never
+ * showed up in a collaborator's project list at all, and (2) several generation paths move files
+ * into the course/lesson folder tree as a best-effort, silently-caught step — a failure there
+ * leaves the file sitting in the original creator's Drive root, outside the folder anyone else
+ * was actually granted access to. This backfills (1) and re-attempts (2) for everything the
+ * acting user currently has Drive access to; anything they were never granted access to is
+ * reported as a failure rather than fixed (only the file's owner can move it).
+ */
+async function repairCourseFiles(courseId: string, courseFolderId: string, accessToken: string) {
+  const lessons = await store.getAllByCourse(courseId);
+  const lessonIds = lessons.map(l => l.id);
+
+  const [byCourseId, byLessonId] = await Promise.all([
+    projectStore.getAllForCourseIds([courseId]),
+    projectStore.getAllForLessonIds(lessonIds),
+  ]);
+  const projectsById = new Map<string, SavedProject>();
+  for (const p of [...byCourseId, ...byLessonId]) projectsById.set(p.id, p);
+  const projects = Array.from(projectsById.values());
+
+  let projectsBackfilled = 0, filesMoved = 0, filesFailed = 0;
+
+  await Promise.all(
+    projects.filter(p => !p.courseId).map(async p => {
+      try {
+        await projectStore.update(p.id, { courseId });
+        projectsBackfilled++;
+      } catch {
+        filesFailed++;
+      }
+    })
+  );
+
+  async function tryMove(fileId: string | undefined, folderId: string) {
+    if (!fileId) return;
+    try {
+      await moveFileToFolder(fileId, folderId, accessToken);
+      filesMoved++;
+    } catch {
+      filesFailed++;
+    }
+  }
+
+  await Promise.all(lessons.map(async lesson => {
+    let lessonFolderId: string;
+    try {
+      lessonFolderId = await ensureLessonFolderId(lesson, courseFolderId, accessToken);
+      await moveFileToFolder(lessonFolderId, courseFolderId, accessToken);
+    } catch {
+      filesFailed++;
+      return;
+    }
+
+    const ownProjects = projects.filter(p => p.lessonId === lesson.id && p.url);
+    await Promise.all([
+      tryMove(lesson.overviewUrl ? extractDriveFileId(lesson.overviewUrl) : undefined, lessonFolderId),
+      ...(lesson.resources ?? []).filter(r => r.driveId).map(r => tryMove(r.driveId, lessonFolderId)),
+      ...ownProjects.map(p => tryMove(extractDriveFileId(p.url), lessonFolderId)),
+    ]);
+  }));
+
+  // Course/module-scoped quizzes (multi-lesson, no single lessonId) belong at the course level.
+  const courseLevelProjects = projects.filter(p => !p.lessonId && p.url);
+  await Promise.all(courseLevelProjects.map(p => tryMove(extractDriveFileId(p.url), courseFolderId)));
+
+  return { projectsBackfilled, filesMoved, filesFailed };
+}
 
 export async function POST(
   _req: Request,
@@ -35,6 +115,9 @@ export async function POST(
       ? await listClassroomTeacherEmails(course.googleClassroomId, accessToken)
       : [];
 
+    let folderId: string;
+    let responseBase: Course | null;
+
     // A folder already exists for this course (created by whoever hit this first, or by the
     // lazy-create path in the generate route) — repair its sharing instead of creating a
     // duplicate. Only whoever can already see it in their own Drive is able to grant access
@@ -48,23 +131,26 @@ export async function POST(
         );
       }
       await shareCourseFolderWithMembers(course.driveFolderId, course, session.user.email, accessToken, classroomTeacherEmails);
-      const repaired = await courseStore.update(id, { driveFolderShared: true });
-      return NextResponse.json(repaired);
+      folderId = course.driveFolderId;
+      responseBase = await courseStore.update(id, { driveFolderShared: true });
+    } else {
+      const folder = await createCourseFolder(course.title, accessToken);
+
+      // Share the new folder with the owner, any other collaborators, and the Classroom roster
+      // (best-effort) — whoever is acting here owns the folder in their own Drive; everyone
+      // else needs explicit access.
+      await shareCourseFolderWithMembers(folder.id, course, session.user.email, accessToken, classroomTeacherEmails);
+
+      folderId = folder.id;
+      responseBase = await courseStore.update(id, {
+        driveFolderId: folder.id,
+        driveFolderUrl: folder.webViewLink,
+        driveFolderShared: true,
+      });
     }
 
-    const folder = await createCourseFolder(course.title, accessToken);
-
-    // Share the new folder with the owner, any other collaborators, and the Classroom roster
-    // (best-effort) — whoever is acting here owns the folder in their own Drive; everyone
-    // else needs explicit access.
-    await shareCourseFolderWithMembers(folder.id, course, session.user.email, accessToken, classroomTeacherEmails);
-
-    const updated = await courseStore.update(id, {
-      driveFolderId: folder.id,
-      driveFolderUrl: folder.webViewLink,
-      driveFolderShared: true,
-    });
-    return NextResponse.json(updated);
+    const repairSummary = await repairCourseFiles(id, folderId, accessToken);
+    return NextResponse.json({ ...responseBase, ...repairSummary });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

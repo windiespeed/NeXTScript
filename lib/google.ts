@@ -667,7 +667,7 @@ function astSplitColumnSlideRequests(slide: SplitColumnSlide, palette: AstPalett
     const text = items.length > 0 ? `${headingLine}\n${items.join("\n")}` : headingLine;
     requests.push(
       astInsertText(cardId, text),
-      astTextStyle(cardId, { bold: true, fontSize: { magnitude: 11, unit: "PT" }, foregroundColor: { opaqueColor: { rgbColor: accent } } }, "bold,fontSize,foregroundColor", { type: "FIXED_RANGE", startIndex: 0, endIndex: headingLine.length }),
+      astTextStyle(cardId, { bold: true, fontSize: { magnitude: 12, unit: "PT" }, foregroundColor: { opaqueColor: { rgbColor: accent } } }, "bold,fontSize,foregroundColor", { type: "FIXED_RANGE", startIndex: 0, endIndex: headingLine.length }),
     );
     if (items.length > 0) {
       requests.push(
@@ -701,7 +701,7 @@ function astCodeExplainerSlideRequests(slide: CodeExplainerSlide, palette: AstPa
     astShapeRequest(codeId, slideId, "TEXT_BOX", AST_MARGIN, contentStartY, colWidth, colHeight),
     astShapeFill(codeId, AST_CODE_PANEL_BG),
     astInsertText(codeId, codeText),
-    astTextStyle(codeId, { fontFamily: "Courier New", fontSize: { magnitude: 11, unit: "PT" }, foregroundColor: { opaqueColor: { rgbColor: AST_WHITE } } }, "fontFamily,fontSize,foregroundColor"),
+    astTextStyle(codeId, { fontFamily: "Courier New", fontSize: { magnitude: 12, unit: "PT" }, foregroundColor: { opaqueColor: { rgbColor: AST_WHITE } } }, "fontFamily,fontSize,foregroundColor"),
     astTextStyle(codeId, { bold: true, foregroundColor: { opaqueColor: { rgbColor: AST_CODE_LABEL } } }, "bold,foregroundColor", { type: "FIXED_RANGE", startIndex: 0, endIndex: langLabel.length }),
   );
 
@@ -713,7 +713,7 @@ function astCodeExplainerSlideRequests(slide: CodeExplainerSlide, palette: AstPa
   requests.push(
     astShapeRequest(explId, slideId, "TEXT_BOX", AST_MARGIN + colWidth + gap, contentStartY, colWidth, colHeight),
     astInsertText(explId, explText),
-    astTextStyle(explId, { bold: true, fontSize: { magnitude: 11, unit: "PT" }, foregroundColor: { opaqueColor: { rgbColor: palette.accentCyan } } }, "bold,fontSize,foregroundColor", { type: "FIXED_RANGE", startIndex: 0, endIndex: explHeading.length }),
+    astTextStyle(explId, { bold: true, fontSize: { magnitude: 12, unit: "PT" }, foregroundColor: { opaqueColor: { rgbColor: palette.accentCyan } } }, "bold,fontSize,foregroundColor", { type: "FIXED_RANGE", startIndex: 0, endIndex: explHeading.length }),
   );
   if (points.length > 0) {
     requests.push(
@@ -742,7 +742,7 @@ function astCalloutSlideRequests(slide: CalloutCardSlide, palette: AstPalette, l
   requests.push(
     astShapeRequest(labelId, slideId, "TEXT_BOX", panelX, y, panelW, 20),
     astInsertText(labelId, config.label),
-    astTextStyle(labelId, { bold: true, fontSize: { magnitude: 11, unit: "PT" }, foregroundColor: { opaqueColor: { rgbColor: config.accent } } }, "bold,fontSize,foregroundColor"),
+    astTextStyle(labelId, { bold: true, fontSize: { magnitude: 12, unit: "PT" }, foregroundColor: { opaqueColor: { rgbColor: config.accent } } }, "bold,fontSize,foregroundColor"),
     astParagraphAlign(labelId, "CENTER"),
   );
   y += 30;
@@ -809,7 +809,7 @@ function astStepGridSlideRequests(slide: StepGridSlide, palette: AstPalette, lay
       astShapeFill(cardId, palette.cardBg),
       astInsertText(cardId, text),
       astTextStyle(cardId, { bold: true, fontSize: { magnitude: 12, unit: "PT" }, foregroundColor: { opaqueColor: { rgbColor: palette.textPrimary } } }, "bold,fontSize,foregroundColor", { type: "FIXED_RANGE", startIndex: 0, endIndex: heading.length }),
-      astTextStyle(cardId, { fontSize: { magnitude: 11, unit: "PT" }, foregroundColor: { opaqueColor: { rgbColor: palette.textSecondary } } }, "fontSize,foregroundColor", { type: "FIXED_RANGE", startIndex: heading.length + 1, endIndex: text.length }),
+      astTextStyle(cardId, { fontSize: { magnitude: 12, unit: "PT" }, foregroundColor: { opaqueColor: { rgbColor: palette.textSecondary } } }, "fontSize,foregroundColor", { type: "FIXED_RANGE", startIndex: heading.length + 1, endIndex: text.length }),
     );
   });
 
@@ -1140,6 +1140,34 @@ async function exportFileAsPdf(fileId: string, accessToken: string): Promise<Buf
 export async function deleteFile(fileId: string, accessToken: string): Promise<void> {
   const drive = google.drive({ version: "v3", auth: getAuthClient(accessToken) });
   await drive.files.delete({ fileId });
+}
+
+const REFERENCE_TEXT_MAX_SLIDES = 40;
+const REFERENCE_TEXT_MAX_CHARS = 8000;
+
+/**
+ * Reads every slide of an existing Google Slides deck as plain text, one block per slide —
+ * used to give the Notes to Slides AI a style/structure reference to mimic (tone, pacing,
+ * layout choices) without treating it as the actual source material. Same text-extraction
+ * shape as the title-slide reading in buildSlideDeck/buildSlideDeckFromAst above, just walking
+ * every slide instead of only the first. Capped so a large reference deck can't balloon the
+ * ingestion prompt's size or cost.
+ */
+export async function extractPresentationText(presentationId: string, accessToken: string): Promise<string> {
+  const slides = google.slides({ version: "v1", auth: getAuthClient(accessToken) });
+  const pres = await slides.presentations.get({ presentationId });
+
+  const blocks: string[] = [];
+  for (const slide of (pres.data.slides || []).slice(0, REFERENCE_TEXT_MAX_SLIDES)) {
+    const slideText = (slide.pageElements || [])
+      .map(el => el.shape?.text?.textElements?.map(t => t.textRun?.content || "").join("") ?? "")
+      .filter(text => text.trim().length > 0)
+      .join("\n");
+    if (slideText.trim().length > 0) blocks.push(slideText.trim());
+  }
+
+  const joined = blocks.map((text, i) => `Slide ${i + 1}:\n${text}`).join("\n\n");
+  return joined.length > REFERENCE_TEXT_MAX_CHARS ? joined.slice(0, REFERENCE_TEXT_MAX_CHARS) : joined;
 }
 
 /** Extracts a Drive file id from any of the URL shapes this app generates (Slides/Docs/Forms). */

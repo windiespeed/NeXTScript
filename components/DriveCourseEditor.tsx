@@ -428,10 +428,13 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
     setCreatingFolder(false);
     if (res.ok) {
       setCourse(data);
-      if (course?.driveFolderId) {
-        setReleaseMsg({ text: "Sharing updated for all course members.", ok: true });
-        setTimeout(() => setReleaseMsg(null), 4000);
-      }
+      const moved = data.filesMoved ?? 0;
+      const failed = data.filesFailed ?? 0;
+      const extra = failed > 0
+        ? ` ${moved} file${moved === 1 ? "" : "s"} repaired, ${failed} couldn't be moved — you may not have Drive access to those (ask whoever created them to run this instead).`
+        : moved > 0 ? ` ${moved} file${moved === 1 ? "" : "s"} repaired.` : "";
+      setReleaseMsg({ text: `Sharing updated for all course members.${extra}`, ok: failed === 0 });
+      setTimeout(() => setReleaseMsg(null), failed > 0 ? 8000 : 4000);
     } else {
       setReleaseMsg({ text: data.error || "Failed to update folder sharing.", ok: false });
       setTimeout(() => setReleaseMsg(null), 6000);
@@ -732,12 +735,12 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                 {creatingFolder ? "Creating…" : "Create Drive Folder"}
               </button>
             )}
-            {course.driveFolderId && !course.driveFolderShared && (
+            {course.driveFolderId && (
               <button onClick={handleCreateCourseFolder} disabled={creatingFolder}
-                title="Re-share the course folder with everyone on this course — use this if someone can't see it in Drive"
+                title="Re-share the course folder and move any documents that ended up outside it — use this if a collaborator can see a lesson but not its documents"
                 className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition hover:bg-[var(--bg-card)] disabled:opacity-50"
                 style={{ border: "1px solid var(--border)", color: "var(--text-muted)" }}>
-                {creatingFolder ? "Fixing…" : "Fix Folder Sharing"}
+                {creatingFolder ? "Repairing…" : "Repair Drive Access"}
               </button>
             )}
             <button onClick={() => setAddResourceOpen(true)}

@@ -40,6 +40,23 @@ export const projectStore = {
     return snapshots.flatMap((snap) => snap.docs.map((doc) => doc.data() as SavedProject));
   },
 
+  /** Projects linked to any of the given lessons via their single-lesson `lessonId` field.
+   * Multi-lesson quizzes always carry `courseId` already, so they're covered by
+   * getAllForCourseIds — this exists to catch projects (e.g. classic-pipeline decks created
+   * before courseId was set on them) that only have lessonId. */
+  async getAllForLessonIds(lessonIds: string[]): Promise<SavedProject[]> {
+    if (lessonIds.length === 0) return [];
+    const db = getDb();
+    const CHUNK = 30; // Firestore "in" query limit
+    const chunks: string[][] = [];
+    for (let i = 0; i < lessonIds.length; i += CHUNK) chunks.push(lessonIds.slice(i, i + CHUNK));
+
+    const snapshots = await Promise.all(
+      chunks.map((chunk) => db.collection(COLLECTION).where("lessonId", "in", chunk).get())
+    );
+    return snapshots.flatMap((snap) => snap.docs.map((doc) => doc.data() as SavedProject));
+  },
+
   async getById(id: string): Promise<SavedProject | null> {
     const doc = await getDb().collection(COLLECTION).doc(id).get();
     return doc.exists ? (doc.data() as SavedProject) : null;

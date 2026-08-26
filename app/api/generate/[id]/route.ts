@@ -104,6 +104,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           subtitle: lesson.subtitle,
           url: `https://docs.google.com/presentation/d/${deckId}/edit`,
           slideContent: lesson.slideContent,
+          ...(course ? { courseId: course.id } : {}),
         }, session.user!.email!) : null,
       ]);
 
