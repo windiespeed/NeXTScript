@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { courseStore } from "@/lib/courseStore";
+import { isCourseOwner } from "@/lib/access";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +12,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     const { id } = await params;
     const course = await courseStore.getById(id);
     if (!course) return NextResponse.json({ error: "Not found." }, { status: 404 });
-    if (course.userId !== session.user.email) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+    if (!isCourseOwner(course, session.user.email)) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
     return NextResponse.json(course);
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
@@ -25,7 +26,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     const { id } = await params;
     const existing = await courseStore.getById(id);
     if (!existing) return NextResponse.json({ error: "Not found." }, { status: 404 });
-    if (existing.userId !== session.user.email) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+    if (!isCourseOwner(existing, session.user.email)) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
     const body = await req.json();
     const updated = await courseStore.update(id, body);
     return NextResponse.json(updated);
@@ -41,7 +42,7 @@ export async function DELETE(_: Request, { params }: { params: Promise<{ id: str
     const { id } = await params;
     const existing = await courseStore.getById(id);
     if (!existing) return NextResponse.json({ error: "Not found." }, { status: 404 });
-    if (existing.userId !== session.user.email) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+    if (!isCourseOwner(existing, session.user.email)) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
     await courseStore.delete(id);
     return NextResponse.json({ success: true });
   } catch (err: any) {

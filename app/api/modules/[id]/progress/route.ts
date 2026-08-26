@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { courseStore } from "@/lib/courseStore";
 import { exerciseStore } from "@/lib/exerciseStore";
 import { getDb } from "@/lib/firebase";
+import { isCourseOwner } from "@/lib/access";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     const { id } = await params;
     const course = await courseStore.getById(id);
     if (!course) return NextResponse.json({ error: "Not found." }, { status: 404 });
-    if (course.userId !== session.user.email) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+    if (!isCourseOwner(course, session.user.email)) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
 
     const allExercises = await exerciseStore.getAll(session.user.email);
     const exercises = allExercises

@@ -9,12 +9,27 @@ const COLLECTION = "courses";
 export const courseStore = {
   async getAll(userId: string): Promise<Course[]> {
     const db = getDb();
-    const [owned, shared] = await Promise.all([
-      db.collection(COLLECTION).where("userId", "==", userId).get(),
-      db.collection(COLLECTION).where("collaborators", "array-contains", userId).get(),
+    // Collaborators are always stored lowercased (see app/api/courses/[id]/route.ts's PUT
+    // handler) — array-contains is an exact, case-sensitive match, so the query side must be
+    // lowercased too or a collaborator whose own session email isn't already all-lowercase gets
+    // zero results here despite canAccessCourse (which does lowercase both sides) correctly
+    // granting them access via a direct link.
+    // Course.userId isn't normalized at creation either, so the owned query runs against both
+    // the raw session email and its lowercased form — whichever the stored userId happens to
+    // match — and dedupes below. A single exact-match query here would silently drop a course
+    // whenever the stored casing differs from the current session's, exactly as it did for
+    // collaborators.
+    const lowered = userId.toLowerCase();
+    const ownedQueries = [db.collection(COLLECTION).where("userId", "==", userId).get()];
+    if (lowered !== userId) {
+      ownedQueries.push(db.collection(COLLECTION).where("userId", "==", lowered).get());
+    }
+    const [ownedSnapshots, shared] = await Promise.all([
+      Promise.all(ownedQueries),
+      db.collection(COLLECTION).where("collaborators", "array-contains", lowered).get(),
     ]);
     const byId = new Map<string, Course>();
-    for (const doc of [...owned.docs, ...shared.docs]) {
+    for (const doc of [...ownedSnapshots.flatMap((s) => s.docs), ...shared.docs]) {
       byId.set(doc.id, { id: doc.id, ...doc.data() } as Course);
     }
     return Array.from(byId.values()).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
