@@ -143,13 +143,18 @@ export async function addFileToFolders(fileId: string, folderIds: string[], acce
 
 export async function moveFileToFolder(fileId: string, folderId: string, accessToken: string) {
   const drive = google.drive({ version: "v3", auth: getAuthClient(accessToken) });
-  const file = await drive.files.get({ fileId, fields: "parents" });
+  // supportsAllDrives is required for both calls whenever the file lives in a Shared Drive —
+  // without it, files.get 404s ("File not found") on a file that does exist, and files.update's
+  // removeParents is silently ignored, so the addParents looks like it would create a second
+  // parent, which Shared Drives reject ("Increasing the number of parents is not allowed").
+  const file = await drive.files.get({ fileId, fields: "parents", supportsAllDrives: true });
   const prevParents = (file.data.parents || []).join(",");
   await drive.files.update({
     fileId,
     addParents: folderId,
     removeParents: prevParents,
     fields: "id, parents",
+    supportsAllDrives: true,
   });
 }
 
