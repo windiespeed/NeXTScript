@@ -433,7 +433,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
       const failures = (data.failures ?? []) as { label: string; reason: string }[];
       if (failures.length) console.warn("[Repair Drive Access] failures:", failures);
       const extra = failed > 0
-        ? ` ${moved} file${moved === 1 ? "" : "s"} repaired, ${failed} couldn't be moved: ${failures.map(f => `${f.label} (${f.reason})`).join("; ")}`
+        ? ` ${moved} file${moved === 1 ? "" : "s"} repaired, ${failed} couldn't be moved (signed in as ${data.actingEmail}): ${failures.map(f => `${f.label} (${f.reason})`).join("; ")}`
         : moved > 0 ? ` ${moved} file${moved === 1 ? "" : "s"} repaired.` : "";
       setReleaseMsg({ text: `Sharing updated for all course members.${extra}`, ok: failed === 0 });
       setTimeout(() => setReleaseMsg(null), failed > 0 ? 20000 : 4000);

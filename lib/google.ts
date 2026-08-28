@@ -147,15 +147,29 @@ export async function moveFileToFolder(fileId: string, folderId: string, accessT
   // without it, files.get 404s ("File not found") on a file that does exist, and files.update's
   // removeParents is silently ignored, so the addParents looks like it would create a second
   // parent, which Shared Drives reject ("Increasing the number of parents is not allowed").
-  const file = await drive.files.get({ fileId, fields: "parents", supportsAllDrives: true });
-  const prevParents = (file.data.parents || []).join(",");
-  await drive.files.update({
+  const file = await drive.files.get({
     fileId,
-    addParents: folderId,
-    removeParents: prevParents,
-    fields: "id, parents",
+    fields: "parents, trashed, ownedByMe, capabilities(canEdit, canMoveItemWithinDrive)",
     supportsAllDrives: true,
   });
+  const prevParents = (file.data.parents || []).join(",");
+  // Already in place — re-issuing addParents/removeParents with the same id in both can itself
+  // trigger "Increasing the number of parents is not allowed" on some files, so skip instead of
+  // repeating a no-op move every time the repair tool is re-run.
+  if (prevParents === folderId) return;
+  try {
+    await drive.files.update({
+      fileId,
+      addParents: folderId,
+      removeParents: prevParents,
+      fields: "id, parents",
+      supportsAllDrives: true,
+    });
+  } catch (err: any) {
+    const detail = `parents=[${prevParents || "none"}] trashed=${file.data.trashed} ownedByMe=${file.data.ownedByMe} canEdit=${file.data.capabilities?.canEdit}`;
+    err.message = `${err.message} (${detail})`;
+    throw err;
+  }
 }
 
 // ─── Slides ─────────────────────────────────────────────────────────────────

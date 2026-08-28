@@ -157,7 +157,7 @@ export async function POST(
     }
 
     const repairSummary = await repairCourseFiles(id, folderId, accessToken);
-    return NextResponse.json({ ...responseBase, ...repairSummary });
+    return NextResponse.json({ ...responseBase, ...repairSummary, actingEmail: session.user.email });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
