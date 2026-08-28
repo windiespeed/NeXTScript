@@ -38,26 +38,33 @@ async function repairCourseFiles(courseId: string, courseFolderId: string, acces
   for (const p of [...byCourseId, ...byLessonId]) projectsById.set(p.id, p);
   const projects = Array.from(projectsById.values());
 
-  let projectsBackfilled = 0, filesMoved = 0, filesFailed = 0;
+  let projectsBackfilled = 0, filesMoved = 0;
+  const failures: { label: string; reason: string }[] = [];
+
+  function recordFailure(label: string, err: unknown) {
+    const reason = err instanceof Error ? err.message : String(err);
+    failures.push({ label, reason });
+    console.error(`[repairCourseFiles] ${label}: ${reason}`);
+  }
 
   await Promise.all(
     projects.filter(p => !p.courseId).map(async p => {
       try {
         await projectStore.update(p.id, { courseId });
         projectsBackfilled++;
-      } catch {
-        filesFailed++;
+      } catch (err) {
+        recordFailure(`backfill courseId on "${p.title}"`, err);
       }
     })
   );
 
-  async function tryMove(fileId: string | undefined, folderId: string) {
+  async function tryMove(fileId: string | undefined, folderId: string, label: string) {
     if (!fileId) return;
     try {
       await moveFileToFolder(fileId, folderId, accessToken);
       filesMoved++;
-    } catch {
-      filesFailed++;
+    } catch (err) {
+      recordFailure(label, err);
     }
   }
 
@@ -66,24 +73,24 @@ async function repairCourseFiles(courseId: string, courseFolderId: string, acces
     try {
       lessonFolderId = await ensureLessonFolderId(lesson, courseFolderId, accessToken);
       await moveFileToFolder(lessonFolderId, courseFolderId, accessToken);
-    } catch {
-      filesFailed++;
+    } catch (err) {
+      recordFailure(`lesson folder for "${lesson.title}"`, err);
       return;
     }
 
     const ownProjects = projects.filter(p => p.lessonId === lesson.id && p.url);
     await Promise.all([
-      tryMove(lesson.overviewUrl ? extractDriveFileId(lesson.overviewUrl) : undefined, lessonFolderId),
-      ...(lesson.resources ?? []).filter(r => r.driveId).map(r => tryMove(r.driveId, lessonFolderId)),
-      ...ownProjects.map(p => tryMove(extractDriveFileId(p.url), lessonFolderId)),
+      tryMove(lesson.overviewUrl ? extractDriveFileId(lesson.overviewUrl) : undefined, lessonFolderId, `"${lesson.title}" overview doc`),
+      ...(lesson.resources ?? []).filter(r => r.driveId).map(r => tryMove(r.driveId, lessonFolderId, `"${lesson.title}" resource "${r.label}"`)),
+      ...ownProjects.map(p => tryMove(extractDriveFileId(p.url), lessonFolderId, `"${lesson.title}" project "${p.title}"`)),
     ]);
   }));
 
   // Course/module-scoped quizzes (multi-lesson, no single lessonId) belong at the course level.
   const courseLevelProjects = projects.filter(p => !p.lessonId && p.url);
-  await Promise.all(courseLevelProjects.map(p => tryMove(extractDriveFileId(p.url), courseFolderId)));
+  await Promise.all(courseLevelProjects.map(p => tryMove(extractDriveFileId(p.url), courseFolderId, `course-level project "${p.title}"`)));
 
-  return { projectsBackfilled, filesMoved, filesFailed };
+  return { projectsBackfilled, filesMoved, filesFailed: failures.length, failures: failures.slice(0, 20) };
 }
 
 export async function POST(

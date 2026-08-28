@@ -430,11 +430,13 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
       setCourse(data);
       const moved = data.filesMoved ?? 0;
       const failed = data.filesFailed ?? 0;
+      const failures = (data.failures ?? []) as { label: string; reason: string }[];
+      if (failures.length) console.warn("[Repair Drive Access] failures:", failures);
       const extra = failed > 0
-        ? ` ${moved} file${moved === 1 ? "" : "s"} repaired, ${failed} couldn't be moved — you may not have Drive access to those (ask whoever created them to run this instead).`
+        ? ` ${moved} file${moved === 1 ? "" : "s"} repaired, ${failed} couldn't be moved: ${failures.map(f => `${f.label} (${f.reason})`).join("; ")}`
         : moved > 0 ? ` ${moved} file${moved === 1 ? "" : "s"} repaired.` : "";
       setReleaseMsg({ text: `Sharing updated for all course members.${extra}`, ok: failed === 0 });
-      setTimeout(() => setReleaseMsg(null), failed > 0 ? 8000 : 4000);
+      setTimeout(() => setReleaseMsg(null), failed > 0 ? 20000 : 4000);
     } else {
       setReleaseMsg({ text: data.error || "Failed to update folder sharing.", ok: false });
       setTimeout(() => setReleaseMsg(null), 6000);
