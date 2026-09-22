@@ -30,6 +30,17 @@ const SPINNER = (
   </svg>
 );
 
+/** A long-running route (Generate/Export) that gets killed by Vercel's function timeout
+ * returns its own plain-text/HTML crash page instead of JSON — res.json() then throws a
+ * cryptic "Unexpected token..." parse error. Surface something actionable instead. */
+async function parseJsonResponse(res: Response, timeoutHint: string) {
+  try {
+    return await res.json();
+  } catch {
+    throw new Error(timeoutHint);
+  }
+}
+
 // Every other required LessonInput field defaults quietly — Notes to Slides only surfaces the
 // same "Lesson Info" fields LessonForm does, matching its own EMPTY defaults for the rest.
 const EMPTY_LESSON_DEFAULTS: LessonInput = {
@@ -386,7 +397,7 @@ function IngestPageInner() {
           model: aiModel,
         }),
       });
-      const data = await res.json();
+      const data = await parseJsonResponse(res, "Generation took too long and timed out. Try shortening your notes or splitting them into a smaller batch, then generate again.");
       if (!res.ok) throw new Error(data.error || "Failed to generate slides.");
       stopProgressAnimation(100);
       setAst(data as PresentationAST);
@@ -436,7 +447,7 @@ function IngestPageInner() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ presentationAST: ast }),
       });
-      const data = await res.json();
+      const data = await parseJsonResponse(res, "Saving took too long and timed out. Try again in a moment.");
       if (!res.ok) throw new Error(data.error || "Failed to save to the lesson.");
       clearDraft(draftKey);
       setSavedJustNow(true);
@@ -466,7 +477,7 @@ function IngestPageInner() {
           ast, lessonId: lessonId ?? undefined, courseId: selectedCourseId || undefined,
         }),
       });
-      const data = await res.json();
+      const data = await parseJsonResponse(res, "Creating the deck took too long and timed out. Try again in a moment.");
       if (!res.ok) throw new Error(data.error || "Failed to create the slide deck.");
       window.open(data.url, "_blank", "noopener,noreferrer");
       // Export is the end of this page's job — the deck itself just opened in a new tab, so

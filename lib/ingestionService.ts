@@ -37,9 +37,13 @@ export async function ingestRawContent(
     max_tokens: 24000,
     ...(supportsAdaptiveThinking ? { thinking: { type: "adaptive" as const } } : {}),
     system: CURRICULUM_ARCHITECT_SYSTEM_PROMPT,
+    // Hard caps deliberately tighter than they used to be — each fetch/search costs real
+    // wall-clock time against Vercel's maxDuration (300s), and a long/complex raw-notes input
+    // combined with the pause_turn retry loop below can otherwise add up to a platform timeout
+    // (the client just sees a crash page instead of JSON when that happens).
     tools: [
-      { type: "web_fetch_20260209" as const, name: "web_fetch" as const, max_uses: 5 },
-      { type: "web_search_20260209" as const, name: "web_search" as const, max_uses: 3 },
+      { type: "web_fetch_20260209" as const, name: "web_fetch" as const, max_uses: 3 },
+      { type: "web_search_20260209" as const, name: "web_search" as const, max_uses: 2 },
     ],
   };
 
@@ -59,7 +63,7 @@ export async function ingestRawContent(
   // documented pause_turn pattern) so it picks up where it left off, bounded so a
   // pathological loop can't run away and rack up cost indefinitely.
   let continuations = 0;
-  while (message.stop_reason === "pause_turn" && continuations < 3) {
+  while (message.stop_reason === "pause_turn" && continuations < 2) {
     message = await client.messages.stream({
       ...requestParams,
       messages: [
