@@ -411,6 +411,12 @@ function IngestPageInner() {
   }
 
   function handleStartOver() {
+    // Clear whatever's autosaved under the CURRENT draft key before anything below changes it
+    // (lessonId flipping to null moves draftKey back to "ingest:new"/lessonIdParam) — otherwise
+    // the just-generated deck stays orphaned in localStorage and silently reappears the next
+    // time something (a refresh, the deep-link effect, re-attaching to the same lesson) lands
+    // back on that same key, making the reset look like it never happened.
+    clearDraft(draftKey);
     setAst(null);
     setActiveIndex(0);
     setError(null);
