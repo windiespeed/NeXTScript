@@ -132,7 +132,6 @@ function IngestPageInner() {
 
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
-  const [exportedUrl, setExportedUrl] = useState<string | null>(null);
 
   // Keyed by whichever lesson this generation is (or will be) attached to — once ensureLesson()
   // resolves a real id, the draft moves under that id so it stays tied to the right lesson.
@@ -432,7 +431,6 @@ function IngestPageInner() {
     setAst(null);
     setActiveIndex(0);
     setError(null);
-    setExportedUrl(null);
     setExportError(null);
     setSaveError(null);
     setLessonId(null);
@@ -481,8 +479,11 @@ function IngestPageInner() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to create the slide deck.");
-      setExportedUrl(data.url as string);
       window.open(data.url, "_blank", "noopener,noreferrer");
+      // Export is the end of this page's job — the deck itself just opened in a new tab, so
+      // reset back to a blank form (same reset "Start Over" already does) instead of leaving
+      // the user staring at a finished result screen they'd otherwise have to dismiss by hand.
+      handleStartOver();
     } catch (err) {
       setExportError(err instanceof Error ? err.message : "Failed to create the slide deck.");
     } finally {
@@ -865,17 +866,6 @@ function IngestPageInner() {
               </p>
             </div>
             <div className="flex items-center gap-2 flex-wrap justify-end">
-              {exportedUrl && (
-                <a
-                  href={exportedUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold transition hover:underline"
-                  style={{ background: "var(--accent-bg)", color: "var(--accent)" }}
-                >
-                  Open Deck ↗
-                </a>
-              )}
               <button
                 onClick={handleExport}
                 disabled={exporting}
@@ -886,7 +876,7 @@ function IngestPageInner() {
                     {SPINNER}
                     Creating deck…
                   </span>
-                ) : exportedUrl ? "Regenerate Deck" : "Export to PowerPoint"}
+                ) : "Export to PowerPoint"}
               </button>
               <button
                 onClick={handleSave}
