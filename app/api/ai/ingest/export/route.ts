@@ -4,7 +4,8 @@ import { projectStore } from "@/lib/projectStore";
 import { store } from "@/lib/store";
 import { courseStore } from "@/lib/courseStore";
 import { canAccessLesson, canAccessCourseId } from "@/lib/access";
-import { buildSlideDeckFromAst, moveFileToFolder, autoDeckName } from "@/lib/google";
+import { uploadPptxToDrive, moveFileToFolder, autoDeckName } from "@/lib/google";
+import { buildPptxFromAst } from "@/lib/pptxDeck";
 import { ensureLessonFolderId, ensureCourseFolderId } from "@/lib/lessonFolders";
 import { assertValidAst } from "@/lib/ingestionPrompt";
 import { DEFAULT_THEME_ID } from "@/lib/themes";
@@ -14,11 +15,6 @@ import type { Lesson } from "@/types/lesson";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
-
-function extractPresentationId(url: string): string | undefined {
-  const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
-  return match ? match[1] : undefined;
-}
 
 export async function POST(req: Request) {
   try {
@@ -60,16 +56,6 @@ export async function POST(req: Request) {
     }
     const course = courseId ? await courseStore.getById(courseId) : undefined;
 
-    // Template: the course's own setting always wins. Only when the course has none configured
-    // can the caller supply a one-off template for just this export — it's never persisted
-    // anywhere (not to the course, not to the user), unlike the removed personal-default field.
-    let templateId = course?.settings?.defaultTemplateUrl
-      ? extractPresentationId(course.settings.defaultTemplateUrl)
-      : undefined;
-    if (!templateId && typeof body.templateUrl === "string" && body.templateUrl.trim()) {
-      templateId = extractPresentationId(body.templateUrl.trim());
-    }
-
     // Theme precedence: request body (whatever's picked in ThemePicker for this generation) →
     // course default → fixed global fallback. No user-level tier — a course either has a
     // branded default or every export uses the same theme, by design.
@@ -77,7 +63,8 @@ export async function POST(req: Request) {
       ? body.themeId
       : (course?.settings?.defaultThemeId || DEFAULT_THEME_ID);
 
-    const deckId = await buildSlideDeckFromAst(ast, accessToken, templateId, themeId);
+    const buffer = await buildPptxFromAst(ast, themeId);
+    const { id: deckId, webViewLink } = await uploadPptxToDrive(buffer, autoDeckName(lesson?.title, lesson?.subtitle), accessToken);
 
     // File the deck the same place the classic lesson generator would — nested in the lesson's
     // Drive folder (itself nested in the course's folder) — instead of leaving it at Drive's root.
@@ -96,7 +83,7 @@ export async function POST(req: Request) {
       // Non-fatal — the deck still exists at Drive's root; export succeeds either way.
     }
 
-    const url = `https://docs.google.com/presentation/d/${deckId}/edit`;
+    const url = webViewLink;
 
     const projectInput: Omit<SavedProject, "id" | "createdAt" | "userId"> = {
       type: "deck",

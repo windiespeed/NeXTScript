@@ -32,7 +32,7 @@ export default function AssetCard({ project, onDelete }: Props) {
   const accentBar = isDeck ? "bg-[#0cc0df]" : "bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e]";
   const iconBg    = isDeck ? "bg-[#0cc0df]/15 text-[#0cc0df]" : "bg-[#ff8c4a]/15 text-[#ff8c4a]";
   const badgeBg   = isDeck ? "bg-[#0cc0df]/10 text-[#0cc0df]" : "bg-[#ff8c4a]/10 text-[#ff8c4a]";
-  const openLabel = isDeck ? "Open in Slides" : "Open in Forms";
+  const openLabel = isDeck ? "Open Deck" : "Open in Forms";
 
   return (
     <div
