@@ -56,14 +56,8 @@ export async function POST(req: Request) {
     }
     const course = courseId ? await courseStore.getById(courseId) : undefined;
 
-    // Theme precedence: request body (whatever's picked in ThemePicker for this generation) →
-    // course default → fixed global fallback. No user-level tier — a course either has a
-    // branded default or every export uses the same theme, by design.
-    const themeId: string = typeof body.themeId === "string" && body.themeId
-      ? body.themeId
-      : (course?.settings?.defaultThemeId || DEFAULT_THEME_ID);
-
-    const buffer = await buildPptxFromAst(ast, themeId);
+    // Theme selection is disabled for now — every export renders with the one fixed default.
+    const buffer = await buildPptxFromAst(ast, DEFAULT_THEME_ID);
     const { id: deckId, webViewLink } = await uploadPptxToDrive(buffer, autoDeckName(lesson?.title, lesson?.subtitle), accessToken);
 
     // File the deck the same place the classic lesson generator would — nested in the lesson's

@@ -53,10 +53,6 @@ export interface IngestionOptions {
   topics?: string;
   /** Reference URLs from Lesson Info (one per line) — same context role "Sources" plays in fillLesson's prompt. */
   sources?: string;
-  /** Plain-text extraction of an example Google Slides deck (lib/google.ts's extractPresentationText)
-   * — a style/structure reference for the AI to mimic (tone, pacing, layout choices), not source
-   * material. The raw notes remain the only thing actually transcribed onto slides. */
-  referenceOutline?: string;
 }
 
 // Restating the schema as a compact JSON-shape reference (rather than pasting the .ts file)
@@ -211,12 +207,9 @@ export function buildUserPrompt(rawText: string, opts: IngestionOptions): string
   const lessonContextBlock = contextLines.length > 0
     ? `\n--- LESSON CONTEXT (background/framing only — the raw content below is still the primary source of slide material) ---\n${contextLines.join("\n")}\n--- END LESSON CONTEXT ---\n`
     : "";
-  const styleReferenceBlock = opts.referenceOutline
-    ? `\n--- STYLE REFERENCE (mimic this deck's tone, pacing, and structure — do NOT copy its content; your source material is the raw notes below) ---\n${opts.referenceOutline}\n--- END STYLE REFERENCE ---\n`
-    : "";
 
   return `Transform the following raw content into a PresentationAST.
-${lessonContextBlock}${styleReferenceBlock}
+${lessonContextBlock}
 --- RAW CONTENT ---
 ${rawText}
 --- END RAW CONTENT ---

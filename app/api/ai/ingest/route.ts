@@ -3,7 +3,6 @@ import { auth } from "@/lib/auth";
 import { userSettings } from "@/lib/userSettings";
 import { ingestRawContent } from "@/lib/ingestionService";
 import { ingestRawContentGemini } from "@/lib/ingestionServiceGemini";
-import { extractPresentationText, extractDriveFileId } from "@/lib/google";
 import type { StudentLevel } from "@/lib/studentLevel";
 import { isIngestModelId, getIngestModel, DEFAULT_INGEST_MODEL, type IngestProvider } from "@/lib/ingestModels";
 
@@ -42,26 +41,8 @@ export async function POST(req: Request) {
     const topics = typeof body.topics === "string" && body.topics.trim() ? body.topics.trim() : undefined;
     const sources = typeof body.sources === "string" && body.sources.trim() ? body.sources.trim() : undefined;
 
-    let referenceOutline: string | undefined;
-    const referenceDeckUrl = typeof body.referenceDeckUrl === "string" ? body.referenceDeckUrl.trim() : "";
-    if (referenceDeckUrl) {
-      const accessToken = (session as any).accessToken as string | undefined;
-      if (!accessToken) {
-        return NextResponse.json({ error: "No Google access token. Please sign out and sign in again." }, { status: 401 });
-      }
-      const fileId = extractDriveFileId(referenceDeckUrl);
-      if (!fileId) {
-        return NextResponse.json({ error: "That doesn't look like a valid Google Slides link." }, { status: 400 });
-      }
-      try {
-        referenceOutline = await extractPresentationText(fileId, accessToken);
-      } catch {
-        return NextResponse.json({ error: "Couldn't read that reference deck — check the link and that you have access to it." }, { status: 400 });
-      }
-    }
-
     const opts = {
-      targetAudience, slideCount, requiredTopics, studentLevel, lessonTitle, lessonSubtitle, topics, sources, referenceOutline, model,
+      targetAudience, slideCount, requiredTopics, studentLevel, lessonTitle, lessonSubtitle, topics, sources, model,
     };
     const ast = provider === "gemini"
       ? await ingestRawContentGemini(apiKey, rawText, opts)

@@ -9,7 +9,6 @@ import type { Concept } from "@/types/concept";
 import { DEFAULT_COURSE_SETTINGS } from "@/types/course";
 import { resolveSections } from "@/lib/sections";
 import SectionsEditor from "@/components/SectionsEditor";
-import ThemePicker from "@/components/ThemePicker";
 import { clearDraft } from "@/lib/draftStorage";
 import { useDraftAutosave, useDraftRestore } from "@/hooks/useDraftAutosave";
 
@@ -443,22 +442,6 @@ export default function CourseSettingsPage() {
               Slides Template URL <span className="font-normal" style={{ color: "var(--text-muted)" }}>(optional)</span>
             </label>
             <input type="url" value={editSettings.defaultTemplateUrl} onChange={e => patchSettings({ defaultTemplateUrl: e.target.value })} placeholder="https://docs.google.com/presentation/d/…" className={inputClass} style={inputStyle} />
-          </div>
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="block text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-                Default Theme <span className="font-normal text-[10px]" style={{ color: "#0cc0df" }}>· used by Notes to Slides</span>
-              </label>
-              {editSettings.defaultThemeId && (
-                <button type="button" onClick={() => patchSettings({ defaultThemeId: "" })} className="text-[10px] font-semibold hover:underline" style={{ color: "var(--text-muted)" }}>
-                  Clear
-                </button>
-              )}
-            </div>
-            <p className="text-xs mb-1.5" style={{ color: "var(--text-muted)" }}>
-              Every generated deck for this course defaults to this theme. Leave unset to always use Pearl.
-            </p>
-            <ThemePicker value={editSettings.defaultThemeId ?? ""} onChange={id => patchSettings({ defaultThemeId: id })} />
           </div>
         </div>
 

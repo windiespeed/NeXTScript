@@ -6,7 +6,6 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import SlideRenderer from "@/components/slides/SlideRenderer";
 import SlideEditorPanel from "@/components/slides/SlideEditorPanel";
-import ThemePicker from "@/components/ThemePicker";
 import { DEFAULT_THEME_ID, getTheme } from "@/lib/themes";
 import { STUDENT_LEVEL_UI_HINTS, type StudentLevel } from "@/lib/studentLevel";
 import { INGEST_MODEL_OPTIONS, DEFAULT_INGEST_MODEL, isIngestModelId, type IngestModelId } from "@/lib/ingestModels";
@@ -59,13 +58,11 @@ interface IngestDraft {
   studentLevel: StudentLevel;
   rawText: string;
   targetAudience: string;
-  referenceDeckUrl: string;
   slideCount: string;
   aiModel: IngestModelId;
   ast: PresentationAST | null;
   activeIndex: number;
   viewMode: "preview" | "edit";
-  selectedThemeId: string;
 }
 
 function IngestPageInner() {
@@ -110,7 +107,6 @@ function IngestPageInner() {
   // Raw content
   const [rawText, setRawText] = useState("");
   const [targetAudience, setTargetAudience] = useState("");
-  const [referenceDeckUrl, setReferenceDeckUrl] = useState("");
   const [slideCount, setSlideCount] = useState("");
   const [aiModel, setAiModel] = useState<IngestModelId>(DEFAULT_INGEST_MODEL);
   const [generating, setGenerating] = useState(false);
@@ -123,8 +119,8 @@ function IngestPageInner() {
   const [ast, setAst] = useState<PresentationAST | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [viewMode, setViewMode] = useState<"preview" | "edit">("preview");
-  const [selectedThemeId, setSelectedThemeId] = useState(DEFAULT_THEME_ID);
-  const theme = getTheme(selectedThemeId);
+  // Theme selection is disabled for now — every deck renders with the one fixed default.
+  const theme = getTheme(DEFAULT_THEME_ID);
 
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -152,19 +148,17 @@ function IngestPageInner() {
     setStudentLevel(draft.studentLevel);
     setRawText(draft.rawText);
     setTargetAudience(draft.targetAudience);
-    setReferenceDeckUrl(draft.referenceDeckUrl ?? "");
     setSlideCount(draft.slideCount);
     setAiModel(isIngestModelId(draft.aiModel) ? draft.aiModel : DEFAULT_INGEST_MODEL);
     setAst(draft.ast);
     setActiveIndex(draft.activeIndex);
     setViewMode(draft.viewMode);
-    setSelectedThemeId(draft.selectedThemeId);
   });
   useDraftAutosave<IngestDraft>(draftKey, {
     selectedCourseId, selectedModuleId, selectedExistingLessonId,
     title, subtitle, topics, deadline, lessonType, sources, studentLevel,
-    rawText, targetAudience, referenceDeckUrl, slideCount, aiModel,
-    ast, activeIndex, viewMode, selectedThemeId,
+    rawText, targetAudience, slideCount, aiModel,
+    ast, activeIndex, viewMode,
   });
 
   useEffect(() => {
@@ -186,7 +180,6 @@ function IngestPageInner() {
     setModules(Array.isArray(course?.modules) ? course!.modules : []);
     setSelectedModuleId("");
     setSources(course?.settings?.defaultSources || userDefaultSources);
-    setSelectedThemeId(course?.settings?.defaultThemeId || DEFAULT_THEME_ID);
   }, [selectedCourseId, courses, userDefaultSources]);
 
   // Deep-link: ?lessonId= arrives from an existing lesson's own hub page — pre-fill
@@ -212,7 +205,6 @@ function IngestPageInner() {
       setLessonId(lesson.id);
       if (lesson.presentationAST) {
         setAst(lesson.presentationAST);
-        setSelectedThemeId(lesson.selectedTheme || DEFAULT_THEME_ID);
         setActiveIndex(0);
         setViewMode("preview");
       }
@@ -237,7 +229,6 @@ function IngestPageInner() {
       setAst(null);
       setActiveIndex(0);
       setViewMode("preview");
-      setSelectedThemeId(DEFAULT_THEME_ID);
       return;
     }
     const lesson = courseLessons.find(l => l.id === id);
@@ -255,13 +246,7 @@ function IngestPageInner() {
     // draft to one without would leave the previous lesson's deck lingering in state.
     setActiveIndex(0);
     setViewMode("preview");
-    if (lesson.presentationAST) {
-      setAst(lesson.presentationAST);
-      setSelectedThemeId(lesson.selectedTheme || DEFAULT_THEME_ID);
-    } else {
-      setAst(null);
-      setSelectedThemeId(DEFAULT_THEME_ID);
-    }
+    setAst(lesson.presentationAST ?? null);
   }
 
   function handleDetachLesson() {
@@ -276,7 +261,6 @@ function IngestPageInner() {
     setAst(null);
     setActiveIndex(0);
     setViewMode("preview");
-    setSelectedThemeId(DEFAULT_THEME_ID);
   }
 
   // Stop the fake progress animation if the page is left mid-generation
@@ -399,7 +383,6 @@ function IngestPageInner() {
           lessonSubtitle: subtitle.trim() || undefined,
           topics: topics.trim() || undefined,
           sources: sources.trim() || undefined,
-          referenceDeckUrl: referenceDeckUrl.trim() || undefined,
           model: aiModel,
         }),
       });
@@ -445,7 +428,7 @@ function IngestPageInner() {
       const res = await fetch(`/api/lessons/${lessonId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ presentationAST: ast, selectedTheme: selectedThemeId }),
+        body: JSON.stringify({ presentationAST: ast }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to save to the lesson.");
@@ -474,7 +457,7 @@ function IngestPageInner() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ast, lessonId: lessonId ?? undefined, courseId: selectedCourseId || undefined, themeId: selectedThemeId,
+          ast, lessonId: lessonId ?? undefined, courseId: selectedCourseId || undefined,
         }),
       });
       const data = await res.json();
@@ -799,23 +782,6 @@ function IngestPageInner() {
               </div>
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
-                Reference Slides URL <span className="font-normal" style={{ color: "var(--text-muted)" }}>(optional)</span>
-              </label>
-              <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>
-                Paste a Google Slides link to have the AI mimic its tone and structure — your notes above are still the source material, this isn&apos;t copied.
-              </p>
-              <input
-                type="text"
-                value={referenceDeckUrl}
-                onChange={e => setReferenceDeckUrl(e.target.value)}
-                placeholder="https://docs.google.com/presentation/d/…"
-                className={inputClass}
-                style={inputStyle}
-              />
-            </div>
-
             {error && <p className="text-xs text-red-500">{error}</p>}
 
             <div className="flex items-center gap-3">
@@ -902,8 +868,6 @@ function IngestPageInner() {
               </button>
             </div>
           </div>
-
-          <ThemePicker value={selectedThemeId} onChange={setSelectedThemeId} />
 
           {exportError && <p className="text-xs text-red-500">{exportError}</p>}
           {saveError && <p className="text-xs text-red-500">{saveError}</p>}

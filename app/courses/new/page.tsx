@@ -7,7 +7,6 @@ import { DEFAULT_COURSE_SETTINGS } from "@/types/course";
 import type { CourseSettings } from "@/types/course";
 import { resolveSections } from "@/lib/sections";
 import SectionsEditor from "@/components/SectionsEditor";
-import ThemePicker from "@/components/ThemePicker";
 import { clearDraft } from "@/lib/draftStorage";
 import { useDraftAutosave, useDraftRestore } from "@/hooks/useDraftAutosave";
 
@@ -191,14 +190,6 @@ export default function NewCoursePage() {
             <input type="url" value={settings.defaultTemplateUrl}
               onChange={(e) => patchSettings({ defaultTemplateUrl: e.target.value })}
               placeholder="https://docs.google.com/presentation/d/…" className={inputClass} style={inputStyle} />
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
-              Default Theme <span className="font-normal text-[10px]" style={{ color: "#0cc0df" }}>· used by Notes to Slides</span>
-            </label>
-            <p className="text-xs mb-1.5" style={{ color: "var(--text-muted)" }}>Every generated deck for this course defaults to this theme. Leave unset to always use Pearl.</p>
-            <ThemePicker value={settings.defaultThemeId ?? ""} onChange={(id) => patchSettings({ defaultThemeId: id })} />
           </div>
         </div>
 
