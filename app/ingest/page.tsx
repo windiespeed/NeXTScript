@@ -137,6 +137,12 @@ function IngestPageInner() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [savedJustNow, setSavedJustNow] = useState(false);
 
+  // Save Draft on the input form itself — persists Lesson Info to a real Lesson record before
+  // any slides exist, independent of the "Save Draft" on the result view (which saves the AST).
+  const [savingInfo, setSavingInfo] = useState(false);
+  const [saveInfoError, setSaveInfoError] = useState<string | null>(null);
+  const [savedInfoJustNow, setSavedInfoJustNow] = useState(false);
+
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
 
@@ -310,48 +316,42 @@ function IngestPageInner() {
     setProgress(finalValue);
   }
 
-  /** Creates (or reuses an attached) lesson this generation will be saved onto — once per session, reused on regenerate. */
-  async function ensureLesson(): Promise<string> {
-    if (lessonId) return lessonId;
+  /** Pushes the current Lesson Info fields to the lesson — updates one in place if it's already
+   * attached or was already created this session, otherwise creates a fresh one. Unlike
+   * ensureLesson(), this always pushes whatever's currently in the fields, so repeated calls
+   * (the input form's own "Save Draft" button) pick up edits made since the last save. */
+  async function saveLessonInfo(): Promise<string> {
+    const body = {
+      title: title.trim(),
+      subtitle: subtitle.trim(),
+      topics: topics.trim(),
+      deadline,
+      lessonType,
+      sources,
+      studentLevel,
+      courseId: selectedCourseId,
+    };
 
+    const targetId = lessonId || existingLessonId;
     let newLessonId: string;
-    if (existingLessonId) {
-      // Attached to an existing lesson — update it in place with whatever's in Lesson Info
+    if (targetId) {
+      // Attached to (or already created earlier this session) a lesson — update it in place
       // rather than creating a duplicate.
-      const res = await fetch(`/api/lessons/${existingLessonId}`, {
+      const res = await fetch(`/api/lessons/${targetId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: title.trim(),
-          subtitle: subtitle.trim(),
-          topics: topics.trim(),
-          deadline,
-          lessonType,
-          sources,
-          studentLevel,
-          courseId: selectedCourseId,
-        }),
+        body: JSON.stringify(body),
       });
-      const data = await res.json();
+      const data = await parseJsonResponse(res, "Saving took too long and timed out. Try again in a moment.");
       if (!res.ok) throw new Error(data.error || "Failed to update the lesson.");
-      newLessonId = existingLessonId;
+      newLessonId = targetId;
     } else {
       const res = await fetch("/api/lessons", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...EMPTY_LESSON_DEFAULTS,
-          title: title.trim(),
-          subtitle: subtitle.trim(),
-          topics: topics.trim(),
-          deadline,
-          lessonType,
-          sources,
-          studentLevel,
-          courseId: selectedCourseId,
-        }),
+        body: JSON.stringify({ ...EMPTY_LESSON_DEFAULTS, ...body }),
       });
-      const data = await res.json();
+      const data = await parseJsonResponse(res, "Saving took too long and timed out. Try again in a moment.");
       if (!res.ok) throw new Error(data.error || "Failed to create the lesson.");
       newLessonId = data.id as string;
     }
@@ -372,6 +372,13 @@ function IngestPageInner() {
     }
 
     return newLessonId;
+  }
+
+  /** Creates (or reuses an attached) lesson this generation will be saved onto — once per
+   * session, reused on regenerate without re-pushing Lesson Info. */
+  async function ensureLesson(): Promise<string> {
+    if (lessonId) return lessonId;
+    return saveLessonInfo();
   }
 
   async function handleGenerate() {
@@ -408,6 +415,24 @@ function IngestPageInner() {
       setError(err instanceof Error ? err.message : "Failed to generate slides.");
     } finally {
       setGenerating(false);
+    }
+  }
+
+  /** Save Draft on the input form — persists Lesson Info to the server before/without ever
+   * generating slides, so it survives a cleared browser or a switch to a different device (the
+   * localStorage draft autosave already covers same-browser refreshes/navigation on its own). */
+  async function handleSaveDraftInfo() {
+    if (!title.trim() || !selectedCourseId || savingInfo) return;
+    setSavingInfo(true);
+    setSaveInfoError(null);
+    try {
+      await saveLessonInfo();
+      setSavedInfoJustNow(true);
+      setTimeout(() => setSavedInfoJustNow(false), 2500);
+    } catch (err) {
+      setSaveInfoError(err instanceof Error ? err.message : "Failed to save draft.");
+    } finally {
+      setSavingInfo(false);
     }
   }
 
@@ -800,6 +825,7 @@ function IngestPageInner() {
             </div>
 
             {error && <p className="text-xs text-red-500">{error}</p>}
+            {saveInfoError && <p className="text-xs text-red-500">{saveInfoError}</p>}
 
             <div className="flex items-center gap-3">
               <button
@@ -814,6 +840,16 @@ function IngestPageInner() {
                     Generating slides…
                   </span>
                 ) : "Generate Slides"}
+              </button>
+
+              <button
+                onClick={handleSaveDraftInfo}
+                disabled={savingInfo || !title.trim() || !selectedCourseId}
+                title={!selectedCourseId ? "Select a course first" : !title.trim() ? "Add a lesson title first" : "Save Lesson Info without generating slides yet"}
+                className="shrink-0 rounded-full px-4 py-2 text-xs font-semibold transition disabled:opacity-50"
+                style={{ background: "var(--bg-card-hover)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}
+              >
+                {savingInfo ? "Saving…" : savedInfoJustNow ? "Saved ✓" : "Save Draft"}
               </button>
 
               {generating && (
