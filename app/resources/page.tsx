@@ -8,19 +8,19 @@ const PLANNED = [
     icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0cc0df" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>,
     title: "Reference Links",
     description: "Save URLs that are useful across lessons — documentation, tutorials, style guides.",
-    color: "#0cc0df",
+    color: "var(--accent-text)",
   },
   {
     icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff8c4a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>,
     title: "File Attachments",
     description: "Upload PDFs, rubrics, and handouts to reference when building lessons.",
-    color: "#ff8c4a",
+    color: "var(--warning-text)",
   },
   {
     icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2dd4a0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>,
     title: "Shared Folders",
     description: "Link Google Drive folders so assets are always one click away.",
-    color: "#2dd4a0",
+    color: "var(--success-text)",
   },
 ];
 
@@ -59,7 +59,7 @@ export default function ResourcesPage() {
         </div>
 
         <div className="mt-8">
-          <Link href="/" className="text-sm text-[#0cc0df] hover:underline">← Back to Dashboard</Link>
+          <Link href="/" className="text-sm text-[var(--accent-text)] hover:underline">← Back to Dashboard</Link>
         </div>
       </div>
     </div>

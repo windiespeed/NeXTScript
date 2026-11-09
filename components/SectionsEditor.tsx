@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { DEFAULT_SECTIONS, BUILTIN_SECTION_IDS, isBuiltinId, isSlideAnchor, type SectionDef } from "@/types/section";
 
-const inputClass = "w-full rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#0cc0df] transition placeholder:text-[var(--text-muted)]";
+const inputClass = "w-full rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)] transition placeholder:text-[var(--text-muted)]";
 const inputStyle = { background: "var(--bg-card-hover)", color: "var(--text-primary)", border: "1px solid var(--border)" };
 
 interface Props {
@@ -72,7 +72,7 @@ export default function SectionsEditor({ value, onChange, scope }: Props) {
             ? "Sections used for this course's lessons — Slide Deck, Overview Doc, AI Fill, and quiz generation."
             : "Default sections for new courses — a course can add, remove, or rename its own."}
         </p>
-        <button type="button" onClick={resetToDefaults} className="text-xs shrink-0 hover:underline" style={{ color: "#0cc0df" }}>
+        <button type="button" onClick={resetToDefaults} className="text-xs shrink-0 hover:underline" style={{ color: "var(--accent-text)" }}>
           Reset to defaults
         </button>
       </div>
@@ -81,10 +81,10 @@ export default function SectionsEditor({ value, onChange, scope }: Props) {
         {value.map((s, i) => (
           <div key={s.id} className="flex items-center gap-2 rounded-xl px-3 py-2" style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)" }}>
             <div className="flex flex-col shrink-0">
-              <button type="button" onClick={() => move(i, "up")} disabled={i === 0} title="Move up" className="p-0.5 rounded text-[var(--text-muted)] hover:text-[#0cc0df] disabled:opacity-20 transition">
+              <button type="button" onClick={() => move(i, "up")} disabled={i === 0} title="Move up" className="p-0.5 rounded text-[var(--text-muted)] hover:text-[var(--accent-text)] disabled:opacity-20 transition">
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
               </button>
-              <button type="button" onClick={() => move(i, "down")} disabled={i === value.length - 1} title="Move down" className="p-0.5 rounded text-[var(--text-muted)] hover:text-[#0cc0df] disabled:opacity-20 transition">
+              <button type="button" onClick={() => move(i, "down")} disabled={i === value.length - 1} title="Move down" className="p-0.5 rounded text-[var(--text-muted)] hover:text-[var(--accent-text)] disabled:opacity-20 transition">
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
               </button>
             </div>
@@ -120,7 +120,7 @@ export default function SectionsEditor({ value, onChange, scope }: Props) {
               type="button"
               onClick={() => remove(s.id)}
               title="Remove — stored lesson content is kept and can be restored later"
-              className="p-1 rounded-full shrink-0 hover:text-red-500 transition"
+              className="p-1 rounded-full shrink-0 hover:text-[var(--danger-text)] transition"
               style={{ color: "var(--text-muted)" }}
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>

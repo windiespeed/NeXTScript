@@ -8,8 +8,8 @@ import type { Exercise, ExerciseType } from "@/types/exercise";
 import type { Concept } from "@/types/concept";
 
 const DIFFICULTY_COLOR: Record<string, { bg: string; text: string }> = {
-  beginner:     { bg: "rgba(45,212,160,0.12)",  text: "#2dd4a0" },
-  intermediate: { bg: "rgba(255,140,74,0.12)",  text: "#ff8c4a" },
+  beginner:     { bg: "rgba(45,212,160,0.12)",  text: "var(--success-text)" },
+  intermediate: { bg: "rgba(255,140,74,0.12)",  text: "var(--warning-text)" },
   advanced:     { bg: "rgba(239,68,68,0.12)",   text: "#ef4444" },
 };
 
@@ -65,7 +65,7 @@ function ExerciseCard({ exercise, onDelete }: { exercise: Exercise; onDelete: (i
           <button
             onClick={() => onDelete(exercise.id)}
             className="text-xs font-semibold px-3 py-1 rounded-full transition hover:opacity-80"
-            style={{ background: "rgba(239,68,68,0.08)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.2)" }}
+            style={{ background: "rgba(239,68,68,0.08)", color: "var(--danger-text)", border: "1px solid rgba(239,68,68,0.2)" }}
           >
             Delete
           </button>
@@ -145,9 +145,9 @@ export default function CourseExercisesPage() {
     <div className="space-y-6">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 flex-wrap text-sm">
-        <Link href="/courses" className="hover:underline" style={{ color: "#0cc0df" }}>Courses</Link>
+        <Link href="/courses" className="hover:underline" style={{ color: "var(--accent-text)" }}>Courses</Link>
         <span style={{ color: "var(--border)" }}>/</span>
-        <Link href={`/courses/${courseId}`} className="hover:underline" style={{ color: "#0cc0df" }}>{courseName}</Link>
+        <Link href={`/courses/${courseId}`} className="hover:underline" style={{ color: "var(--accent-text)" }}>{courseName}</Link>
         <span style={{ color: "var(--border)" }}>/</span>
         <span className="font-semibold" style={{ color: "var(--text-primary)" }}>Exercises</span>
       </div>
@@ -227,7 +227,7 @@ export default function CourseExercisesPage() {
 
       {/* Content */}
       {loading ? (
-        <p className="text-sm text-[#0cc0df]">Loading…</p>
+        <p className="text-sm text-[var(--accent-text)]">Loading…</p>
       ) : totalCount === 0 ? (
         <div className="text-center py-20 rounded-3xl" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
           <p className="text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>No exercises yet</p>

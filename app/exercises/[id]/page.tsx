@@ -10,8 +10,8 @@ import { v4 as uuidv4 } from "uuid";
 
 const cardClass = "rounded-3xl p-5 space-y-4";
 const cardStyle = { background: "var(--bg-card)", border: "1px solid var(--border)" };
-const sectionLabel = "text-xs font-semibold uppercase tracking-widest text-[#0cc0df]";
-const inputClass = "w-full rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#0cc0df] transition placeholder:text-[var(--text-muted)]";
+const sectionLabel = "text-xs font-semibold uppercase tracking-widest text-[var(--accent-text)]";
+const inputClass = "w-full rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)] transition placeholder:text-[var(--text-muted)]";
 const inputStyle = { background: "var(--bg-card-hover)", color: "var(--text-primary)", border: "1px solid var(--border)" };
 const textareaClass = `${inputClass} resize-none font-mono`;
 
@@ -96,13 +96,13 @@ export default function EditExercisePage() {
     }
   }
 
-  if (loading) return <p className="text-sm text-[#0cc0df]">Loading…</p>;
+  if (loading) return <p className="text-sm text-[var(--accent-text)]">Loading…</p>;
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Link href={backHref} className="text-sm hover:underline" style={{ color: "#0cc0df" }}>
+        <Link href={backHref} className="text-sm hover:underline" style={{ color: "var(--accent-text)" }}>
           ← Exercises
         </Link>
         <span style={{ color: "var(--border)" }}>/</span>
@@ -110,7 +110,7 @@ export default function EditExercisePage() {
       </div>
 
       {error && (
-        <div className="rounded-2xl px-4 py-3 text-xs font-medium" style={{ background: "rgba(239,68,68,0.08)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.2)" }}>
+        <div className="rounded-2xl px-4 py-3 text-xs font-medium" style={{ background: "rgba(239,68,68,0.08)", color: "var(--danger-text)", border: "1px solid rgba(239,68,68,0.2)" }}>
           {error}
         </div>
       )}
@@ -170,10 +170,10 @@ export default function EditExercisePage() {
       <div className={cardClass} style={cardStyle}>
         <div className="flex items-center justify-between">
           <p className={sectionLabel}>Test Cases</p>
-          <button onClick={addTest} className="text-xs font-semibold transition hover:opacity-80" style={{ color: "#0cc0df" }}>+ Add Test</button>
+          <button onClick={addTest} className="text-xs font-semibold transition hover:opacity-80" style={{ color: "var(--accent-text)" }}>+ Add Test</button>
         </div>
         <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-          Use <code className="text-[#0cc0df]">assert(condition, message)</code> to check results.
+          Use <code className="text-[var(--accent-text)]">assert(condition, message)</code> to check results.
         </p>
         <div className="space-y-4">
           {tests.map((test, i) => (
@@ -181,7 +181,7 @@ export default function EditExercisePage() {
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-semibold" style={{ color: "var(--text-muted)" }}>TEST {i + 1}</span>
                 {tests.length > 1 && (
-                  <button onClick={() => removeTest(i)} className="text-[10px] transition hover:opacity-70" style={{ color: "#ef4444" }}>Remove</button>
+                  <button onClick={() => removeTest(i)} className="text-[10px] transition hover:opacity-70" style={{ color: "var(--danger-text)" }}>Remove</button>
                 )}
               </div>
               <input value={test.description} onChange={e => updateTest(i, "description", e.target.value)}
@@ -199,7 +199,7 @@ export default function EditExercisePage() {
       <div className={cardClass} style={cardStyle}>
         <div className="flex items-center justify-between">
           <p className={sectionLabel}>Hints</p>
-          <button onClick={addHint} className="text-xs font-semibold transition hover:opacity-80" style={{ color: "#0cc0df" }}>+ Add Hint</button>
+          <button onClick={addHint} className="text-xs font-semibold transition hover:opacity-80" style={{ color: "var(--accent-text)" }}>+ Add Hint</button>
         </div>
         <div className="space-y-2">
           {hints.map((hint, i) => (
@@ -208,7 +208,7 @@ export default function EditExercisePage() {
                 placeholder={`Hint ${i + 1}…`}
                 className={`${inputClass} flex-1`} style={inputStyle} />
               {hints.length > 1 && (
-                <button onClick={() => removeHint(i)} className="text-xs transition hover:opacity-70 shrink-0" style={{ color: "#ef4444" }}>✕</button>
+                <button onClick={() => removeHint(i)} className="text-xs transition hover:opacity-70 shrink-0" style={{ color: "var(--danger-text)" }}>✕</button>
               )}
             </div>
           ))}

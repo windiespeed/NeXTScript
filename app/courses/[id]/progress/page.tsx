@@ -56,8 +56,8 @@ export default function CourseProgressPage() {
       });
   }, [id]);
 
-  if (loading) return <div className="py-20 text-center text-sm" style={{ color: "#0cc0df" }}>Loading…</div>;
-  if (error) return <div className="py-20 text-center text-sm" style={{ color: "#ef4444" }}>{error}</div>;
+  if (loading) return <div className="py-20 text-center text-sm" style={{ color: "var(--accent-text)" }}>Loading…</div>;
+  if (error) return <div className="py-20 text-center text-sm" style={{ color: "var(--danger-text)" }}>{error}</div>;
   if (!data) return null;
 
   const { course, exercises, progress } = data;
@@ -82,7 +82,7 @@ export default function CourseProgressPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3 flex-wrap">
-        <Link href={`/courses/${id}`} className="text-sm hover:underline" style={{ color: "#0cc0df" }}>← {course.title}</Link>
+        <Link href={`/courses/${id}`} className="text-sm hover:underline" style={{ color: "var(--accent-text)" }}>← {course.title}</Link>
         <span style={{ color: "var(--border)" }}>/</span>
         <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Student Progress</span>
       </div>
@@ -107,7 +107,7 @@ export default function CourseProgressPage() {
                   {conceptOrder.map(concept => (
                     <th key={concept} colSpan={conceptGroups[concept].length}
                       className="px-2 py-3 font-semibold text-center border-l"
-                      style={{ color: "#0cc0df", borderColor: "var(--border)" }}>
+                      style={{ color: "var(--accent-text)", borderColor: "var(--border)" }}>
                       {concept.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")}
                     </th>
                   ))}
@@ -167,7 +167,7 @@ export default function CourseProgressPage() {
             </span>
             <div className="flex items-center gap-4 ml-auto">
               {([
-                { color: "#2dd4a0", bg: "var(--success-bg)", label: "Completed" },
+                { color: "var(--success-text)", bg: "var(--success-bg)", label: "Completed" },
                 { color: "#fbbf24", bg: "rgba(251,191,36,0.15)", label: "In Progress" },
               ] as { color: string; bg: string; label: string }[]).map(({ color, bg, label }) => (
                 <div key={label} className="flex items-center gap-1.5">

@@ -17,8 +17,8 @@ interface LessonDraft {
 
 const cardClass = "rounded-3xl p-5 space-y-4";
 const cardStyle = { background: "var(--bg-card)", border: "1px solid var(--border)" };
-const sectionLabel = "text-xs font-semibold uppercase tracking-widest text-[#0cc0df]";
-const inputClass = "w-full rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#0cc0df] transition placeholder:text-[var(--text-muted)]";
+const sectionLabel = "text-xs font-semibold uppercase tracking-widest text-[var(--accent-text)]";
+const inputClass = "w-full rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)] transition placeholder:text-[var(--text-muted)]";
 const inputStyle = { background: "var(--bg-card-hover)", color: "var(--text-primary)", border: "1px solid var(--border)" };
 
 interface Props {
@@ -141,7 +141,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
       <button
         type="button"
         onClick={onClick}
-        className="text-[10px] font-semibold rounded-full px-2 py-0.5 transition hover:bg-red-500/10 hover:text-red-500"
+        className="text-[10px] font-semibold rounded-full px-2 py-0.5 transition hover:bg-red-500/10 hover:text-[var(--danger-text)]"
         style={{ color: "var(--text-muted)", border: "1px solid var(--border)" }}
       >
         Clear
@@ -318,7 +318,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
 
         <div>
           <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
-            Lesson Title <span className="text-red-500">*</span> {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "#0cc0df" }}>· used by AI</span>}
+            Lesson Title <span className="text-[var(--danger-text)]">*</span> {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span>}
           </label>
           <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>Module number and lesson number (e.g. Module 3, Lesson 2)</p>
           <input
@@ -333,7 +333,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
         </div>
 
         <div>
-          <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Lesson Subtitle {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "#0cc0df" }}>· used by AI</span>}</label>
+          <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Lesson Subtitle {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span>}</label>
           <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>Specific topic or subject covered in this lesson</p>
           <input
             type="text"
@@ -347,7 +347,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
 
         <div>
           <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
-            Topics {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "#0cc0df" }}>· used by AI</span>}
+            Topics {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span>}
           </label>
           <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>Comma-separated. AI uses these to generate slide content, overviews, and quizzes.</p>
           <input
@@ -392,7 +392,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
         </div>
 
         <div>
-          <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Sources {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "#0cc0df" }}>· used by AI</span>}</label>
+          <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Sources {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span>}</label>
           <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>
             One URL per line. These are passed to the AI as reference material when generating lesson content.
             {form.sources
@@ -413,7 +413,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
 
         {hasAiKey && (
           <div>
-            <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Student Level <span className="font-normal text-[10px]" style={{ color: "#0cc0df" }}>· used by AI</span></label>
+            <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Student Level <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span></label>
             <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>
               Adjusts the tone and complexity of AI-generated content to match your students&apos; experience.
             </p>
@@ -463,7 +463,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
               onClick={handleAiFill}
               disabled={aiFilling || saving || !form.title.trim()}
               title={!form.title.trim() ? "Enter a lesson title before using AI Fill" : undefined}
-              className="rounded-md bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-white shadow hover:opacity-90 disabled:opacity-50 transition whitespace-nowrap"
+              className="rounded-md bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-[#0a0b13] shadow hover:opacity-90 disabled:opacity-50 transition whitespace-nowrap"
             >
               {aiFilling ? (
                 <span className="flex items-center gap-2">
@@ -503,7 +503,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
               value={form.sections?.[id] ?? ""}
               onChange={(e) => { setSection(id, e.target.value); setAiFilledFields(prev => { const next = new Set(prev); next.delete(id); return next; }); }}
               rows={rows ?? 4}
-              className={`${inputClass} font-mono ${aiFilledFields.has(id) ? "ring-1 ring-[#0cc0df]/50" : ""}`}
+              className={`${inputClass} font-mono ${aiFilledFields.has(id) ? "ring-1 ring-[var(--focus-ring)]/50" : ""}`}
               style={{ ...inputStyle, borderColor: aiFilledFields.has(id) ? "rgba(12,192,223,0.4)" : "var(--border)" }}
             />
           </div>
@@ -523,7 +523,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
                 max={20}
                 value={slideCount}
                 onChange={e => setSlideCount(Math.min(20, Math.max(1, Number(e.target.value))))}
-                className="w-14 rounded-lg px-2 py-1 text-xs text-center focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
+                className="w-14 rounded-lg px-2 py-1 text-xs text-center focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
                 style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
                 title="Number of slides AI will generate"
               />
@@ -531,7 +531,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
             <button
               type="button"
               onClick={() => { setSlides([{ title: "", body: "" }]); setOverviewSlides([true]); setAiFilledFields(prev => { const next = new Set(prev); next.delete("slideContent"); return next; }); }}
-              className="rounded-full px-3 py-1.5 text-xs font-semibold transition hover:bg-red-500/10 hover:text-red-500 text-[var(--text-muted)]"
+              className="rounded-full px-3 py-1.5 text-xs font-semibold transition hover:bg-red-500/10 hover:text-[var(--danger-text)] text-[var(--text-muted)]"
               style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)" }}
             >
               Clear
@@ -558,18 +558,18 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
                     type="button"
                     onClick={() => setOverviewSlides(prev => prev.map((v, idx) => idx === i ? !v : v))}
                     title={overviewSlides[i] ? "Included in Overview Doc — click to exclude" : "Excluded from Overview Doc — click to include"}
-                    className={`rounded-full px-2 py-0.5 text-[10px] font-semibold transition ${overviewSlides[i] ? "bg-[#0cc0df]/15 text-[#0cc0df]" : "text-[var(--text-muted)] hover:bg-[var(--bg-card)]"}`}
+                    className={`rounded-full px-2 py-0.5 text-[10px] font-semibold transition ${overviewSlides[i] ? "bg-[#0cc0df]/15 text-[var(--accent-text)]" : "text-[var(--text-muted)] hover:bg-[var(--bg-card)]"}`}
                     style={overviewSlides[i] ? {} : { border: "1px solid var(--border)" }}
                   >
                     Overview
                   </button>
-                  <button type="button" onClick={() => moveSlide(i, "up")} disabled={i === 0} title="Move up" className="p-1 rounded text-[var(--text-muted)] hover:text-[#0cc0df] disabled:opacity-20 transition">
+                  <button type="button" onClick={() => moveSlide(i, "up")} disabled={i === 0} title="Move up" className="p-1 rounded text-[var(--text-muted)] hover:text-[var(--accent-text)] disabled:opacity-20 transition">
                     <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
                   </button>
-                  <button type="button" onClick={() => moveSlide(i, "down")} disabled={i === slides.length - 1} title="Move down" className="p-1 rounded text-[var(--text-muted)] hover:text-[#0cc0df] disabled:opacity-20 transition">
+                  <button type="button" onClick={() => moveSlide(i, "down")} disabled={i === slides.length - 1} title="Move down" className="p-1 rounded text-[var(--text-muted)] hover:text-[var(--accent-text)] disabled:opacity-20 transition">
                     <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
                   </button>
-                  <button type="button" onClick={() => removeSlide(i)} disabled={slides.length === 1} className="text-xs text-red-500 hover:text-red-700 disabled:opacity-30 transition ml-1">
+                  <button type="button" onClick={() => removeSlide(i)} disabled={slides.length === 1} className="text-xs text-[var(--danger-text)] hover:text-red-700 disabled:opacity-30 transition ml-1">
                     Remove
                   </button>
                 </div>
@@ -614,7 +614,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
               value={form.sections?.[id] ?? ""}
               onChange={(e) => { setSection(id, e.target.value); setAiFilledFields(prev => { const next = new Set(prev); next.delete(id); return next; }); }}
               rows={rows ?? 4}
-              className={`${inputClass} font-mono ${aiFilledFields.has(id) ? "ring-1 ring-[#0cc0df]/50" : ""}`}
+              className={`${inputClass} font-mono ${aiFilledFields.has(id) ? "ring-1 ring-[var(--focus-ring)]/50" : ""}`}
               style={{ ...inputStyle, borderColor: aiFilledFields.has(id) ? "rgba(12,192,223,0.4)" : "var(--border)" }}
             />
           </div>
@@ -667,7 +667,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
           <button
             type="submit"
             disabled={saving || savingDraft}
-            className={`rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2.5 text-sm font-semibold text-white shadow hover:opacity-90 disabled:opacity-50 transition ${onCancel || onSaveDraft ? "flex-1" : "w-full"}`}
+            className={`rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2.5 text-sm font-semibold text-[#0a0b13] shadow hover:opacity-90 disabled:opacity-50 transition ${onCancel || onSaveDraft ? "flex-1" : "w-full"}`}
           >
             {saving ? "Saving…" : submitLabel}
           </button>

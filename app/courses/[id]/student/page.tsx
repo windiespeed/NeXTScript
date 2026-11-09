@@ -32,7 +32,7 @@ export default function StudentCoursePage() {
       });
   }, [id]);
 
-  if (loading) return <p className="text-sm text-[#0cc0df] mt-10">Loading course…</p>;
+  if (loading) return <p className="text-sm text-[var(--accent-text)] mt-10">Loading course…</p>;
 
   if (notFound || !course) {
     return (
@@ -47,7 +47,7 @@ export default function StudentCoursePage() {
     <div className="space-y-6">
       {/* Hero header */}
       <div className="rounded-3xl bg-gradient-to-br from-[#08090f] from-30% to-[#0cc0df]/30 px-6 py-6 shadow" style={{ border: "1px solid rgba(12,192,223,0.2)" }}>
-        <p className="text-xs font-semibold uppercase tracking-widest text-[#0cc0df]/70 mb-2">Student View</p>
+        <p className="text-xs font-semibold uppercase tracking-widest text-[var(--accent-text)]/70 mb-2">Student View</p>
         <h1 className="text-2xl font-bold text-white">{course.title}</h1>
         {course.description && (
           <p className="text-sm text-white/60 mt-1 max-w-xl">{course.description}</p>
@@ -62,7 +62,7 @@ export default function StudentCoursePage() {
           {course.term && (
             <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-xs text-white/80">{course.term}</span>
           )}
-          <span className="rounded-full bg-[#2dd4a0]/20 px-2.5 py-0.5 text-xs text-[#2dd4a0]">
+          <span className="rounded-full bg-[#2dd4a0]/20 px-2.5 py-0.5 text-xs text-[var(--success-text)]">
             {course.lessons.length} {course.lessons.length === 1 ? "lesson" : "lessons"} released
           </span>
         </div>
@@ -100,7 +100,7 @@ export default function StudentCoursePage() {
                 {/* Number bubble */}
                 <div
                   className="w-7 h-7 rounded-full shrink-0 flex items-center justify-center text-xs font-bold mt-0.5"
-                  style={{ background: "var(--accent-bg)", color: "#0cc0df" }}
+                  style={{ background: "var(--accent-bg)", color: "var(--accent-text)" }}
                 >
                   {i + 1}
                 </div>
@@ -112,7 +112,7 @@ export default function StudentCoursePage() {
                     <p className="text-xs mt-0.5" style={{ color: "var(--text-secondary)" }}>{lesson.subtitle}</p>
                   )}
                   {lesson.topics && (
-                    <p className="text-xs mt-2 line-clamp-2 text-[#0cc0df]">{lesson.topics}</p>
+                    <p className="text-xs mt-2 line-clamp-2 text-[var(--accent-text)]">{lesson.topics}</p>
                   )}
                   <div className="flex flex-wrap items-center gap-3 mt-2">
                     {lesson.deadline && (
@@ -121,7 +121,7 @@ export default function StudentCoursePage() {
                       </span>
                     )}
                     {lesson.tag && (
-                      <span className="rounded px-1.5 py-0.5 text-[10px] font-semibold text-[#0cc0df]" style={{ background: "var(--accent-bg)" }}>
+                      <span className="rounded px-1.5 py-0.5 text-[10px] font-semibold text-[var(--accent-text)]" style={{ background: "var(--accent-bg)" }}>
                         {lesson.tag}
                       </span>
                     )}

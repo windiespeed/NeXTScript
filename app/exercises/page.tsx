@@ -7,12 +7,12 @@ import type { Exercise } from "@/types/exercise";
 import type { Course } from "@/types/course";
 
 const DIFFICULTY_COLOR: Record<string, { bg: string; text: string }> = {
-  beginner:     { bg: "rgba(45,212,160,0.12)",  text: "#2dd4a0" },
-  intermediate: { bg: "rgba(255,140,74,0.12)",  text: "#ff8c4a" },
+  beginner:     { bg: "rgba(45,212,160,0.12)",  text: "var(--success-text)" },
+  intermediate: { bg: "rgba(255,140,74,0.12)",  text: "var(--warning-text)" },
   advanced:     { bg: "rgba(239,68,68,0.12)",   text: "#ef4444" },
 };
 
-const inputClass = "rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#0cc0df] transition";
+const inputClass = "rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)] transition";
 const inputStyle = { background: "var(--bg-card-hover)", color: "var(--text-primary)", border: "1px solid var(--border)" };
 
 function ExerciseRow({
@@ -65,7 +65,7 @@ function ExerciseRow({
       <button
         onClick={() => onDelete(exercise.id)}
         className="text-xs font-semibold px-3 py-1.5 rounded-full transition hover:opacity-80 shrink-0"
-        style={{ background: "rgba(239,68,68,0.08)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.2)" }}
+        style={{ background: "rgba(239,68,68,0.08)", color: "var(--danger-text)", border: "1px solid rgba(239,68,68,0.2)" }}
       >
         Delete
       </button>
@@ -168,13 +168,13 @@ export default function UnassignedExercisesPage() {
       </div>
 
       {error && (
-        <div className="rounded-2xl px-4 py-3 text-xs font-medium" style={{ background: "rgba(239,68,68,0.08)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.2)" }}>
+        <div className="rounded-2xl px-4 py-3 text-xs font-medium" style={{ background: "rgba(239,68,68,0.08)", color: "var(--danger-text)", border: "1px solid rgba(239,68,68,0.2)" }}>
           {error}
         </div>
       )}
 
       {loading ? (
-        <p className="text-sm text-[#0cc0df]">Loading…</p>
+        <p className="text-sm text-[var(--accent-text)]">Loading…</p>
       ) : exercises.length === 0 ? (
         <div className="text-center py-20 rounded-3xl" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
           <p className="text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Nothing to assign</p>

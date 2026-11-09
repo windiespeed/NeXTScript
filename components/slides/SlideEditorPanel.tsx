@@ -13,7 +13,7 @@ import type {
   StepGridSlide as StepGridSlideNode,
 } from "@/types/slideAst";
 
-const inputClass = "w-full rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#0cc0df] transition placeholder:text-[var(--text-muted)]";
+const inputClass = "w-full rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)] transition placeholder:text-[var(--text-muted)]";
 const inputStyle = { background: "var(--bg-card-hover)", color: "var(--text-primary)", border: "1px solid var(--border)" };
 const labelClass = "block text-xs font-semibold mb-1";
 const labelStyle = { color: "var(--text-primary)" };

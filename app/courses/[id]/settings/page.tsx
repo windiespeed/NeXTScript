@@ -15,9 +15,9 @@ import { useDraftAutosave, useDraftRestore } from "@/hooks/useDraftAutosave";
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const TERM_YEARS: number[] = Array.from({ length: 21 }, (_, i) => 2040 - i); // 2040 down to 2020
 
-const inputClass = "w-full rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#0cc0df] transition placeholder:text-[var(--text-muted)]";
+const inputClass = "w-full rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)] transition placeholder:text-[var(--text-muted)]";
 const inputStyle = { background: "var(--bg-card-hover)", color: "var(--text-primary)", border: "1px solid var(--border)" };
-const sectionHeading = "text-xs font-semibold uppercase tracking-widest text-[#0cc0df]";
+const sectionHeading = "text-xs font-semibold uppercase tracking-widest text-[var(--accent-text)]";
 
 function slugify(label: string): string {
   return label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
@@ -345,15 +345,15 @@ export default function CourseSettingsPage() {
     await loadConcepts();
   }
 
-  if (loading) return <div className="py-20 text-center text-sm" style={{ color: "#0cc0df" }}>Loading…</div>;
+  if (loading) return <div className="py-20 text-center text-sm" style={{ color: "var(--accent-text)" }}>Loading…</div>;
 
   return (
     <div className="space-y-6">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 flex-wrap text-sm">
-        <Link href="/courses" className="hover:underline" style={{ color: "#0cc0df" }}>Courses</Link>
+        <Link href="/courses" className="hover:underline" style={{ color: "var(--accent-text)" }}>Courses</Link>
         <span style={{ color: "var(--border)" }}>/</span>
-        <Link href={`/courses/${courseId}`} className="hover:underline" style={{ color: "#0cc0df" }}>{courseName}</Link>
+        <Link href={`/courses/${courseId}`} className="hover:underline" style={{ color: "var(--accent-text)" }}>{courseName}</Link>
         <span style={{ color: "var(--border)" }}>/</span>
         <span className="font-semibold" style={{ color: "var(--text-primary)" }}>Settings</span>
       </div>
@@ -384,7 +384,7 @@ export default function CourseSettingsPage() {
             </div>
             <div>
               <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
-                Term <span style={{ color: "#ef4444" }}>*</span>
+                Term <span style={{ color: "var(--danger-text)" }}>*</span>
               </label>
               <div className="grid grid-cols-2 gap-2">
                 <select value={editTermMonth} onChange={e => setEditTermMonth(e.target.value)} className={inputClass} style={inputStyle}>
@@ -412,16 +412,16 @@ export default function CourseSettingsPage() {
           <p className="text-xs -mt-1" style={{ color: "var(--text-muted)" }}>These override your global profile settings for every lesson in this course.</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Industry {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "#0cc0df" }}>· used by AI</span>}</label>
+              <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Industry {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span>}</label>
               <input type="text" value={editSettings.industry} onChange={e => patchSettings({ industry: e.target.value })} placeholder="e.g. Coding, Healthcare" className={inputClass} style={inputStyle} />
             </div>
             <div>
-              <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Subject Area {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "#0cc0df" }}>· used by AI</span>}</label>
+              <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Subject Area {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span>}</label>
               <input type="text" value={editSettings.subject} onChange={e => patchSettings({ subject: e.target.value })} placeholder="e.g. JavaScript, Nursing 101" className={inputClass} style={inputStyle} />
             </div>
           </div>
           <div>
-            <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Student Level {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "#0cc0df" }}>· used by AI</span>}</label>
+            <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Student Level {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span>}</label>
             <select value={editSettings.studentLevel} onChange={e => patchSettings({ studentLevel: e.target.value as CourseSettings["studentLevel"] })} className={inputClass} style={inputStyle}>
               <option value="">— Not specified —</option>
               <option value="beginner">Beginner</option>
@@ -430,7 +430,7 @@ export default function CourseSettingsPage() {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Default Sources {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "#0cc0df" }}>· used by AI</span>}</label>
+            <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Default Sources {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span>}</label>
             <p className="text-xs mb-1.5" style={{ color: "var(--text-muted)" }}>Pre-filled in every new lesson in this course. One URL per line.</p>
             <textarea value={editSettings.defaultSources} onChange={e => patchSettings({ defaultSources: e.target.value })}
               rows={4} placeholder={"https://www.w3schools.com/\nhttps://developer.mozilla.org/"}
@@ -454,13 +454,13 @@ export default function CourseSettingsPage() {
           />
         </div>
 
-        {saveError && <p className="text-sm text-red-500">{saveError}</p>}
+        {saveError && <p className="text-sm text-[var(--danger-text)]">{saveError}</p>}
         <div className="flex items-center gap-4">
           <button type="submit" disabled={saving}
-            className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-6 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50 transition shadow">
+            className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-6 py-2.5 text-sm font-semibold text-[#0a0b13] hover:opacity-90 disabled:opacity-50 transition shadow">
             {saving ? "Saving…" : "Save Settings"}
           </button>
-          {saveMsg && <p className="text-sm font-medium" style={{ color: "#2dd4a0" }}>{saveMsg}</p>}
+          {saveMsg && <p className="text-sm font-medium" style={{ color: "var(--success-text)" }}>{saveMsg}</p>}
         </div>
       </form>
 
@@ -495,7 +495,7 @@ export default function CourseSettingsPage() {
                 }
                 setSavingClassroom(false);
               }}
-              className="text-xs hover:underline shrink-0" style={{ color: "#ef4444" }}>
+              className="text-xs hover:underline shrink-0" style={{ color: "var(--danger-text)" }}>
               Unlink
             </button>
           </div>
@@ -507,11 +507,11 @@ export default function CourseSettingsPage() {
               onClick={loadClassrooms}
               disabled={classroomsLoading}
               className="rounded-full px-4 py-2 text-xs font-semibold transition hover:opacity-90 disabled:opacity-50"
-              style={{ background: "rgba(12,192,223,0.1)", color: "#0cc0df", border: "1px solid rgba(12,192,223,0.3)" }}>
+              style={{ background: "rgba(12,192,223,0.1)", color: "var(--accent-text)", border: "1px solid rgba(12,192,223,0.3)" }}>
               {classroomsLoading ? "Loading classrooms…" : "Load my Google Classrooms"}
             </button>
             {classroomsError && (
-              <p className="text-xs" style={{ color: "#ef4444" }}>{classroomsError}</p>
+              <p className="text-xs" style={{ color: "var(--danger-text)" }}>{classroomsError}</p>
             )}
           </div>
         ) : (
@@ -539,7 +539,7 @@ export default function CourseSettingsPage() {
             </button>
           </div>
         )}
-        {classroomMsg && <p className="text-xs font-medium" style={{ color: "#2dd4a0" }}>{classroomMsg}</p>}
+        {classroomMsg && <p className="text-xs font-medium" style={{ color: "var(--success-text)" }}>{classroomMsg}</p>}
         <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>
           After linking, use the <strong>Release</strong> button on each lesson or module to push it to this classroom as a draft assignment.
           If a matching title already exists, a copy is created automatically.
@@ -573,7 +573,7 @@ export default function CourseSettingsPage() {
           </div>
         )}
 
-        {collabError && <p className="text-xs" style={{ color: "#ef4444" }}>{collabError}</p>}
+        {collabError && <p className="text-xs" style={{ color: "var(--danger-text)" }}>{collabError}</p>}
 
         {collaborators.length > 0 && (
           <div className="space-y-2">
@@ -582,7 +582,7 @@ export default function CourseSettingsPage() {
                 <span className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>{email}</span>
                 {isOwner && (
                   <button onClick={() => handleRemoveCollaborator(email)} disabled={collabSaving}
-                    className="text-xs transition hover:opacity-80 disabled:opacity-50" style={{ color: "#ef4444" }}>
+                    className="text-xs transition hover:opacity-80 disabled:opacity-50" style={{ color: "var(--danger-text)" }}>
                     Remove
                   </button>
                 )}
@@ -610,7 +610,7 @@ export default function CourseSettingsPage() {
         </div>
 
         {conceptError && (
-          <div className="rounded-2xl px-4 py-3 text-xs font-medium" style={{ background: "rgba(239,68,68,0.08)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.2)" }}>
+          <div className="rounded-2xl px-4 py-3 text-xs font-medium" style={{ background: "rgba(239,68,68,0.08)", color: "var(--danger-text)", border: "1px solid rgba(239,68,68,0.2)" }}>
             {conceptError}
           </div>
         )}
@@ -623,7 +623,7 @@ export default function CourseSettingsPage() {
             </p>
             <button onClick={handleSeed} disabled={seeding}
               className="rounded-full px-5 py-2 text-xs font-bold transition hover:opacity-90 disabled:opacity-50"
-              style={{ background: "var(--accent-bg)", color: "#0cc0df", border: "1px solid rgba(12,192,223,0.3)" }}>
+              style={{ background: "var(--accent-bg)", color: "var(--accent-text)", border: "1px solid rgba(12,192,223,0.3)" }}>
               {seeding ? "Seeding…" : "Seed JavaScript Defaults"}
             </button>
           </div>
@@ -682,9 +682,9 @@ export default function CourseSettingsPage() {
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <button onClick={() => { setEditId(concept.id); setEditLabel(concept.label); setEditDesc(concept.description); setConceptError(""); }}
-                        className="text-xs transition hover:opacity-80" style={{ color: "#0cc0df" }}>Edit</button>
+                        className="text-xs transition hover:opacity-80" style={{ color: "var(--accent-text)" }}>Edit</button>
                       <button onClick={() => handleDeleteConcept(concept.id)}
-                        className="text-xs transition hover:opacity-80" style={{ color: "#ef4444" }}>Delete</button>
+                        className="text-xs transition hover:opacity-80" style={{ color: "var(--danger-text)" }}>Delete</button>
                     </div>
                   </div>
                 )}

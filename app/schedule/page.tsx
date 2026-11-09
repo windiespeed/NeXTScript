@@ -87,21 +87,21 @@ export default function SchedulePage() {
       </div>
 
       {loading ? (
-        <p className="text-sm text-[#0cc0df]">Loading…</p>
+        <p className="text-sm text-[var(--accent-text)]">Loading…</p>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           {/* Calendar */}
           <div className="lg:col-span-2 rounded-3xl p-5" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
             <div className="flex items-center justify-between mb-5">
-              <button onClick={prevMonth} className="p-2 rounded-full transition hover:bg-[var(--bg-card-hover)]" style={{ color: "var(--text-secondary)" }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+              <button onClick={prevMonth} aria-label="Previous month" className="p-2 rounded-full transition hover:bg-[var(--bg-card-hover)]" style={{ color: "var(--text-secondary)" }}>
+                <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
               </button>
               <div className="flex items-center gap-3">
                 <h2 className="text-base font-bold" style={{ color: "var(--text-primary)" }}>{MONTHS[month]} {year}</h2>
-                <button onClick={goToday} className="text-xs px-2.5 py-1 rounded-full font-semibold text-[#0cc0df] transition hover:bg-[#0cc0df]/10">Today</button>
+                <button onClick={goToday} className="text-xs px-2.5 py-1 rounded-full font-semibold text-[var(--accent-text)] transition hover:bg-[#0cc0df]/10">Today</button>
               </div>
-              <button onClick={nextMonth} className="p-2 rounded-full transition hover:bg-[var(--bg-card-hover)]" style={{ color: "var(--text-secondary)" }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+              <button onClick={nextMonth} aria-label="Next month" className="p-2 rounded-full transition hover:bg-[var(--bg-card-hover)]" style={{ color: "var(--text-secondary)" }}>
+                <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
               </button>
             </div>
             <div className="grid grid-cols-7 mb-2">
@@ -122,7 +122,7 @@ export default function SchedulePage() {
                     key={key}
                     onClick={() => setSelectedDay(isSelected ? null : cellDate)}
                     className={`relative rounded-full p-1.5 text-xs font-semibold text-center transition-all flex flex-col items-center gap-0.5 min-h-[44px]
-                      ${isSelected ? "bg-[#0cc0df] text-[#0a0b13]" : isToday ? "bg-[#0cc0df]/15 text-[#0cc0df]" : "hover:bg-[var(--bg-card-hover)]"}`}
+                      ${isSelected ? "bg-[#0cc0df] text-[#0a0b13]" : isToday ? "bg-[#0cc0df]/15 text-[var(--accent-text)]" : "hover:bg-[var(--bg-card-hover)]"}`}
                     style={!isSelected && !isToday ? { color: "var(--text-primary)" } : {}}
                   >
                     <span>{day}</span>
@@ -157,7 +157,7 @@ export default function SchedulePage() {
                       >
                         <span className={`w-2 h-2 rounded-full shrink-0 ${STATUS_COLOR[lesson.status]}`} />
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold truncate group-hover:text-[#0cc0df] transition" style={{ color: "var(--text-primary)" }}>{lesson.title}</p>
+                          <p className="text-xs font-semibold truncate group-hover:text-[var(--accent-text)] transition" style={{ color: "var(--text-primary)" }}>{lesson.title}</p>
                           {lesson.tag && <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>{lesson.tag}</p>}
                         </div>
                       </Link>
@@ -181,8 +181,8 @@ export default function SchedulePage() {
                         className="flex items-center gap-3 rounded-full px-2.5 py-2 transition hover:bg-[var(--bg-card-hover)] group"
                       >
                         <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isOverdue ? "bg-red-500" : "bg-[#ff8c4a]"}`} />
-                        <p className="flex-1 text-xs font-semibold truncate group-hover:text-[#0cc0df] transition" style={{ color: "var(--text-primary)" }}>{lesson.title}</p>
-                        <span className={`text-[10px] font-semibold shrink-0 ${isOverdue ? "text-red-500" : ""}`} style={!isOverdue ? { color: "var(--text-muted)" } : {}}>
+                        <p className="flex-1 text-xs font-semibold truncate group-hover:text-[var(--accent-text)] transition" style={{ color: "var(--text-primary)" }}>{lesson.title}</p>
+                        <span className={`text-[10px] font-semibold shrink-0 ${isOverdue ? "text-[var(--danger-text)]" : ""}`} style={!isOverdue ? { color: "var(--text-muted)" } : {}}>
                           {d.toLocaleDateString(undefined, { month: "short", day: "numeric" })}
                         </span>
                       </Link>

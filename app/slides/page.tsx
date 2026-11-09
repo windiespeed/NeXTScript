@@ -9,9 +9,9 @@ import type { SavedProject } from "@/types/project";
 
 const STATUS_COLOR: Record<Lesson["status"], { bg: string; text: string; label: string }> = {
   draft:        { bg: "var(--bg-card-hover)",  text: "var(--text-muted)", label: "Draft" },
-  generating:   { bg: "rgba(255,140,74,0.12)", text: "#ff8c4a",           label: "Generating…" },
-  regenerating: { bg: "rgba(12,192,223,0.12)", text: "#0cc0df",           label: "Regenerating…" },
-  done:         { bg: "rgba(45,212,160,0.12)", text: "#2dd4a0",           label: "Done" },
+  generating:   { bg: "rgba(255,140,74,0.12)", text: "var(--warning-text)",           label: "Generating…" },
+  regenerating: { bg: "rgba(12,192,223,0.12)", text: "var(--accent-text)",           label: "Regenerating…" },
+  done:         { bg: "rgba(45,212,160,0.12)", text: "var(--success-text)",           label: "Done" },
   error:        { bg: "rgba(239,68,68,0.12)",  text: "#ef4444",           label: "Error" },
 };
 
@@ -57,7 +57,7 @@ function SlideCard({
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           {deckCount > 0 && (
-            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background: "rgba(12,192,223,0.12)", color: "#0cc0df" }}>
+            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background: "rgba(12,192,223,0.12)", color: "var(--accent-text)" }}>
               {deckCount} deck{deckCount !== 1 ? "s" : ""}
             </span>
           )}
@@ -250,7 +250,7 @@ export default function SlidesPage() {
         </div>
         <Link
           href="/slides/new"
-          className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-bold text-white hover:opacity-90 transition shadow"
+          className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-bold text-[#0a0b13] hover:opacity-90 transition shadow"
         >
           + New Slides
         </Link>
@@ -312,14 +312,14 @@ export default function SlidesPage() {
 
       {/* Content */}
       {loading ? (
-        <p className="text-sm text-[#0cc0df]">Loading…</p>
+        <p className="text-sm text-[var(--accent-text)]">Loading…</p>
       ) : totalFiltered === 0 ? (
         <div className="text-center py-20 rounded-3xl" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
           <p className="text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>No slides yet</p>
           <p className="text-xs mb-5" style={{ color: "var(--text-muted)" }}>Create a slide deck to get started.</p>
           <Link
             href="/slides/new"
-            className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition"
+            className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-[#0a0b13] hover:opacity-90 transition"
           >
             Create your first slides
           </Link>

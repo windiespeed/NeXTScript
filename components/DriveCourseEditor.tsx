@@ -23,15 +23,16 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import Dialog from "@/components/ui/Dialog";
 
-const inputClass = "w-full rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#0cc0df] transition placeholder:text-[var(--text-muted)]";
+const inputClass = "w-full rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)] transition placeholder:text-[var(--text-muted)]";
 const inputStyle = { background: "var(--bg-card-hover)", color: "var(--text-primary)", border: "1px solid var(--border)" };
 
 const LESSON_TYPE_COLOR: Record<NonNullable<Lesson["lessonType"]>, { bg: string; text: string; label: string }> = {
-  lesson:     { bg: "rgba(12,192,223,0.12)",   text: "#0cc0df",  label: "Lesson" },
+  lesson:     { bg: "rgba(12,192,223,0.12)",   text: "var(--accent-text)",  label: "Lesson" },
   practice:   { bg: "var(--accent-purple-bg)", text: "var(--accent-purple)", label: "Practice" },
-  project:    { bg: "rgba(255,140,74,0.12)",   text: "#ff8c4a",  label: "Project" },
-  assessment: { bg: "rgba(45,212,160,0.12)",   text: "#2dd4a0",  label: "Assessment" },
+  project:    { bg: "rgba(255,140,74,0.12)",   text: "var(--warning-text)",  label: "Project" },
+  assessment: { bg: "rgba(45,212,160,0.12)",   text: "var(--success-text)",  label: "Assessment" },
   review:     { bg: "var(--bg-card-hover)",    text: "var(--text-muted)", label: "Review" },
 };
 
@@ -618,8 +619,8 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
     }
   }
 
-  if (loading) return <p className="text-sm text-[#0cc0df] py-4">Loading…</p>;
-  if (!course) return <p className="text-sm text-red-500 py-4">Drive course not found.</p>;
+  if (loading) return <p className="text-sm text-[var(--accent-text)] py-4">Loading…</p>;
+  if (!course) return <p className="text-sm text-[var(--danger-text)] py-4">Drive course not found.</p>;
 
   return (
     <div className="space-y-4">
@@ -638,7 +639,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
               <span className="rounded-full px-2 py-0.5 text-xs font-medium" style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}>{course.gradeLevel}</span>
             )}
             {course.settings?.studentLevel && (
-              <span className="rounded-full px-2 py-0.5 text-xs font-semibold text-[#0cc0df] capitalize" style={{ background: "var(--accent-bg)" }}>{course.settings.studentLevel}</span>
+              <span className="rounded-full px-2 py-0.5 text-xs font-semibold text-[var(--accent-text)] capitalize" style={{ background: "var(--accent-bg)" }}>{course.settings.studentLevel}</span>
             )}
           </div>
         </div>
@@ -671,7 +672,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
             {course.driveFolderUrl ? (
               <a href={course.driveFolderUrl} target="_blank" rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition hover:opacity-80"
-                style={{ background: "rgba(45,212,160,0.12)", border: "1px solid rgba(45,212,160,0.35)", color: "#2dd4a0" }}>
+                style={{ background: "rgba(45,212,160,0.12)", border: "1px solid rgba(45,212,160,0.35)", color: "var(--success-text)" }}>
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
                 Course Folder ↗
               </a>
@@ -693,7 +694,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
             )}
             <button onClick={() => setAddResourceOpen(true)}
               className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold transition hover:bg-[var(--accent-bg)]"
-              style={{ color: "#0cc0df" }}>
+              style={{ color: "var(--accent-text)" }}>
               + Add Resource
             </button>
             {onUnlink && (
@@ -714,7 +715,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                 style={{ background: "var(--accent-purple-bg)", border: "1px solid rgba(99,102,241,0.30)", color: "var(--accent-purple)" }}>
                 <a href={r.url} target="_blank" rel="noopener noreferrer" className="hover:underline">{r.label} ↗</a>
                 <button onClick={() => handleRemoveResource(r.id)}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-500 leading-none">×</button>
+                  className="opacity-0 group-hover:opacity-100 transition-opacity text-[var(--danger-text)] hover:text-[var(--danger-text)] leading-none">×</button>
               </div>
             ))}
           </div>
@@ -726,7 +727,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
         <div className="rounded-2xl px-4 py-2.5 text-xs font-medium" style={{
           background: releaseMsg.ok ? "rgba(45,212,160,0.08)" : "rgba(239,68,68,0.08)",
           border: `1px solid ${releaseMsg.ok ? "rgba(45,212,160,0.25)" : "rgba(239,68,68,0.25)"}`,
-          color: releaseMsg.ok ? "#2dd4a0" : "#ef4444",
+          color: releaseMsg.ok ? "var(--success-text)" : "var(--danger-text)",
         }}>
           {releaseMsg.text}
         </div>
@@ -741,7 +742,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
           </svg>
           <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>NeXTBox</span>
           {(course.studentIds?.length ?? 0) > 0 && (
-            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: "rgba(12,192,223,0.1)", color: "#0cc0df" }}>
+            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: "rgba(12,192,223,0.1)", color: "var(--accent-text)" }}>
               {course.studentIds!.length} student{course.studentIds!.length !== 1 ? "s" : ""}
             </span>
           )}
@@ -749,18 +750,18 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
         <div className="h-3 w-px shrink-0" style={{ background: "var(--border)" }} />
         {course.joinCode ? (
           <div className="flex items-center gap-2">
-            <span className="font-mono text-sm font-bold tracking-[0.15em]" style={{ color: "#0cc0df" }}>{course.joinCode}</span>
+            <span className="font-mono text-sm font-bold tracking-[0.15em]" style={{ color: "var(--accent-text)" }}>{course.joinCode}</span>
             <button
               onClick={() => { navigator.clipboard.writeText(course.joinCode!); setJoinCodeCopied(true); setTimeout(() => setJoinCodeCopied(false), 2000); }}
               className="rounded-full px-2 py-0.5 text-[10px] font-semibold transition hover:opacity-80"
-              style={{ background: "rgba(12,192,223,0.1)", color: "#0cc0df" }}>
+              style={{ background: "rgba(12,192,223,0.1)", color: "var(--accent-text)" }}>
               {joinCodeCopied ? "Copied!" : "Copy"}
             </button>
           </div>
         ) : (
           <button onClick={handleGenerateJoinCode}
             className="rounded-full px-2.5 py-1 text-[10px] font-semibold transition hover:opacity-80"
-            style={{ background: "rgba(12,192,223,0.1)", color: "#0cc0df" }}>
+            style={{ background: "rgba(12,192,223,0.1)", color: "var(--accent-text)" }}>
             Generate Join Code
           </button>
         )}
@@ -782,7 +783,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
           <p className="text-sm font-semibold" style={{ color: "var(--text-secondary)" }}>
             {lessons.length} {lessons.length === 1 ? "lesson" : "lessons"} in this course
             {lessons.filter(l => l.released).length > 0 && (
-              <span className="ml-2 text-[#2dd4a0]">· {lessons.filter(l => l.released).length} released</span>
+              <span className="ml-2 text-[var(--success-text)]">· {lessons.filter(l => l.released).length} released</span>
             )}
           </p>
           <div className="flex items-center gap-2">
@@ -822,7 +823,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                   {duplicating ? "Duplicating…" : `Duplicate${selectedIds.size > 0 ? ` (${selectedIds.size})` : ""}`}
                 </button>
                 <button onClick={handleBulkDelete} disabled={selectedIds.size === 0 || duplicating || bulkDeleting || bulkMoving}
-                  className="rounded-full px-3 py-2 text-xs font-semibold text-red-500 hover:bg-red-500/10 disabled:opacity-50 transition"
+                  className="rounded-full px-3 py-2 text-xs font-semibold text-[var(--danger-text)] hover:bg-red-500/10 disabled:opacity-50 transition"
                   style={{ border: "1px solid var(--border)" }}>
                   {bulkDeleting ? "Deleting…" : `Delete${selectedIds.size > 0 ? ` (${selectedIds.size})` : ""}`}
                 </button>
@@ -873,19 +874,19 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                       <div style={{ borderTop: "1px solid var(--border)" }}>
                         <button onClick={handleCopyLink}
                           className="w-full text-left px-4 py-2.5 text-xs hover:bg-[var(--bg-card-hover)] transition"
-                          style={{ color: "#2dd4a0" }}>
+                          style={{ color: "var(--success-text)" }}>
                           {copied ? "Link Copied!" : "Copy Student Link"}
                         </button>
                         <a href={`/courses/${id}/student`} target="_blank" rel="noopener noreferrer"
                           className="block w-full text-left px-4 py-2.5 text-xs hover:bg-[var(--bg-card-hover)] transition"
-                          style={{ color: "#2dd4a0" }}>Student View ↗</a>
+                          style={{ color: "var(--success-text)" }}>Student View ↗</a>
                       </div>
                     </div>
                     </>
                   )}
                 </div>
                 <Link href={`/lessons/new?courseId=${id}`}
-                  className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-xs font-bold text-white hover:opacity-90 transition shadow">
+                  className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-xs font-bold text-[#0a0b13] hover:opacity-90 transition shadow">
                   + New Lesson
                 </Link>
               </>
@@ -897,7 +898,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
           <div className="text-center py-10 rounded-3xl" style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)" }}>
             <p className="text-sm mb-4" style={{ color: "var(--text-muted)" }}>No lessons yet.</p>
             <Link href={`/lessons/new?courseId=${id}`}
-              className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition">
+              className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-[#0a0b13] hover:opacity-90 transition">
               Add first lesson
             </Link>
           </div>
@@ -977,9 +978,9 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                         value={lesson.concept ?? ""}
                         onChange={e => { e.stopPropagation(); handlePatchLesson(lesson.id, { concept: e.target.value || undefined }); }}
                         onClick={e => e.stopPropagation()}
-                        className="text-[10px] font-semibold px-2 py-0.5 rounded-md focus:outline-none focus:ring-1 focus:ring-[#0cc0df] max-w-[120px]"
+                        className="text-[10px] font-semibold px-2 py-0.5 rounded-md focus:outline-none focus:ring-1 focus:ring-[var(--focus-ring)] max-w-[120px]"
                         style={lesson.concept
-                          ? { background: "rgba(12,192,223,0.1)", color: "#0cc0df", border: "1px solid rgba(12,192,223,0.3)" }
+                          ? { background: "rgba(12,192,223,0.1)", color: "var(--accent-text)", border: "1px solid rgba(12,192,223,0.3)" }
                           : { background: "var(--bg-card-hover)", color: "var(--text-muted)", border: "1px dashed var(--border)" }}>
                         <option value="">No concept</option>
                         {course!.assignedConcepts!.map(c => (
@@ -1005,7 +1006,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                           onClick={() => handleTogglePublishedToClassroom(lesson)}
                           title="Click to mark as unpublished"
                           className="rounded-full px-3 py-1.5 text-xs font-semibold transition hover:opacity-80"
-                          style={{ background: "rgba(45,212,160,0.12)", border: "1px solid rgba(45,212,160,0.35)", color: "#2dd4a0" }}>
+                          style={{ background: "rgba(45,212,160,0.12)", border: "1px solid rgba(45,212,160,0.35)", color: "var(--success-text)" }}>
                           Published ✓
                         </button>
                       ) : (
@@ -1052,7 +1053,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                     })()}
                     {/* Released indicator (read-only) */}
                     {lesson.released && (
-                      <span className="rounded-full px-2.5 py-1 text-[10px] font-semibold" style={{ background: "rgba(45,212,160,0.12)", color: "#2dd4a0" }}>Released</span>
+                      <span className="rounded-full px-2.5 py-1 text-[10px] font-semibold" style={{ background: "rgba(45,212,160,0.12)", color: "var(--success-text)" }}>Released</span>
                     )}
                     <Link href={`/lessons/${lesson.id}`}
                       className="rounded-full bg-[#0cc0df] px-3 py-1.5 text-xs font-semibold text-[#0a0b13] hover:opacity-90 transition">View</Link>
@@ -1075,7 +1076,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                             <select
                               value={lesson.progressMode ?? ""}
                               onChange={e => handlePatchLesson(lesson.id, { progressMode: (e.target.value || undefined) as any })}
-                              className="w-full rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#0cc0df]"
+                              className="w-full rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[var(--focus-ring)]"
                               style={{ background: "var(--bg-card-hover)", color: "var(--text-primary)", border: "1px solid var(--border)" }}>
                               <option value="">Inherit from module</option>
                               <option value="sequential">Sequential</option>
@@ -1090,7 +1091,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                               value={lesson.solutionRevealAttempts ?? ""}
                               onChange={e => handlePatchLesson(lesson.id, { solutionRevealAttempts: e.target.value === "" ? null : parseInt(e.target.value, 10) })}
                               placeholder="Inherit from module"
-                              className="w-full rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#0cc0df]"
+                              className="w-full rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[var(--focus-ring)]"
                               style={{ background: "var(--bg-card-hover)", color: "var(--text-primary)", border: "1px solid var(--border)" }} />
                           </div>
                         </div>
@@ -1123,7 +1124,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                       </div>
                     )}
                     <button onClick={() => handleRemoveLesson(lesson.id)} title="Delete lesson"
-                      className="p-1.5 rounded-full transition hover:text-red-500 hover:bg-red-500/10"
+                      className="p-1.5 rounded-full transition hover:text-[var(--danger-text)] hover:bg-red-500/10"
                       style={{ color: "var(--text-muted)" }}>
                       <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
                     </button>
@@ -1154,10 +1155,10 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                           <input autoFocus value={editModuleTitle} onChange={e => setEditModuleTitle(e.target.value)}
                             onBlur={() => handleSaveModuleTitle(mod.id)}
                             onKeyDown={e => { if (e.key === "Enter") handleSaveModuleTitle(mod.id); if (e.key === "Escape") setEditingModuleId(null); }}
-                            className="flex-1 rounded-md px-2 py-0.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#0cc0df]"
+                            className="flex-1 rounded-md px-2 py-0.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
                             style={{ background: "var(--bg-card)", color: "var(--text-primary)", border: "1px solid var(--border)" }} />
                         ) : (
-                          <span className="flex-1 text-sm font-semibold" style={{ color: "var(--accent)" }}>{mod.title}</span>
+                          <span className="flex-1 text-sm font-semibold" style={{ color: "var(--accent-text)" }}>{mod.title}</span>
                         )}
                         <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{modLessons.length} {modLessons.length === 1 ? "lesson" : "lessons"}</span>
                         {modLessons.length > 0 && (() => {
@@ -1179,7 +1180,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                           <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                         </button>
                         <button onClick={() => handleDeleteModule(mod.id)} title="Delete module group"
-                          className="p-1 rounded transition hover:text-red-500 hover:bg-red-500/10" style={{ color: "var(--text-muted)" }}>
+                          className="p-1 rounded transition hover:text-[var(--danger-text)] hover:bg-red-500/10" style={{ color: "var(--text-muted)" }}>
                           <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
                         </button>
                       </div>
@@ -1193,7 +1194,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                               <select
                                 value={mod.progressMode ?? ""}
                                 onChange={e => saveModules(driveModules.map(m => m.id === mod.id ? { ...m, progressMode: (e.target.value || undefined) as any } : m))}
-                                className="rounded px-1.5 py-0.5 text-[10px] focus:outline-none focus:ring-1 focus:ring-[#0cc0df]"
+                                className="rounded px-1.5 py-0.5 text-[10px] focus:outline-none focus:ring-1 focus:ring-[var(--focus-ring)]"
                                 style={{ background: "var(--bg-card-hover)", color: "var(--text-primary)", border: "1px solid var(--border)" }}>
                                 <option value="">Default</option>
                                 <option value="sequential">Sequential</option>
@@ -1208,7 +1209,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                                 value={mod.solutionRevealAttempts ?? ""}
                                 onChange={e => saveModules(driveModules.map(m => m.id === mod.id ? { ...m, solutionRevealAttempts: e.target.value === "" ? null : parseInt(e.target.value, 10) } : m))}
                                 placeholder="Never"
-                                className="w-16 rounded px-1.5 py-0.5 text-[10px] focus:outline-none focus:ring-1 focus:ring-[#0cc0df]"
+                                className="w-16 rounded px-1.5 py-0.5 text-[10px] focus:outline-none focus:ring-1 focus:ring-[var(--focus-ring)]"
                                 style={{ background: "var(--bg-card-hover)", color: "var(--text-primary)", border: "1px solid var(--border)" }} />
                               <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>attempts</span>
                             </div>
@@ -1250,7 +1251,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                                             setReleasePickerSelected(next);
                                           }} />
                                         <span className="text-[11px] truncate flex-1" style={{ color: "var(--text-primary)" }}>{l.title}</span>
-                                        {l.released && <span className="shrink-0 text-[10px]" style={{ color: "#2dd4a0" }}>✓</span>}
+                                        {l.released && <span className="shrink-0 text-[10px]" style={{ color: "var(--success-text)" }}>✓</span>}
                                       </label>
                                     ))}
                                   </div>
@@ -1265,7 +1266,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                                       ));
                                     }}
                                     className="mt-3 w-full rounded-full py-1 text-[11px] font-semibold transition disabled:opacity-50"
-                                    style={{ background: "rgba(12,192,223,0.12)", color: "#0cc0df", border: "1px solid rgba(12,192,223,0.2)" }}>
+                                    style={{ background: "rgba(12,192,223,0.12)", color: "var(--accent-text)", border: "1px solid rgba(12,192,223,0.2)" }}>
                                     Release Selected
                                   </button>
                                 </div>
@@ -1322,11 +1323,10 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
 
       {/* Add Existing Lesson Modal */}
       {addExistingOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setAddExistingOpen(false)} />
+        <Dialog open onClose={() => setAddExistingOpen(false)} labelledBy="add-existing-lessons-title" className="max-w-lg">
           <div className="relative w-full max-w-lg max-h-[80vh] flex flex-col rounded-3xl overflow-hidden" style={{ background: "var(--bg-card)", boxShadow: "var(--shadow-float)" }}>
             <div className="flex items-center justify-between px-6 py-4 shrink-0" style={{ borderBottom: "1px solid var(--border)" }}>
-              <h2 className="text-base font-bold" style={{ color: "var(--text-primary)" }}>Add Existing Lessons</h2>
+              <h2 id="add-existing-lessons-title" className="text-base font-bold" style={{ color: "var(--text-primary)" }}>Add Existing Lessons</h2>
               <button onClick={() => setAddExistingOpen(false)} className="p-1.5 rounded-full transition hover:bg-[var(--bg-card-hover)]" style={{ color: "var(--text-muted)" }}>
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
@@ -1360,16 +1360,15 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
               <button onClick={() => setAddExistingOpen(false)} className="rounded-full px-4 py-2 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)]" style={{ color: "var(--text-secondary)" }}>Cancel</button>
             </div>
           </div>
-        </div>
+        </Dialog>
       )}
 
       {/* Add Resource Modal */}
       {addResourceOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setAddResourceOpen(false)} />
+        <Dialog open onClose={() => setAddResourceOpen(false)} labelledBy="add-resource-title" className="max-w-sm">
           <div className="relative w-full max-w-sm rounded-3xl overflow-hidden" style={{ background: "var(--bg-card)", boxShadow: "var(--shadow-float)" }}>
             <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: "1px solid var(--border)" }}>
-              <h2 className="text-base font-bold" style={{ color: "var(--text-primary)" }}>Add Resource</h2>
+              <h2 id="add-resource-title" className="text-base font-bold" style={{ color: "var(--text-primary)" }}>Add Resource</h2>
               <button onClick={() => setAddResourceOpen(false)} className="p-1.5 rounded-full transition hover:bg-[var(--bg-card-hover)]" style={{ color: "var(--text-muted)" }}>
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
@@ -1392,7 +1391,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
               <button onClick={() => setAddResourceOpen(false)} className="rounded-full px-4 py-2 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)]" style={{ color: "var(--text-secondary)" }}>Cancel</button>
             </div>
           </div>
-        </div>
+        </Dialog>
       )}
 
     </div>

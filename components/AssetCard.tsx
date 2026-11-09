@@ -30,8 +30,8 @@ export default function AssetCard({ project, onDelete }: Props) {
 
   const typeLabel = isDeck ? "Slide Deck" : isQuiz ? "Quiz" : "Form";
   const accentBar = isDeck ? "bg-[#0cc0df]" : "bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e]";
-  const iconBg    = isDeck ? "bg-[#0cc0df]/15 text-[#0cc0df]" : "bg-[#ff8c4a]/15 text-[#ff8c4a]";
-  const badgeBg   = isDeck ? "bg-[#0cc0df]/10 text-[#0cc0df]" : "bg-[#ff8c4a]/10 text-[#ff8c4a]";
+  const iconBg    = isDeck ? "bg-[#0cc0df]/15 text-[var(--accent-text)]" : "bg-[#ff8c4a]/15 text-[var(--warning-text)]";
+  const badgeBg   = isDeck ? "bg-[#0cc0df]/10 text-[var(--accent-text)]" : "bg-[#ff8c4a]/10 text-[var(--warning-text)]";
   const openLabel = isDeck ? "Open Deck" : "Open in Forms";
 
   return (
@@ -80,7 +80,7 @@ export default function AssetCard({ project, onDelete }: Props) {
           {project.lessonId && (
             <a
               href={`/lessons/${project.lessonId}`}
-              className="inline-flex items-center gap-1 text-xs text-[#0cc0df] hover:underline"
+              className="inline-flex items-center gap-1 text-xs text-[var(--accent-text)] hover:underline"
             >
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -101,13 +101,13 @@ export default function AssetCard({ project, onDelete }: Props) {
           href={project.url}
           target="_blank"
           rel="noopener noreferrer"
-          className={`flex-1 flex items-center justify-center rounded-full px-3 py-2 text-xs font-semibold text-[#0d1c35] hover:opacity-90 active:scale-95 transition-all duration-150 ${isDeck ? "bg-[#0cc0df]" : "bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] text-white"}`}
+          className={`flex-1 flex items-center justify-center rounded-full px-3 py-2 text-xs font-semibold text-[#0d1c35] hover:opacity-90 active:scale-95 transition-all duration-150 ${isDeck ? "bg-[#0cc0df]" : "bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] text-[#0a0b13]"}`}
         >
           {openLabel}
         </a>
         <button
           onClick={() => onDelete(project.id)}
-          className="flex items-center justify-center rounded-full px-3 py-2 text-xs font-semibold text-red-500 hover:bg-red-500/10 active:scale-95 transition-all duration-150"
+          className="flex items-center justify-center rounded-full px-3 py-2 text-xs font-semibold text-[var(--danger-text)] hover:bg-red-500/10 active:scale-95 transition-all duration-150"
           style={{ border: "1px solid var(--border)" }}
         >
           Delete

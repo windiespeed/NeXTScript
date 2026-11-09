@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { Lesson } from "@/types/lesson";
+import Dialog from "@/components/ui/Dialog";
 
 // Overview Doc isn't a bundle option — generate it from the lesson page instead, where you
 // can pick which decks/quizzes it summarizes.
@@ -58,28 +59,21 @@ export default function GenerateModal({ lesson, hasQuizDraft, onClose, onGenerat
     onGenerate(lesson!.id, effectiveFiles, destination);
   }
 
-  function handleBackdropClick(e: React.MouseEvent<HTMLDivElement>) {
-    if (e.target === e.currentTarget && modalStatus !== "loading") onClose();
-  }
-
   const labelClass = "flex items-center gap-2.5 text-sm cursor-pointer select-none";
-  const sectionLabel = "text-xs font-semibold text-[#0cc0df] uppercase tracking-wide mb-2";
+  const sectionLabel = "text-xs font-semibold text-[var(--accent-text)] uppercase tracking-wide mb-2";
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-      onClick={handleBackdropClick}
-    >
+    <Dialog open onClose={onClose} dismissible={modalStatus !== "loading"} labelledBy="generate-bundle-title" className="max-w-sm">
       <div
-        className="w-full max-w-sm rounded-3xl shadow-2xl p-6 flex flex-col gap-5 mx-4"
+        className="w-full rounded-3xl shadow-2xl p-6 flex flex-col gap-5"
         style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}
       >
 
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="font-bold text-base" style={{ color: "var(--text-primary)" }}>Generate Bundle</h2>
-            <p className="text-xs text-[#0cc0df] mt-0.5 truncate max-w-[220px]">{lesson.title}</p>
+            <h2 id="generate-bundle-title" className="font-bold text-base" style={{ color: "var(--text-primary)" }}>Generate Bundle</h2>
+            <p className="text-xs text-[var(--accent-text)] mt-0.5 truncate max-w-[220px]">{lesson.title}</p>
           </div>
           <button
             onClick={onClose}
@@ -172,13 +166,13 @@ export default function GenerateModal({ lesson, hasQuizDraft, onClose, onGenerat
           <button
             onClick={handleGenerate}
             disabled={!canGenerate}
-            className="rounded-full px-4 py-1.5 text-xs font-semibold bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] text-white hover:opacity-90 disabled:opacity-40 active:scale-95 transition-all duration-150"
+            className="rounded-full px-4 py-1.5 text-xs font-semibold bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] text-[#0a0b13] hover:opacity-90 disabled:opacity-40 active:scale-95 transition-all duration-150"
           >
             Generate
           </button>
         </div>
 
       </div>
-    </div>
+    </Dialog>
   );
 }

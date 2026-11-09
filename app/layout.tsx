@@ -10,7 +10,8 @@ import { ThemeProvider } from "@/context/Theme";
 const geist = Geist({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "NeXTScript",
+  // Each section's layout.tsx sets its own title, e.g. "Courses · NeXTScript" (WCAG 2.4.2).
+  title: { default: "NeXTScript", template: "%s · NeXTScript" },
   description: "Build and export lesson bundles to Google Drive.",
 };
 
@@ -24,11 +25,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Providers>
           <ThemeProvider>
           <MobileMenuProvider>
+            <a href="#main-content" className="skip-link">Skip to content</a>
             <TopBar />
             <Sidebar />
             {/* Offset: top bar (64px) + floating sidebar (224px + 12px margin = 236px) */}
             <div className="lg:pl-[236px] pt-16 min-h-screen">
-              <main className="mx-auto max-w-6xl px-10 py-8">
+              <main id="main-content" tabIndex={-1} className="mx-auto max-w-6xl px-10 py-8 focus:outline-none">
                 {children}
               </main>
             </div>

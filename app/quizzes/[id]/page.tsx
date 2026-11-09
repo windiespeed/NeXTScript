@@ -12,11 +12,11 @@ import { clearDraft } from "@/lib/draftStorage";
 import { useDraftAutosave, useDraftRestore } from "@/hooks/useDraftAutosave";
 import { parsePastedQuestions } from "@/lib/parseQuestions";
 
-const inputClass = "w-full rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#0cc0df] transition placeholder:text-[var(--text-muted)]";
+const inputClass = "w-full rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)] transition placeholder:text-[var(--text-muted)]";
 const inputStyle = { background: "var(--bg-card-hover)", color: "var(--text-primary)", border: "1px solid var(--border)" };
 const cardClass = "rounded-3xl p-5 space-y-4";
 const cardStyle = { background: "var(--bg-card)", border: "1px solid var(--border)" };
-const sectionLabel = "text-xs font-semibold uppercase tracking-widest text-[#0cc0df]";
+const sectionLabel = "text-xs font-semibold uppercase tracking-widest text-[var(--accent-text)]";
 
 interface QuizEditDraft {
   quizTitle: string;
@@ -255,8 +255,8 @@ export default function EditQuizPage() {
     ));
   }
 
-  if (loading) return <p className="text-sm text-[#0cc0df] mt-10">Loading…</p>;
-  if (notFound) return <p className="text-sm text-red-500 mt-10">Quiz not found.</p>;
+  if (loading) return <p className="text-sm text-[var(--accent-text)] mt-10">Loading…</p>;
+  if (notFound) return <p className="text-sm text-[var(--danger-text)] mt-10">Quiz not found.</p>;
 
   const canAiGenerate = hasAiKey && lessonIds.length > 0;
   const importPreview = importText.trim() ? parsePastedQuestions(importText) : [];
@@ -265,7 +265,7 @@ export default function EditQuizPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <button onClick={() => router.push("/quizzes")} className="text-sm text-[#0cc0df] hover:underline mb-2 block">
+        <button onClick={() => router.push("/quizzes")} className="text-sm text-[var(--accent-text)] hover:underline mb-2 block">
           ← Back to Quizzes
         </button>
         <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>Edit Quiz</h1>
@@ -279,7 +279,7 @@ export default function EditQuizPage() {
         <p className={sectionLabel}>Assignment</p>
 
         <div>
-          <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Course <span className="text-red-500">*</span></label>
+          <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Course <span className="text-[var(--danger-text)]">*</span></label>
           <select
             value={courseId}
             onChange={e => { setCourseId(e.target.value); setModuleId(""); setLessonIds([]); }}
@@ -293,7 +293,7 @@ export default function EditQuizPage() {
 
         {courseId && modules.length > 0 && (
           <div>
-            <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Module <span className="text-red-500">*</span></label>
+            <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Module <span className="text-[var(--danger-text)]">*</span></label>
             <select value={moduleId} onChange={e => setModuleId(e.target.value)} className={inputClass} style={inputStyle}>
               <option value="">— Select a module —</option>
               {modules.map(m => <option key={m.id} value={m.id}>{m.title}</option>)}
@@ -337,7 +337,7 @@ export default function EditQuizPage() {
       <div className={cardClass} style={cardStyle}>
         <p className={sectionLabel}>Quiz Info</p>
         <div>
-          <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Quiz Title <span className="text-red-500">*</span></label>
+          <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Quiz Title <span className="text-[var(--danger-text)]">*</span></label>
           <input
             type="text"
             value={quizTitle}
@@ -366,12 +366,12 @@ export default function EditQuizPage() {
               <input type="number" min={0} max={50} value={saCount} onChange={e => setSaCount(Math.min(50, Math.max(0, Number(e.target.value))))} className={inputClass} style={inputStyle} />
             </div>
           </div>
-          {aiError && <p className="text-xs text-red-500">{aiError}</p>}
+          {aiError && <p className="text-xs text-[var(--danger-text)]">{aiError}</p>}
           <button
             onClick={handleAiGenerate}
             disabled={aiGenerating || !canAiGenerate}
             title={!canAiGenerate ? "Select at least one lesson first" : undefined}
-            className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50 transition"
+            className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-xs font-semibold text-[#0a0b13] hover:opacity-90 disabled:opacity-50 transition"
           >
             {aiGenerating ? (
               <span className="flex items-center gap-2">
@@ -420,7 +420,7 @@ export default function EditQuizPage() {
               style={inputStyle}
             />
             {importText.trim() && (
-              <p className="text-[10px]" style={{ color: importPreview.length > 0 ? "#2dd4a0" : "#ef4444" }}>
+              <p className="text-[10px]" style={{ color: importPreview.length > 0 ? "var(--success-text)" : "var(--danger-text)" }}>
                 {importPreview.length > 0
                   ? `${importPreview.length} question${importPreview.length !== 1 ? "s" : ""} detected`
                   : "No questions detected — check the format above."}
@@ -460,7 +460,7 @@ export default function EditQuizPage() {
                       <select
                         value={q.type}
                         onChange={e => updateQuestion(q.id, { type: e.target.value as FormQuestion["type"] })}
-                        className="rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#0cc0df]"
+                        className="rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[var(--focus-ring)]"
                         style={{ background: "var(--bg-card)", color: "var(--text-primary)", border: "1px solid var(--border)" }}
                       >
                         <option value="multiple_choice">Multiple Choice</option>
@@ -493,11 +493,11 @@ export default function EditQuizPage() {
                               style={inputStyle}
                             />
                             {q.options.length > 2 && (
-                              <button onClick={() => removeOption(q.id, oi)} className="text-xs hover:text-red-500 transition shrink-0" style={{ color: "var(--text-muted)" }}>×</button>
+                              <button onClick={() => removeOption(q.id, oi)} className="text-xs hover:text-[var(--danger-text)] transition shrink-0" style={{ color: "var(--text-muted)" }}>×</button>
                             )}
                           </div>
                         ))}
-                        <button onClick={() => addOption(q.id)} className="text-xs hover:underline" style={{ color: "#0cc0df" }}>
+                        <button onClick={() => addOption(q.id)} className="text-xs hover:underline" style={{ color: "var(--accent-text)" }}>
                           + Add option
                         </button>
                       </div>
@@ -505,7 +505,7 @@ export default function EditQuizPage() {
                   </div>
                   <button
                     onClick={() => removeQuestion(q.id)}
-                    className="p-1 rounded-full transition hover:text-red-500 hover:bg-red-500/10 shrink-0"
+                    className="p-1 rounded-full transition hover:text-[var(--danger-text)] hover:bg-red-500/10 shrink-0"
                     style={{ color: "var(--text-muted)" }}
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
@@ -523,7 +523,7 @@ export default function EditQuizPage() {
           <button
             onClick={handleSave}
             disabled={saving || !quizTitle.trim() || questions.length === 0 || !courseId || (modules.length > 0 && !moduleId)}
-            className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-6 py-2.5 text-sm font-bold text-white hover:opacity-90 disabled:opacity-50 transition shadow"
+            className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-6 py-2.5 text-sm font-bold text-[#0a0b13] hover:opacity-90 disabled:opacity-50 transition shadow"
           >
             {saving ? "Saving…" : "Save Changes"}
           </button>
@@ -535,16 +535,16 @@ export default function EditQuizPage() {
           >
             {generating ? "Generating…" : formUrl ? "Regenerate Google Form" : "Generate Google Form"}
           </button>
-          {saved && !saving && <p className="text-xs font-semibold" style={{ color: "#2dd4a0" }}>Changes saved!</p>}
+          {saved && !saving && <p className="text-xs font-semibold" style={{ color: "var(--success-text)" }}>Changes saved!</p>}
         </div>
-        {saveError && <p className="text-xs text-red-500">{saveError}</p>}
-        {generateError && <p className="text-xs text-red-500">{generateError}</p>}
+        {saveError && <p className="text-xs text-[var(--danger-text)]">{saveError}</p>}
+        {generateError && <p className="text-xs text-[var(--danger-text)]">{generateError}</p>}
         {formUrl && (
           <div className="flex items-center gap-3 rounded-2xl px-4 py-3" style={{ background: "rgba(12,192,223,0.06)", border: "1px solid rgba(12,192,223,0.2)" }}>
             <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="#0cc0df" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
             <p className="text-xs font-semibold flex-1" style={{ color: "var(--text-primary)" }}>Google Form generated</p>
             <a href={formUrl} target="_blank" rel="noopener noreferrer"
-              className="text-xs font-semibold hover:underline shrink-0" style={{ color: "#0cc0df" }}>
+              className="text-xs font-semibold hover:underline shrink-0" style={{ color: "var(--accent-text)" }}>
               Open in Google Forms →
             </a>
           </div>

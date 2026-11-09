@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useMobileMenu } from "@/context/MobileMenu";
+import Dialog from "@/components/ui/Dialog";
 
 interface NavItem {
   label: string;
@@ -107,7 +108,7 @@ function applyOrder(saved: string[]): NavItem[] {
 }
 
 const chevronSVG = (open: boolean) => (
-  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+  <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
     className="transition-transform duration-200" style={{ transform: open ? "rotate(90deg)" : "rotate(0deg)" }}>
     <polyline points="9 18 15 12 9 6"/>
   </svg>
@@ -228,6 +229,8 @@ export default function Sidebar() {
           </div>
           <button
             onClick={() => setCoursesOpen(o => !o)}
+            aria-label={coursesOpen ? "Hide courses" : "Show courses"}
+            aria-expanded={coursesOpen}
             className="flex-shrink-0 p-1.5 rounded-full transition hover:bg-[var(--bg-card-hover)] mr-1"
             style={{ color: active ? "#0a0b13" : "var(--text-muted)" }}
           >
@@ -264,6 +267,8 @@ export default function Sidebar() {
                           next.has(course.id) ? next.delete(course.id) : next.add(course.id);
                           return next;
                         })}
+                        aria-label={`${courseExpanded ? "Hide" : "Show"} modules in ${course.name}`}
+                        aria-expanded={courseExpanded}
                         className="flex-shrink-0 p-1 rounded-full transition hover:bg-[var(--bg-card-hover)] mr-1"
                         style={{ color: "var(--text-muted)" }}
                       >
@@ -299,6 +304,8 @@ export default function Sidebar() {
                                     next.has(mod.id) ? next.delete(mod.id) : next.add(mod.id);
                                     return next;
                                   })}
+                                  aria-label={`${modExpanded ? "Hide" : "Show"} lessons in ${mod.title}`}
+                                  aria-expanded={modExpanded}
                                   className="flex-shrink-0 p-1 rounded-full transition hover:bg-[var(--bg-card-hover)] mr-1"
                                   style={{ color: "var(--text-muted)" }}
                                 >
@@ -340,7 +347,7 @@ export default function Sidebar() {
   }
 
   const sidebarContent = (
-    <nav className="flex-1 overflow-y-auto px-3 py-4 flex flex-col">
+    <nav aria-label="Main" className="flex-1 overflow-y-auto px-3 py-4 flex flex-col">
       <div className="space-y-1.5 flex-1">
         {nav.map((item, i) => {
           if (item.href === "/courses") return renderCoursesItem(item, i);
@@ -389,7 +396,7 @@ export default function Sidebar() {
         >
           <span className="flex-shrink-0" style={{ color: "var(--text-muted)" }} aria-hidden="true">{nextboxIcon}</span>
           <span className="flex-1">NeXTBox</span>
-          <span className="text-[11px] font-semibold rounded-full px-2 py-0.5" style={{ background: "var(--bg-card-hover)", color: "var(--text-secondary)" }}>
+          <span className="whitespace-nowrap text-[11px] font-semibold rounded-full px-2 py-0.5" style={{ background: "var(--bg-card-hover)", color: "var(--text-secondary)" }}>
             Coming soon
           </span>
         </div>
@@ -401,22 +408,21 @@ export default function Sidebar() {
     <>
       <aside
         className="hidden lg:flex flex-col fixed left-3 z-40 rounded-3xl w-56"
-        style={{ top: "76px", height: "calc(100vh - 88px)", background: "var(--bg-sidebar)", boxShadow: "var(--shadow-card)" }}
+        style={{ top: "76px", height: "calc(100dvh - 88px)", background: "var(--bg-sidebar)", boxShadow: "var(--shadow-card)" }}
       >
         {sidebarContent}
       </aside>
 
-      {open && (
-        <>
-          <div className="lg:hidden fixed inset-0 z-40 bg-black/50" onClick={close} />
-          <aside
-            className="lg:hidden fixed left-3 z-50 w-56 flex flex-col rounded-3xl"
-            style={{ top: "76px", height: "calc(100vh - 88px)", background: "var(--bg-sidebar)" }}
-          >
-            {sidebarContent}
-          </aside>
-        </>
-      )}
+      {/* Mobile menu: a modal panel, so focus stays in it and Escape or a tap outside closes it. */}
+      <Dialog open={open} onClose={close} placement="left" className="lg:hidden" labelledBy="mobile-menu-label">
+        <aside
+          className="flex h-full w-56 flex-col rounded-3xl"
+          style={{ background: "var(--bg-sidebar)" }}
+        >
+          <span id="mobile-menu-label" className="sr-only">Main menu</span>
+          {sidebarContent}
+        </aside>
+      </Dialog>
     </>
   );
 }
