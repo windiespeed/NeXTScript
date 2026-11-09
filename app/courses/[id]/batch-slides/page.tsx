@@ -10,9 +10,9 @@ import { getSectionContent } from "@/lib/sections";
 import { clearDraft } from "@/lib/draftStorage";
 import { useDraftAutosave, useDraftRestore } from "@/hooks/useDraftAutosave";
 
-const inputClass = "rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#0cc0df] transition";
+const inputClass = "rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)] transition";
 const inputStyle = { background: "var(--bg-card-hover)", color: "var(--text-primary)", border: "1px solid var(--border)" };
-const sectionHeading = "text-xs font-semibold uppercase tracking-widest text-[#0cc0df]";
+const sectionHeading = "text-xs font-semibold uppercase tracking-widest text-[var(--accent-text)]";
 
 type LessonStatus = "idle" | "filling" | "saving" | "generating" | "done" | "error";
 
@@ -303,15 +303,15 @@ export default function BatchGeneratePage() {
     );
   }
 
-  if (loading) return <div className="py-20 text-center text-sm" style={{ color: "#0cc0df" }}>Loading…</div>;
+  if (loading) return <div className="py-20 text-center text-sm" style={{ color: "var(--accent-text)" }}>Loading…</div>;
 
   return (
     <div className="space-y-6">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm flex-wrap">
-        <Link href="/courses" className="hover:underline" style={{ color: "#0cc0df" }}>Courses</Link>
+        <Link href="/courses" className="hover:underline" style={{ color: "var(--accent-text)" }}>Courses</Link>
         <span style={{ color: "var(--border)" }}>/</span>
-        <Link href={`/courses/${courseId}`} className="hover:underline" style={{ color: "#0cc0df" }}>{course?.title}</Link>
+        <Link href={`/courses/${courseId}`} className="hover:underline" style={{ color: "var(--accent-text)" }}>{course?.title}</Link>
         <span style={{ color: "var(--border)" }}>/</span>
         <span className="font-semibold" style={{ color: "var(--text-primary)" }}>Batch Generate</span>
       </div>
@@ -329,7 +329,7 @@ export default function BatchGeneratePage() {
           <div className="flex items-center justify-between">
             <p className={sectionHeading}>Select Lessons</p>
             <div className="flex gap-3">
-              <button onClick={selectAll} disabled={running} className="text-xs hover:underline" style={{ color: "#0cc0df" }}>Select all</button>
+              <button onClick={selectAll} disabled={running} className="text-xs hover:underline" style={{ color: "var(--accent-text)" }}>Select all</button>
               <button onClick={selectNone} disabled={running} className="text-xs hover:underline" style={{ color: "var(--text-muted)" }}>None</button>
             </div>
           </div>
@@ -350,7 +350,7 @@ export default function BatchGeneratePage() {
                       className="flex items-center gap-2 mb-1 w-full text-left"
                     >
                       <input type="checkbox" checked={allSelected} onChange={() => {}} className="accent-[#0cc0df] w-3.5 h-3.5 pointer-events-none" />
-                      <span className="text-xs font-semibold" style={{ color: "#0cc0df" }}>{mod.title}</span>
+                      <span className="text-xs font-semibold" style={{ color: "var(--accent-text)" }}>{mod.title}</span>
                     </button>
                     <div className="ml-2 space-y-0.5">
                       {modLessons.map(renderLessonRow)}
@@ -384,7 +384,7 @@ export default function BatchGeneratePage() {
             {!hasAiKey && (
               <p className="text-xs ml-6" style={{ color: "var(--text-muted)" }}>
                 No API key configured. Add one in{" "}
-                <Link href="/profile" className="underline" style={{ color: "#0cc0df" }}>Profile</Link>.
+                <Link href="/profile" className="underline" style={{ color: "var(--accent-text)" }}>Profile</Link>.
               </p>
             )}
             {doAiFill && (
@@ -440,7 +440,7 @@ export default function BatchGeneratePage() {
               <button
                 onClick={handleRun}
                 disabled={!canRun}
-                className="w-full rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] py-2.5 text-sm font-bold text-white hover:opacity-90 disabled:opacity-40 transition shadow"
+                className="w-full rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] py-2.5 text-sm font-bold text-[#0a0b13] hover:opacity-90 disabled:opacity-40 transition shadow"
               >
                 {running ? "Running…" : `Run on ${totalSelected} lesson${totalSelected !== 1 ? "s" : ""}`}
               </button>
@@ -452,7 +452,7 @@ export default function BatchGeneratePage() {
             <div className="rounded-3xl p-5 space-y-2" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
               <p className={sectionHeading}>Progress</p>
               {running && (
-                <p className="text-xs" style={{ color: "#0cc0df" }}>
+                <p className="text-xs" style={{ color: "var(--accent-text)" }}>
                   {doneCount + errorCount} of {totalSelected} complete…
                 </p>
               )}
@@ -462,7 +462,7 @@ export default function BatchGeneratePage() {
                 </p>
               )}
               {finished && doneCount > 0 && (
-                <Link href={`/courses/${courseId}`} className="block text-xs hover:underline mt-1" style={{ color: "#0cc0df" }}>
+                <Link href={`/courses/${courseId}`} className="block text-xs hover:underline mt-1" style={{ color: "var(--accent-text)" }}>
                   ← Back to course
                 </Link>
               )}

@@ -7,11 +7,11 @@ import LessonForm from "@/components/LessonForm";
 import type { Lesson, LessonInput } from "@/types/lesson";
 import type { Course, CourseModule } from "@/types/course";
 
-const inputClass = "w-full rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#0cc0df] transition placeholder:text-[var(--text-muted)]";
+const inputClass = "w-full rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)] transition placeholder:text-[var(--text-muted)]";
 const inputStyle = { background: "var(--bg-card-hover)", color: "var(--text-primary)", border: "1px solid var(--border)" };
 const cardClass = "rounded-3xl p-5 space-y-4";
 const cardStyle = { background: "var(--bg-card)", border: "1px solid var(--border)" };
-const sectionLabel = "text-xs font-semibold uppercase tracking-widest text-[#0cc0df]";
+const sectionLabel = "text-xs font-semibold uppercase tracking-widest text-[var(--accent-text)]";
 
 export default function EditSlidesPage() {
   useSession({ required: true });
@@ -145,8 +145,8 @@ export default function EditSlidesPage() {
     await putLesson(data);
   }
 
-  if (loading) return <p className="text-sm text-[#0cc0df] mt-10">Loading…</p>;
-  if (!lesson) return <p className="text-sm text-red-500 mt-10">Lesson not found.</p>;
+  if (loading) return <p className="text-sm text-[var(--accent-text)] mt-10">Loading…</p>;
+  if (!lesson) return <p className="text-sm text-[var(--danger-text)] mt-10">Lesson not found.</p>;
 
   const selectedCourse = courses.find(c => c.id === selectedCourseId);
   const currentModule = modules.find(m => m.id === selectedModuleId);
@@ -157,7 +157,7 @@ export default function EditSlidesPage() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <button onClick={() => router.push(backHref)} className="text-sm text-[#0cc0df] hover:underline mb-2 block">
+          <button onClick={() => router.push(backHref)} className="text-sm text-[var(--accent-text)] hover:underline mb-2 block">
             ← {lesson.courseId ? "Back to Lesson" : "Back to Slides"}
           </button>
           <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>Edit Slides</h1>

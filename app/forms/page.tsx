@@ -59,7 +59,7 @@ function FormsInner() {
       </div>
 
       {loading ? (
-        <p className="text-sm text-[#0cc0df]">Loading…</p>
+        <p className="text-sm text-[var(--accent-text)]">Loading…</p>
       ) : filtered.length === 0 ? (
         <div className="text-center py-16 rounded-3xl" style={{ border: "1px solid var(--border)", background: "var(--bg-card)" }}>
           <div className="w-12 h-12 rounded-full bg-[#ff8c4a]/10 flex items-center justify-center mx-auto mb-4">
@@ -74,7 +74,7 @@ function FormsInner() {
           <p className="text-xs mb-5" style={{ color: "var(--text-muted)" }}>
             Generate a bundle from a lesson to create a quiz form.
           </p>
-          <Link href="/" className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition">
+          <Link href="/" className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-[#0a0b13] hover:opacity-90 transition">
             Go to Lessons
           </Link>
         </div>

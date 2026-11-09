@@ -28,7 +28,7 @@ export default function ConceptsOverviewPage() {
     });
   }, []);
 
-  if (loading) return <div className="py-20 text-center text-sm" style={{ color: "#0cc0df" }}>Loading…</div>;
+  if (loading) return <div className="py-20 text-center text-sm" style={{ color: "var(--accent-text)" }}>Loading…</div>;
 
   return (
     <div className="space-y-6">
@@ -64,7 +64,7 @@ export default function ConceptsOverviewPage() {
                     <div className="flex flex-wrap gap-1 mt-1.5">
                       {cons.slice(0, 6).map(c => (
                         <span key={c.id} className="text-[10px] font-medium px-1.5 py-0.5 rounded-full"
-                          style={{ background: "rgba(12,192,223,0.1)", color: "#0cc0df" }}>
+                          style={{ background: "rgba(12,192,223,0.1)", color: "var(--accent-text)" }}>
                           {c.label}
                         </span>
                       ))}

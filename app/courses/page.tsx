@@ -75,7 +75,7 @@ function CourseCard({
               </span>
             )}
             {course.settings?.studentLevel && (
-              <span className="rounded-full px-2.5 py-0.5 text-[10px] font-semibold text-[#0cc0df] capitalize" style={{ background: "var(--accent-bg)" }}>
+              <span className="rounded-full px-2.5 py-0.5 text-[10px] font-semibold text-[var(--accent-text)] capitalize" style={{ background: "var(--accent-bg)" }}>
                 {course.settings.studentLevel}
               </span>
             )}
@@ -154,7 +154,7 @@ function CourseCard({
           <button
             onClick={() => onDelete(course.id)}
             title="Delete course"
-            className="p-2 rounded-full transition hover:bg-red-500/10 hover:text-red-500 active:scale-95"
+            className="p-2 rounded-full transition hover:bg-red-500/10 hover:text-[var(--danger-text)] active:scale-95"
             style={{ color: "var(--text-muted)" }}
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
@@ -261,13 +261,13 @@ export default function CoursesPage() {
             <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>Courses</h1>
             <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>Organize lessons into courses with independent settings.</p>
           </div>
-          <Link href="/courses/new" className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-bold text-white hover:opacity-90 transition shadow">
+          <Link href="/courses/new" className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-bold text-[#0a0b13] hover:opacity-90 transition shadow">
             + New Course
           </Link>
         </div>
 
         {loading ? (
-          <p className="text-sm text-[#0cc0df]">Loading…</p>
+          <p className="text-sm text-[var(--accent-text)]">Loading…</p>
         ) : courses.length === 0 ? (
           <div className="text-center py-20 rounded-3xl" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
             <div className="w-12 h-12 rounded-3xl bg-[#0cc0df]/10 flex items-center justify-center mx-auto mb-4">
@@ -277,7 +277,7 @@ export default function CoursesPage() {
             </div>
             <p className="text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>No courses yet</p>
             <p className="text-xs mb-5" style={{ color: "var(--text-muted)" }}>Create a course to organize lessons with shared settings.</p>
-            <Link href="/courses/new" className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition">
+            <Link href="/courses/new" className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-[#0a0b13] hover:opacity-90 transition">
               Create your first course
             </Link>
           </div>

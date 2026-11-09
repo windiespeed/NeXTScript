@@ -13,9 +13,9 @@ import { useDraftAutosave, useDraftRestore } from "@/hooks/useDraftAutosave";
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const TERM_YEARS: number[] = Array.from({ length: 21 }, (_, i) => 2040 - i);
 
-const inputClass = "w-full rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#0cc0df] transition placeholder:text-[var(--text-muted)]";
+const inputClass = "w-full rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)] transition placeholder:text-[var(--text-muted)]";
 const inputStyle = { background: "var(--bg-card-hover)", color: "var(--text-primary)", border: "1px solid var(--border)" };
-const sectionHeading = "text-xs font-semibold uppercase tracking-widest text-[#0cc0df] mb-3";
+const sectionHeading = "text-xs font-semibold uppercase tracking-widest text-[var(--accent-text)] mb-3";
 
 interface NewCourseDraft {
   title: string;
@@ -85,7 +85,7 @@ export default function NewCoursePage() {
   return (
     <div>
       <div className="mb-6">
-        <button onClick={() => router.push("/courses")} className="text-sm text-[#0cc0df] hover:underline mb-3 block">
+        <button onClick={() => router.push("/courses")} className="text-sm text-[var(--accent-text)] hover:underline mb-3 block">
           ← Back to Courses
         </button>
         <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>New Course</h1>
@@ -101,7 +101,7 @@ export default function NewCoursePage() {
 
           <div>
             <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
-              Title <span className="text-red-500">*</span>
+              Title <span className="text-[var(--danger-text)]">*</span>
             </label>
             <input type="text" value={title} onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. JavaScript Fundamentals" className={inputClass} style={inputStyle} />
@@ -121,7 +121,7 @@ export default function NewCoursePage() {
             </div>
             <div>
               <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
-                Term <span style={{ color: "#ef4444" }}>*</span>
+                Term <span style={{ color: "var(--danger-text)" }}>*</span>
               </label>
               <div className="grid grid-cols-2 gap-2">
                 <select value={termMonth} onChange={(e) => setTermMonth(e.target.value)} className={inputClass} style={inputStyle}>
@@ -202,7 +202,7 @@ export default function NewCoursePage() {
           />
         </div>
 
-        {error && <p className="text-sm text-red-500">{error}</p>}
+        {error && <p className="text-sm text-[var(--danger-text)]">{error}</p>}
         <div className="flex gap-3">
           <button type="button" onClick={() => router.push("/courses")}
             className="rounded-full px-5 py-2.5 text-sm font-semibold transition hover:bg-[var(--bg-card-hover)]"
@@ -210,7 +210,7 @@ export default function NewCoursePage() {
             Cancel
           </button>
           <button type="submit" disabled={saving}
-            className="flex-1 rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50 transition shadow">
+            className="flex-1 rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-5 py-2.5 text-sm font-semibold text-[#0a0b13] hover:opacity-90 disabled:opacity-50 transition shadow">
             {saving ? "Creating…" : "Create Course"}
           </button>
         </div>

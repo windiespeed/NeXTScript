@@ -22,18 +22,19 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import Dialog from "@/components/ui/Dialog";
 
 const cardClass = "rounded-3xl p-5 space-y-4";
 const cardStyle = { background: "var(--bg-card)", border: "1px solid var(--border)" };
-const sectionLabel = "text-xs font-semibold uppercase tracking-widest text-[#0cc0df]";
-const inputClass = "w-full rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#0cc0df] transition placeholder:text-[var(--text-muted)]";
+const sectionLabel = "text-xs font-semibold uppercase tracking-widest text-[var(--accent-text)]";
+const inputClass = "w-full rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)] transition placeholder:text-[var(--text-muted)]";
 const inputStyle = { background: "var(--bg-card-hover)", color: "var(--text-primary)", border: "1px solid var(--border)" };
 
 const TYPE_COLORS: Record<string, { bg: string; text: string }> = {
-  lesson:     { bg: "rgba(12,192,223,0.12)",  text: "#0cc0df" },
+  lesson:     { bg: "rgba(12,192,223,0.12)",  text: "var(--accent-text)" },
   practice:   { bg: "var(--accent-purple-bg)", text: "var(--accent-purple)" },
-  project:    { bg: "rgba(255,140,74,0.12)",  text: "#ff8c4a" },
-  assessment: { bg: "rgba(45,212,160,0.12)",  text: "#2dd4a0" },
+  project:    { bg: "rgba(255,140,74,0.12)",  text: "var(--warning-text)" },
+  assessment: { bg: "rgba(45,212,160,0.12)",  text: "var(--success-text)" },
   review:     { bg: "var(--bg-card-hover)",   text: "var(--text-muted)" },
 };
 
@@ -390,8 +391,8 @@ export default function LessonHubPage() {
     if (res.ok) setLesson(prev => prev ? { ...prev, presentationAST: undefined, presentationStatus: undefined } : prev);
   }
 
-  if (loading) return <p className="text-sm text-[#0cc0df] mt-10">Loading…</p>;
-  if (!lesson) return <p className="text-sm text-red-500 mt-10">Lesson not found.</p>;
+  if (loading) return <p className="text-sm text-[var(--accent-text)] mt-10">Loading…</p>;
+  if (!lesson) return <p className="text-sm text-[var(--danger-text)] mt-10">Lesson not found.</p>;
 
   const currentModule = courseModules.find(m => m.lessonIds.includes(id));
   const backHref = lesson.courseId ? `/courses/${lesson.courseId}` : "/slides";
@@ -461,7 +462,7 @@ export default function LessonHubPage() {
     <div className="space-y-5">
       {/* Back + header */}
       <div>
-        <button onClick={() => router.push(backHref)} className="text-sm text-[#0cc0df] hover:underline mb-3 block">
+        <button onClick={() => router.push(backHref)} className="text-sm text-[var(--accent-text)] hover:underline mb-3 block">
           ← {lesson.courseId ? "Back to Course" : "Back to Slides"}
         </button>
 
@@ -538,22 +539,21 @@ export default function LessonHubPage() {
 
       {/* ── Edit Metadata Modal ──────────────────────────────────────────── */}
       {editingMeta && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setEditingMeta(false)} />
+        <Dialog open onClose={() => setEditingMeta(false)} labelledBy="edit-lesson-info-title" className="max-w-md">
           <div className="relative w-full max-w-md rounded-3xl p-6 space-y-4" style={{ background: "var(--bg-card)", boxShadow: "var(--shadow-float)" }}>
-            <h2 className="text-base font-bold" style={{ color: "var(--text-primary)" }}>Edit Lesson Info</h2>
+            <h2 id="edit-lesson-info-title" className="text-base font-bold" style={{ color: "var(--text-primary)" }}>Edit Lesson Info</h2>
             <div className="space-y-3">
               <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Title {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "#0cc0df" }}>· used by AI</span>}</label>
+                <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Title {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span>}</label>
                 <input value={metaTitle} onChange={e => setMetaTitle(e.target.value)} className={inputClass} style={inputStyle} placeholder="Lesson title" />
               </div>
               <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Subtitle {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "#0cc0df" }}>· used by AI</span>}</label>
+                <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Subtitle {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span>}</label>
                 <input value={metaSubtitle} onChange={e => setMetaSubtitle(e.target.value)} className={inputClass} style={inputStyle} placeholder="Topic or subject" />
               </div>
               <div>
                 <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
-                  Topics {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "#0cc0df" }}>· used by AI</span>}
+                  Topics {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span>}
                 </label>
                 <input value={metaTopics} onChange={e => setMetaTopics(e.target.value)} className={inputClass} style={inputStyle} placeholder="e.g. Variables, Data Types, Type Casting" />
                 <p className="text-[10px] mt-1" style={{ color: "var(--text-muted)" }}>Comma-separated. AI uses these to generate slide content, overviews, and quizzes.</p>
@@ -584,16 +584,15 @@ export default function LessonHubPage() {
               </button>
             </div>
           </div>
-        </div>
+        </Dialog>
       )}
 
       {/* ── Generate Overview Doc Modal ─────────────────────────────────── */}
       {overviewModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setOverviewModalOpen(false)} />
+        <Dialog open onClose={() => setOverviewModalOpen(false)} labelledBy="overview-doc-title" className="max-w-md">
           <div className="relative w-full max-w-md rounded-3xl p-6 space-y-4" style={{ background: "var(--bg-card)", boxShadow: "var(--shadow-float)" }}>
             <div>
-              <h2 className="text-base font-bold" style={{ color: "var(--text-primary)" }}>Generate Overview Doc</h2>
+              <h2 id="overview-doc-title" className="text-base font-bold" style={{ color: "var(--text-primary)" }}>Generate Overview Doc</h2>
               <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
                 Pick which decks and quizzes it summarizes. Regenerating always replaces the existing Overview Doc.
               </p>
@@ -632,7 +631,7 @@ export default function LessonHubPage() {
               </div>
             </div>
 
-            {overviewError && <p className="text-xs text-red-500">{overviewError}</p>}
+            {overviewError && <p className="text-xs text-[var(--danger-text)]">{overviewError}</p>}
 
             <div className="flex gap-2 pt-2">
               <button onClick={() => setOverviewModalOpen(false)} className="flex-1 rounded-full py-2 text-sm font-semibold transition" style={{ border: "1px solid var(--border)", color: "var(--text-primary)" }}>
@@ -647,7 +646,7 @@ export default function LessonHubPage() {
               </button>
             </div>
           </div>
-        </div>
+        </Dialog>
       )}
 
       {/* ── Documents ───────────────────────────────────────────────────── */}
@@ -656,11 +655,11 @@ export default function LessonHubPage() {
           <p className={sectionLabel}>Documents</p>
           <div className="flex items-center gap-3">
             {lesson.folderUrl && (
-              <a href={lesson.folderUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] font-semibold hover:underline" style={{ color: "#0cc0df" }}>
+              <a href={lesson.folderUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] font-semibold hover:underline" style={{ color: "var(--accent-text)" }}>
                 Open in Drive ↗
               </a>
             )}
-            <Link href="/quizzes" className="text-[10px] font-semibold hover:underline" style={{ color: "#0cc0df" }}>
+            <Link href="/quizzes" className="text-[10px] font-semibold hover:underline" style={{ color: "var(--accent-text)" }}>
               View All Quizzes →
             </Link>
           </div>
@@ -769,7 +768,7 @@ export default function LessonHubPage() {
                           <Link
                             href={`/quizzes/new?lessonId=${id}`}
                             className="self-center text-[10px] font-semibold hover:underline"
-                            style={{ color: "#0cc0df" }}
+                            style={{ color: "var(--accent-text)" }}
                           >
                             Create a quiz draft →
                           </Link>
@@ -779,7 +778,7 @@ export default function LessonHubPage() {
                         <button
                           onClick={handleGenerate}
                           disabled={generating || (!genSlides && !genQuiz)}
-                          className="w-full sm:w-auto rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-6 py-2.5 text-sm font-bold text-white hover:opacity-90 disabled:opacity-50 transition shadow"
+                          className="w-full sm:w-auto rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-6 py-2.5 text-sm font-bold text-[#0a0b13] hover:opacity-90 disabled:opacity-50 transition shadow"
                         >
                           {generating ? (
                             <span className="flex items-center justify-center gap-2">
@@ -791,7 +790,7 @@ export default function LessonHubPage() {
                         <Link
                           href={`/ingest?lessonId=${id}`}
                           className="w-full sm:w-auto text-center rounded-full px-5 py-2.5 text-sm font-semibold transition hover:opacity-80"
-                          style={{ background: "rgba(12,192,223,0.12)", border: "1px solid rgba(12,192,223,0.35)", color: "#0cc0df" }}
+                          style={{ background: "rgba(12,192,223,0.12)", border: "1px solid rgba(12,192,223,0.35)", color: "var(--accent-text)" }}
                         >
                           Notes to Slides →
                         </Link>
@@ -808,14 +807,14 @@ export default function LessonHubPage() {
                         )}
                       </div>
                     </div>
-                    {generateError && <p className="text-xs text-red-500">{generateError}</p>}
+                    {generateError && <p className="text-xs text-[var(--danger-text)]">{generateError}</p>}
                     {!generateError && lesson.status === "error" && lesson.errorMessage && (
-                      <p className="text-xs text-red-500">Last generation failed: {lesson.errorMessage}</p>
+                      <p className="text-xs text-[var(--danger-text)]">Last generation failed: {lesson.errorMessage}</p>
                     )}
                     {(multiLessonQuizDrafts.length > 0 || multiLessonQuizGenerated.length > 0) && (
                       <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>
                         Quiz only generates single-lesson drafts here.{" "}
-                        <Link href="/quizzes" className="hover:underline" style={{ color: "#0cc0df" }}>
+                        <Link href="/quizzes" className="hover:underline" style={{ color: "var(--accent-text)" }}>
                           View multi-lesson quizzes →
                         </Link>
                       </p>
@@ -928,8 +927,8 @@ export default function LessonHubPage() {
                   <p className="text-xs font-semibold truncate" style={{ color: "var(--text-primary)" }}>{r.label}</p>
                   <p className="text-[10px] truncate" style={{ color: "var(--text-muted)" }}>{r.url}</p>
                 </div>
-                <a href={r.url} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold shrink-0 hover:underline" style={{ color: "#0cc0df" }}>Open ↗</a>
-                <button onClick={() => handleDeleteResource(r.id)} className="p-1 rounded-full shrink-0 hover:text-red-500 transition" style={{ color: "var(--text-muted)" }}>
+                <a href={r.url} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold shrink-0 hover:underline" style={{ color: "var(--accent-text)" }}>Open ↗</a>
+                <button onClick={() => handleDeleteResource(r.id)} className="p-1 rounded-full shrink-0 hover:text-[var(--danger-text)] transition" style={{ color: "var(--text-muted)" }}>
                   <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
                 </button>
               </div>
@@ -1001,7 +1000,7 @@ function DocRow({ icon, color, label, sublabel, badge, badgeColor, url, editHref
               if (e.key === "Enter") (e.target as HTMLInputElement).blur();
               if (e.key === "Escape") { setDraftLabel(label); setRenaming(false); }
             }}
-            className="w-full text-xs font-semibold bg-transparent focus:outline-none border-b"
+            className="w-full text-xs font-semibold bg-transparent border-b"
             style={{ color: "var(--text-primary)", borderColor: "var(--accent)" }}
           />
         ) : (
@@ -1045,7 +1044,7 @@ function DocRow({ icon, color, label, sublabel, badge, badgeColor, url, editHref
         </Link>
       )}
       {url && (
-        <a href={url} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold shrink-0 hover:underline" style={{ color: "#0cc0df" }}>
+        <a href={url} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold shrink-0 hover:underline" style={{ color: "var(--accent-text)" }}>
           Open ↗
         </a>
       )}
@@ -1054,7 +1053,7 @@ function DocRow({ icon, color, label, sublabel, badge, badgeColor, url, editHref
           type="button"
           onClick={onDelete}
           title="Delete"
-          className="p-1 rounded-full transition hover:text-red-500 hover:bg-red-500/10 shrink-0"
+          className="p-1 rounded-full transition hover:text-[var(--danger-text)] hover:bg-red-500/10 shrink-0"
           style={{ color: "var(--text-muted)" }}
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>

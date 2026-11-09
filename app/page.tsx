@@ -378,7 +378,7 @@ function Dashboard() {
                       <div className="w-2 h-2 rounded-full" style={{ background: color }} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium truncate group-hover:text-[#0cc0df] transition" style={{ color: "var(--text-primary)" }}>
+                      <p className="text-xs font-medium truncate group-hover:text-[var(--accent-text)] transition" style={{ color: "var(--text-primary)" }}>
                         {course.title}
                       </p>
                       <div className="flex items-center gap-1.5 mt-0.5">
@@ -395,7 +395,7 @@ function Dashboard() {
               });
             })()}
             {courses.length > 4 && (
-              <Link href="/drive" className="text-[10px] text-[#0cc0df] hover:underline">
+              <Link href="/drive" className="text-[10px] text-[var(--accent-text)] hover:underline">
                 +{courses.length - 4} more courses →
               </Link>
             )}
@@ -424,8 +424,8 @@ function Dashboard() {
         </div>
         <div className="grid grid-cols-3 gap-2 pt-3" style={{ borderTop: "1px solid var(--border)" }}>
           {[
-            { label: "In Progress", value: inProgressCount, color: "#ff8c4a" },
-            { label: "Generated",   value: doneCount,       color: "#0cc0df" },
+            { label: "In Progress", value: inProgressCount, color: "var(--warning-text)" },
+            { label: "Generated",   value: doneCount,       color: "var(--accent-text)" },
             { label: "Draft",       value: draftCount,      color: "#6366f1" },
           ].map(({ label, value, color }) => (
             <div key={label} className="text-center">
@@ -445,7 +445,7 @@ function Dashboard() {
       <div className="rounded-3xl p-5 flex flex-col gap-4 h-full" style={{ background: "var(--bg-sidebar)", boxShadow: "var(--shadow-card)" }}>
         <div className="flex items-center justify-between">
           <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Recent Courses</p>
-          <Link href="/courses" className="text-[10px] text-[#0cc0df] hover:underline">
+          <Link href="/courses" className="text-[10px] text-[var(--accent-text)] hover:underline">
             View all →
           </Link>
         </div>
@@ -508,7 +508,7 @@ function Dashboard() {
       <div className="rounded-3xl p-5 h-full" style={{ background: "var(--bg-sidebar)", boxShadow: "var(--shadow-card)" }}>
         <div className="flex items-center justify-between mb-4">
           <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Schedule</p>
-          <Link href="/schedule" className="text-[10px] text-[#0cc0df] hover:underline">Full schedule →</Link>
+          <Link href="/schedule" className="text-[10px] text-[var(--accent-text)] hover:underline">Full schedule →</Link>
         </div>
         {upcoming.length === 0 ? (
           <p className="text-sm text-center py-8" style={{ color: "var(--text-muted)" }}>No upcoming deadlines.</p>
@@ -523,7 +523,7 @@ function Dashboard() {
                   <Link href={`/lessons/${lesson.id}`} className="text-xs font-semibold leading-snug line-clamp-2 hover:underline" style={{ color: "var(--text-primary)" }}>{lesson.title}</Link>
                   <div className="flex items-center gap-2 mt-auto flex-wrap">
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg" style={{ background: `${color}22`, color }}>Due {lesson.deadline}</span>
-                    {lesson.tag && <span className="text-[10px] px-2 py-0.5 rounded-lg" style={{ background: "var(--accent-bg)", color: "var(--accent)" }}>{lesson.tag}</span>}
+                    {lesson.tag && <span className="text-[10px] px-2 py-0.5 rounded-lg" style={{ background: "var(--accent-bg)", color: "var(--accent-text)" }}>{lesson.tag}</span>}
                   </div>
                 </div>
               );
@@ -541,7 +541,7 @@ function Dashboard() {
                     <Link href={`/lessons/${lesson.id}`} className="text-xs font-semibold leading-snug line-clamp-1 hover:underline" style={{ color: "var(--text-primary)" }}>{lesson.title}</Link>
                     <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                       <span className="text-[10px] font-bold" style={{ color }}>Due {lesson.deadline}</span>
-                      {lesson.tag && <span className="text-[10px] px-1.5 py-0.5 rounded-md" style={{ background: "var(--accent-bg)", color: "var(--accent)" }}>{lesson.tag}</span>}
+                      {lesson.tag && <span className="text-[10px] px-1.5 py-0.5 rounded-md" style={{ background: "var(--accent-bg)", color: "var(--accent-text)" }}>{lesson.tag}</span>}
                     </div>
                   </div>
                 </div>
@@ -561,13 +561,13 @@ function Dashboard() {
           <div className="flex justify-center mb-6">
             <Image src="/logo.png" alt="NeXTScript" width={200} height={56} className="h-20 w-auto brightness-0 invert dark:brightness-100 dark:invert-0" priority />
           </div>
-          <p className="text-sm font-semibold mb-1" style={{ color: "var(--accent)" }}>Curriculum Builder</p>
+          <p className="text-sm font-semibold mb-1" style={{ color: "var(--accent-text)" }}>Curriculum Builder</p>
           <p className="text-sm mb-8" style={{ color: "var(--text-secondary)" }}>
             Create and edit lessons, then generate a full Google Drive bundle — slides, poster, and quiz — with one click.
           </p>
           <button
             onClick={() => signIn("google")}
-            className="inline-flex items-center gap-3 rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-6 py-3 text-sm font-semibold text-white hover:opacity-90 transition shadow-lg w-full justify-center"
+            className="inline-flex items-center gap-3 rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-6 py-3 text-sm font-semibold text-[#0a0b13] hover:opacity-90 transition shadow-lg w-full justify-center"
           >
             Sign in with Google
           </button>
@@ -577,7 +577,7 @@ function Dashboard() {
   }
 
   if (status === "loading") {
-    return <p className="text-[#0cc0df] text-sm text-center mt-20">Loading…</p>;
+    return <p className="text-[var(--accent-text)] text-sm text-center mt-20">Loading…</p>;
   }
 
   const firstName = session?.user?.name?.split(" ")[0] ?? "there";

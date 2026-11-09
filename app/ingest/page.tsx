@@ -18,11 +18,11 @@ import type { HybridIngestRequest, HybridIngestResponse } from "@/types/ingest";
 import { clearDraft } from "@/lib/draftStorage";
 import { useDraftAutosave, useDraftRestore } from "@/hooks/useDraftAutosave";
 
-const inputClass = "w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0cc0df] transition placeholder:text-[var(--text-muted)]";
+const inputClass = "w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)] transition placeholder:text-[var(--text-muted)]";
 const inputStyle = { background: "var(--bg-card-hover)", color: "var(--text-primary)", border: "1px solid var(--border)" };
 const cardClass = "rounded-3xl p-6 space-y-4";
 const cardStyle = { background: "var(--bg-card)", border: "1px solid var(--border)" };
-const sectionLabel = "text-xs font-semibold uppercase tracking-widest text-[#0cc0df]";
+const sectionLabel = "text-xs font-semibold uppercase tracking-widest text-[var(--accent-text)]";
 
 const SPINNER = (
   <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none">
@@ -544,7 +544,7 @@ function IngestPageInner() {
           <p className="text-xs mb-5" style={{ color: "var(--text-muted)" }}>Add a Claude or Gemini API key to use AI ingestion.</p>
           <Link
             href="/profile"
-            className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition"
+            className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-[#0a0b13] hover:opacity-90 transition"
           >
             Add API key in Profile
           </Link>
@@ -556,7 +556,7 @@ function IngestPageInner() {
             <p className={sectionLabel}>Assignment</p>
             <div>
               <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
-                Course <span className="text-red-500">*</span>
+                Course <span className="text-[var(--danger-text)]">*</span>
               </label>
               <select required disabled={lockedFromQuery} value={selectedCourseId} onChange={e => setSelectedCourseId(e.target.value)} className={inputClass} style={inputStyle}>
                 <option value="">— Select a course —</option>
@@ -608,7 +608,7 @@ function IngestPageInner() {
               <button
                 type="button"
                 onClick={handleClearLessonInfo}
-                className="text-[10px] font-semibold rounded-full px-2 py-0.5 transition hover:bg-red-500/10 hover:text-red-500"
+                className="text-[10px] font-semibold rounded-full px-2 py-0.5 transition hover:bg-red-500/10 hover:text-[var(--danger-text)]"
                 style={{ color: "var(--text-muted)", border: "1px solid var(--border)" }}
               >
                 Clear
@@ -617,7 +617,7 @@ function IngestPageInner() {
 
             <div>
               <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
-                Lesson Title <span className="text-red-500">*</span> {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "#0cc0df" }}>· used by AI</span>}
+                Lesson Title <span className="text-[var(--danger-text)]">*</span> {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span>}
               </label>
               <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>Module number and lesson number (e.g. Module 3, Lesson 2)</p>
               <input
@@ -633,7 +633,7 @@ function IngestPageInner() {
 
             <div>
               <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
-                Lesson Subtitle {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "#0cc0df" }}>· used by AI</span>}
+                Lesson Subtitle {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span>}
               </label>
               <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>Specific topic or subject covered in this lesson</p>
               <input
@@ -648,7 +648,7 @@ function IngestPageInner() {
 
             <div>
               <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
-                Topics {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "#0cc0df" }}>· used by AI</span>}
+                Topics {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span>}
               </label>
               <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>Comma-separated. Extra context passed to Notes to Slides alongside your raw notes.</p>
               <input
@@ -694,7 +694,7 @@ function IngestPageInner() {
 
             <div>
               <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
-                Sources {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "#0cc0df" }}>· used by AI</span>}
+                Sources {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span>}
               </label>
               <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>
                 One URL per line. Saved with the lesson as reference material for other AI-fill features.
@@ -715,7 +715,7 @@ function IngestPageInner() {
             {hasAiKey && (
               <div>
                 <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
-                  Student Level <span className="font-normal text-[10px]" style={{ color: "#0cc0df" }}>· used by AI</span>
+                  Student Level <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span>
                 </label>
                 <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>
                   Adjusts the tone and complexity of AI-generated content to match your students&apos; experience.
@@ -757,7 +757,7 @@ function IngestPageInner() {
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>🔒 Skeleton · locked slide anchors</p>
                   {selectedCourse && (
-                    <Link href={`/courses/${selectedCourse.id}/settings`} className="text-[10px] font-semibold shrink-0 hover:underline" style={{ color: "#0cc0df" }}>
+                    <Link href={`/courses/${selectedCourse.id}/settings`} className="text-[10px] font-semibold shrink-0 hover:underline" style={{ color: "var(--accent-text)" }}>
                       Edit Sections
                     </Link>
                   )}
@@ -795,7 +795,7 @@ function IngestPageInner() {
               {/* Content */}
               <div className="lg:col-span-3 flex flex-col">
                 <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
-                  Content · notes, outline, or brain-dump <span className="text-red-500">*</span>
+                  Content · notes, outline, or brain-dump <span className="text-[var(--danger-text)]">*</span>
                 </label>
                 <textarea
                   value={rawText}
@@ -862,15 +862,15 @@ function IngestPageInner() {
               </div>
             </div>
 
-            {error && <p className="text-xs text-red-500">{error}</p>}
-            {saveInfoError && <p className="text-xs text-red-500">{saveInfoError}</p>}
+            {error && <p className="text-xs text-[var(--danger-text)]">{error}</p>}
+            {saveInfoError && <p className="text-xs text-[var(--danger-text)]">{saveInfoError}</p>}
 
             <div className="flex items-center gap-3">
               <button
                 onClick={handleGenerate}
                 disabled={generating || !rawText.trim() || !title.trim() || !selectedCourseId}
                 title={!selectedCourseId ? "Select a course first" : !title.trim() ? "Add a lesson title first" : undefined}
-                className="shrink-0 rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50 transition"
+                className="shrink-0 rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-xs font-semibold text-[#0a0b13] hover:opacity-90 disabled:opacity-50 transition"
               >
                 {generating ? (
                   <span className="flex items-center gap-2">
@@ -965,8 +965,8 @@ function IngestPageInner() {
               {anchorNotes.map(note => <p key={note}>{note}</p>)}
             </div>
           )}
-          {exportError && <p className="text-xs text-red-500">{exportError}</p>}
-          {saveError && <p className="text-xs text-red-500">{saveError}</p>}
+          {exportError && <p className="text-xs text-[var(--danger-text)]">{exportError}</p>}
+          {saveError && <p className="text-xs text-[var(--danger-text)]">{saveError}</p>}
 
           {viewMode === "edit" ? (
             <SlideEditorPanel ast={ast} activeIndex={activeIndex} onChange={setAst} onActiveIndexChange={setActiveIndex} />

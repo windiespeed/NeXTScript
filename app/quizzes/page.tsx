@@ -38,7 +38,7 @@ function QuizCard({ quiz, onDelete }: { quiz: SavedProject; onDelete: (id: strin
           className="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0"
           style={isDraft
             ? { background: "var(--bg-card-hover)", color: "var(--text-muted)", border: "1px solid var(--border)" }
-            : { background: "rgba(45,212,160,0.12)", color: "#2dd4a0" }
+            : { background: "rgba(45,212,160,0.12)", color: "var(--success-text)" }
           }
         >
           {isDraft ? "Draft" : "Generated"}
@@ -73,7 +73,7 @@ function QuizCard({ quiz, onDelete }: { quiz: SavedProject; onDelete: (id: strin
           <button
             onClick={() => onDelete(quiz.id)}
             title="Delete quiz"
-            className="p-1.5 rounded-full transition hover:text-red-500 hover:bg-red-500/10"
+            className="p-1.5 rounded-full transition hover:text-[var(--danger-text)] hover:bg-red-500/10"
             style={{ color: "var(--text-muted)" }}
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
@@ -274,7 +274,7 @@ export default function QuizzesPage() {
           </button>
           <Link
             href="/quizzes/new"
-            className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-bold text-white hover:opacity-90 transition shadow"
+            className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-bold text-[#0a0b13] hover:opacity-90 transition shadow"
           >
             + New Quiz
           </Link>
@@ -291,18 +291,18 @@ export default function QuizzesPage() {
             Checked {folderCheck.checked} generated quiz{folderCheck.checked !== 1 ? "zes" : ""}.
           </p>
           {folderCheck.ambiguous.length === 0 && folderCheck.unresolvable.length === 0 ? (
-            <p style={{ color: "#2dd4a0" }}>No issues found — safe to run &ldquo;Fix Drive Folders&rdquo;.</p>
+            <p style={{ color: "var(--success-text)" }}>No issues found — safe to run &ldquo;Fix Drive Folders&rdquo;.</p>
           ) : (
             <>
               {folderCheck.ambiguous.length > 0 && (
                 <div>
-                  <p className="font-semibold mb-1" style={{ color: "#ff8c4a" }}>
+                  <p className="font-semibold mb-1" style={{ color: "var(--warning-text)" }}>
                     Spans multiple courses (fix will skip these):
                   </p>
                   <ul className="space-y-1">
                     {folderCheck.ambiguous.map(q => (
                       <li key={q.id}>
-                        <Link href={`/quizzes/${q.id}`} className="hover:underline" style={{ color: "#0cc0df" }}>{q.title}</Link>
+                        <Link href={`/quizzes/${q.id}`} className="hover:underline" style={{ color: "var(--accent-text)" }}>{q.title}</Link>
                         {" — "}
                         <span style={{ color: "var(--text-muted)" }}>
                           {q.courseIds.map(cid => courses.find(c => c.id === cid)?.title ?? cid).join(", ")}
@@ -320,7 +320,7 @@ export default function QuizzesPage() {
                   <ul className="space-y-1">
                     {folderCheck.unresolvable.map(q => (
                       <li key={q.id}>
-                        <Link href={`/quizzes/${q.id}`} className="hover:underline" style={{ color: "#0cc0df" }}>{q.title}</Link>
+                        <Link href={`/quizzes/${q.id}`} className="hover:underline" style={{ color: "var(--accent-text)" }}>{q.title}</Link>
                       </li>
                     ))}
                   </ul>
@@ -387,14 +387,14 @@ export default function QuizzesPage() {
 
       {/* Content */}
       {loading ? (
-        <p className="text-sm text-[#0cc0df]">Loading…</p>
+        <p className="text-sm text-[var(--accent-text)]">Loading…</p>
       ) : totalFiltered === 0 ? (
         <div className="text-center py-20 rounded-3xl" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
           <p className="text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>No quizzes yet</p>
           <p className="text-xs mb-5" style={{ color: "var(--text-muted)" }}>Create a quiz draft to get started.</p>
           <Link
             href="/quizzes/new"
-            className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition"
+            className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-[#0a0b13] hover:opacity-90 transition"
           >
             Create your first quiz
           </Link>

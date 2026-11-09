@@ -41,7 +41,7 @@ function resizeToBase64(file: File): Promise<string> {
   });
 }
 
-const inputCls = "w-full rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#0cc0df] transition placeholder:text-[var(--text-muted)]";
+const inputCls = "w-full rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)] transition placeholder:text-[var(--text-muted)]";
 const inputSty = { background: "var(--bg-card-hover)", color: "var(--text-primary)", border: "1px solid var(--border)" };
 const cardSty  = { background: "var(--bg-card)", border: "1px solid var(--border)" };
 
@@ -268,7 +268,7 @@ export default function ProfilePage() {
             <button
               onClick={() => fileRef.current?.click()}
               disabled={uploadingAvatar}
-              className="group relative w-20 h-20 rounded-full overflow-hidden focus:outline-none focus:ring-2 focus:ring-[#0cc0df] focus:ring-offset-2"
+              className="group relative w-20 h-20 rounded-full overflow-hidden focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)] focus:ring-offset-2"
               aria-label="Upload profile photo"
             >
               {displayAvatar ? (
@@ -276,7 +276,7 @@ export default function ProfilePage() {
                 <img src={displayAvatar} alt="Profile" className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full bg-[#0cc0df]/20 flex items-center justify-center">
-                  <span className="text-2xl font-bold text-[#0cc0df]">{userInitials}</span>
+                  <span className="text-2xl font-bold text-[var(--accent-text)]">{userInitials}</span>
                 </div>
               )}
               <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 group-disabled:opacity-0 transition-opacity rounded-full">
@@ -295,7 +295,7 @@ export default function ProfilePage() {
               <button
                 onClick={() => fileRef.current?.click()}
                 disabled={uploadingAvatar}
-                className="text-xs text-[#0cc0df] hover:underline disabled:opacity-50"
+                className="text-xs text-[var(--accent-text)] hover:underline disabled:opacity-50"
               >
                 {uploadingAvatar ? "Uploading…" : "Upload photo"}
               </button>
@@ -303,7 +303,7 @@ export default function ProfilePage() {
                 <button
                   onClick={handleRemoveAvatar}
                   disabled={removingAvatar}
-                  className="text-xs text-red-500 hover:underline disabled:opacity-50"
+                  className="text-xs text-[var(--danger-text)] hover:underline disabled:opacity-50"
                 >
                   {removingAvatar ? "Removing…" : "Remove photo"}
                 </button>
@@ -322,8 +322,8 @@ export default function ProfilePage() {
       </div>
 
       {/* Status messages */}
-      {message && <p className="text-sm text-[#2dd4a0]">{message}</p>}
-      {error && <p className="text-sm text-red-500">{error}</p>}
+      {message && <p className="text-sm text-[var(--success-text)]">{message}</p>}
+      {error && <p className="text-sm text-[var(--danger-text)]">{error}</p>}
 
       {/* Appearance */}
       <div className="rounded-3xl p-6" style={cardSty}>
@@ -362,7 +362,7 @@ export default function ProfilePage() {
           <button
             type="submit"
             disabled={savingSources}
-            className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-white shadow hover:opacity-90 disabled:opacity-50 transition"
+            className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-[#0a0b13] shadow hover:opacity-90 disabled:opacity-50 transition"
           >
             {savingSources ? "Saving…" : "Save Sources"}
           </button>
@@ -411,7 +411,7 @@ export default function ProfilePage() {
           <button
             type="submit"
             disabled={savingCurriculum}
-            className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-white shadow hover:opacity-90 disabled:opacity-50 transition"
+            className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-[#0a0b13] shadow hover:opacity-90 disabled:opacity-50 transition"
           >
             {savingCurriculum ? "Saving…" : "Save Curriculum Settings"}
           </button>
@@ -436,7 +436,7 @@ export default function ProfilePage() {
             <button
               onClick={handleRemoveKey}
               disabled={removingKey}
-              className="text-xs text-red-500 hover:text-red-400 disabled:opacity-50 transition"
+              className="text-xs text-[var(--danger-text)] hover:text-[var(--danger-text)] disabled:opacity-50 transition"
             >
               {removingKey ? "Removing…" : "Remove"}
             </button>
@@ -457,14 +457,14 @@ export default function ProfilePage() {
           />
           <p className="text-xs" style={{ color: "var(--text-muted)" }}>
             Get your key from{" "}
-            <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer" className="text-[#0cc0df] hover:underline">
+            <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer" className="text-[var(--accent-text)] hover:underline">
               console.anthropic.com
             </a>
           </p>
           <button
             type="submit"
             disabled={savingKey || !keyInput.trim()}
-            className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-white shadow hover:opacity-90 disabled:opacity-50 transition"
+            className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-[#0a0b13] shadow hover:opacity-90 disabled:opacity-50 transition"
           >
             {savingKey ? "Saving…" : "Save Key"}
           </button>
@@ -489,7 +489,7 @@ export default function ProfilePage() {
             <button
               onClick={handleRemoveGeminiKey}
               disabled={removingGeminiKey}
-              className="text-xs text-red-500 hover:text-red-400 disabled:opacity-50 transition"
+              className="text-xs text-[var(--danger-text)] hover:text-[var(--danger-text)] disabled:opacity-50 transition"
             >
               {removingGeminiKey ? "Removing…" : "Remove"}
             </button>
@@ -510,14 +510,14 @@ export default function ProfilePage() {
           />
           <p className="text-xs" style={{ color: "var(--text-muted)" }}>
             Get your key from{" "}
-            <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" className="text-[#0cc0df] hover:underline">
+            <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" className="text-[var(--accent-text)] hover:underline">
               aistudio.google.com
             </a>
           </p>
           <button
             type="submit"
             disabled={savingGeminiKey || !geminiKeyInput.trim()}
-            className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-white shadow hover:opacity-90 disabled:opacity-50 transition"
+            className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-[#0a0b13] shadow hover:opacity-90 disabled:opacity-50 transition"
           >
             {savingGeminiKey ? "Saving…" : "Save Key"}
           </button>

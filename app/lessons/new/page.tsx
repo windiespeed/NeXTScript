@@ -7,11 +7,11 @@ import type { Course, CourseModule } from "@/types/course";
 import { clearDraft } from "@/lib/draftStorage";
 import { useDraftAutosave, useDraftRestore } from "@/hooks/useDraftAutosave";
 
-const inputClass = "w-full rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#0cc0df] transition placeholder:text-[var(--text-muted)]";
+const inputClass = "w-full rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)] transition placeholder:text-[var(--text-muted)]";
 const inputStyle = { background: "var(--bg-card-hover)", color: "var(--text-primary)", border: "1px solid var(--border)" };
 const cardClass = "rounded-3xl p-5 space-y-4";
 const cardStyle = { background: "var(--bg-card)", border: "1px solid var(--border)" };
-const sectionLabel = "text-xs font-semibold uppercase tracking-widest text-[#0cc0df]";
+const sectionLabel = "text-xs font-semibold uppercase tracking-widest text-[var(--accent-text)]";
 
 const LESSON_TYPES = [
   { value: "lesson",     label: "Lesson" },
@@ -141,7 +141,7 @@ function NewLessonInner() {
   return (
     <div className="space-y-6">
       <div>
-        <button onClick={() => router.push(backHref)} className="text-sm text-[#0cc0df] hover:underline mb-2 block">
+        <button onClick={() => router.push(backHref)} className="text-sm text-[var(--accent-text)] hover:underline mb-2 block">
           ← {selectedCourseId ? "Back to Course" : "Back to Courses"}
         </button>
         <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>New Lesson</h1>
@@ -156,7 +156,7 @@ function NewLessonInner() {
           <p className={sectionLabel}>Assignment</p>
 
           <div>
-            <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Course <span className="text-red-500">*</span></label>
+            <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Course <span className="text-[var(--danger-text)]">*</span></label>
             <select
               value={selectedCourseId}
               onChange={e => setSelectedCourseId(e.target.value)}
@@ -189,7 +189,7 @@ function NewLessonInner() {
           <p className={sectionLabel}>Lesson Info</p>
 
           <div>
-            <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Title <span className="text-red-500">*</span> {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "#0cc0df" }}>· used by AI</span>}</label>
+            <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Title <span className="text-[var(--danger-text)]">*</span> {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span>}</label>
             <input
               type="text"
               value={title}
@@ -202,7 +202,7 @@ function NewLessonInner() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Subtitle <span className="font-normal" style={{ color: "var(--text-muted)" }}>(optional)</span> {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "#0cc0df" }}>· used by AI</span>}</label>
+            <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Subtitle <span className="font-normal" style={{ color: "var(--text-muted)" }}>(optional)</span> {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span>}</label>
             <input
               type="text"
               value={subtitle}
@@ -240,7 +240,7 @@ function NewLessonInner() {
 
           <div>
             <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
-              Topics {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "#0cc0df" }}>· used by AI</span>}
+              Topics {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span>}
             </label>
             <input
               type="text"
@@ -254,13 +254,13 @@ function NewLessonInner() {
           </div>
         </div>
 
-        {error && <p className="text-xs text-red-500">{error}</p>}
+        {error && <p className="text-xs text-[var(--danger-text)]">{error}</p>}
 
         <div className="flex items-center gap-3">
           <button
             type="submit"
             disabled={creating || !title.trim() || !selectedCourseId}
-            className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-6 py-2.5 text-sm font-bold text-white hover:opacity-90 disabled:opacity-50 transition shadow"
+            className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-6 py-2.5 text-sm font-bold text-[#0a0b13] hover:opacity-90 disabled:opacity-50 transition shadow"
           >
             {creating ? "Creating…" : "Create Lesson"}
           </button>
