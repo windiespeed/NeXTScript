@@ -5,6 +5,9 @@ export interface BaseSlide {
   type: SlideType;
   title: string;
   subtitle?: string;
+  /** Set when this slide is a locked course anchor (a SectionDef id — see lib/slideAnchors.ts).
+   * Its title is the exact course section label; the editor won't rename or delete it. */
+  anchorId?: string;
 }
 
 export interface StandardTextSlide extends BaseSlide {
@@ -57,5 +60,8 @@ export type SlideNode =
 export interface PresentationAST {
   lessonTitle: string;
   targetAudience: string;
+  /** Theme id (lib/themes.ts) the deck was generated with. Preview and .pptx export both use it;
+   * absent on decks made before this field existed, which then fall back to the course/global default. */
+  themeId?: string;
   slides: SlideNode[];
 }

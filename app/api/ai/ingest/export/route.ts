@@ -2,13 +2,14 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { projectStore } from "@/lib/projectStore";
 import { store } from "@/lib/store";
-import { courseStore } from "@/lib/courseStore";
-import { canAccessLesson, canAccessCourseId } from "@/lib/access";
+import { canAccessLesson } from "@/lib/access";
+import { loadCourseSkeleton } from "@/lib/courseSkeleton";
+import { applySlideAnchors } from "@/lib/slideAnchors";
 import { uploadPptxToDrive, moveFileToFolder, autoDeckName } from "@/lib/google";
 import { buildPptxFromAst } from "@/lib/pptxDeck";
 import { ensureLessonFolderId, ensureCourseFolderId } from "@/lib/lessonFolders";
 import { assertValidAst } from "@/lib/ingestionPrompt";
-import { DEFAULT_THEME_ID } from "@/lib/themes";
+import { DEFAULT_THEME_ID, THEMES } from "@/lib/themes";
 import type { PresentationAST } from "@/types/slideAst";
 import type { SavedProject } from "@/types/project";
 import type { Lesson } from "@/types/lesson";
@@ -38,7 +39,7 @@ export async function POST(req: Request) {
     } catch {
       return NextResponse.json({ error: "Invalid slide data — please regenerate and try again." }, { status: 400 });
     }
-    const ast = body.ast as PresentationAST;
+    const clientAst = body.ast as PresentationAST;
 
     // lessonId/courseId are optional — the ingest tool can still export standalone decks not
     // attached to a lesson. When present, verify the caller actually has access to them before
@@ -50,14 +51,22 @@ export async function POST(req: Request) {
     }
     const lessonId = lesson?.id;
 
-    let courseId: string | undefined;
-    if (typeof body.courseId === "string" && body.courseId && (await canAccessCourseId(body.courseId, session.user.email))) {
-      courseId = body.courseId;
-    }
-    const course = courseId ? await courseStore.getById(courseId) : undefined;
+    // Fall back to the attached lesson's own course so a deck exported from a lesson still gets
+    // that course's skeleton. loadCourseSkeleton re-checks access either way.
+    const requestedCourseId = typeof body.courseId === "string" && body.courseId ? body.courseId : lesson?.courseId;
+    const skeleton = requestedCourseId ? await loadCourseSkeleton(requestedCourseId, session.user.email) : null;
+    const course = skeleton?.course;
+    const courseId = course?.id;
 
-    // Theme selection is disabled for now — every export renders with the one fixed default.
-    const buffer = await buildPptxFromAst(ast, DEFAULT_THEME_ID);
+    // Same locked anchors as the preview: re-apply them to the (possibly hand-edited) deck so the
+    // .pptx carries the exact course section headings, in course order. A no-op on a deck that
+    // already conforms, which is the normal case since the editor locks anchored slides.
+    const ast = skeleton ? applySlideAnchors(clientAst, skeleton.anchors).ast : clientAst;
+
+    // The deck's own theme wins (it's what the preview showed), then the course default.
+    const themeId = THEMES.some(t => t.id === ast.themeId) ? ast.themeId! : skeleton?.themeId ?? DEFAULT_THEME_ID;
+    const finalAst: PresentationAST = { ...ast, themeId };
+    const buffer = await buildPptxFromAst(finalAst, themeId);
     const { id: deckId, webViewLink } = await uploadPptxToDrive(buffer, autoDeckName(lesson?.title, lesson?.subtitle), accessToken);
 
     // File the deck the same place the classic lesson generator would — nested in the lesson's
@@ -84,13 +93,19 @@ export async function POST(req: Request) {
       title: autoDeckName(lesson?.title, lesson?.subtitle),
       subtitle: ast.targetAudience,
       url,
-      presentationAST: ast,
+      presentationAST: finalAst,
       ...(lessonId ? { lessonId } : {}),
       ...(courseId ? { courseId } : {}),
     };
     await projectStore.create(projectInput, session.user.email);
 
-    return NextResponse.json({ url });
+    // The lesson keeps the finalized hybrid deck and its theme as its source of truth, so the
+    // web view and the exported file stay in step and a later re-export starts from the same JSON.
+    if (lessonId) {
+      await store.update(lessonId, { presentationAST: finalAst, selectedTheme: themeId, presentationStatus: "exported" });
+    }
+
+    return NextResponse.json({ url, ast: finalAst });
   } catch (err: any) {
     const msg = err instanceof Error ? err.message : typeof err === "string" ? err : JSON.stringify(err);
     return NextResponse.json({ error: msg }, { status: 500 });

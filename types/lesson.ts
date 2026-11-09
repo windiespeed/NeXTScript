@@ -58,6 +58,9 @@ export interface Lesson {
   // Slides deck tracked via SavedProject; a lesson can have either, both, or neither.
   presentationAST?: PresentationAST; // Component-tree structure generated/edited via /ingest
   selectedTheme?: string;            // Active ThemeConfig id (see types/theme.ts) for the AST renderer
+  /** "exported" once the current presentationAST has been exported to Drive (it's then the source
+   * of the latest deck, not an unexported draft). Absent on older lessons = treated as "draft". */
+  presentationStatus?: "draft" | "exported";
 
   // Dynamic content sections (see types/section.ts), keyed by SectionDef.id. Supersedes the
   // fixed fields above (overview, learningTargets, vocabulary, ...) once a lesson has been

@@ -1,6 +1,7 @@
 "use client";
 
 import { v4 as uuidv4 } from "uuid";
+import { wouldBreakAnchorOrder } from "@/lib/slideAnchors";
 import type {
   PresentationAST,
   SlideNode,
@@ -96,8 +97,19 @@ function TitleSubtitleFields({ slide, onChange }: { slide: SlideNode; onChange: 
   return (
     <>
       <div>
-        <label className={labelClass} style={labelStyle}>Title</label>
-        <input value={slide.title} onChange={e => onChange({ title: e.target.value })} className={inputClass} style={inputStyle} />
+        <label className={labelClass} style={labelStyle}>
+          Title{slide.anchorId && <span className="font-normal" style={{ color: "var(--text-muted)" }}> · 🔒 locked course section</span>}
+        </label>
+        {/* Anchored slides carry the exact course section label — renaming would break the
+            skeleton the export also enforces, so the field is read-only (subtitle stays free). */}
+        <input
+          value={slide.title}
+          readOnly={!!slide.anchorId}
+          title={slide.anchorId ? "This heading comes from the course's Sections and can't be changed here." : undefined}
+          onChange={e => { if (!slide.anchorId) onChange({ title: e.target.value }); }}
+          className={`${inputClass} ${slide.anchorId ? "cursor-not-allowed opacity-70" : ""}`}
+          style={inputStyle}
+        />
       </div>
       <div>
         <label className={labelClass} style={labelStyle}>
@@ -298,6 +310,7 @@ export default function SlideEditorPanel({ ast, activeIndex, onChange, onActiveI
 
   function deleteSlide(index: number) {
     if (ast.slides.length <= 1) return; // always keep at least one slide
+    if (ast.slides[index]?.anchorId) return; // locked course anchor
     const slides = ast.slides.filter((_, i) => i !== index);
     onChange({ ...ast, slides });
     onActiveIndexChange(Math.min(activeIndex, slides.length - 1));
@@ -306,6 +319,7 @@ export default function SlideEditorPanel({ ast, activeIndex, onChange, onActiveI
   function moveSlide(index: number, direction: -1 | 1) {
     const target = index + direction;
     if (target < 0 || target >= ast.slides.length) return;
+    if (wouldBreakAnchorOrder(ast.slides, index, target)) return; // anchors keep course order
     const slides = [...ast.slides];
     [slides[index], slides[target]] = [slides[target], slides[index]];
     onChange({ ...ast, slides });
@@ -328,13 +342,15 @@ export default function SlideEditorPanel({ ast, activeIndex, onChange, onActiveI
             }}
           >
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold truncate" style={{ color: "var(--text-primary)" }}>{i + 1}. {slide.title}</p>
+              <p className="text-xs font-semibold truncate" style={{ color: "var(--text-primary)" }}>
+                {i + 1}. {slide.anchorId && <span title="Locked course section">🔒 </span>}{slide.title}
+              </p>
               <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>{SLIDE_TYPE_LABELS[slide.type]}</p>
             </div>
             <div className="flex items-center shrink-0" onClick={e => e.stopPropagation()}>
-              <button type="button" onClick={() => moveSlide(i, -1)} disabled={i === 0} className="p-1 text-xs disabled:opacity-30" style={{ color: "var(--text-muted)" }} title="Move up">↑</button>
-              <button type="button" onClick={() => moveSlide(i, 1)} disabled={i === ast.slides.length - 1} className="p-1 text-xs disabled:opacity-30" style={{ color: "var(--text-muted)" }} title="Move down">↓</button>
-              <button type="button" onClick={() => deleteSlide(i)} disabled={ast.slides.length <= 1} className="p-1 text-xs text-red-500 disabled:opacity-30" title="Delete slide">🗑</button>
+              <button type="button" onClick={() => moveSlide(i, -1)} disabled={i === 0 || wouldBreakAnchorOrder(ast.slides, i, i - 1)} className="p-1 text-xs disabled:opacity-30" style={{ color: "var(--text-muted)" }} title="Move up">↑</button>
+              <button type="button" onClick={() => moveSlide(i, 1)} disabled={i === ast.slides.length - 1 || wouldBreakAnchorOrder(ast.slides, i, i + 1)} className="p-1 text-xs disabled:opacity-30" style={{ color: "var(--text-muted)" }} title="Move down">↓</button>
+              <button type="button" onClick={() => deleteSlide(i)} disabled={ast.slides.length <= 1 || !!slide.anchorId} className="p-1 text-xs text-red-500 disabled:opacity-30" title={slide.anchorId ? "Course sections can't be deleted" : "Delete slide"}>🗑</button>
             </div>
           </div>
         ))}

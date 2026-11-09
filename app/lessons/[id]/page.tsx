@@ -385,9 +385,9 @@ export default function LessonHubPage() {
     const res = await fetch(`/api/lessons/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ presentationAST: null }),
+      body: JSON.stringify({ presentationAST: null, presentationStatus: null }),
     });
-    if (res.ok) setLesson(prev => prev ? { ...prev, presentationAST: undefined } : prev);
+    if (res.ok) setLesson(prev => prev ? { ...prev, presentationAST: undefined, presentationStatus: undefined } : prev);
   }
 
   if (loading) return <p className="text-sm text-[#0cc0df] mt-10">Loading…</p>;
@@ -400,7 +400,9 @@ export default function LessonHubPage() {
   // named one instead of silently replacing the last) — already sorted newest-first by
   // projectStore.getAll. The unexported draft (if any) is independent of how many exist.
   const decks = projects.filter(p => p.type === "deck" && (p.lessonId === id || p.lessonIds?.includes(id)));
-  const hasSlideDraft = !!lesson.presentationAST;
+  // Export also saves the final deck onto the lesson (presentationStatus "exported"), so only an
+  // AST that was saved/edited after the last export counts as an unexported draft.
+  const hasSlideDraft = !!lesson.presentationAST && lesson.presentationStatus !== "exported";
   const quizProjects = projects.filter(p => p.type === "form" && p.isQuiz && (p.lessonId === id || p.lessonIds?.includes(id)));
   const quizDrafts = quizProjects.filter(p => p.status === "draft");
   const quizGenerated = quizProjects.filter(p => p.status === "generated" || (!p.status && p.url));
