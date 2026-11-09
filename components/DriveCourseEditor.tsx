@@ -24,7 +24,6 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
-
 const inputClass = "w-full rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#0cc0df] transition placeholder:text-[var(--text-muted)]";
 const inputStyle = { background: "var(--bg-card-hover)", color: "var(--text-primary)", border: "1px solid var(--border)" };
 
@@ -154,15 +153,11 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
     } catch { return new Set(); }
   });
   const [assigningModuleForLesson, setAssigningModuleForLesson] = useState<string | null>(null);
-  const [genPanelId, setGenPanelId] = useState<string | null>(null);
-  const [genChecks, setGenChecks] = useState({ slides: true, overview: true, quiz: false });
-  const [generatingLessonId, setGeneratingLessonId] = useState<string | null>(null);
   const [unassignedOrder, setUnassignedOrder] = useState<string[]>([]);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [overContainerId, setOverContainerId] = useState<string | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
   const [joinCodeCopied, setJoinCodeCopied] = useState(false);
-  const [editingModuleSettings, setEditingModuleSettings] = useState<string | null>(null);
   const [nextboxPanelId, setNextboxPanelId] = useState<string | null>(null);
   const [publishMenuId, setPublishMenuId] = useState<string | null>(null);
   const [releasingIds, setReleasingIds] = useState<Set<string>>(new Set());
@@ -210,17 +205,6 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
       setLoading(false);
     });
   }, [id]);
-
-
-  async function handleToggleReleased(lesson: Lesson) {
-    const updated = { ...lesson, released: !lesson.released };
-    setLessons(prev => prev.map(l => l.id === lesson.id ? updated : l));
-    await fetch(`/api/lessons/${lesson.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ released: !lesson.released }),
-    });
-  }
 
   async function handleTogglePublishedToClassroom(lesson: Lesson) {
     const next = !lesson.publishedToClassroom;
@@ -571,31 +555,6 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
     }
   }
 
-  async function handleGenerateLesson(lessonId: string) {
-    setGenPanelId(null);
-    setGeneratingLessonId(lessonId);
-    const files: string[] = [];
-    if (genChecks.slides) files.push("slides");
-    if (genChecks.overview) files.push("doc");
-    if (genChecks.quiz) files.push("form");
-    setLessons(prev => prev.map(l => l.id === lessonId ? { ...l, status: "generating" } : l));
-    try {
-      const res = await fetch(`/api/generate/${lessonId}`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ files, destination: "drive" }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setLessons(prev => prev.map(l => l.id === lessonId ? { ...l, status: "done", folderUrl: data.folderUrl ?? l.folderUrl } : l));
-      } else {
-        setLessons(prev => prev.map(l => l.id === lessonId ? { ...l, status: "error" } : l));
-      }
-    } catch {
-      setLessons(prev => prev.map(l => l.id === lessonId ? { ...l, status: "error" } : l));
-    }
-    setGeneratingLessonId(null);
-  }
-
   async function handlePatchLesson(lessonId: string, patch: Partial<Lesson>) {
     setLessons(prev => prev.map(l => l.id === lessonId ? { ...l, ...patch } : l));
     await fetch(`/api/lessons/${lessonId}`, {
@@ -657,19 +616,6 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
       const updated = await res.json();
       setCourse(updated);
     }
-  }
-
-  async function handleReleaseModule(modId: string, release: boolean) {
-    const mod = driveModules.find(m => m.id === modId);
-    if (!mod) return;
-    const targets = mod.lessonIds
-      .map(lid => lessons.find(l => l.id === lid))
-      .filter((l): l is Lesson => !!l && l.released !== release);
-    if (targets.length === 0) return;
-    setLessons(prev => prev.map(l => mod.lessonIds.includes(l.id) ? { ...l, released: release } : l));
-    await Promise.all(targets.map(l =>
-      fetch(`/api/lessons/${l.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ released: release }) })
-    ));
   }
 
   if (loading) return <p className="text-sm text-[#0cc0df] py-4">Loading…</p>;

@@ -105,15 +105,6 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
   });
   useDraftAutosave<LessonDraft>(draftKey, { form, slides, slideCount, overviewSlides });
 
-  function clearForm() {
-    if (!confirm("Clear all fields? This cannot be undone.")) return;
-    setForm({ ...EMPTY, sources: form.sources });
-    setSlides([{ title: "", body: "" }]);
-    setOverviewSlides([false]);
-    setSlideCount(10);
-    setAiFilledFields(new Set());
-  }
-
   function clearSection(keys: (keyof LessonInput)[], extra?: () => void) {
     setForm(f => {
       const next = { ...f };

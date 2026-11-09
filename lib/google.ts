@@ -10,7 +10,6 @@ import { google } from "googleapis";
 import type { slides_v1 } from "googleapis";
 import { Readable } from "stream";
 import type { Lesson } from "@/types/lesson";
-import type { FormQuestion } from "@/types/form";
 import { DEFAULT_SECTIONS, type SectionDef } from "@/types/section";
 import { getSectionContent } from "@/lib/sections";
 import type { SavedProject } from "@/types/project";
