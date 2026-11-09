@@ -4,6 +4,7 @@ import { courseStore } from "@/lib/courseStore";
 import { canAccessCourse } from "@/lib/access";
 import { exerciseStore } from "@/lib/exerciseStore";
 import { getDb } from "@/lib/firebase";
+import { serverError } from "@/lib/apiErrors";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +31,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     const progress = snap.docs.map(d => d.data());
 
     return NextResponse.json({ course, exercises, progress });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err) {
+    return serverError(err);
   }
 }

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { courseStore } from "@/lib/courseStore";
 import type { CourseInput } from "@/types/course";
+import { serverError } from "@/lib/apiErrors";
 
 export const dynamic = "force-dynamic";
 
@@ -18,8 +19,8 @@ export async function GET(req: Request) {
     else if (unassigned) courses = courses.filter(c => !c.moduleId);
 
     return NextResponse.json(courses);
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err) {
+    return serverError(err);
   }
 }
 
@@ -35,7 +36,7 @@ export async function POST(req: Request) {
 
     const course = await courseStore.create(body, session.user.email);
     return NextResponse.json(course, { status: 201 });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err) {
+    return serverError(err);
   }
 }

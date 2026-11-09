@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { projectStore } from "@/lib/projectStore";
 import { getAccessibleProjects } from "@/lib/access";
 import type { FormQuestion } from "@/types/form";
+import { serverError } from "@/lib/apiErrors";
 
 export const dynamic = "force-dynamic";
 
@@ -46,7 +47,7 @@ export async function POST(req: Request) {
     }, session.user.email);
 
     return NextResponse.json({ id: project.id, status: "draft" });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err) {
+    return serverError(err);
   }
 }

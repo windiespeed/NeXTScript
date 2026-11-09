@@ -4,6 +4,7 @@ import { store } from "@/lib/store";
 import { courseStore } from "@/lib/courseStore";
 import { canAccessCourse } from "@/lib/access";
 import type { LessonInput } from "@/types/lesson";
+import { serverError } from "@/lib/apiErrors";
 
 export const dynamic = "force-dynamic";
 
@@ -24,8 +25,8 @@ export async function GET(req: Request) {
 
     const lessons = await store.getAll(session.user.email);
     return NextResponse.json(lessons);
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err) {
+    return serverError(err);
   }
 }
 
@@ -49,7 +50,7 @@ export async function POST(req: Request) {
     const lesson = await store.create(body, session.user.email);
     await courseStore.addLesson(body.courseId, lesson.id);
     return NextResponse.json(lesson, { status: 201 });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err) {
+    return serverError(err);
   }
 }

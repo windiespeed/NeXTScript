@@ -3,6 +3,7 @@ import { getDb } from "@/lib/firebase";
 import { FieldValue } from "firebase-admin/firestore";
 import type { Course, CourseInput } from "@/types/course";
 import { DEFAULT_COURSE_SETTINGS } from "@/types/course";
+import { mergeDoc } from "@/lib/firestoreTx";
 
 const COLLECTION = "courses";
 
@@ -58,10 +59,7 @@ export const courseStore = {
 
   async update(id: string, patch: Partial<Course>): Promise<Course | null> {
     const ref = getDb().collection(COLLECTION).doc(id);
-    const doc = await ref.get();
-    if (!doc.exists) return null;
-    const existing = doc.data() as Course;
-    const updated: Course = {
+    return mergeDoc<Course>(ref, (existing) => ({
       ...existing,
       ...patch,
       // Deep merge settings so callers can patch individual fields
@@ -69,9 +67,7 @@ export const courseStore = {
         ? { ...existing.settings, ...patch.settings }
         : existing.settings,
       updatedAt: new Date().toISOString(),
-    };
-    await ref.set(updated);
-    return updated;
+    }));
   },
 
   async delete(id: string): Promise<boolean> {

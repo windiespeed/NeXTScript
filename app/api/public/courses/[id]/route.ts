@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { courseStore } from "@/lib/courseStore";
 import { store } from "@/lib/store";
+import { serverError } from "@/lib/apiErrors";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +34,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       industry: course.settings.industry,
       lessons: releasedLessons,
     });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err) {
+    return serverError(err);
   }
 }

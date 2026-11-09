@@ -4,6 +4,7 @@ import { exerciseStore } from "@/lib/exerciseStore";
 import { courseStore } from "@/lib/courseStore";
 import { canAccessCourse } from "@/lib/access";
 import type { ExerciseInput, ExerciseConcept } from "@/types/exercise";
+import { serverError } from "@/lib/apiErrors";
 
 export const dynamic = "force-dynamic";
 
@@ -25,8 +26,8 @@ export async function GET(req: Request) {
 
     const exercises = await exerciseStore.getUnassigned(session.user.email);
     return NextResponse.json(exercises);
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err) {
+    return serverError(err);
   }
 }
 
@@ -42,7 +43,7 @@ export async function POST(req: Request) {
     if (!canAccessCourse(course, session.user.email)) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
     const exercise = await exerciseStore.create(body, session.user.email);
     return NextResponse.json(exercise, { status: 201 });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err) {
+    return serverError(err);
   }
 }

@@ -5,6 +5,7 @@ import { canAccessCourse, isCourseOwner } from "@/lib/access";
 import { getDb } from "@/lib/firebase";
 import { FieldValue } from "firebase-admin/firestore";
 import { shareDriveFile, revokeDriveAccess } from "@/lib/google";
+import { serverError } from "@/lib/apiErrors";
 
 export const dynamic = "force-dynamic";
 
@@ -19,8 +20,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     if (!canAccessCourse(course, session.user.email)) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
 
     return NextResponse.json(course);
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err) {
+    return serverError(err);
   }
 }
 
@@ -62,8 +63,8 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
     const updated = await courseStore.update(id, patch);
     return NextResponse.json(updated);
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err) {
+    return serverError(err);
   }
 }
 
@@ -91,7 +92,7 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
     }
 
     return NextResponse.json({ success: true });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err) {
+    return serverError(err);
   }
 }

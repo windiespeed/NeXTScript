@@ -4,6 +4,7 @@ import { exerciseStore } from "@/lib/exerciseStore";
 import { courseStore } from "@/lib/courseStore";
 import { canAccessCourse } from "@/lib/access";
 import { SEED_EXERCISES } from "@/data/seed-exercises";
+import { serverError } from "@/lib/apiErrors";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +29,7 @@ export async function POST(req: Request) {
 
     await exerciseStore.createMany(SEED_EXERCISES, session.user.email, courseId);
     return NextResponse.json({ message: "Seeded successfully.", seeded: SEED_EXERCISES.length });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err) {
+    return serverError(err);
   }
 }

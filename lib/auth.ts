@@ -1,5 +1,6 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
+import { isAllowedEmail } from "@/lib/emailDomain";
 
 // Bump this number whenever scope changes require all users to re-authenticate.
 const SESSION_VERSION = 3;
@@ -58,6 +59,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
+    async signIn({ profile }) {
+      // Google only reports verified addresses for Workspace accounts, but check anyway.
+      if (profile?.email_verified === false) return false;
+      return isAllowedEmail(profile?.email);
+    },
     async jwt({ token, account }) {
       // Store tokens on first sign-in
       if (account) {
@@ -85,6 +91,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // Strip session so useSession({ required: true }) redirects to sign-in
         return null as any;
       }
+      // Server code reads the Google token from auth(). The /api/auth/session endpoint
+      // strips it before the browser sees it (app/api/auth/[...nextauth]/route.ts).
       (session as any).accessToken = token.accessToken;
       (session as any).error = token.error;
       return session;
