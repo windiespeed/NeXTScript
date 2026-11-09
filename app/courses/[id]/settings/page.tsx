@@ -662,12 +662,12 @@ export default function CourseSettingsPage() {
                   <div className="rounded-3xl px-4 py-3 flex items-start gap-3" style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)" }}>
                     <div className="flex flex-col gap-0.5 pt-0.5 shrink-0">
                       <button aria-label={`Move ${concept.label} up`} onClick={() => moveUp(idx)} disabled={idx === 0}
-                        className="p-0.5 rounded transition hover:opacity-80 disabled:opacity-20" style={{ color: "var(--text-muted)" }}>
+                        className="p-1.5 rounded transition hover:opacity-80 disabled:opacity-20" style={{ color: "var(--text-muted)" }}>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
                       </button>
                       <span className="text-[10px] text-center leading-none" style={{ color: "var(--text-muted)" }}>{idx + 1}</span>
                       <button aria-label={`Move ${concept.label} down`} onClick={() => moveDown(idx)} disabled={idx === concepts.length - 1}
-                        className="p-0.5 rounded transition hover:opacity-80 disabled:opacity-20" style={{ color: "var(--text-muted)" }}>
+                        className="p-1.5 rounded transition hover:opacity-80 disabled:opacity-20" style={{ color: "var(--text-muted)" }}>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
                       </button>
                     </div>

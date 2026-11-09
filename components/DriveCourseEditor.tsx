@@ -1154,7 +1154,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                     <div key={mod.id} className="rounded-3xl" style={{ border: "1px solid var(--border)" }}>
                       <div className={`flex items-center gap-2 px-4 py-2.5 rounded-t-3xl ${collapsed ? "rounded-b-3xl" : ""}`}
                         style={{ background: "var(--bg-card)", borderBottom: collapsed ? undefined : "1px solid var(--border)" }}>
-                        <button aria-label={collapsed ? `Expand ${mod.title}` : `Collapse ${mod.title}`} aria-expanded={!collapsed} onClick={() => toggleModuleCollapse(mod.id)} className="p-0.5 rounded transition hover:bg-[var(--bg-card)]" style={{ color: "var(--text-muted)" }}>
+                        <button aria-label={collapsed ? `Expand ${mod.title}` : `Collapse ${mod.title}`} aria-expanded={!collapsed} onClick={() => toggleModuleCollapse(mod.id)} className="p-1 rounded transition hover:bg-[var(--bg-card)]" style={{ color: "var(--text-muted)" }}>
                           <svg xmlns="http://www.w3.org/2000/svg" className={`w-3.5 h-3.5 transition-transform ${collapsed ? "-rotate-90" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
                         </button>
                         {editingModuleId === mod.id ? (
