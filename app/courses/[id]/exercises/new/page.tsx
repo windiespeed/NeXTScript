@@ -98,7 +98,7 @@ export default function NewCourseExercisePage() {
       </div>
 
       {error && (
-        <div className="rounded-2xl px-4 py-3 text-xs font-medium" style={{ background: "rgba(239,68,68,0.08)", color: "var(--danger-text)", border: "1px solid rgba(239,68,68,0.2)" }}>
+        <div role="alert" className="rounded-2xl px-4 py-3 text-xs font-medium" style={{ background: "rgba(239,68,68,0.08)", color: "var(--danger-text)", border: "1px solid rgba(239,68,68,0.2)" }}>
           {error}
         </div>
       )}
@@ -210,7 +210,7 @@ export default function NewCourseExercisePage() {
                 placeholder={`Hint ${i + 1}…`}
                 className={`${inputClass} flex-1`} style={inputStyle} />
               {hints.length > 1 && (
-                <button onClick={() => removeHint(i)} className="text-xs transition hover:opacity-70 shrink-0" style={{ color: "var(--danger-text)" }}>✕</button>
+                <button aria-label={`Remove hint ${i + 1}`} onClick={() => removeHint(i)} className="text-xs transition hover:opacity-70 shrink-0" style={{ color: "var(--danger-text)" }}>✕</button>
               )}
             </div>
           ))}

@@ -282,7 +282,7 @@ export default function QuizzesPage() {
       </div>
 
       {fixFoldersMsg && (
-        <p className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>{fixFoldersMsg}</p>
+        <p role="status" className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>{fixFoldersMsg}</p>
       )}
 
       {folderCheck && (

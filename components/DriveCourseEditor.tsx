@@ -720,7 +720,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
               <div key={r.id} className="group inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold"
                 style={{ background: "var(--accent-purple-bg)", border: "1px solid rgba(99,102,241,0.30)", color: "var(--accent-purple)" }}>
                 <a href={r.url} target="_blank" rel="noopener noreferrer" className="hover:underline">{r.label} ↗</a>
-                <button onClick={() => handleRemoveResource(r.id)}
+                <button aria-label={`Remove ${r.label}`} onClick={() => handleRemoveResource(r.id)}
                   className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity text-[var(--danger-text)] hover:text-[var(--danger-text)] leading-none">×</button>
               </div>
             ))}
@@ -730,7 +730,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
 
       {/* Release feedback */}
       {releaseMsg && (
-        <div className="rounded-2xl px-4 py-2.5 text-xs font-medium" style={{
+        <div role="status" className="rounded-2xl px-4 py-2.5 text-xs font-medium" style={{
           background: releaseMsg.ok ? "rgba(45,212,160,0.08)" : "rgba(239,68,68,0.08)",
           border: `1px solid ${releaseMsg.ok ? "rgba(45,212,160,0.25)" : "rgba(239,68,68,0.25)"}`,
           color: releaseMsg.ok ? "var(--success-text)" : "var(--danger-text)",
@@ -1154,7 +1154,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                     <div key={mod.id} className="rounded-3xl" style={{ border: "1px solid var(--border)" }}>
                       <div className={`flex items-center gap-2 px-4 py-2.5 rounded-t-3xl ${collapsed ? "rounded-b-3xl" : ""}`}
                         style={{ background: "var(--bg-card)", borderBottom: collapsed ? undefined : "1px solid var(--border)" }}>
-                        <button onClick={() => toggleModuleCollapse(mod.id)} className="p-0.5 rounded transition hover:bg-[var(--bg-card)]" style={{ color: "var(--text-muted)" }}>
+                        <button aria-label={collapsed ? `Expand ${mod.title}` : `Collapse ${mod.title}`} aria-expanded={!collapsed} onClick={() => toggleModuleCollapse(mod.id)} className="p-0.5 rounded transition hover:bg-[var(--bg-card)]" style={{ color: "var(--text-muted)" }}>
                           <svg xmlns="http://www.w3.org/2000/svg" className={`w-3.5 h-3.5 transition-transform ${collapsed ? "-rotate-90" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
                         </button>
                         {editingModuleId === mod.id ? (
@@ -1333,7 +1333,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
           <div className="relative w-full max-w-lg max-h-[80vh] flex flex-col rounded-3xl overflow-hidden" style={{ background: "var(--bg-card)", boxShadow: "var(--shadow-float)" }}>
             <div className="flex items-center justify-between px-6 py-4 shrink-0" style={{ borderBottom: "1px solid var(--border)" }}>
               <h2 id="add-existing-lessons-title" className="text-base font-bold" style={{ color: "var(--text-primary)" }}>Add Existing Lessons</h2>
-              <button onClick={() => setAddExistingOpen(false)} className="p-1.5 rounded-full transition hover:bg-[var(--bg-card-hover)]" style={{ color: "var(--text-muted)" }}>
+              <button aria-label="Close" onClick={() => setAddExistingOpen(false)} className="p-1.5 rounded-full transition hover:bg-[var(--bg-card-hover)]" style={{ color: "var(--text-muted)" }}>
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
             </div>
@@ -1375,7 +1375,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
           <div className="relative w-full max-w-sm rounded-3xl overflow-hidden" style={{ background: "var(--bg-card)", boxShadow: "var(--shadow-float)" }}>
             <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: "1px solid var(--border)" }}>
               <h2 id="add-resource-title" className="text-base font-bold" style={{ color: "var(--text-primary)" }}>Add Resource</h2>
-              <button onClick={() => setAddResourceOpen(false)} className="p-1.5 rounded-full transition hover:bg-[var(--bg-card-hover)]" style={{ color: "var(--text-muted)" }}>
+              <button aria-label="Close" onClick={() => setAddResourceOpen(false)} className="p-1.5 rounded-full transition hover:bg-[var(--bg-card-hover)]" style={{ color: "var(--text-muted)" }}>
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
             </div>

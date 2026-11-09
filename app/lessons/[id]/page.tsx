@@ -638,7 +638,7 @@ export default function LessonHubPage() {
               </div>
             </div>
 
-            {overviewError && <p className="text-xs text-[var(--danger-text)]">{overviewError}</p>}
+            {overviewError && <p role="alert" className="text-xs text-[var(--danger-text)]">{overviewError}</p>}
 
             <div className="flex gap-2 pt-2">
               <button onClick={() => setOverviewModalOpen(false)} className="flex-1 rounded-full py-2 text-sm font-semibold transition" style={{ border: "1px solid var(--border)", color: "var(--text-primary)" }}>
@@ -814,7 +814,7 @@ export default function LessonHubPage() {
                         )}
                       </div>
                     </div>
-                    {generateError && <p className="text-xs text-[var(--danger-text)]">{generateError}</p>}
+                    {generateError && <p role="alert" className="text-xs text-[var(--danger-text)]">{generateError}</p>}
                     {!generateError && lesson.status === "error" && lesson.errorMessage && (
                       <p className="text-xs text-[var(--danger-text)]">Last generation failed: {lesson.errorMessage}</p>
                     )}
@@ -935,7 +935,7 @@ export default function LessonHubPage() {
                   <p className="text-[10px] truncate" style={{ color: "var(--text-muted)" }}>{r.url}</p>
                 </div>
                 <a href={r.url} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold shrink-0 hover:underline" style={{ color: "var(--accent-text)" }}>Open ↗</a>
-                <button onClick={() => handleDeleteResource(r.id)} className="p-1 rounded-full shrink-0 hover:text-[var(--danger-text)] transition" style={{ color: "var(--text-muted)" }}>
+                <button aria-label={`Remove ${r.label}`} onClick={() => handleDeleteResource(r.id)} className="p-1 rounded-full shrink-0 hover:text-[var(--danger-text)] transition" style={{ color: "var(--text-muted)" }}>
                   <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
                 </button>
               </div>

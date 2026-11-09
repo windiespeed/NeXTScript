@@ -366,7 +366,7 @@ export default function EditQuizPage() {
               <input id="quizzes-id-short-answer" type="number" min={0} max={50} value={saCount} onChange={e => setSaCount(Math.min(50, Math.max(0, Number(e.target.value))))} className={inputClass} style={inputStyle} />
             </div>
           </div>
-          {aiError && <p className="text-xs text-[var(--danger-text)]">{aiError}</p>}
+          {aiError && <p role="alert" className="text-xs text-[var(--danger-text)]">{aiError}</p>}
           <button
             onClick={handleAiGenerate}
             disabled={aiGenerating || !canAiGenerate}
@@ -493,7 +493,7 @@ export default function EditQuizPage() {
                               style={inputStyle}
                             />
                             {q.options.length > 2 && (
-                              <button onClick={() => removeOption(q.id, oi)} className="text-xs hover:text-[var(--danger-text)] transition shrink-0" style={{ color: "var(--text-muted)" }}>×</button>
+                              <button aria-label={`Remove option ${oi + 1}`} onClick={() => removeOption(q.id, oi)} className="text-xs hover:text-[var(--danger-text)] transition shrink-0" style={{ color: "var(--text-muted)" }}>×</button>
                             )}
                           </div>
                         ))}
@@ -503,7 +503,7 @@ export default function EditQuizPage() {
                       </div>
                     )}
                   </div>
-                  <button
+                  <button aria-label={`Remove question ${i + 1}`}
                     onClick={() => removeQuestion(q.id)}
                     className="p-1 rounded-full transition hover:text-[var(--danger-text)] hover:bg-red-500/10 shrink-0"
                     style={{ color: "var(--text-muted)" }}
@@ -535,10 +535,10 @@ export default function EditQuizPage() {
           >
             {generating ? "Generating…" : formUrl ? "Regenerate Google Form" : "Generate Google Form"}
           </button>
-          {saved && !saving && <p className="text-xs font-semibold" style={{ color: "var(--success-text)" }}>Changes saved!</p>}
+          {saved && !saving && <p role="status" className="text-xs font-semibold" style={{ color: "var(--success-text)" }}>Changes saved!</p>}
         </div>
-        {saveError && <p className="text-xs text-[var(--danger-text)]">{saveError}</p>}
-        {generateError && <p className="text-xs text-[var(--danger-text)]">{generateError}</p>}
+        {saveError && <p role="alert" className="text-xs text-[var(--danger-text)]">{saveError}</p>}
+        {generateError && <p role="alert" className="text-xs text-[var(--danger-text)]">{generateError}</p>}
         {formUrl && (
           <div className="flex items-center gap-3 rounded-2xl px-4 py-3" style={{ background: "rgba(12,192,223,0.06)", border: "1px solid rgba(12,192,223,0.2)" }}>
             <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="#0cc0df" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>

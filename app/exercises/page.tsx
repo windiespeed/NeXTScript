@@ -168,7 +168,7 @@ export default function UnassignedExercisesPage() {
       </div>
 
       {error && (
-        <div className="rounded-2xl px-4 py-3 text-xs font-medium" style={{ background: "rgba(239,68,68,0.08)", color: "var(--danger-text)", border: "1px solid rgba(239,68,68,0.2)" }}>
+        <div role="alert" className="rounded-2xl px-4 py-3 text-xs font-medium" style={{ background: "rgba(239,68,68,0.08)", color: "var(--danger-text)", border: "1px solid rgba(239,68,68,0.2)" }}>
           {error}
         </div>
       )}

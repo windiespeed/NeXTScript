@@ -304,7 +304,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
     <>
     <form onSubmit={handleSubmit} className="space-y-4">
       {error && (
-        <div className="rounded-2xl bg-red-50 border border-red-200 p-4 text-red-700 text-sm">
+        <div role="alert" className="rounded-2xl bg-red-50 border border-red-200 p-4 text-red-700 text-sm">
           {error}
         </div>
       )}

@@ -454,13 +454,13 @@ export default function CourseSettingsPage() {
           />
         </div>
 
-        {saveError && <p className="text-sm text-[var(--danger-text)]">{saveError}</p>}
+        {saveError && <p role="alert" className="text-sm text-[var(--danger-text)]">{saveError}</p>}
         <div className="flex items-center gap-4">
           <button type="submit" disabled={saving}
             className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-6 py-2.5 text-sm font-semibold text-[#0a0b13] hover:opacity-90 disabled:opacity-50 transition shadow">
             {saving ? "Saving…" : "Save Settings"}
           </button>
-          {saveMsg && <p className="text-sm font-medium" style={{ color: "var(--success-text)" }}>{saveMsg}</p>}
+          {saveMsg && <p role="status" className="text-sm font-medium" style={{ color: "var(--success-text)" }}>{saveMsg}</p>}
         </div>
       </form>
 
@@ -511,7 +511,7 @@ export default function CourseSettingsPage() {
               {classroomsLoading ? "Loading classrooms…" : "Load my Google Classrooms"}
             </button>
             {classroomsError && (
-              <p className="text-xs" style={{ color: "var(--danger-text)" }}>{classroomsError}</p>
+              <p role="alert" className="text-xs" style={{ color: "var(--danger-text)" }}>{classroomsError}</p>
             )}
           </div>
         ) : (
@@ -539,7 +539,7 @@ export default function CourseSettingsPage() {
             </button>
           </div>
         )}
-        {classroomMsg && <p className="text-xs font-medium" style={{ color: "var(--success-text)" }}>{classroomMsg}</p>}
+        {classroomMsg && <p role="status" className="text-xs font-medium" style={{ color: "var(--success-text)" }}>{classroomMsg}</p>}
         <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>
           After linking, use the <strong>Release</strong> button on each lesson or module to push it to this classroom as a draft assignment.
           If a matching title already exists, a copy is created automatically.
@@ -573,7 +573,7 @@ export default function CourseSettingsPage() {
           </div>
         )}
 
-        {collabError && <p className="text-xs" style={{ color: "var(--danger-text)" }}>{collabError}</p>}
+        {collabError && <p role="alert" className="text-xs" style={{ color: "var(--danger-text)" }}>{collabError}</p>}
 
         {collaborators.length > 0 && (
           <div className="space-y-2">
@@ -610,7 +610,7 @@ export default function CourseSettingsPage() {
         </div>
 
         {conceptError && (
-          <div className="rounded-2xl px-4 py-3 text-xs font-medium" style={{ background: "rgba(239,68,68,0.08)", color: "var(--danger-text)", border: "1px solid rgba(239,68,68,0.2)" }}>
+          <div role="alert" className="rounded-2xl px-4 py-3 text-xs font-medium" style={{ background: "rgba(239,68,68,0.08)", color: "var(--danger-text)", border: "1px solid rgba(239,68,68,0.2)" }}>
             {conceptError}
           </div>
         )}
@@ -661,12 +661,12 @@ export default function CourseSettingsPage() {
                 ) : (
                   <div className="rounded-3xl px-4 py-3 flex items-start gap-3" style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)" }}>
                     <div className="flex flex-col gap-0.5 pt-0.5 shrink-0">
-                      <button onClick={() => moveUp(idx)} disabled={idx === 0}
+                      <button aria-label={`Move ${concept.label} up`} onClick={() => moveUp(idx)} disabled={idx === 0}
                         className="p-0.5 rounded transition hover:opacity-80 disabled:opacity-20" style={{ color: "var(--text-muted)" }}>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
                       </button>
                       <span className="text-[10px] text-center leading-none" style={{ color: "var(--text-muted)" }}>{idx + 1}</span>
-                      <button onClick={() => moveDown(idx)} disabled={idx === concepts.length - 1}
+                      <button aria-label={`Move ${concept.label} down`} onClick={() => moveDown(idx)} disabled={idx === concepts.length - 1}
                         className="p-0.5 rounded transition hover:opacity-80 disabled:opacity-20" style={{ color: "var(--text-muted)" }}>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
                       </button>

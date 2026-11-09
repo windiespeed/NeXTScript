@@ -322,8 +322,8 @@ export default function ProfilePage() {
       </div>
 
       {/* Status messages */}
-      {message && <p className="text-sm text-[var(--success-text)]">{message}</p>}
-      {error && <p className="text-sm text-[var(--danger-text)]">{error}</p>}
+      {message && <p role="status" className="text-sm text-[var(--success-text)]">{message}</p>}
+      {error && <p role="alert" className="text-sm text-[var(--danger-text)]">{error}</p>}
 
       {/* Appearance */}
       <div className="rounded-3xl p-6" style={cardSty}>

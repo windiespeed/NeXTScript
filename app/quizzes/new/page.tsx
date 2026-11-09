@@ -507,7 +507,7 @@ function NewQuizPageInner() {
               <input id="quizzes-new-short-answer" type="number" min={0} max={50} value={saCount} onChange={e => setSaCount(Math.min(50, Math.max(0, Number(e.target.value))))} className={inputClass} style={inputStyle} />
             </div>
           </div>
-          {aiError && <p className="text-xs text-[var(--danger-text)]">{aiError}</p>}
+          {aiError && <p role="alert" className="text-xs text-[var(--danger-text)]">{aiError}</p>}
           <button
             onClick={handleAiGenerate}
             disabled={aiGenerating || !canAiGenerate}
@@ -634,7 +634,7 @@ function NewQuizPageInner() {
                               style={inputStyle}
                             />
                             {q.options.length > 2 && (
-                              <button onClick={() => removeOption(q.id, oi)} className="text-xs hover:text-[var(--danger-text)] transition shrink-0" style={{ color: "var(--text-muted)" }}>×</button>
+                              <button aria-label={`Remove option ${oi + 1}`} onClick={() => removeOption(q.id, oi)} className="text-xs hover:text-[var(--danger-text)] transition shrink-0" style={{ color: "var(--text-muted)" }}>×</button>
                             )}
                           </div>
                         ))}
@@ -644,7 +644,7 @@ function NewQuizPageInner() {
                       </div>
                     )}
                   </div>
-                  <button
+                  <button aria-label={`Remove question ${i + 1}`}
                     onClick={() => removeQuestion(q.id)}
                     className="p-1 rounded-full transition hover:text-[var(--danger-text)] hover:bg-red-500/10 shrink-0"
                     style={{ color: "var(--text-muted)" }}
@@ -683,8 +683,8 @@ function NewQuizPageInner() {
             </p>
           )}
         </div>
-        {saveError && <p className="text-xs text-[var(--danger-text)]">{saveError}</p>}
-        {generateError && <p className="text-xs text-[var(--danger-text)]">{generateError}</p>}
+        {saveError && <p role="alert" className="text-xs text-[var(--danger-text)]">{saveError}</p>}
+        {generateError && <p role="alert" className="text-xs text-[var(--danger-text)]">{generateError}</p>}
       </div>
     </div>
   );

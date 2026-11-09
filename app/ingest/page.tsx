@@ -862,8 +862,8 @@ function IngestPageInner() {
               </div>
             </div>
 
-            {error && <p className="text-xs text-[var(--danger-text)]">{error}</p>}
-            {saveInfoError && <p className="text-xs text-[var(--danger-text)]">{saveInfoError}</p>}
+            {error && <p role="alert" className="text-xs text-[var(--danger-text)]">{error}</p>}
+            {saveInfoError && <p role="alert" className="text-xs text-[var(--danger-text)]">{saveInfoError}</p>}
 
             <div className="flex items-center gap-3">
               <button
@@ -965,8 +965,8 @@ function IngestPageInner() {
               {anchorNotes.map(note => <p key={note}>{note}</p>)}
             </div>
           )}
-          {exportError && <p className="text-xs text-[var(--danger-text)]">{exportError}</p>}
-          {saveError && <p className="text-xs text-[var(--danger-text)]">{saveError}</p>}
+          {exportError && <p role="alert" className="text-xs text-[var(--danger-text)]">{exportError}</p>}
+          {saveError && <p role="alert" className="text-xs text-[var(--danger-text)]">{saveError}</p>}
 
           {viewMode === "edit" ? (
             <SlideEditorPanel ast={ast} activeIndex={activeIndex} onChange={setAst} onActiveIndexChange={setActiveIndex} />

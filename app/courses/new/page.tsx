@@ -202,7 +202,7 @@ export default function NewCoursePage() {
           />
         </div>
 
-        {error && <p className="text-sm text-[var(--danger-text)]">{error}</p>}
+        {error && <p role="alert" className="text-sm text-[var(--danger-text)]">{error}</p>}
         <div className="flex gap-3">
           <button type="button" onClick={() => router.push("/courses")}
             className="rounded-full px-5 py-2.5 text-sm font-semibold transition hover:bg-[var(--bg-card-hover)]"

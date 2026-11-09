@@ -254,7 +254,7 @@ function NewLessonInner() {
           </div>
         </div>
 
-        {error && <p className="text-xs text-[var(--danger-text)]">{error}</p>}
+        {error && <p role="alert" className="text-xs text-[var(--danger-text)]">{error}</p>}
 
         <div className="flex items-center gap-3">
           <button

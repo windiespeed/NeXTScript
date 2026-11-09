@@ -645,10 +645,10 @@ function Dashboard() {
       <GenerateModal lesson={modalLesson} hasQuizDraft={modalLessonHasQuizDraft} onClose={() => setModalLessonId(null)} onGenerate={handleGenerateWithOptions} />
 
       {toast && (
-        <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-3xl px-5 py-3.5 shadow-2xl text-sm font-semibold transition-all ${toast.type === "success" ? "bg-[#2dd4a0] text-[#0a0b13]" : "bg-red-500 text-white"}`}>
+        <div role="status" className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-3xl px-5 py-3.5 shadow-2xl text-sm font-semibold transition-all ${toast.type === "success" ? "bg-[#2dd4a0] text-[#0a0b13]" : "bg-red-500 text-white"}`}>
           <span>{toast.type === "success" ? "✓" : "✕"}</span>
           {toast.message}
-          <button onClick={() => setToast(null)} className="ml-2 opacity-60 hover:opacity-100 text-xs">✕</button>
+          <button aria-label="Dismiss notification" onClick={() => setToast(null)} className="ml-2 opacity-60 hover:opacity-100 text-xs">✕</button>
         </div>
       )}
     </div>
