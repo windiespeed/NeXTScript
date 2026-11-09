@@ -291,7 +291,7 @@ export default function QuizzesPage() {
             Checked {folderCheck.checked} generated quiz{folderCheck.checked !== 1 ? "zes" : ""}.
           </p>
           {folderCheck.ambiguous.length === 0 && folderCheck.unresolvable.length === 0 ? (
-            <p style={{ color: "#2dd4a0" }}>No issues found — safe to run "Fix Drive Folders".</p>
+            <p style={{ color: "#2dd4a0" }}>No issues found — safe to run &ldquo;Fix Drive Folders&rdquo;.</p>
           ) : (
             <>
               {folderCheck.ambiguous.length > 0 && (

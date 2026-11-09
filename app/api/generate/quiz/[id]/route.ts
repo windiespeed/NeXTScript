@@ -34,7 +34,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
   try {
     // Resolve course Drive folder, creating it if it doesn't exist yet
     const courseId = quiz.courseId;
-    let course = courseId ? await courseStore.getById(courseId) : undefined;
+    const course = courseId ? await courseStore.getById(courseId) : undefined;
     let folderId = course?.driveFolderId ?? undefined;
     if (course && !folderId) {
       const folder = await createCourseFolder(course.title, accessToken);

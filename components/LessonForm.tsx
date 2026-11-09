@@ -372,7 +372,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Deadline</label>
-            <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>The due date for this lesson's assignments.</p>
+            <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>The due date for this lesson&apos;s assignments.</p>
             <input
               type="date"
               value={form.deadline}
