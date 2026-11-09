@@ -24,6 +24,8 @@ const eslintConfig = defineConfig([
       "react-hooks/set-state-in-effect": "warn",
       "react-hooks/static-components": "warn",
       "react-hooks/purity": "warn",
+      // Allow `_name` for values that are destructured out on purpose (e.g. `{ id: _id, ...rest }`).
+      "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
     },
   },
 ]);

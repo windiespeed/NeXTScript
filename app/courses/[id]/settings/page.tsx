@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import type { CourseSettings } from "@/types/course";
 import type { Concept } from "@/types/concept";
@@ -45,7 +45,6 @@ interface CourseSettingsDraft {
 export default function CourseSettingsPage() {
   const { data: session } = useSession({ required: true });
   const { id: courseId } = useParams<{ id: string }>();
-  const router = useRouter();
 
   const [courseName, setCourseName] = useState("");
   const [loading, setLoading] = useState(true);

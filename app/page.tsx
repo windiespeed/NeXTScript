@@ -20,7 +20,6 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import LessonCard from "@/components/LessonCard";
 import GenerateModal from "@/components/GenerateModal";
 import type { Lesson } from "@/types/lesson";
 import type { SavedProject } from "@/types/project";
@@ -66,8 +65,6 @@ function useDragScroll() {
 
   return ref;
 }
-
-
 
 // ── Donut ring ────────────────────────────────────────────────────────────────
 function DonutRing({ value, total, color, label }: { value: number; total: number; color: string; label: string }) {
@@ -160,35 +157,6 @@ function AreaChart({ lessons }: { lessons: Lesson[] }) {
   );
 }
 
-// ── Sortable lesson card ───────────────────────────────────────────────────────
-interface SortableCardProps {
-  lesson: Lesson;
-  projects: SavedProject[];
-  courses: Course[];
-  onDelete: (id: string) => void;
-  onDuplicate: (id: string) => void;
-  onOpenModal: (id: string) => void;
-  onAssign: (lessonId: string, courseId: string | null) => void;
-  selecting: boolean;
-  selected: boolean;
-  onToggleSelect: (id: string) => void;
-}
-
-function SortableLessonCard({ lesson, courses, onAssign, ...props }: SortableCardProps) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: lesson.id });
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.4 : 1,
-    zIndex: isDragging ? 10 : undefined,
-  };
-  return (
-    <div ref={setNodeRef} style={style}>
-      <LessonCard lesson={lesson} courses={courses} onAssign={onAssign} {...props} gripProps={{ ...listeners, ...attributes }} />
-    </div>
-  );
-}
-
 // ── Sortable widget wrapper ────────────────────────────────────────────────────
 function SortableWidget({ widgetId, span, onCycleSize, children }: {
   widgetId: WidgetId;
@@ -240,20 +208,15 @@ function SortableWidget({ widgetId, span, onCycleSize, children }: {
 function Dashboard() {
   const { data: session, status } = useSession();
   const searchParams = useSearchParams();
+  // TODO: the top-bar search sends ?q= here, but the dashboard no longer lists lessons,
+  // so nothing uses it. Decide where search results should show.
   const searchQuery = searchParams.get("q")?.toLowerCase().trim() ?? "";
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [projects, setProjects] = useState<SavedProject[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalLessonId, setModalLessonId] = useState<string | null>(null);
-  const [selecting, setSelecting] = useState(false);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [bulkDeleting, setBulkDeleting] = useState(false);
-  const [bulkDuplicating, setBulkDuplicating] = useState(false);
-  const [lessonOrder, setLessonOrder] = useState<string[]>([]);
-  const [defaultSources, setDefaultSources] = useState("");
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
-  const [filterCourse, setFilterCourse] = useState<"all" | "unassigned" | string>("all");
 
   // ── Widget sizes + order ──────────────────────────────────────────────────────
   const DEFAULT_WIDGET_SIZES: Record<WidgetId, 1 | 2 | 3> = { activity: 1, progress: 1, activeCourse: 1, schedule: 3 };
@@ -282,82 +245,7 @@ function Dashboard() {
     [courses]
   );
 
-  // ── Sorted lesson list ──────────────────────────────────────────────────────
-  const sorted = useMemo(() => {
-    const orderedIds = lessonOrder.filter(id => lessons.some(l => l.id === id));
-    const unordered = lessons
-      .filter(l => !lessonOrder.includes(l.id))
-      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-    const ordered = orderedIds.map(id => lessons.find(l => l.id === id)!);
-    let all = [...unordered, ...ordered];
-    if (searchQuery) {
-      all = all.filter(l =>
-        l.title?.toLowerCase().includes(searchQuery) ||
-        l.subtitle?.toLowerCase().includes(searchQuery) ||
-        l.topics?.toLowerCase().includes(searchQuery) ||
-        l.tag?.toLowerCase().includes(searchQuery)
-      );
-    }
-    if (filterCourse === "unassigned") return all.filter(l => !l.courseId);
-    if (filterCourse !== "all") return all.filter(l => l.courseId === filterCourse);
-    return all;
-  }, [lessons, lessonOrder, searchQuery, filterCourse]);
-
   // ── Handlers ───────────────────────────────────────────────────────────────
-  function toggleSelect(id: string) {
-    setSelected(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; });
-  }
-
-  function toggleSelectAll() {
-    setSelected(prev => prev.size === sorted.length ? new Set() : new Set(sorted.map(l => l.id)));
-  }
-
-  function exitSelecting() { setSelecting(false); setSelected(new Set()); }
-
-  async function handleAssign(lessonId: string, courseId: string | null) {
-    const lesson = lessons.find(l => l.id === lessonId);
-    const oldCourseId = lesson?.courseId;
-    await fetch(`/api/lessons/${lessonId}`, {
-      method: "PUT", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ courseId: courseId ?? null }),
-    });
-    if (oldCourseId) {
-      const oldCourse = courses.find(c => c.id === oldCourseId);
-      if (oldCourse) {
-        await fetch(`/api/courses/${oldCourseId}`, {
-          method: "PUT", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ lessonIds: oldCourse.lessonIds.filter(id => id !== lessonId) }),
-        });
-        setCourses(prev => prev.map(c => c.id === oldCourseId ? { ...c, lessonIds: c.lessonIds.filter(id => id !== lessonId) } : c));
-      }
-    }
-    if (courseId) {
-      const newCourse = courses.find(c => c.id === courseId);
-      if (newCourse) {
-        await fetch(`/api/courses/${courseId}`, {
-          method: "PUT", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ lessonIds: [...newCourse.lessonIds, lessonId] }),
-        });
-        setCourses(prev => prev.map(c => c.id === courseId ? { ...c, lessonIds: [...c.lessonIds, lessonId] } : c));
-      }
-    }
-    setLessons(prev => prev.map(l => l.id === lessonId ? { ...l, courseId: courseId ?? undefined } : l));
-  }
-
-  async function saveOrder(order: string[]) {
-    await fetch("/api/user/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lessonOrder: order }) });
-  }
-
-  function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    const oldIndex = sorted.findIndex(l => l.id === active.id);
-    const newIndex = sorted.findIndex(l => l.id === over.id);
-    const newSorted = arrayMove(sorted, oldIndex, newIndex);
-    const newOrder = newSorted.map(l => l.id);
-    setLessonOrder(newOrder);
-    saveOrder(newOrder);
-  }
 
   function cycleWidgetSize(id: WidgetId) {
     setWidgetSizes(prev => {
@@ -377,22 +265,6 @@ function Dashboard() {
     });
   }
 
-  async function handleBulkDuplicate() {
-    setBulkDuplicating(true);
-    for (const id of [...selected]) await handleDuplicate(id);
-    exitSelecting();
-    setBulkDuplicating(false);
-  }
-
-  async function handleBulkDelete() {
-    if (!confirm(`Delete ${selected.size} lesson${selected.size !== 1 ? "s" : ""}? This cannot be undone.`)) return;
-    setBulkDeleting(true);
-    await Promise.all([...selected].map(id => fetch(`/api/lessons/${id}`, { method: "DELETE" })));
-    setLessons(prev => prev.filter(l => !selected.has(l.id)));
-    exitSelecting();
-    setBulkDeleting(false);
-  }
-
   async function loadLessons() {
     const data = await fetch("/api/lessons").then(r => r.json());
     setLessons(Array.isArray(data) ? data : []);
@@ -401,26 +273,6 @@ function Dashboard() {
   async function loadProjects() {
     const data = await fetch("/api/projects").then(r => r.json());
     setProjects(Array.isArray(data) ? data : []);
-  }
-
-  async function handleDelete(id: string) {
-    if (!confirm("Delete this lesson?")) return;
-    await fetch(`/api/lessons/${id}`, { method: "DELETE" });
-    setLessons(prev => prev.filter(l => l.id !== id));
-  }
-
-  async function handleDuplicate(id: string) {
-    const lesson = await fetch(`/api/lessons/${id}`).then(r => r.json());
-    // The legacy fixed fields below are the pre-migration fallback — a lesson edited through
-    // the new dynamic-sections LessonForm has its real content in `sections` instead, so that
-    // must be copied too or the duplicate would silently inherit stale/blank legacy fields.
-    const { title, subtitle, topics, deadline, tag, overview, learningTargets, vocabulary, warmUp, guidedLab, selfPaced, submissionChecklist, checkpoint, industryBestPractices, slideContent, devJournalPrompt, rubric, taChecklist, sources, studentLevel, quizQuestions, sections, courseId } = lesson;
-    const copy = await fetch("/api/lessons", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: `Copy of ${title}`, subtitle, topics, deadline, tag, overview, learningTargets, vocabulary, warmUp, guidedLab, selfPaced, submissionChecklist, checkpoint, industryBestPractices, slideContent, devJournalPrompt, rubric: rubric ?? taChecklist ?? "", sources: sources || defaultSources, studentLevel, quizQuestions, sections, courseId }),
-    }).then(r => r.json());
-    setLessons(prev => [copy, ...prev]);
   }
 
   async function handleGenerateWithOptions(id: string, files: FileChoice[], destination: Destination) {
@@ -466,10 +318,6 @@ function Dashboard() {
         loadLessons(),
         loadProjects(),
         fetch("/api/courses").then(r => r.json()).then(d => setCourses(Array.isArray(d) ? d : [])),
-        fetch("/api/user/settings").then(r => r.json()).then(s => {
-          if (Array.isArray(s.lessonOrder)) setLessonOrder(s.lessonOrder);
-          if (s.defaultSources) setDefaultSources(s.defaultSources);
-        }),
       ]).then(() => setLoading(false));
     }
   }, [status]);
@@ -705,55 +553,6 @@ function Dashboard() {
     );
   }
 
-  function renderLessonsWidget(span: 1 | 2 | 3 = 3) {
-    return (
-      <div className="rounded-3xl p-5 space-y-4 h-full" style={{ background: "var(--bg-sidebar)", boxShadow: "var(--shadow-card)" }}>
-        <div className="flex items-center justify-between">
-          <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-            Lessons
-            {filterCourse === "unassigned" && <span className="ml-2 text-xs font-normal" style={{ color: "var(--text-muted)" }}>· Unassigned only</span>}
-          </p>
-          <Link href="/lessons/new" className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-3 py-1.5 text-xs font-bold text-white hover:opacity-90 transition">
-            + New Lesson
-          </Link>
-        </div>
-        {courses.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {(["all", "unassigned"] as const).map(f => (
-              <button key={f} onClick={() => setFilterCourse(f)} className="rounded-full px-3 py-1 text-xs font-medium transition"
-                style={filterCourse === f ? { background: "#0cc0df", color: "#0a0b13" } : { background: "var(--bg-card-hover)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}>
-                {f === "all" ? "All" : "Unassigned"}
-              </button>
-            ))}
-            {courses.map(c => (
-              <button key={c.id} onClick={() => setFilterCourse(c.id)} className="rounded-full px-3 py-1 text-xs font-medium transition"
-                style={filterCourse === c.id ? { background: "var(--accent-purple)", color: "#fff" } : { background: "var(--bg-card-hover)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}>
-                {c.title}
-              </button>
-            ))}
-          </div>
-        )}
-        {sorted.length === 0 ? (
-          <p className="text-sm text-center py-8" style={{ color: "var(--text-muted)" }}>
-            {filterCourse === "unassigned" ? "All lessons are assigned to a course." : "No lessons yet."}
-          </p>
-        ) : (
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <SortableContext items={sorted.map(l => l.id)} strategy={rectSortingStrategy}>
-              <div className={`grid grid-cols-1 gap-4 ${span >= 2 ? "sm:grid-cols-2" : ""} ${span === 3 ? "lg:grid-cols-3" : ""}`}>
-                {sorted.map(l => (
-                  <SortableLessonCard key={l.id} lesson={l} projects={projects.filter(p => p.lessonId === l.id || p.lessonIds?.includes(l.id))} courses={courses}
-                    onDelete={handleDelete} onDuplicate={handleDuplicate} onOpenModal={id => setModalLessonId(id)}
-                    onAssign={handleAssign} selecting={selecting} selected={selected.has(l.id)} onToggleSelect={toggleSelect} />
-                ))}
-              </div>
-            </SortableContext>
-          </DndContext>
-        )}
-      </div>
-    );
-  }
-
   // ── Sign-in screen ─────────────────────────────────────────────────────────
   if (status === "unauthenticated") {
     return (
@@ -784,7 +583,6 @@ function Dashboard() {
   const firstName = session?.user?.name?.split(" ")[0] ?? "there";
   const today = new Date();
   const dayName = today.toLocaleDateString(undefined, { weekday: "long" });
-  const dateStr = today.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
 
   return (
     <div className="space-y-6">
@@ -836,7 +634,6 @@ function Dashboard() {
           </SortableContext>
         </DndContext>
       )}
-
 
       <GenerateModal lesson={modalLesson} hasQuizDraft={modalLessonHasQuizDraft} onClose={() => setModalLessonId(null)} onGenerate={handleGenerateWithOptions} />
 

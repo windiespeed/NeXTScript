@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import type { Course, CourseModule } from "@/types/course";
 import type { Lesson } from "@/types/lesson";
@@ -57,7 +57,6 @@ function StatusDot({ status }: { status: LessonStatus }) {
 export default function BatchGeneratePage() {
   useSession({ required: true });
   const { id: courseId } = useParams<{ id: string }>();
-  const router = useRouter();
 
   const [course, setCourse] = useState<Course | null>(null);
   const [lessons, setLessons] = useState<Lesson[]>([]);

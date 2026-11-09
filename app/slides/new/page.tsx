@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, Suspense } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import LessonForm from "@/components/LessonForm";

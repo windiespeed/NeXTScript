@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import {
@@ -188,7 +187,6 @@ function SortableCourseCard({ course, onDelete, onDuplicate, isOwner }: { course
 export default function CoursesPage() {
   const { data: session } = useSession({ required: true });
   const currentUserEmail = session?.user?.email?.toLowerCase() ?? "";
-  const router = useRouter();
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [courseOrder, setCourseOrder] = useState<string[]>([]);

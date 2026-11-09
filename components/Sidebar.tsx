@@ -380,21 +380,19 @@ export default function Sidebar() {
         })}
       </div>
 
-      {/* NeXTBox external link */}
+      {/* NeXTBox placeholder: not built yet, so it's shown but not a link. */}
       <div className="px-0 pb-2 pt-3" style={{ borderTop: "1px solid var(--border)" }}>
-        <a
-          href="http://localhost:3001"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-3 pl-3 pr-3 py-2 rounded-full text-sm font-medium transition-all duration-150 hover:bg-[var(--bg-card-hover)]"
+        <div
+          className="flex items-center gap-3 pl-3 pr-3 py-2 rounded-full text-sm font-medium cursor-default"
           style={{ color: "var(--text-secondary)" }}
+          aria-disabled="true"
         >
-          <span className="flex-shrink-0" style={{ color: "var(--text-muted)" }}>{nextboxIcon}</span>
+          <span className="flex-shrink-0" style={{ color: "var(--text-muted)" }} aria-hidden="true">{nextboxIcon}</span>
           <span className="flex-1">NeXTBox</span>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--text-muted)" }}>
-            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
-          </svg>
-        </a>
+          <span className="text-[11px] font-semibold rounded-full px-2 py-0.5" style={{ background: "var(--bg-card-hover)", color: "var(--text-secondary)" }}>
+            Coming soon
+          </span>
+        </div>
       </div>
     </nav>
   );
