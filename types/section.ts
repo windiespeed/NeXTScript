@@ -12,6 +12,9 @@ export interface SectionDef {
   includeInOverviewDoc: boolean;  // course-level toggle: does this section's content appear in the Overview Doc body?
   includeInQuizContext?: boolean; // does this section's content feed AI quiz generation? default true
   skipIfEmpty?: boolean;          // Slide Deck: omit this section's slide entirely when its content is blank
+  /** Notes to Slides: is this section a locked slide heading (anchor)? Absent = the builtin's
+   * default from DEFAULT_SECTIONS, or true for a custom section — see isSlideAnchor(). */
+  slideAnchor?: boolean;
   hint?: string;                  // LessonForm helper text
   rows?: number;                  // LessonForm textarea size
 }
@@ -74,12 +77,21 @@ export const DEFAULT_SECTIONS: SectionDef[] = [
   { id: "warmUp", label: "Opening Activity", position: "before-slides", includeInOverviewDoc: false, includeInQuizContext: false, skipIfEmpty: false, rows: 4, hint: "3–5 questions to engage students at the start of class." },
   { id: "guidedLab", label: "Guided Activity", position: "after-slides", includeInOverviewDoc: false, includeInQuizContext: true, skipIfEmpty: false, rows: 6, hint: "In-class instructor-led exercise. Must be step-by-step." },
   { id: "selfPaced", label: "Independent Activity", position: "after-slides", includeInOverviewDoc: false, includeInQuizContext: false, skipIfEmpty: false, rows: 6, hint: "Independent student exercise. Must be step-by-step." },
-  { id: "submissionChecklist", label: "Requirements Checklist", position: "after-slides", includeInOverviewDoc: false, includeInQuizContext: false, skipIfEmpty: false, rows: 4, hint: "Specific requirements students must meet and turn in." },
+  { id: "submissionChecklist", label: "Requirements Checklist", position: "after-slides", includeInOverviewDoc: false, includeInQuizContext: false, skipIfEmpty: false, slideAnchor: false, rows: 4, hint: "Specific requirements students must meet and turn in." },
   { id: "checkpoint", label: "Common Problems / FAQ", position: "after-slides", includeInOverviewDoc: false, includeInQuizContext: false, skipIfEmpty: false, rows: 4, hint: "Common problems and challenges students may face, with suggested solutions." },
   { id: "industryBestPractices", label: "Best Practices", position: "after-slides", includeInOverviewDoc: false, includeInQuizContext: true, skipIfEmpty: false, rows: 4, hint: "Standards, best practices, and tips & tricks for this topic." },
-  { id: "devJournalPrompt", label: "Reflection Journal", position: "after-slides", includeInOverviewDoc: false, includeInQuizContext: false, skipIfEmpty: false, rows: 4, hint: "3–5 specific, evidence-based reflection questions." },
-  { id: "rubric", label: "Assessment / Rubric", position: "after-slides", includeInOverviewDoc: false, includeInQuizContext: false, skipIfEmpty: false, rows: 4, hint: "Checklist used to assess student submissions." },
+  { id: "devJournalPrompt", label: "Reflection Journal", position: "after-slides", includeInOverviewDoc: false, includeInQuizContext: false, skipIfEmpty: false, slideAnchor: false, rows: 4, hint: "3–5 specific, evidence-based reflection questions." },
+  { id: "rubric", label: "Assessment / Rubric", position: "after-slides", includeInOverviewDoc: false, includeInQuizContext: false, skipIfEmpty: false, slideAnchor: false, rows: 4, hint: "Checklist used to assess student submissions." },
 ];
+
+/** Whether a section is a locked Notes to Slides heading. Doc-only builtins (Requirements
+ * Checklist, Reflection Journal, Assessment / Rubric) default off; everything else defaults on.
+ * Courses saved before this flag existed get those defaults with no migration. */
+export function isSlideAnchor(section: SectionDef): boolean {
+  if (typeof section.slideAnchor === "boolean") return section.slideAnchor;
+  if (isBuiltinId(section.id)) return DEFAULT_SECTIONS.find(d => d.id === section.id)?.slideAnchor ?? true;
+  return true;
+}
 
 /** Per-builtin-section AI-Fill instruction fragments — moved verbatim out of lib/ai.ts's prompt. */
 export const BUILTIN_AI_INSTRUCTIONS: Record<BuiltinSectionId, string> = {

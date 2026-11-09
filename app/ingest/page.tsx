@@ -6,14 +6,15 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import SlideRenderer from "@/components/slides/SlideRenderer";
 import SlideEditorPanel from "@/components/slides/SlideEditorPanel";
-import { DEFAULT_THEME_ID, getTheme } from "@/lib/themes";
+import { getTheme } from "@/lib/themes";
 import { STUDENT_LEVEL_UI_HINTS, type StudentLevel } from "@/lib/studentLevel";
 import { INGEST_MODEL_OPTIONS, DEFAULT_INGEST_MODEL, isIngestModelId, type IngestModelId } from "@/lib/ingestModels";
 import type { PresentationAST } from "@/types/slideAst";
 import type { Course, CourseModule } from "@/types/course";
 import type { Lesson, LessonInput } from "@/types/lesson";
 import type { SectionDef } from "@/types/section";
-import { resolveSections } from "@/lib/sections";
+import { resolveSlideAnchors, describeAnchorReport } from "@/lib/slideAnchors";
+import type { HybridIngestRequest, HybridIngestResponse } from "@/types/ingest";
 import { clearDraft } from "@/lib/draftStorage";
 import { useDraftAutosave, useDraftRestore } from "@/hooks/useDraftAutosave";
 
@@ -110,10 +111,10 @@ function IngestPageInner() {
   const [userDefaultSources, setUserDefaultSources] = useState("");
   const [userSectionSettings, setUserSectionSettings] = useState<{ sectionLabels?: Record<string, string>; sections?: SectionDef[] }>({});
 
-  // Every active section (course-level, falling back to user/global defaults) is a mandatory
-  // Notes to Slides topic — no separate override; see types/course.ts's CourseSettings.sections.
-  const requiredSlideTopics = resolveSections({ course: selectedCourse, userSettings: userSectionSettings })
-    .map(s => s.label).filter(Boolean);
+  // The Skeleton: every active section (course-level, falling back to user/global defaults) is a
+  // locked slide anchor, in order. Display copy only — the server re-resolves and enforces it.
+  const slideAnchors = resolveSlideAnchors(selectedCourse, userSectionSettings);
+  const courseThemeId = getTheme(selectedCourse?.settings?.defaultThemeId).id;
 
   // Raw content
   const [rawText, setRawText] = useState("");
@@ -130,8 +131,11 @@ function IngestPageInner() {
   const [ast, setAst] = useState<PresentationAST | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [viewMode, setViewMode] = useState<"preview" | "edit">("preview");
-  // Theme selection is disabled for now — every deck renders with the one fixed default.
-  const theme = getTheme(DEFAULT_THEME_ID);
+  // No theme picker (removed on purpose) — the deck carries the theme it was generated with
+  // (the course default, else the global default), and preview + export both use that.
+  const theme = getTheme(ast?.themeId ?? courseThemeId);
+  // What the server had to fix to lock the skeleton (missing/out-of-order anchors), if anything.
+  const [anchorNotes, setAnchorNotes] = useState<string[]>([]);
 
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -388,26 +392,29 @@ function IngestPageInner() {
     startProgressAnimation();
     try {
       await ensureLesson();
+      const payload: HybridIngestRequest = {
+        courseConfig: { courseId: selectedCourseId, anchors: slideAnchors, themeId: courseThemeId },
+        rawNotes: rawText,
+        targetAudience: targetAudience.trim() || undefined,
+        slideCount: slideCount ? Number(slideCount) : undefined,
+        studentLevel,
+        lessonTitle: title.trim() || undefined,
+        lessonSubtitle: subtitle.trim() || undefined,
+        topics: topics.trim() || undefined,
+        sources: sources.trim() || undefined,
+        model: aiModel,
+      };
       const res = await fetch("/api/ai/ingest", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          rawText,
-          targetAudience: targetAudience.trim() || undefined,
-          slideCount: slideCount ? Number(slideCount) : undefined,
-          requiredTopics: requiredSlideTopics.length > 0 ? requiredSlideTopics : undefined,
-          studentLevel,
-          lessonTitle: title.trim() || undefined,
-          lessonSubtitle: subtitle.trim() || undefined,
-          topics: topics.trim() || undefined,
-          sources: sources.trim() || undefined,
-          model: aiModel,
-        }),
+        body: JSON.stringify(payload),
       });
       const data = await parseJsonResponse(res, "Generation took too long and timed out. Try shortening your notes or splitting them into a smaller batch, then generate again.");
       if (!res.ok) throw new Error(data.error || "Failed to generate slides.");
+      const result = data as HybridIngestResponse;
       stopProgressAnimation(100);
-      setAst(data as PresentationAST);
+      setAst(result.ast);
+      setAnchorNotes(describeAnchorReport(result.anchorReport));
       setActiveIndex(0);
       setViewMode("preview");
     } catch (err) {
@@ -454,6 +461,7 @@ function IngestPageInner() {
     // back on that same key, making the reset look like it never happened.
     clearDraft(draftKey);
     setAst(null);
+    setAnchorNotes([]);
     setActiveIndex(0);
     setError(null);
     setExportError(null);
@@ -470,7 +478,11 @@ function IngestPageInner() {
       const res = await fetch(`/api/lessons/${lessonId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ presentationAST: ast }),
+        body: JSON.stringify({
+          presentationAST: ast,
+          selectedTheme: ast.themeId ?? courseThemeId,
+          presentationStatus: "draft",
+        }),
       });
       const data = await parseJsonResponse(res, "Saving took too long and timed out. Try again in a moment.");
       if (!res.ok) throw new Error(data.error || "Failed to save to the lesson.");
@@ -728,46 +740,72 @@ function IngestPageInner() {
             )}
           </div>
 
-          {/* ── Course Defaults (only once a course is selected) ── */}
-          {selectedCourse && (
-            <div className={cardClass} style={cardStyle}>
-              <p className={sectionLabel}>Course Defaults</p>
-              <p className="text-xs -mt-1" style={{ color: "var(--text-muted)" }}>
-                Pulled from {selectedCourse.title}&apos;s settings — review or adjust for this generation only.
+          {/* ── Generate: the Skeleton (locked course anchors) and the Content (freeform notes)
+                side by side on one screen — the hybrid ingestion model. ── */}
+          <div className={cardClass} style={cardStyle}>
+            <div>
+              <p className={sectionLabel}>Generate Deck</p>
+              <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
+                Your course&apos;s sections are the deck&apos;s skeleton: each one becomes a slide heading, in order.
+                Paste your notes and the AI distributes them under those headings, expands them, and picks a layout for each.
               </p>
-              <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Required Slide Topics</label>
-                <p className="text-xs mb-1.5" style={{ color: "var(--text-muted)" }}>
-                  Notes to Slides guarantees a slide for each of this course&apos;s active Sections. Edit the
-                  list in Course Settings → Sections.
-                </p>
-                {requiredSlideTopics.length > 0 ? (
-                  <ul className="text-xs space-y-0.5" style={{ color: "var(--text-secondary)" }}>
-                    {requiredSlideTopics.map(topic => <li key={topic}>• {topic}</li>)}
-                  </ul>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+              {/* Skeleton */}
+              <div className="lg:col-span-2 rounded-2xl p-4 space-y-2" style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)" }}>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>🔒 Skeleton · locked slide anchors</p>
+                  {selectedCourse && (
+                    <Link href={`/courses/${selectedCourse.id}/settings`} className="text-[10px] font-semibold shrink-0 hover:underline" style={{ color: "#0cc0df" }}>
+                      Edit Sections
+                    </Link>
+                  )}
+                </div>
+                {!selectedCourse ? (
+                  <p className="text-xs" style={{ color: "var(--text-muted)" }}>Select a course above to load its slide anchors.</p>
+                ) : slideAnchors.length > 0 ? (
+                  <>
+                    <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
+                      From {selectedCourse.title}&apos;s sections marked &ldquo;Slide heading&rdquo;. Headings are used exactly as written and can&apos;t be renamed or removed in the deck.
+                    </p>
+                    <ol className="space-y-1">
+                      {slideAnchors.map((anchor, i) => (
+                        <li
+                          key={anchor.id}
+                          className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs"
+                          style={{ background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+                        >
+                          <span className="tabular-nums w-4 text-right shrink-0" style={{ color: "var(--text-muted)" }}>{i + 1}</span>
+                          <span className="flex-1 truncate" style={{ color: "var(--text-primary)" }}>{anchor.label}</span>
+                        </li>
+                      ))}
+                    </ol>
+                  </>
                 ) : (
-                  <p className="text-xs" style={{ color: "var(--text-muted)" }}>No sections configured.</p>
+                  <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+                    No sections are marked as slide headings, so the AI will structure the deck from your notes alone.
+                  </p>
+                )}
+                {selectedCourse && (
+                  <p className="text-[11px] pt-1" style={{ color: "var(--text-muted)" }}>Theme: {getTheme(courseThemeId).name}</p>
                 )}
               </div>
-            </div>
-          )}
 
-          {/* ── Your Notes ── */}
-          <div className={cardClass} style={cardStyle}>
-            <p className={sectionLabel}>Your Notes</p>
-
-            <div>
-              <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
-                Notes, brain-dump, or loose bullet points <span className="text-red-500">*</span>
-              </label>
-              <textarea
-                value={rawText}
-                onChange={e => setRawText(e.target.value)}
-                rows={12}
-                placeholder={"e.g.\n- explain the core concept\n- compare two approaches or viewpoints\n- steps to complete the process"}
-                className={inputClass}
-                style={{ ...inputStyle, resize: "vertical" }}
-              />
+              {/* Content */}
+              <div className="lg:col-span-3 flex flex-col">
+                <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
+                  Content · notes, outline, or brain-dump <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  value={rawText}
+                  onChange={e => setRawText(e.target.value)}
+                  rows={14}
+                  placeholder={"Paste raw outlines, meeting notes, or loose bullets, e.g.\n- explain the core concept\n- compare two approaches or viewpoints\n- steps to complete the process\n\nYou don't need to match the section names; the AI sorts points under the right heading."}
+                  className={`${inputClass} flex-1`}
+                  style={{ ...inputStyle, resize: "vertical" }}
+                />
+              </div>
             </div>
 
             <div>
@@ -922,6 +960,11 @@ function IngestPageInner() {
             </div>
           </div>
 
+          {anchorNotes.length > 0 && (
+            <div className="rounded-lg px-3 py-2 text-xs space-y-0.5" style={{ background: "var(--accent-purple-bg)", color: "var(--accent-purple)" }}>
+              {anchorNotes.map(note => <p key={note}>{note}</p>)}
+            </div>
+          )}
           {exportError && <p className="text-xs text-red-500">{exportError}</p>}
           {saveError && <p className="text-xs text-red-500">{saveError}</p>}
 

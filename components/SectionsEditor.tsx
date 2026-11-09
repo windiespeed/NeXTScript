@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { DEFAULT_SECTIONS, BUILTIN_SECTION_IDS, isBuiltinId, type SectionDef } from "@/types/section";
+import { DEFAULT_SECTIONS, BUILTIN_SECTION_IDS, isBuiltinId, isSlideAnchor, type SectionDef } from "@/types/section";
 
 const inputClass = "w-full rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#0cc0df] transition placeholder:text-[var(--text-muted)]";
 const inputStyle = { background: "var(--bg-card-hover)", color: "var(--text-primary)", border: "1px solid var(--border)" };
@@ -96,6 +96,15 @@ export default function SectionsEditor({ value, onChange, scope }: Props) {
               className={inputClass}
               style={inputStyle}
             />
+            <label className="flex items-center gap-1.5 shrink-0 text-[10px] font-semibold cursor-pointer select-none" style={{ color: "var(--text-secondary)" }} title="Notes to Slides: make this section a locked slide heading in every generated deck">
+              <input
+                type="checkbox"
+                checked={isSlideAnchor(s)}
+                onChange={e => update(s.id, { slideAnchor: e.target.checked })}
+                className="accent-[#0cc0df] w-3.5 h-3.5"
+              />
+              Slide heading
+            </label>
             {scope === "course" && (
               <label className="flex items-center gap-1.5 shrink-0 text-[10px] font-semibold cursor-pointer select-none" style={{ color: "var(--text-secondary)" }} title="Include this section's content in the generated Overview Doc">
                 <input
