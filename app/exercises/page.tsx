@@ -163,7 +163,7 @@ export default function UnassignedExercisesPage() {
         <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>Unassigned Exercises</h1>
         <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>
           Exercises created before per-course scoping — assign each one to the course it belongs to. Exercises are
-          now created and managed from within a course's own Exercises page.
+          now created and managed from within a course&apos;s own Exercises page.
         </p>
       </div>
 
