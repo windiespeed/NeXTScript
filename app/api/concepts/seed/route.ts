@@ -4,6 +4,7 @@ import { conceptStore } from "@/lib/conceptStore";
 import { courseStore } from "@/lib/courseStore";
 import { canAccessCourse } from "@/lib/access";
 import { DEFAULT_JS_CONCEPTS } from "@/types/concept";
+import { serverError } from "@/lib/apiErrors";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +24,7 @@ export async function POST(req: Request) {
     }
     const concepts = await conceptStore.createMany(DEFAULT_JS_CONCEPTS, session.user.email, courseId);
     return NextResponse.json(concepts, { status: 201 });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err) {
+    return serverError(err);
   }
 }

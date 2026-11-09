@@ -4,6 +4,7 @@ import { conceptStore } from "@/lib/conceptStore";
 import { courseStore } from "@/lib/courseStore";
 import { canAccessCourse } from "@/lib/access";
 import type { ConceptInput } from "@/types/concept";
+import { serverError } from "@/lib/apiErrors";
 
 export const dynamic = "force-dynamic";
 
@@ -24,8 +25,8 @@ export async function GET(req: Request) {
 
     const concepts = await conceptStore.getAll(session.user.email);
     return NextResponse.json(concepts);
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err) {
+    return serverError(err);
   }
 }
 
@@ -47,7 +48,7 @@ export async function POST(req: Request) {
     const { courseId: _cid, classId: _lid, ...input } = body;
     const concept = await conceptStore.create(input, session.user.email, courseId);
     return NextResponse.json(concept, { status: 201 });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err) {
+    return serverError(err);
   }
 }

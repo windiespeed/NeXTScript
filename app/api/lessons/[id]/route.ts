@@ -3,6 +3,8 @@ import { auth } from "@/lib/auth";
 import { store } from "@/lib/store";
 import { canAccessLesson, canAccessCourseId } from "@/lib/access";
 import type { Lesson } from "@/types/lesson";
+import { lessonPatchSchema, parsePatch } from "@/lib/validation";
+import { serverError } from "@/lib/apiErrors";
 
 export const dynamic = "force-dynamic";
 
@@ -15,8 +17,8 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     if (!lesson) return NextResponse.json({ error: "Not found." }, { status: 404 });
     if (!(await canAccessLesson(lesson, session.user.email))) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
     return NextResponse.json(lesson);
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err) {
+    return serverError(err);
   }
 }
 
@@ -28,7 +30,9 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     const existing = await store.getById(id);
     if (!existing) return NextResponse.json({ error: "Not found." }, { status: 404 });
     if (!(await canAccessLesson(existing, session.user.email))) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
-    const body: Partial<Lesson> = await req.json();
+    const parsed = parsePatch(lessonPatchSchema, await req.json());
+    if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
+    const body = parsed.data as Partial<Lesson>;
     // "courseId" omitted entirely = not touching it (most PUTs here are partial saves that never
     // mention course). Only reject an explicit attempt to clear it — every lesson must stay assigned.
     if ("courseId" in body && !body.courseId) {
@@ -41,8 +45,8 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     }
     const updated = await store.update(id, body);
     return NextResponse.json(updated);
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err) {
+    return serverError(err);
   }
 }
 
@@ -56,7 +60,7 @@ export async function DELETE(_: Request, { params }: { params: Promise<{ id: str
     if (!(await canAccessLesson(existing, session.user.email))) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
     await store.delete(id);
     return NextResponse.json({ success: true });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err) {
+    return serverError(err);
   }
 }

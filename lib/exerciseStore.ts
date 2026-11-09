@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from "uuid";
 import { getDb } from "@/lib/firebase";
 import type { Exercise, ExerciseInput } from "@/types/exercise";
+import { mergeDoc } from "@/lib/firestoreTx";
 
 const COLLECTION = "exercises";
 
@@ -65,11 +66,7 @@ export const exerciseStore = {
 
   async update(id: string, patch: Partial<Exercise>): Promise<Exercise | null> {
     const ref = getDb().collection(COLLECTION).doc(id);
-    const doc = await ref.get();
-    if (!doc.exists) return null;
-    const updated: Exercise = { ...(doc.data() as Exercise), ...patch, updatedAt: new Date().toISOString() };
-    await ref.set(updated);
-    return updated;
+    return mergeDoc<Exercise>(ref, (existing) => ({ ...existing, ...patch, updatedAt: new Date().toISOString() }));
   },
 
   async delete(id: string): Promise<boolean> {

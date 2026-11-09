@@ -6,6 +6,7 @@
 import { v4 as uuidv4 } from "uuid";
 import { getDb } from "@/lib/firebase";
 import type { Lesson, LessonInput } from "@/types/lesson";
+import { mergeDoc } from "@/lib/firestoreTx";
 
 const COLLECTION = "lessons";
 
@@ -47,15 +48,11 @@ export const store = {
 
   async update(id: string, patch: Partial<Lesson>): Promise<Lesson | null> {
     const ref = getDb().collection(COLLECTION).doc(id);
-    const doc = await ref.get();
-    if (!doc.exists) return null;
-    const updated: Lesson = {
-      ...(doc.data() as Lesson),
+    return mergeDoc<Lesson>(ref, (existing) => ({
+      ...existing,
       ...patch,
       updatedAt: new Date().toISOString(),
-    };
-    await ref.set(updated);
-    return updated;
+    }));
   },
 
   async delete(id: string): Promise<boolean> {

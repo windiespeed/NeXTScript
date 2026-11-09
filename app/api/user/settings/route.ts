@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { userSettings } from "@/lib/userSettings";
 import { FieldValue } from "firebase-admin/firestore";
 import type { SectionDef } from "@/types/section";
+import { serverError } from "@/lib/apiErrors";
 
 export const dynamic = "force-dynamic";
 
@@ -26,8 +27,8 @@ export async function GET() {
       sectionLabels: s.sectionLabels ?? {},
       sections: s.sections ?? [],
     });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err) {
+    return serverError(err);
   }
 }
 
@@ -83,8 +84,8 @@ export async function PUT(req: Request) {
 
     await userSettings.save(session.user.email, update);
     return NextResponse.json({ success: true });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err) {
+    return serverError(err);
   }
 }
 
@@ -97,7 +98,7 @@ export async function DELETE(req: Request) {
     const field = searchParams.get("key") === "gemini" ? "geminiKey" : "anthropicKey";
     await userSettings.save(session.user.email, { [field]: FieldValue.delete() });
     return NextResponse.json({ success: true });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err) {
+    return serverError(err);
   }
 }

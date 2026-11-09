@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from "uuid";
 import { getDb } from "@/lib/firebase";
 import type { Concept, ConceptInput } from "@/types/concept";
+import { mergeDoc } from "@/lib/firestoreTx";
 
 const COLLECTION = "concepts";
 
@@ -52,11 +53,7 @@ export const conceptStore = {
 
   async update(id: string, patch: Partial<Concept>): Promise<Concept | null> {
     const ref = getDb().collection(COLLECTION).doc(id);
-    const doc = await ref.get();
-    if (!doc.exists) return null;
-    const updated: Concept = { ...(doc.data() as Concept), ...patch, updatedAt: new Date().toISOString() };
-    await ref.set(updated);
-    return updated;
+    return mergeDoc<Concept>(ref, (existing) => ({ ...existing, ...patch, updatedAt: new Date().toISOString() }));
   },
 
   async delete(id: string): Promise<boolean> {

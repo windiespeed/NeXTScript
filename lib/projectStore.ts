@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from "uuid";
 import { getDb } from "@/lib/firebase";
 import type { SavedProject } from "@/types/project";
+import { mergeDoc } from "@/lib/firestoreTx";
 
 const COLLECTION = "projects";
 
@@ -64,11 +65,7 @@ export const projectStore = {
 
   async update(id: string, patch: Partial<SavedProject>): Promise<SavedProject | null> {
     const ref = getDb().collection(COLLECTION).doc(id);
-    const doc = await ref.get();
-    if (!doc.exists) return null;
-    const updated = { ...(doc.data() as SavedProject), ...patch };
-    await ref.set(updated);
-    return updated;
+    return mergeDoc<SavedProject>(ref, (existing) => ({ ...existing, ...patch }));
   },
 
   async delete(id: string): Promise<boolean> {
