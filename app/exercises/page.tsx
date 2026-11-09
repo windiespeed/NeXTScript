@@ -33,7 +33,7 @@ function ExerciseRow({
       className="flex items-center gap-3 rounded-2xl px-4 py-3 flex-wrap"
       style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}
     >
-      <input type="checkbox" checked={selected} onChange={() => onToggle(exercise.id)} className="shrink-0" />
+      <input aria-label={`Select ${exercise.title}`} type="checkbox" checked={selected} onChange={() => onToggle(exercise.id)} className="shrink-0" />
       <div className="flex-1 min-w-[160px]">
         <p className="text-sm font-semibold truncate" style={{ color: "var(--text-primary)" }}>{exercise.title}</p>
         <p className="text-[10px] mt-0.5" style={{ color: "var(--text-muted)" }}>
@@ -43,7 +43,7 @@ function ExerciseRow({
       <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0" style={{ background: diff.bg, color: diff.text }}>
         {exercise.difficulty}
       </span>
-      <select value={courseId} onChange={e => setCourseId(e.target.value)} className={inputClass} style={inputStyle}>
+      <select aria-label={`Assign ${exercise.title} to course`} value={courseId} onChange={e => setCourseId(e.target.value)} className={inputClass} style={inputStyle}>
         <option value="">Assign to course…</option>
         {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
       </select>
@@ -188,7 +188,7 @@ export default function UnassignedExercisesPage() {
             <span className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>
               {selected.size} selected
             </span>
-            <select value={bulkCourseId} onChange={e => setBulkCourseId(e.target.value)} className={inputClass} style={inputStyle}>
+            <select aria-label="Assign selected exercises to course" value={bulkCourseId} onChange={e => setBulkCourseId(e.target.value)} className={inputClass} style={inputStyle}>
               <option value="">Assign selected to course…</option>
               {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
             </select>

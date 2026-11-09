@@ -129,10 +129,10 @@ function NewSlidesInner() {
         <p className={sectionLabel}>Assignment</p>
 
         <div>
-          <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
+          <label htmlFor="slides-new-course" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
             Course <span className="text-[var(--danger-text)]">*</span>
           </label>
-          <select
+          <select id="slides-new-course"
             required
             value={selectedCourseId}
             onChange={e => setSelectedCourseId(e.target.value)}
@@ -146,10 +146,10 @@ function NewSlidesInner() {
 
         {selectedCourseId && modules.length > 0 && (
           <div>
-            <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
+            <label htmlFor="slides-new-module-optional" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
               Module <span className="font-normal" style={{ color: "var(--text-muted)" }}>(optional)</span>
             </label>
-            <select
+            <select id="slides-new-module-optional"
               value={selectedModuleId}
               onChange={e => setSelectedModuleId(e.target.value)}
               className={inputClass}

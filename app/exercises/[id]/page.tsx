@@ -120,40 +120,40 @@ export default function EditExercisePage() {
         <p className={sectionLabel}>Details</p>
         <div className="space-y-3">
           <div>
-            <label className="text-xs mb-1 block" style={{ color: "var(--text-muted)" }}>Title</label>
-            <input value={title} onChange={e => setTitle(e.target.value)} className={inputClass} style={inputStyle} />
+            <label htmlFor="exercises-id-title" className="text-xs mb-1 block" style={{ color: "var(--text-muted)" }}>Title</label>
+            <input id="exercises-id-title" value={title} onChange={e => setTitle(e.target.value)} className={inputClass} style={inputStyle} />
           </div>
           <div>
-            <label className="text-xs mb-1 block" style={{ color: "var(--text-muted)" }}>Description (supports markdown)</label>
-            <textarea value={description} onChange={e => setDescription(e.target.value)}
+            <label htmlFor="exercises-id-description-supports-markdown" className="text-xs mb-1 block" style={{ color: "var(--text-muted)" }}>Description (supports markdown)</label>
+            <textarea id="exercises-id-description-supports-markdown" value={description} onChange={e => setDescription(e.target.value)}
               rows={3} className={`${inputClass} resize-none`} style={inputStyle} />
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div>
-              <label className="text-xs mb-1 block" style={{ color: "var(--text-muted)" }}>Concept</label>
-              <select value={concept} onChange={e => setConcept(e.target.value)} className={inputClass} style={inputStyle}>
+              <label htmlFor="exercises-id-concept" className="text-xs mb-1 block" style={{ color: "var(--text-muted)" }}>Concept</label>
+              <select id="exercises-id-concept" value={concept} onChange={e => setConcept(e.target.value)} className={inputClass} style={inputStyle}>
                 {concepts.length === 0 && <option value={concept}>{concept}</option>}
                 {concepts.map(c => <option key={c.id} value={c.slug}>{c.label}</option>)}
               </select>
             </div>
             <div>
-              <label className="text-xs mb-1 block" style={{ color: "var(--text-muted)" }}>Difficulty</label>
-              <select value={difficulty} onChange={e => setDifficulty(e.target.value as ExerciseDifficulty)} className={inputClass} style={inputStyle}>
+              <label htmlFor="exercises-id-difficulty" className="text-xs mb-1 block" style={{ color: "var(--text-muted)" }}>Difficulty</label>
+              <select id="exercises-id-difficulty" value={difficulty} onChange={e => setDifficulty(e.target.value as ExerciseDifficulty)} className={inputClass} style={inputStyle}>
                 <option value="beginner">Beginner</option>
                 <option value="intermediate">Intermediate</option>
                 <option value="advanced">Advanced</option>
               </select>
             </div>
             <div>
-              <label className="text-xs mb-1 block" style={{ color: "var(--text-muted)" }}>Type</label>
-              <select value={type} onChange={e => setType(e.target.value as ExerciseType)} className={inputClass} style={inputStyle}>
+              <label htmlFor="exercises-id-type" className="text-xs mb-1 block" style={{ color: "var(--text-muted)" }}>Type</label>
+              <select id="exercises-id-type" value={type} onChange={e => setType(e.target.value as ExerciseType)} className={inputClass} style={inputStyle}>
                 <option value="exercise">Exercise</option>
                 <option value="challenge">Challenge</option>
               </select>
             </div>
             <div>
-              <label className="text-xs mb-1 block" style={{ color: "var(--text-muted)" }}>Order #</label>
-              <input type="number" min={1} value={order} onChange={e => setOrder(Number(e.target.value))} className={inputClass} style={inputStyle} />
+              <label htmlFor="exercises-id-order" className="text-xs mb-1 block" style={{ color: "var(--text-muted)" }}>Order #</label>
+              <input id="exercises-id-order" type="number" min={1} value={order} onChange={e => setOrder(Number(e.target.value))} className={inputClass} style={inputStyle} />
             </div>
           </div>
         </div>
@@ -162,7 +162,7 @@ export default function EditExercisePage() {
       {/* Starter Code */}
       <div className={cardClass} style={cardStyle}>
         <p className={sectionLabel}>Starter Code</p>
-        <textarea value={starterCode} onChange={e => setStarterCode(e.target.value)}
+        <textarea aria-label="Starter code" value={starterCode} onChange={e => setStarterCode(e.target.value)}
           rows={8} className={textareaClass} style={{ ...inputStyle, fontFamily: "monospace", fontSize: "12px", lineHeight: "1.6" }} />
       </div>
 
@@ -184,10 +184,10 @@ export default function EditExercisePage() {
                   <button onClick={() => removeTest(i)} className="text-[10px] transition hover:opacity-70" style={{ color: "var(--danger-text)" }}>Remove</button>
                 )}
               </div>
-              <input value={test.description} onChange={e => updateTest(i, "description", e.target.value)}
+              <input aria-label={`Test ${i + 1} description`} value={test.description} onChange={e => updateTest(i, "description", e.target.value)}
                 placeholder='Description — e.g. "solution(2, 3) returns 5"'
                 className={inputClass} style={{ background: "var(--bg-card)", color: "var(--text-primary)", border: "1px solid var(--border)" }} />
-              <textarea value={test.code} onChange={e => updateTest(i, "code", e.target.value)}
+              <textarea aria-label={`Test ${i + 1} code`} value={test.code} onChange={e => updateTest(i, "code", e.target.value)}
                 rows={2} placeholder={`assert(solution(2, 3) === 5, "should return 5")`}
                 className={textareaClass} style={{ background: "var(--bg-card)", color: "var(--text-primary)", border: "1px solid var(--border)", fontFamily: "monospace", fontSize: "11px" }} />
             </div>
@@ -204,7 +204,7 @@ export default function EditExercisePage() {
         <div className="space-y-2">
           {hints.map((hint, i) => (
             <div key={i} className="flex gap-2">
-              <input value={hint} onChange={e => updateHint(i, e.target.value)}
+              <input aria-label={`Hint ${i + 1}`} value={hint} onChange={e => updateHint(i, e.target.value)}
                 placeholder={`Hint ${i + 1}…`}
                 className={`${inputClass} flex-1`} style={inputStyle} />
               {hints.length > 1 && (
@@ -218,7 +218,7 @@ export default function EditExercisePage() {
       {/* Solution */}
       <div className={cardClass} style={cardStyle}>
         <p className={sectionLabel}>Solution (hidden from students)</p>
-        <textarea value={solution} onChange={e => setSolution(e.target.value)}
+        <textarea aria-label="Solution code" value={solution} onChange={e => setSolution(e.target.value)}
           rows={8} className={textareaClass} style={{ ...inputStyle, fontFamily: "monospace", fontSize: "12px", lineHeight: "1.6" }} />
       </div>
 

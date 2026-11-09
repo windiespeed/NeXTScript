@@ -974,7 +974,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                       );
                     })()}
                     {(course?.assignedConcepts?.length ?? 0) > 0 && !selecting && (
-                      <select
+                      <select aria-label={`Concept for ${lesson.title}`}
                         value={lesson.concept ?? ""}
                         onChange={e => { e.stopPropagation(); handlePatchLesson(lesson.id, { concept: e.target.value || undefined }); }}
                         onClick={e => e.stopPropagation()}
@@ -1072,8 +1072,8 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                         <div className="absolute right-0 top-full mt-1 z-30 rounded-2xl p-3 min-w-[200px] space-y-3" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)" }}>
                           <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>NeXTBox Overrides</p>
                           <div>
-                            <label className="block text-[10px] mb-1" style={{ color: "var(--text-muted)" }}>Progress Mode</label>
-                            <select
+                            <label htmlFor={`progress-mode-${lesson.id}`} className="block text-[10px] mb-1" style={{ color: "var(--text-muted)" }}>Progress Mode</label>
+                            <select id={`progress-mode-${lesson.id}`}
                               value={lesson.progressMode ?? ""}
                               onChange={e => handlePatchLesson(lesson.id, { progressMode: (e.target.value || undefined) as any })}
                               className="w-full rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[var(--focus-ring)]"
@@ -1085,8 +1085,8 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                             </select>
                           </div>
                           <div>
-                            <label className="block text-[10px] mb-1" style={{ color: "var(--text-muted)" }}>Solution After (attempts)</label>
-                            <input
+                            <label htmlFor={`solution-after-${lesson.id}`} className="block text-[10px] mb-1" style={{ color: "var(--text-muted)" }}>Solution After (attempts)</label>
+                            <input id={`solution-after-${lesson.id}`}
                               type="number" min="1"
                               value={lesson.solutionRevealAttempts ?? ""}
                               onChange={e => handlePatchLesson(lesson.id, { solutionRevealAttempts: e.target.value === "" ? null : parseInt(e.target.value, 10) })}
@@ -1152,7 +1152,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                           <svg xmlns="http://www.w3.org/2000/svg" className={`w-3.5 h-3.5 transition-transform ${collapsed ? "-rotate-90" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
                         </button>
                         {editingModuleId === mod.id ? (
-                          <input autoFocus value={editModuleTitle} onChange={e => setEditModuleTitle(e.target.value)}
+                          <input aria-label="Module title" autoFocus value={editModuleTitle} onChange={e => setEditModuleTitle(e.target.value)}
                             onBlur={() => handleSaveModuleTitle(mod.id)}
                             onKeyDown={e => { if (e.key === "Enter") handleSaveModuleTitle(mod.id); if (e.key === "Escape") setEditingModuleId(null); }}
                             className="flex-1 rounded-md px-2 py-0.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
@@ -1190,8 +1190,8 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                           <div className="flex items-center gap-4 px-4 py-2 border-b" style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}>
                             <span className="text-[10px] font-semibold uppercase tracking-widest shrink-0" style={{ color: "var(--text-muted)" }}>NeXTBox</span>
                             <div className="flex items-center gap-1.5">
-                              <label className="text-[10px]" style={{ color: "var(--text-muted)" }}>Progress:</label>
-                              <select
+                              <label htmlFor={`module-progress-${mod.id}`} className="text-[10px]" style={{ color: "var(--text-muted)" }}>Progress:</label>
+                              <select id={`module-progress-${mod.id}`}
                                 value={mod.progressMode ?? ""}
                                 onChange={e => saveModules(driveModules.map(m => m.id === mod.id ? { ...m, progressMode: (e.target.value || undefined) as any } : m))}
                                 className="rounded px-1.5 py-0.5 text-[10px] focus:outline-none focus:ring-1 focus:ring-[var(--focus-ring)]"
@@ -1203,8 +1203,8 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                               </select>
                             </div>
                             <div className="flex items-center gap-1.5">
-                              <label className="text-[10px]" style={{ color: "var(--text-muted)" }}>Solution after:</label>
-                              <input
+                              <label htmlFor={`module-solution-after-${mod.id}`} className="text-[10px]" style={{ color: "var(--text-muted)" }}>Solution after:</label>
+                              <input id={`module-solution-after-${mod.id}`}
                                 type="number" min="1"
                                 value={mod.solutionRevealAttempts ?? ""}
                                 onChange={e => saveModules(driveModules.map(m => m.id === mod.id ? { ...m, solutionRevealAttempts: e.target.value === "" ? null : parseInt(e.target.value, 10) } : m))}
@@ -1233,7 +1233,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                                 <div className="absolute right-0 top-full mt-1 z-50 rounded-xl shadow-lg p-3 min-w-[220px]"
                                   style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
                                   <div className="flex items-center gap-2 mb-2 pb-2" style={{ borderBottom: "1px solid var(--border)" }}>
-                                    <input
+                                    <input aria-label="Select all lessons in module"
                                       type="checkbox"
                                       checked={releasePickerSelected.size === modLessons.length && modLessons.length > 0}
                                       onChange={e => setReleasePickerSelected(e.target.checked ? new Set(modLessons.map(l => l.id)) : new Set())} />
@@ -1375,13 +1375,13 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
             </div>
             <div className="px-6 py-5 space-y-4">
               <div>
-                <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Label</label>
-                <input type="text" value={newResourceLabel} onChange={e => setNewResourceLabel(e.target.value)}
+                <label htmlFor="drivecourseeditor-label" className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Label</label>
+                <input id="drivecourseeditor-label" type="text" value={newResourceLabel} onChange={e => setNewResourceLabel(e.target.value)}
                   placeholder="e.g. Syllabus, Reference Sheet" className={inputClass} style={inputStyle} autoFocus />
               </div>
               <div>
-                <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>URL</label>
-                <input type="url" value={newResourceUrl} onChange={e => setNewResourceUrl(e.target.value)}
+                <label htmlFor="drivecourseeditor-url" className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>URL</label>
+                <input id="drivecourseeditor-url" type="url" value={newResourceUrl} onChange={e => setNewResourceUrl(e.target.value)}
                   placeholder="https://drive.google.com/…" className={inputClass} style={inputStyle} />
               </div>
             </div>

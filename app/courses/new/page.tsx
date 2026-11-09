@@ -100,35 +100,35 @@ export default function NewCoursePage() {
           <p className={sectionHeading}>Course Info</p>
 
           <div>
-            <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
+            <label htmlFor="courses-new-title" className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
               Title <span className="text-[var(--danger-text)]">*</span>
             </label>
-            <input type="text" value={title} onChange={(e) => setTitle(e.target.value)}
+            <input id="courses-new-title" type="text" value={title} onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. JavaScript Fundamentals" className={inputClass} style={inputStyle} />
           </div>
 
           <div>
-            <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Description</label>
-            <textarea value={description} onChange={(e) => setDescription(e.target.value)}
+            <label htmlFor="courses-new-description" className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Description</label>
+            <textarea id="courses-new-description" value={description} onChange={(e) => setDescription(e.target.value)}
               rows={3} placeholder="Brief summary of what this course covers…" className={inputClass} style={inputStyle} />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Grade Level</label>
-              <input type="text" value={gradeLevel} onChange={(e) => setGradeLevel(e.target.value)}
+              <label htmlFor="courses-new-grade-level" className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Grade Level</label>
+              <input id="courses-new-grade-level" type="text" value={gradeLevel} onChange={(e) => setGradeLevel(e.target.value)}
                 placeholder="e.g. 9th Grade, College, Adult Ed" className={inputClass} style={inputStyle} />
             </div>
             <div>
-              <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
+              <label htmlFor="courses-new-term" className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
                 Term <span style={{ color: "var(--danger-text)" }}>*</span>
               </label>
               <div className="grid grid-cols-2 gap-2">
-                <select value={termMonth} onChange={(e) => setTermMonth(e.target.value)} className={inputClass} style={inputStyle}>
+                <select id="courses-new-term" value={termMonth} onChange={(e) => setTermMonth(e.target.value)} className={inputClass} style={inputStyle}>
                   <option value="">Month</option>
                   {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
                 </select>
-                <select value={termYear} onChange={(e) => setTermYear(e.target.value)} className={inputClass} style={inputStyle}>
+                <select aria-label="Term year" value={termYear} onChange={(e) => setTermYear(e.target.value)} className={inputClass} style={inputStyle}>
                   <option value="">Year</option>
                   {TERM_YEARS.map(y => <option key={y} value={y}>{y}</option>)}
                 </select>
@@ -136,10 +136,10 @@ export default function NewCoursePage() {
             </div>
           </div>
           <div>
-            <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
+            <label htmlFor="courses-new-semester-optional" className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
               Semester <span className="font-normal text-xs" style={{ color: "var(--text-muted)" }}>(optional)</span>
             </label>
-            <input type="text" value={semester} onChange={(e) => setSemester(e.target.value)}
+            <input id="courses-new-semester-optional" type="text" value={semester} onChange={(e) => setSemester(e.target.value)}
               placeholder="e.g. Spring, Fall, Semester 1" className={inputClass} style={inputStyle} />
           </div>
         </div>
@@ -152,20 +152,20 @@ export default function NewCoursePage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Industry</label>
-              <input type="text" value={settings.industry} onChange={(e) => patchSettings({ industry: e.target.value })}
+              <label htmlFor="courses-new-industry" className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Industry</label>
+              <input id="courses-new-industry" type="text" value={settings.industry} onChange={(e) => patchSettings({ industry: e.target.value })}
                 placeholder="e.g. Coding, Healthcare, Business" className={inputClass} style={inputStyle} />
             </div>
             <div>
-              <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Subject Area</label>
-              <input type="text" value={settings.subject} onChange={(e) => patchSettings({ subject: e.target.value })}
+              <label htmlFor="courses-new-subject-area" className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Subject Area</label>
+              <input id="courses-new-subject-area" type="text" value={settings.subject} onChange={(e) => patchSettings({ subject: e.target.value })}
                 placeholder="e.g. JavaScript, Nursing 101" className={inputClass} style={inputStyle} />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Student Level</label>
-            <select value={settings.studentLevel}
+            <label htmlFor="courses-new-student-level" className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Student Level</label>
+            <select id="courses-new-student-level" value={settings.studentLevel}
               onChange={(e) => patchSettings({ studentLevel: e.target.value as CourseSettings["studentLevel"] })}
               className={inputClass} style={inputStyle}>
               <option value="">— Not specified —</option>
@@ -176,18 +176,18 @@ export default function NewCoursePage() {
           </div>
 
           <div>
-            <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Default Sources</label>
+            <label htmlFor="courses-new-default-sources" className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Default Sources</label>
             <p className="text-xs mb-1.5" style={{ color: "var(--text-muted)" }}>Pre-filled in every new lesson in this course. One URL per line.</p>
-            <textarea value={settings.defaultSources} onChange={(e) => patchSettings({ defaultSources: e.target.value })}
+            <textarea id="courses-new-default-sources" value={settings.defaultSources} onChange={(e) => patchSettings({ defaultSources: e.target.value })}
               rows={4} placeholder={"https://www.w3schools.com/\nhttps://developer.mozilla.org/"}
               className={`${inputClass} font-mono`} style={inputStyle} />
           </div>
 
           <div>
-            <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
+            <label htmlFor="courses-new-slides-template-url-optional" className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
               Slides Template URL <span className="font-normal" style={{ color: "var(--text-muted)" }}>(optional)</span>
             </label>
-            <input type="url" value={settings.defaultTemplateUrl}
+            <input id="courses-new-slides-template-url-optional" type="url" value={settings.defaultTemplateUrl}
               onChange={(e) => patchSettings({ defaultTemplateUrl: e.target.value })}
               placeholder="https://docs.google.com/presentation/d/…" className={inputClass} style={inputStyle} />
           </div>

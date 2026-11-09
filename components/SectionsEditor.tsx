@@ -88,7 +88,7 @@ export default function SectionsEditor({ value, onChange, scope }: Props) {
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
               </button>
             </div>
-            <input
+            <input aria-label={`Section ${i + 1} name`}
               type="text"
               value={s.label}
               onChange={e => update(s.id, { label: e.target.value })}

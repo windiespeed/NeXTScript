@@ -283,7 +283,7 @@ export default function BatchGeneratePage() {
       <div key={lesson.id}
         className="flex items-center gap-3 px-4 py-2.5 rounded-2xl transition"
         style={{ background: checked ? "var(--accent-bg)" : "transparent" }}>
-        <input
+        <input aria-label={`Select ${lesson.title}`}
           type="checkbox"
           checked={checked}
           onChange={() => toggleLesson(lesson.id)}
@@ -344,12 +344,12 @@ export default function BatchGeneratePage() {
                 const allSelected = modLessons.every(l => selectedIds.has(l.id));
                 return (
                   <div key={mod.id}>
-                    <button
+                    <button aria-pressed={allSelected}
                       onClick={() => toggleModule(mod.lessonIds)}
                       disabled={running}
                       className="flex items-center gap-2 mb-1 w-full text-left"
                     >
-                      <input type="checkbox" checked={allSelected} onChange={() => {}} className="accent-[#0cc0df] w-3.5 h-3.5 pointer-events-none" />
+                      <input type="checkbox" aria-hidden="true" tabIndex={-1} checked={allSelected} onChange={() => {}} className="accent-[#0cc0df] w-3.5 h-3.5 pointer-events-none" />
                       <span className="text-xs font-semibold" style={{ color: "var(--accent-text)" }}>{mod.title}</span>
                     </button>
                     <div className="ml-2 space-y-0.5">
@@ -389,8 +389,8 @@ export default function BatchGeneratePage() {
             )}
             {doAiFill && (
               <div className="ml-6">
-                <label className="block text-xs mb-1" style={{ color: "var(--text-muted)" }}>Slides per lesson</label>
-                <input
+                <label htmlFor="courses-id-batch-slides-slides-per-lesson" className="block text-xs mb-1" style={{ color: "var(--text-muted)" }}>Slides per lesson</label>
+                <input id="courses-id-batch-slides-slides-per-lesson"
                   type="number" min={1} max={20} value={slideCount}
                   onChange={e => setSlideCount(Math.min(20, Math.max(1, Number(e.target.value))))}
                   disabled={running}
