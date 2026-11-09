@@ -767,7 +767,7 @@ function IngestPageInner() {
                 ) : slideAnchors.length > 0 ? (
                   <>
                     <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
-                      From {selectedCourse.title}&apos;s settings. Headings are used exactly as written and can&apos;t be renamed or removed in the deck.
+                      From {selectedCourse.title}&apos;s sections marked &ldquo;Slide heading&rdquo;. Headings are used exactly as written and can&apos;t be renamed or removed in the deck.
                     </p>
                     <ol className="space-y-1">
                       {slideAnchors.map((anchor, i) => (
@@ -784,7 +784,7 @@ function IngestPageInner() {
                   </>
                 ) : (
                   <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-                    This course has no sections, so the AI will structure the deck from your notes alone.
+                    No sections are marked as slide headings, so the AI will structure the deck from your notes alone.
                   </p>
                 )}
                 {selectedCourse && (

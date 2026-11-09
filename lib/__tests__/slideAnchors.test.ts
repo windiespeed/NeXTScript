@@ -105,8 +105,28 @@ describe("resolveSlideAnchors", () => {
     expect(result).toEqual([{ id: "s_1", label: "Warm-Up" }, { id: "s_4", label: "Lab" }]);
   });
 
-  it("falls back to the built-in sections when the course has none", () => {
-    expect(resolveSlideAnchors(null).length).toBeGreaterThan(0);
+  it("falls back to the built-in sections, leaving doc-only ones off by default", () => {
+    const ids = resolveSlideAnchors(null).map(a => a.id);
+    expect(ids).toContain("lessonOverview");
+    expect(ids).toContain("guidedLab");
+    expect(ids).not.toContain("rubric");
+    expect(ids).not.toContain("devJournalPrompt");
+    expect(ids).not.toContain("submissionChecklist");
+  });
+
+  it("honours the per-section slide heading switch, including on saved builtins without the flag", () => {
+    const result = resolveSlideAnchors({
+      settings: {
+        sections: [
+          { id: "lessonOverview", label: "Overview", includeInOverviewDoc: false, slideAnchor: false },
+          { id: "rubric", label: "Rubric", includeInOverviewDoc: false },
+          { id: "vocabulary", label: "Vocab", includeInOverviewDoc: false },
+          { id: "s_x", label: "Demo", includeInOverviewDoc: false },
+          { id: "devJournalPrompt", label: "Journal", includeInOverviewDoc: false, slideAnchor: true },
+        ],
+      },
+    });
+    expect(result.map(a => a.id)).toEqual(["vocabulary", "s_x", "devJournalPrompt"]);
   });
 });
 

@@ -1,13 +1,14 @@
 import { v4 as uuidv4 } from "uuid";
 import { resolveSections } from "@/lib/sections";
-import type { SectionDef } from "@/types/section";
+import { isSlideAnchor, type SectionDef } from "@/types/section";
 import type { PresentationAST, SlideNode } from "@/types/slideAst";
 
 /**
  * Locked slide anchors for the hybrid Notes to Slides model.
  *
  * The course configuration supplies the deck's skeleton: an ordered list of mandatory section
- * labels, each of which must appear as a primary slide heading. The instructor's freeform notes
+ * labels, each of which must appear as a primary slide heading. Only sections switched on as
+ * slide headings count (SectionDef.slideAnchor; doc-only sections like the rubric default off). The instructor's freeform notes
  * supply the content that gets distributed under those anchors. Anchors come from the course's
  * active Sections (CourseSettings.sections, resolved through lib/sections.ts), so there is one
  * place to configure them and the lesson docs and slide decks stay aligned.
@@ -32,7 +33,7 @@ export function resolveSlideAnchors(course: SectionSource, userSettings?: { sect
   const anchors: SlideAnchor[] = [];
   for (const section of resolveSections({ course, userSettings })) {
     const label = section.label?.trim();
-    if (!label || seenIds.has(section.id) || seenLabels.has(normalizeHeading(label))) continue;
+    if (!label || !isSlideAnchor(section) || seenIds.has(section.id) || seenLabels.has(normalizeHeading(label))) continue;
     seenIds.add(section.id);
     seenLabels.add(normalizeHeading(label));
     anchors.push({ id: section.id, label });
