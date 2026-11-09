@@ -11,6 +11,7 @@ import {
   DndContext,
   closestCenter,
   PointerSensor,
+  KeyboardSensor,
   useSensor,
   useSensors,
   type DragEndEvent,
@@ -20,6 +21,7 @@ import {
   useSortable,
   rectSortingStrategy,
   arrayMove,
+  sortableKeyboardCoordinates,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import Dialog from "@/components/ui/Dialog";
@@ -72,11 +74,12 @@ function SortableHubWidget({ widgetId, span, onCycleSize, children }: {
       style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1, zIndex: isDragging ? 10 : undefined }}
       className={`relative group/widget ${span === 2 ? "md:col-span-2" : "md:col-span-1"}`}
     >
-      <div className="absolute bottom-3 right-3 z-20 opacity-0 group-hover/widget:opacity-100 transition-opacity flex items-center gap-1">
+      <div className="absolute bottom-3 right-3 z-20 opacity-0 group-hover/widget:opacity-100 group-focus-within/widget:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity flex items-center gap-1">
         <div
           {...listeners}
           {...attributes}
           title="Drag to reorder"
+          aria-label="Reorder widget"
           className="flex items-center justify-center rounded-full p-1.5 cursor-grab active:cursor-grabbing"
           style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)", color: "var(--text-secondary)" }}
         >
@@ -89,6 +92,7 @@ function SortableHubWidget({ widgetId, span, onCycleSize, children }: {
         <button
           onClick={onCycleSize}
           title={`Resize (${span}/2 columns)`}
+          aria-label={`Resize widget, currently ${span} of 2 columns`}
           className="flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-semibold"
           style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)", color: "var(--text-secondary)" }}
         >
@@ -160,7 +164,10 @@ export default function LessonHubPage() {
   // Widget order + sizes
   const [hubOrder, setHubOrder] = useState<HubWidgetId[]>(DEFAULT_HUB_ORDER);
   const [hubSizes, setHubSizes] = useState<Record<HubWidgetId, 1 | 2>>(DEFAULT_HUB_SIZES);
-  const hubSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  const hubSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
 
   useEffect(() => {
     try {

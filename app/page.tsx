@@ -9,6 +9,7 @@ import {
   DndContext,
   closestCenter,
   PointerSensor,
+  KeyboardSensor,
   useSensor,
   useSensors,
   DragEndEvent,
@@ -18,6 +19,7 @@ import {
   useSortable,
   rectSortingStrategy,
   arrayMove,
+  sortableKeyboardCoordinates,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import GenerateModal from "@/components/GenerateModal";
@@ -173,11 +175,12 @@ function SortableWidget({ widgetId, span, onCycleSize, children }: {
       className={`relative group/widget ${spanClass}`}
     >
       {/* Hover controls: drag handle + resize */}
-      <div className="absolute bottom-3 right-3 z-20 opacity-0 group-hover/widget:opacity-100 transition-opacity flex items-center gap-1">
+      <div className="absolute bottom-3 right-3 z-20 opacity-0 group-hover/widget:opacity-100 group-focus-within/widget:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity flex items-center gap-1">
         <div
           {...listeners}
           {...attributes}
           title="Drag to reorder"
+          aria-label="Reorder widget"
           className="flex items-center justify-center rounded-full p-1.5 cursor-grab active:cursor-grabbing"
           style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)", color: "var(--text-secondary)" }}
         >
@@ -190,6 +193,7 @@ function SortableWidget({ widgetId, span, onCycleSize, children }: {
         <button
           onClick={onCycleSize}
           title={`Resize (${span}/3 columns)`}
+          aria-label={`Resize widget, currently ${span} of 3 columns`}
           className="flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-semibold"
           style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)", color: "var(--text-secondary)" }}
         >
@@ -223,7 +227,10 @@ function Dashboard() {
   const [widgetSizes, setWidgetSizes] = useState<Record<WidgetId, 1 | 2 | 3>>(DEFAULT_WIDGET_SIZES);
   const [widgetOrder, setWidgetOrder] = useState<WidgetId[]>(DEFAULT_WIDGET_ORDER);
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
   const modalLesson = lessons.find(l => l.id === modalLessonId) ?? null;
   const modalLessonHasQuizDraft = modalLesson
     ? projects.some(p => p.type === "form" && p.status === "draft" && (p.lessonId === modalLesson.id || p.lessonIds?.includes(modalLesson.id)))

@@ -10,6 +10,7 @@ import {
   DragOverlay,
   closestCenter,
   PointerSensor,
+  KeyboardSensor,
   useSensor,
   useSensors,
   useDroppable,
@@ -21,6 +22,7 @@ import {
   useSortable,
   verticalListSortingStrategy,
   arrayMove,
+  sortableKeyboardCoordinates,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import Dialog from "@/components/ui/Dialog";
@@ -77,7 +79,8 @@ function SortableLessonItem({ id, render }: { id: string; render: (s: SortablePr
           <div
             {...listeners} {...attributes}
             title="Drag to reorder"
-            className="p-1 rounded-full cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition shrink-0"
+            aria-label="Reorder lesson"
+            className="p-1 rounded-full cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 [@media(hover:none)]:opacity-100 transition shrink-0"
             style={{ color: "var(--text-muted)" }}
           >
             {gripSVG}
@@ -182,7 +185,10 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
     addResourceOpen, newResourceLabel, newResourceUrl, editingModuleId, editModuleTitle,
   }, !loading);
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
 
   useEffect(() => {
     try {
@@ -715,7 +721,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                 style={{ background: "var(--accent-purple-bg)", border: "1px solid rgba(99,102,241,0.30)", color: "var(--accent-purple)" }}>
                 <a href={r.url} target="_blank" rel="noopener noreferrer" className="hover:underline">{r.label} ↗</a>
                 <button onClick={() => handleRemoveResource(r.id)}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity text-[var(--danger-text)] hover:text-[var(--danger-text)] leading-none">×</button>
+                  className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity text-[var(--danger-text)] hover:text-[var(--danger-text)] leading-none">×</button>
               </div>
             ))}
           </div>

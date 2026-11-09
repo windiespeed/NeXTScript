@@ -279,7 +279,7 @@ export default function ProfilePage() {
                   <span className="text-2xl font-bold text-[var(--accent-text)]">{userInitials}</span>
                 </div>
               )}
-              <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 group-disabled:opacity-0 transition-opacity rounded-full">
+              <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 [@media(hover:none)]:opacity-100 group-disabled:opacity-0 transition-opacity rounded-full">
                 <span className="text-white text-xs font-semibold">{uploadingAvatar ? "…" : "Edit"}</span>
               </div>
             </button>
