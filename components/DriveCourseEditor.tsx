@@ -813,7 +813,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                   {bulkMoveOpen && (
                     <>
                     <div className="fixed inset-0 z-20" onClick={() => setBulkMoveOpen(false)} />
-                    <div className="absolute left-0 top-full mt-1 z-30 rounded-2xl overflow-hidden min-w-[180px]" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)" }}>
+                    <div className="absolute left-0 top-full mt-1 z-30 rounded-2xl overflow-hidden min-w-[180px] max-w-[calc(100vw-2rem)]" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)" }}>
                       <p className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Move to…</p>
                       {allCourses.filter(c => c.id !== id).map(c => (
                         <button key={c.id} onClick={() => handleBulkMove(c.id)}
@@ -857,7 +857,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                   {moreOpen && (
                     <>
                     <div className="fixed inset-0 z-20" onClick={() => setMoreOpen(false)} />
-                    <div className="absolute right-0 top-full mt-1 z-30 rounded-2xl overflow-hidden min-w-[180px]" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)" }} onClick={() => setMoreOpen(false)}>
+                    <div className="absolute right-0 top-full mt-1 z-30 rounded-2xl overflow-hidden min-w-[180px] max-w-[calc(100vw-2rem)]" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)" }} onClick={() => setMoreOpen(false)}>
                       <button onClick={handleAddModule} className="w-full text-left px-4 py-2.5 text-xs hover:bg-[var(--bg-card-hover)] transition" style={{ color: "var(--text-primary)" }}>+ Add Module Group</button>
                       <button onClick={openAddExisting} className="w-full text-left px-4 py-2.5 text-xs hover:bg-[var(--bg-card-hover)] transition" style={{ color: "var(--text-primary)" }}>Add Existing Lesson</button>
                       <Link href={`/quizzes/new?courseId=${id}`} className="block px-4 py-2.5 text-xs hover:bg-[var(--bg-card-hover)] transition" style={{ color: "var(--text-primary)" }}>New Quiz</Link>
@@ -962,7 +962,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                           {assigningModuleForLesson === lesson.id && (
                             <>
                             <div className="fixed inset-0 z-20" onClick={() => setAssigningModuleForLesson(null)} />
-                            <div className="absolute left-0 top-full mt-1 z-30 rounded-2xl overflow-hidden min-w-[200px]" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)" }}>
+                            <div className="absolute left-0 top-full mt-1 z-30 rounded-2xl overflow-hidden min-w-[200px] max-w-[calc(100vw-2rem)]" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)" }}>
                               <button onClick={() => handleAssignToModule(lesson.id, null)}
                                 className="w-full text-left px-3 py-2 text-xs hover:bg-[var(--bg-card-hover)] transition"
                                 style={{ color: "var(--text-muted)" }}>No module group</button>
@@ -1038,7 +1038,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                           {publishMenuId === lesson.id && (
                             <>
                               <div className="fixed inset-0 z-20" onClick={() => setPublishMenuId(null)} />
-                              <div className="absolute right-0 top-full mt-1 z-30 rounded-2xl overflow-hidden min-w-[170px]" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)" }}>
+                              <div className="absolute right-0 top-full mt-1 z-30 rounded-2xl overflow-hidden min-w-[170px] max-w-[calc(100vw-2rem)]" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)" }}>
                                 <button
                                   onClick={() => { setPublishMenuId(null); handleReleaseToClassroom([lesson.id], currentModule?.title); }}
                                   className="w-full text-left px-3 py-2 text-xs hover:bg-[var(--bg-card-hover)] transition"
@@ -1075,7 +1075,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                       {nextboxPanelId === lesson.id && (
                         <>
                         <div className="fixed inset-0 z-20" onClick={() => setNextboxPanelId(null)} />
-                        <div className="absolute right-0 top-full mt-1 z-30 rounded-2xl p-3 min-w-[200px] space-y-3" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)" }}>
+                        <div className="absolute right-0 top-full mt-1 z-30 rounded-2xl p-3 min-w-[200px] max-w-[calc(100vw-2rem)] space-y-3" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)" }}>
                           <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>NeXTBox Overrides</p>
                           <div>
                             <label htmlFor={`progress-mode-${lesson.id}`} className="block text-[10px] mb-1" style={{ color: "var(--text-muted)" }}>Progress Mode</label>
@@ -1117,7 +1117,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                         {movingLessonId === lesson.id && (
                           <>
                           <div className="fixed inset-0 z-20" onClick={() => setMovingLessonId(null)} />
-                          <div className="absolute right-0 top-full mt-1 z-30 rounded-2xl overflow-hidden min-w-[180px]" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)" }}>
+                          <div className="absolute right-0 top-full mt-1 z-30 rounded-2xl overflow-hidden min-w-[180px] max-w-[calc(100vw-2rem)]" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)" }}>
                             <p className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Move to…</p>
                             {allCourses.filter(c => c.id !== id).map(c => (
                               <button key={c.id} onClick={() => handleMoveLesson(lesson.id, c.id)}
@@ -1236,7 +1236,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                                 Release to NeXTBox
                               </button>
                               {releasePickerModuleId === mod.id && (
-                                <div className="absolute right-0 top-full mt-1 z-50 rounded-xl shadow-lg p-3 min-w-[220px]"
+                                <div className="absolute right-0 top-full mt-1 z-50 rounded-xl shadow-lg p-3 min-w-[220px] max-w-[calc(100vw-2rem)]"
                                   style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
                                   <div className="flex items-center gap-2 mb-2 pb-2" style={{ borderBottom: "1px solid var(--border)" }}>
                                     <input aria-label="Select all lessons in module"

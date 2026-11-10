@@ -30,7 +30,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <Sidebar />
             {/* Offset: top bar (64px) + floating sidebar (224px + 12px margin = 236px) */}
             <div className="lg:pl-[236px] pt-16 min-h-screen">
-              <main id="main-content" tabIndex={-1} className="mx-auto max-w-6xl px-10 py-8 focus:outline-none">
+              <main id="main-content" tabIndex={-1} className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-10 focus:outline-none">
                 {children}
               </main>
             </div>

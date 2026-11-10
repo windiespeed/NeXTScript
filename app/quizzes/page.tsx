@@ -245,7 +245,7 @@ export default function QuizzesPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: "var(--text-muted)" }}>Content</p>
           <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>Quizzes</h1>
@@ -253,7 +253,7 @@ export default function QuizzesPage() {
             Build and manage quiz drafts for your lessons.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={handleCheckFolders}
             disabled={checkingFolders}

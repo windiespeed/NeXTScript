@@ -36,7 +36,7 @@ function FormsInner() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: "var(--text-muted)" }}>Assets</p>
           <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>Forms</h1>
