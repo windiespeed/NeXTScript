@@ -86,7 +86,7 @@ export default function IdleLogout() {
 
   return (
     <div
-      className="fixed bottom-6 right-6 z-9999 w-80 rounded-2xl shadow-lg p-4"
+      className="fixed bottom-6 right-4 left-4 sm:left-auto sm:right-6 z-9999 sm:w-80 rounded-2xl shadow-lg p-4"
       style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}
       role="alertdialog"
       aria-live="assertive"

@@ -79,7 +79,7 @@ export default function SectionsEditor({ value, onChange, scope }: Props) {
 
       <div className="space-y-2">
         {value.map((s, i) => (
-          <div key={s.id} className="flex items-center gap-2 rounded-xl px-3 py-2" style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)" }}>
+          <div key={s.id} className="flex flex-wrap items-center gap-x-2 gap-y-1.5 rounded-xl px-3 py-2" style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)" }}>
             <div className="flex shrink-0">
               <button type="button" aria-label={`Move ${s.label || "section"} up`} onClick={() => move(i, "up")} disabled={i === 0} title="Move up" className="p-1.5 rounded text-[var(--text-muted)] hover:text-[var(--accent-text)] disabled:opacity-20 transition">
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
@@ -88,7 +88,8 @@ export default function SectionsEditor({ value, onChange, scope }: Props) {
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
               </button>
             </div>
-            <input aria-label={`Section ${i + 1} name`}
+            <div className="min-w-[10rem] flex-1">
+              <input aria-label={`Section ${i + 1} name`}
               type="text"
               value={s.label}
               onChange={e => update(s.id, { label: e.target.value })}
@@ -96,6 +97,7 @@ export default function SectionsEditor({ value, onChange, scope }: Props) {
               className={inputClass}
               style={inputStyle}
             />
+            </div>
             <label className="flex items-center gap-1.5 shrink-0 text-[10px] font-semibold cursor-pointer select-none" style={{ color: "var(--text-secondary)" }} title="Notes to Slides: make this section a locked slide heading in every generated deck">
               <input
                 type="checkbox"
@@ -154,7 +156,7 @@ export default function SectionsEditor({ value, onChange, scope }: Props) {
             {restorePickerOpen && (
               <>
                 <div className="fixed inset-0 z-20" onClick={() => setRestorePickerOpen(false)} />
-                <div className="absolute left-0 top-full mt-1 z-30 rounded-2xl overflow-hidden min-w-[200px]" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)" }}>
+                <div className="absolute left-0 top-full mt-1 z-30 rounded-2xl overflow-hidden min-w-[200px] max-w-[calc(100vw-2rem)]" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)" }}>
                   {removedBuiltinIds.map(id => (
                     <button
                       key={id}

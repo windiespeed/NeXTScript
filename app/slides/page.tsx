@@ -88,7 +88,7 @@ function SlideCard({
         {assigningOpen && (
           <>
             <div className="fixed inset-0 z-20" onClick={() => onToggleAssign(lesson.id)} />
-            <div className="absolute left-0 top-full mt-1 z-30 rounded-2xl overflow-hidden min-w-[180px]" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)" }}>
+            <div className="absolute left-0 top-full mt-1 z-30 rounded-2xl overflow-hidden min-w-[180px] max-w-[calc(100vw-2rem)]" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)" }}>
               <button
                 onClick={() => onAssign(lesson.id, null)}
                 className="w-full text-left px-3 py-2 text-xs hover:bg-[var(--bg-card-hover)] transition"
@@ -240,7 +240,7 @@ export default function SlidesPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: "var(--text-muted)" }}>Content</p>
           <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>Slides</h1>

@@ -497,7 +497,7 @@ export default function LessonHubPage() {
                 {assigningCourse && (
                   <>
                   <div className="fixed inset-0 z-20" onClick={() => setAssigningCourse(false)} />
-                  <div className="absolute left-0 top-full mt-1 z-30 rounded-2xl overflow-hidden min-w-[200px]" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)" }}>
+                  <div className="absolute left-0 top-full mt-1 z-30 rounded-2xl overflow-hidden min-w-[200px] max-w-[calc(100vw-2rem)]" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)" }}>
                     <button
                       onClick={() => handleAssignCourse(null)}
                       className="w-full text-left px-3 py-2 text-xs hover:bg-[var(--bg-card-hover)] transition"
@@ -844,7 +844,7 @@ export default function LessonHubPage() {
               <>
               <div className="fixed inset-0 z-20" onClick={() => setAddResourceOpen(false)} />
               <div
-                className="absolute right-0 top-full mt-1 z-30 rounded-2xl overflow-hidden min-w-[160px]"
+                className="absolute right-0 top-full mt-1 z-30 rounded-2xl overflow-hidden min-w-[160px] max-w-[calc(100vw-2rem)]"
                 style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)" }}
               >
                 <button

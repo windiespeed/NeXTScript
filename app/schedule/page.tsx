@@ -73,7 +73,7 @@ export default function SchedulePage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: "var(--text-muted)" }}>Planning</p>
           <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>Schedule</h1>
