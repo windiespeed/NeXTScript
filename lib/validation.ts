@@ -102,14 +102,20 @@ export type ParseResult<T> = { ok: true; data: T } | { ok: false; error: string 
 
 /** Parses a JSON body against a schema, returning a short message on failure. */
 export function parsePatch<S extends z.ZodType>(schema: S, body: unknown): ParseResult<Defined<z.infer<S>>> {
+  // Zod leaves absent optional keys out entirely, so nothing is undefined here.
+  return parseBody(schema, body) as ParseResult<Defined<z.infer<S>>>;
+}
+
+/** Like parsePatch, but keeps the schema's own output type (for request bodies whose
+ * transforms deliberately produce undefined, such as the ingest routes below). */
+export function parseBody<S extends z.ZodType>(schema: S, body: unknown): ParseResult<z.infer<S>> {
   const result = schema.safeParse(body);
   if (!result.success) {
     const issue = result.error.issues[0];
     const where = issue?.path.length ? ` (${issue.path.join(".")})` : "";
     return { ok: false, error: `Invalid request${where}: ${issue?.message ?? "bad input"}` };
   }
-  // Zod leaves absent optional keys out entirely, so nothing is undefined here.
-  return { ok: true, data: result.data as Defined<z.infer<S>> };
+  return { ok: true, data: result.data };
 }
 
 /** Fields no client may set through a generic patch on courses and projects. */
@@ -122,3 +128,37 @@ export function stripProtected(body: unknown, extra: readonly string[] = []): Re
   for (const k of [...PROTECTED_FIELDS, ...extra]) delete out[k];
   return out;
 }
+
+/** Trims a string and turns blank into undefined, so optional prompt context is either real text or absent. */
+const optionalText = (max: number) =>
+  z.string().max(max).nullish().transform(v => (v && v.trim() ? v.trim() : undefined));
+
+/**
+ * POST /api/ai/ingest — the hybrid Notes to Slides request (types/ingest.ts). Only
+ * `courseConfig.courseId` is trusted from the skeleton: the route re-reads the course for its
+ * anchors and theme, so the anchors the browser echoes are accepted but never used.
+ */
+export const hybridIngestSchema = z.object({
+  courseConfig: z.object({
+    courseId: z.string().min(1, "Select a course first — its sections are the deck's skeleton.").max(200),
+    anchors: z.array(z.object({ id: z.string().max(200), label: z.string().max(2_000) })).max(100).optional(),
+    themeId: z.string().max(100).nullish(),
+  }),
+  rawNotes: z.string().max(200_000),
+  model: z.string().max(100).nullish(),
+  targetAudience: optionalText(2_000),
+  // Out-of-range counts are clamped rather than rejected — it's only guidance for the model.
+  slideCount: z.number().int().nullish().transform(n => (typeof n === "number" ? Math.min(30, Math.max(1, n)) : undefined)),
+  studentLevel: z.enum(["beginner", "intermediate", "advanced"]).nullish().transform(v => v ?? undefined),
+  lessonTitle: optionalText(2_000),
+  lessonSubtitle: optionalText(2_000),
+  topics: optionalText(20_000),
+  sources: optionalText(20_000),
+});
+
+/** POST /api/ai/ingest/export — the deck itself is checked separately by assertValidAst. */
+export const ingestExportSchema = z.object({
+  ast: z.unknown(),
+  lessonId: z.string().max(200).nullish(),
+  courseId: z.string().max(200).nullish(),
+});

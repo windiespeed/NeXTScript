@@ -5,6 +5,7 @@ import { store } from "@/lib/store";
 import { canAccessLesson } from "@/lib/access";
 import { loadCourseSkeleton } from "@/lib/courseSkeleton";
 import { applySlideAnchors } from "@/lib/slideAnchors";
+import { ingestExportSchema, parseBody } from "@/lib/validation";
 import { uploadPptxToDrive, moveFileToFolder, autoDeckName } from "@/lib/google";
 import { buildPptxFromAst } from "@/lib/pptxDeck";
 import { ensureLessonFolderId, ensureCourseFolderId } from "@/lib/lessonFolders";
@@ -30,7 +31,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "No Google access token. Please sign out and sign in again." }, { status: 401 });
     }
 
-    const body = await req.json();
+    const parsed = parseBody(ingestExportSchema, await req.json());
+    if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
+    const body = parsed.data;
 
     // Re-validate the client-supplied AST — it was ours moments ago, but we're about to spend
     // real Google API calls building a Drive file from it, so don't trust the shape blindly.
@@ -45,7 +48,7 @@ export async function POST(req: Request) {
     // attached to a lesson. When present, verify the caller actually has access to them before
     // trusting them as join keys on the created SavedProject.
     let lesson: Lesson | undefined;
-    if (typeof body.lessonId === "string" && body.lessonId) {
+    if (body.lessonId) {
       const found = await store.getById(body.lessonId);
       if (found && (await canAccessLesson(found, session.user.email))) lesson = found;
     }
@@ -53,7 +56,7 @@ export async function POST(req: Request) {
 
     // Fall back to the attached lesson's own course so a deck exported from a lesson still gets
     // that course's skeleton. loadCourseSkeleton re-checks access either way.
-    const requestedCourseId = typeof body.courseId === "string" && body.courseId ? body.courseId : lesson?.courseId;
+    const requestedCourseId = body.courseId || lesson?.courseId;
     const skeleton = requestedCourseId ? await loadCourseSkeleton(requestedCourseId, session.user.email) : null;
     const course = skeleton?.course;
     const courseId = course?.id;
