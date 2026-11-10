@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { userSettings } from "@/lib/userSettings";
 import { ingestRawContent } from "@/lib/ingestionService";
 import { ingestRawContentGemini } from "@/lib/ingestionServiceGemini";
-import { isIngestModelId, getIngestModel, DEFAULT_INGEST_MODEL, type IngestProvider } from "@/lib/ingestModels";
+import { resolveAiModel, getAiModel, type AiProvider, type ClaudeModelId } from "@/lib/aiModels";
 import { loadCourseSkeleton } from "@/lib/courseSkeleton";
 import { applySlideAnchors } from "@/lib/slideAnchors";
 import { hybridIngestSchema, parseBody } from "@/lib/validation";
@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 export async function POST(req: Request) {
-  let provider: IngestProvider = "anthropic";
+  let provider: AiProvider = "anthropic";
   try {
     const session = await auth();
     if (!session?.user?.email) return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
@@ -23,14 +23,14 @@ export async function POST(req: Request) {
     const parsed = parseBody(hybridIngestSchema, await req.json());
     if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
     const body = parsed.data;
-    const model = isIngestModelId(body.model) ? body.model : DEFAULT_INGEST_MODEL;
-    provider = getIngestModel(model).provider;
-
-    const apiKey = provider === "gemini" ? settings.geminiKey : settings.anthropicKey;
-    if (!apiKey) {
-      const providerName = provider === "gemini" ? "Gemini" : "Anthropic";
-      return NextResponse.json({ error: `No ${providerName} API key configured. Add your key in Settings.` }, { status: 402 });
+    // No model picker: use the saved preference if its key is there, else the default model for
+    // whichever key is saved (Claude first).
+    const model = resolveAiModel(settings.preferredAiModel, { anthropic: !!settings.anthropicKey, gemini: !!settings.geminiKey });
+    if (!model) {
+      return NextResponse.json({ error: "No AI API key configured. Add a Claude or Gemini key in Profile." }, { status: 402 });
     }
+    provider = getAiModel(model).provider;
+    const apiKey = (provider === "gemini" ? settings.geminiKey : settings.anthropicKey)!;
 
     // Hybrid payload: `courseConfig` (the skeleton) + `rawNotes` (the content).
     const rawText = body.rawNotes;
@@ -43,11 +43,11 @@ export async function POST(req: Request) {
     const { targetAudience, slideCount, studentLevel, lessonTitle, lessonSubtitle, topics, sources } = body;
 
     const opts = {
-      targetAudience, slideCount, anchors: skeleton.anchors, studentLevel, lessonTitle, lessonSubtitle, topics, sources, model,
+      targetAudience, slideCount, anchors: skeleton.anchors, studentLevel, lessonTitle, lessonSubtitle, topics, sources,
     };
     const generated = provider === "gemini"
-      ? await ingestRawContentGemini(apiKey, rawText, opts)
-      : await ingestRawContent(apiKey, rawText, opts);
+      ? await ingestRawContentGemini(apiKey, rawText, { ...opts, model })
+      : await ingestRawContent(apiKey, rawText, { ...opts, model: model as ClaudeModelId });
     // Models follow the anchor rules most of the time, not always — lock the skeleton in code.
     const { ast, report } = applySlideAnchors({ ...generated, themeId: skeleton.themeId }, skeleton.anchors);
     const response: HybridIngestResponse = { ast, anchors: skeleton.anchors, anchorReport: report };

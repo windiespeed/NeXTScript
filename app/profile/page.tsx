@@ -9,6 +9,7 @@ import Avatar, { AVATAR_CHANGED_EVENT } from "@/components/Avatar";
 import { useTheme } from "@/context/Theme";
 import { clearDraft } from "@/lib/draftStorage";
 import { useDraftAutosave, useDraftRestore } from "@/hooks/useDraftAutosave";
+import { AI_MODELS, DEFAULT_MODEL, getAiModel, resolveAiModel, type AiProvider } from "@/lib/aiModels";
 
 function resizeToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -63,6 +64,8 @@ export default function ProfilePage() {
   const [hasGeminiKey, setHasGeminiKey] = useState(false);
   const [maskedGeminiKey, setMaskedGeminiKey] = useState<string | null>(null);
   const [geminiKeyInput, setGeminiKeyInput] = useState("");
+  const [preferredAiModel, setPreferredAiModel] = useState("auto");
+  const [savingAiModel, setSavingAiModel] = useState(false);
   const [savingGeminiKey, setSavingGeminiKey] = useState(false);
   const [removingGeminiKey, setRemovingGeminiKey] = useState(false);
 
@@ -95,6 +98,7 @@ export default function ProfilePage() {
         setMaskedKey(data.maskedKey);
         setHasGeminiKey(data.hasGeminiKey);
         setMaskedGeminiKey(data.maskedGeminiKey);
+        setPreferredAiModel(data.preferredAiModel ?? "auto");
         setAvatarUrl(data.avatarUrl ?? null);
         setDefaultSources(data.defaultSources ?? "");
         setIndustry(data.industry ?? "");
@@ -205,6 +209,21 @@ export default function ProfilePage() {
     setHasKey(false);
     setMaskedKey(null);
     flash("API key removed.");
+  }
+
+  async function handleSaveAiModel(value: string) {
+    const previous = preferredAiModel;
+    setPreferredAiModel(value);
+    setSavingAiModel(true);
+    flash("");
+    const res = await fetch("/api/user/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ preferredAiModel: value }),
+    }).catch(() => null);
+    setSavingAiModel(false);
+    if (res?.ok) flash("AI model preference saved.");
+    else { setPreferredAiModel(previous); flash("Couldn't save the AI model preference. Please try again.", true); }
   }
 
   async function handleSaveGeminiKey(e: React.FormEvent) {
@@ -469,7 +488,7 @@ export default function ProfilePage() {
         <div>
           <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>Gemini API Key</h2>
           <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
-            Used for the Gemini model options on Notes to Slides. Each user provides their own key — you are only charged for your own usage.
+            Used for Notes to Slides when you have no Anthropic key, or when you pick a Gemini model under Advanced below. Each user provides their own key — you are only charged for your own usage.
           </p>
         </div>
 
@@ -516,6 +535,55 @@ export default function ProfilePage() {
           </button>
         </form>
       </div>
+
+      {/* Advanced: which AI model the slide generators use. Most people never need this. */}
+      <details id="ai-model" className="group rounded-3xl" style={cardSty}>
+        <summary className="flex items-center justify-between gap-3 p-6 cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+          <span>
+            <span className="block text-base font-semibold" style={{ color: "var(--text-primary)" }}>Advanced: AI model</span>
+            <span className="block text-xs mt-1" style={{ color: "var(--text-muted)" }}>
+              Currently {(() => {
+                const m = resolveAiModel(preferredAiModel, { anthropic: hasKey, gemini: hasGeminiKey });
+                return m ? getAiModel(m).label : "none (add a key above)";
+              })()}
+            </span>
+          </span>
+          <span className="text-xs font-semibold shrink-0" style={{ color: "var(--text-muted)" }}>
+            <span className="group-open:hidden">Show</span>
+            <span className="hidden group-open:inline">Hide</span>
+          </span>
+        </summary>
+        <div className="px-6 pb-6 space-y-3">
+          <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+            Notes to Slides and the deck builder pick a model for you: {getAiModel(DEFAULT_MODEL.anthropic).label} with an Anthropic key,
+            or {getAiModel(DEFAULT_MODEL.gemini).label} if you only have a Gemini key. Choose a different one here only if you need to.
+            The deck builder always uses Claude.
+          </p>
+          <label htmlFor="profile-ai-model" className="block text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+            Model for slide generation
+          </label>
+          <select
+            id="profile-ai-model"
+            value={preferredAiModel}
+            disabled={savingAiModel}
+            onChange={(e) => handleSaveAiModel(e.target.value)}
+            className={inputCls}
+            style={inputSty}
+          >
+            <option value="auto">Automatic (recommended)</option>
+            {(["anthropic", "gemini"] as AiProvider[]).map(provider => {
+              const available = provider === "anthropic" ? hasKey : hasGeminiKey;
+              return (
+                <optgroup key={provider} label={`${provider === "anthropic" ? "Claude" : "Gemini"}${available ? "" : " (add a key to use)"}`}>
+                  {AI_MODELS.filter(m => m.provider === provider).map(m => (
+                    <option key={m.id} value={m.id} disabled={!available}>{m.label}: {m.hint}</option>
+                  ))}
+                </optgroup>
+              );
+            })}
+          </select>
+        </div>
+      </details>
     </div>
   );
 }

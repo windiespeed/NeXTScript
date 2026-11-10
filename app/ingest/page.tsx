@@ -8,7 +8,8 @@ import SlideRenderer from "@/components/slides/SlideRenderer";
 import SlideEditorPanel from "@/components/slides/SlideEditorPanel";
 import { getTheme } from "@/lib/themes";
 import { STUDENT_LEVEL_UI_HINTS, type StudentLevel } from "@/lib/studentLevel";
-import { INGEST_MODEL_OPTIONS, DEFAULT_INGEST_MODEL, isIngestModelId, type IngestModelId } from "@/lib/ingestModels";
+import AiModelNote from "@/components/AiModelNote";
+import type { SavedKeys } from "@/lib/aiModels";
 import type { PresentationAST } from "@/types/slideAst";
 import type { Course, CourseModule } from "@/types/course";
 import type { Lesson, LessonInput } from "@/types/lesson";
@@ -74,7 +75,6 @@ interface IngestDraft {
   rawText: string;
   targetAudience: string;
   slideCount: string;
-  aiModel: IngestModelId;
   ast: PresentationAST | null;
   activeIndex: number;
   viewMode: "preview" | "edit";
@@ -127,7 +127,9 @@ function IngestPageInner() {
   const [rawText, setRawText] = useState("");
   const [targetAudience, setTargetAudience] = useState("");
   const [slideCount, setSlideCount] = useState("");
-  const [aiModel, setAiModel] = useState<IngestModelId>(DEFAULT_INGEST_MODEL);
+  // No model menu: the server picks from the saved key and Profile preference (lib/aiModels.ts).
+  const [savedKeys, setSavedKeys] = useState<SavedKeys | null>(null);
+  const [preferredAiModel, setPreferredAiModel] = useState("auto");
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
@@ -177,7 +179,6 @@ function IngestPageInner() {
     setRawText(draft.rawText);
     setTargetAudience(draft.targetAudience);
     setSlideCount(draft.slideCount);
-    setAiModel(isIngestModelId(draft.aiModel) ? draft.aiModel : DEFAULT_INGEST_MODEL);
     setAst(draft.ast);
     setActiveIndex(draft.activeIndex);
     setViewMode(draft.viewMode);
@@ -185,7 +186,7 @@ function IngestPageInner() {
   useDraftAutosave<IngestDraft>(draftKey, {
     selectedCourseId, selectedModuleId, selectedExistingLessonId,
     title, subtitle, topics, deadline, lessonType, sources, studentLevel,
-    rawText, targetAudience, slideCount, aiModel,
+    rawText, targetAudience, slideCount,
     ast, activeIndex, viewMode,
   });
 
@@ -195,6 +196,8 @@ function IngestPageInner() {
       fetch("/api/courses").then(r => r.json()),
     ]).then(([settings, coursesData]) => {
       setHasAiKey(!!(settings.hasKey || settings.hasGeminiKey));
+      setSavedKeys({ anthropic: !!settings.hasKey, gemini: !!settings.hasGeminiKey });
+      setPreferredAiModel(settings.preferredAiModel ?? "auto");
       setUserDefaultSources(settings.defaultSources ?? "");
       setSources(settings.defaultSources ?? "");
       setUserSectionSettings({ sectionLabels: settings.sectionLabels, sections: settings.sections });
@@ -429,7 +432,6 @@ function IngestPageInner() {
         lessonSubtitle: subtitle.trim() || undefined,
         topics: topics.trim() || undefined,
         sources: sources.trim() || undefined,
-        model: aiModel,
       };
       const res = await fetch("/api/ai/ingest", {
         method: "POST",
@@ -857,20 +859,7 @@ function IngestPageInner() {
               </div>
             </div>
 
-            <div>
-              <label htmlFor="ingest-ai-model" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>AI Model</label>
-              <select id="ingest-ai-model" value={aiModel} onChange={e => setAiModel(e.target.value as IngestModelId)} className={inputClass} style={inputStyle}>
-                <optgroup label="Claude">
-                  {INGEST_MODEL_OPTIONS.filter(m => m.provider === "anthropic").map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
-                </optgroup>
-                <optgroup label="Gemini">
-                  {INGEST_MODEL_OPTIONS.filter(m => m.provider === "gemini").map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
-                </optgroup>
-              </select>
-              <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
-                {INGEST_MODEL_OPTIONS.find(m => m.id === aiModel)?.hint}
-              </p>
-            </div>
+            <AiModelNote preference={preferredAiModel} keys={savedKeys} />
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>

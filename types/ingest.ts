@@ -1,6 +1,5 @@
 import type { AnchorReport, SlideAnchor } from "@/lib/slideAnchors";
 import type { StudentLevel } from "@/lib/studentLevel";
-import type { IngestModelId } from "@/lib/ingestModels";
 import type { PresentationAST } from "@/types/slideAst";
 
 /**
@@ -20,7 +19,6 @@ export interface HybridCourseConfig {
 export interface HybridIngestRequest {
   courseConfig: HybridCourseConfig;
   rawNotes: string;
-  model?: IngestModelId;
   targetAudience?: string;
   slideCount?: number;
   studentLevel?: StudentLevel;

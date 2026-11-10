@@ -8,6 +8,7 @@
  * accept null because several pages send null to clear a value.
  */
 import { z } from "zod";
+import { AI_MODELS } from "@/lib/aiModels";
 
 const str = z.string().max(200_000).nullish();
 const shortStr = z.string().max(2_000).nullish();
@@ -145,7 +146,6 @@ export const hybridIngestSchema = z.object({
     themeId: z.string().max(100).nullish(),
   }),
   rawNotes: z.string().max(200_000),
-  model: z.string().max(100).nullish(),
   targetAudience: optionalText(2_000),
   // Out-of-range counts are clamped rather than rejected — it's only guidance for the model.
   slideCount: z.number().int().nullish().transform(n => (typeof n === "number" ? Math.min(30, Math.max(1, n)) : undefined)),
@@ -363,6 +363,8 @@ export const userSettingsPatchSchema = z
     subject: label.nullable(),
     sectionLabels: sectionLabels.nullable(),
     sections: sectionList.nullable(),
+    // Profile → Advanced. "auto" (or null) = the default model for whichever key is saved.
+    preferredAiModel: z.enum(["auto", ...AI_MODELS.map(m => m.id)] as [string, ...string[]]).nullable(),
   })
   .partial();
 
