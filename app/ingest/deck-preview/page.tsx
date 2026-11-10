@@ -8,6 +8,7 @@ import type { DeckContent } from "@/lib/deck/schema";
 import { SAMPLE_DECK } from "@/lib/deck/sample";
 import DeckPreview from "@/components/deck/DeckPreview";
 import DeckExportPanel from "@/components/deck/DeckExportPanel";
+import DeckGeneratePanel from "@/components/deck/DeckGeneratePanel";
 
 const inputClass = "w-full rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)] transition placeholder:text-[var(--text-muted)]";
 const inputStyle = { background: "var(--bg-card-hover)", color: "var(--text-primary)", border: "1px solid var(--border)" };
@@ -61,12 +62,14 @@ export default function DeckPreviewPage() {
           Deck preview
         </h1>
         <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-          Checks a deck in the new format before export. Slides with text that had to shrink, or that doesn&apos;t fit, get a badge.
+          Generate a deck from notes, or paste deck JSON, then check every slide before export. Text that had to shrink, or that doesn&apos;t fit, gets a badge.
         </p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
         <div className="space-y-4">
+          <DeckGeneratePanel onDeck={d => update(JSON.stringify(d, null, 2))} />
+
           <div>
             <label htmlFor="deck-preview-theme" className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-primary)" }}>
               Theme

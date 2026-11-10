@@ -129,6 +129,20 @@ export async function POST(req: Request) {
       console.warn("[deck export] couldn't file deck in its folder:", err);
     }
 
+    // Keep the lesson's copy of the deck in step with what was exported, and log the file.
+    if (lesson) {
+      const now = new Date().toISOString();
+      await store.update(lesson.id, {
+        deck: {
+          content: deck,
+          themeId,
+          status: lesson.deck?.status ?? "draft",
+          updatedAt: now,
+          renders: [...(lesson.deck?.renders ?? []), { target, method, url, themeId, createdAt: now }].slice(-50),
+        },
+      });
+    }
+
     return NextResponse.json({ url, method, themeId });
   } catch (err) {
     return serverError(err, "deck export");

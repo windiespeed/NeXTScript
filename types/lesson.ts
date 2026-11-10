@@ -1,5 +1,6 @@
 import type { FormQuestion } from "./form";
 import type { PresentationAST } from "./slideAst";
+import type { DeckContent } from "@/lib/deck/schema";
 
 export interface LessonResource {
   id: string;
@@ -8,6 +9,28 @@ export interface LessonResource {
   url: string;
   driveId?: string;
   createdAt: string;
+}
+
+/** One file made from a lesson's deck (see app/api/deck/export). */
+export interface DeckRender {
+  target: "pptx" | "drive-pptx" | "google-slides";
+  /** How a Google Slides deck was made: drawn on the course template, or converted from .pptx. */
+  method: "template" | "converted" | "pptx";
+  url: string;
+  themeId: string;
+  createdAt: string;
+}
+
+/**
+ * A lesson's deck in the new format (lib/deck/schema.ts). Firestore holds the content, not the
+ * files, so a theme change or layout fix can re-render every deck from it.
+ */
+export interface LessonDeck {
+  content: DeckContent;
+  themeId: string;
+  status: "draft" | "reviewed" | "published";
+  updatedAt: string;
+  renders: DeckRender[];
 }
 
 export interface Lesson {
@@ -58,6 +81,7 @@ export interface Lesson {
   // Slides deck tracked via SavedProject; a lesson can have either, both, or neither.
   presentationAST?: PresentationAST; // Component-tree structure generated/edited via /ingest
   selectedTheme?: string;            // Active ThemeConfig id (see types/theme.ts) for the AST renderer
+  deck?: LessonDeck;                 // New-format deck content and its exports (lib/deck)
   /** "exported" once the current presentationAST has been exported to Drive (it's then the source
    * of the latest deck, not an unexported draft). Absent on older lessons = treated as "draft". */
   presentationStatus?: "draft" | "exported";
