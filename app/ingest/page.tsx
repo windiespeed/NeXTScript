@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import SlideRenderer from "@/components/slides/SlideRenderer";
@@ -83,6 +83,7 @@ interface IngestDraft {
 function IngestPageInner() {
   useSession({ required: true });
   const searchParams = useSearchParams();
+  const router = useRouter();
   const lessonIdParam = searchParams.get("lessonId") ?? "";
 
   const [hasAiKey, setHasAiKey] = useState(false);
@@ -154,10 +155,12 @@ function IngestPageInner() {
   // any slides exist, independent of the "Save Draft" on the result view (which saves the AST).
   const [savingInfo, setSavingInfo] = useState(false);
   const [saveInfoError, setSaveInfoError] = useState<string | null>(null);
-  const [savedInfoJustNow, setSavedInfoJustNow] = useState(false);
 
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
+  // Shown on the fresh form after an export or a Save Draft: what was saved and where. Export
+  // includes the deck's link, since the new tab it opens can be popup-blocked.
+  const [doneNotice, setDoneNotice] = useState<{ title: string; message: string; url?: string; lessonId?: string } | null>(null);
 
   // Keyed by whichever lesson this generation is (or will be) attached to — once ensureLesson()
   // resolves a real id, the draft moves under that id so it stays tied to the right lesson.
@@ -235,6 +238,7 @@ function IngestPageInner() {
       // Already know which lesson this is — let Save Draft/Export use it immediately
       // instead of waiting on ensureLesson() to resolve it again via existingLessonId.
       setLessonId(lesson.id);
+      if (lesson.slideNotes) setRawText(lesson.slideNotes);
       if (lesson.presentationAST) {
         setAst(lesson.presentationAST);
         setActiveIndex(0);
@@ -276,6 +280,7 @@ function IngestPageInner() {
     if (lesson.sources) setSources(lesson.sources);
     setStudentLevel(lesson.studentLevel ?? "beginner");
     setLessonId(lesson.id);
+    if (lesson.slideNotes) setRawText(lesson.slideNotes);
     // Reset first, then repopulate — otherwise switching from a lesson with a saved
     // draft to one without would leave the previous lesson's deck lingering in state.
     setActiveIndex(0);
@@ -364,6 +369,7 @@ function IngestPageInner() {
       sources,
       studentLevel,
       courseId: selectedCourseId,
+      slideNotes: rawText,
     };
 
     const targetId = lessonId || existingLessonId;
@@ -417,6 +423,7 @@ function IngestPageInner() {
 
   async function handleGenerate() {
     if (!rawText.trim() || !title.trim() || !selectedCourseId || generating) return;
+    setDoneNotice(null);
     setGenerating(true);
     setError(null);
     startProgressAnimation();
@@ -462,9 +469,12 @@ function IngestPageInner() {
     setSavingInfo(true);
     setSaveInfoError(null);
     try {
-      await saveLessonInfo();
-      setSavedInfoJustNow(true);
-      setTimeout(() => setSavedInfoJustNow(false), 2500);
+      const savedId = await saveLessonInfo();
+      const savedTitle = title.trim();
+      // Saved to the lesson (info + notes), so clear the form for the next one. Reopen it from
+      // the lesson page, or pick it under "Attach to Lesson".
+      resetForNextDeck();
+      setDoneNotice({ title: savedTitle, message: "was saved as a draft lesson with your notes.", lessonId: savedId });
     } catch (err) {
       setSaveInfoError(err instanceof Error ? err.message : "Failed to save draft.");
     } finally {
@@ -499,8 +509,34 @@ function IngestPageInner() {
     setViewMode("preview");
   }
 
-  async function handleSave() {
-    if (!ast || !lessonId || saving) return;
+  /** After an export the job is done: back to a completely blank form, as if the page had just
+   * been opened, so the next deck doesn't start from the last one's course, lesson and notes. */
+  function resetForNextDeck() {
+    handleStartOver();
+    // The key changes to "ingest:new" below, and the restore hook would otherwise load whatever
+    // older draft is still saved there, bringing back a previous deck's fields.
+    clearDraft("ingest:new");
+    setSelectedCourseId("");
+    setSelectedModuleId("");
+    setExistingLessonId(null);
+    setSelectedExistingLessonId("");
+    setAttachedLesson(null);
+    setAttachedLessonTitle("");
+    setLockedFromQuery(false);
+    setSeedStatus("");
+    handleClearLessonInfo();
+    setSources(userDefaultSources);
+    setRawText("");
+    setTargetAudience("");
+    setSlideCount("");
+    setSaveInfoError(null);
+    // Drop ?lessonId= so a refresh doesn't re-attach the lesson just exported.
+    if (lessonIdParam) router.replace("/ingest");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  async function handleSave(): Promise<boolean> {
+    if (!ast || !lessonId || saving) return false;
     setSaving(true);
     setSaveError(null);
     try {
@@ -511,6 +547,7 @@ function IngestPageInner() {
           presentationAST: ast,
           selectedTheme: ast.themeId ?? courseThemeId,
           presentationStatus: "draft",
+          slideNotes: rawText,
         }),
       });
       const data = await parseJsonResponse(res, "Saving took too long and timed out. Try again in a moment.");
@@ -518,11 +555,23 @@ function IngestPageInner() {
       clearDraft(draftKey);
       setSavedJustNow(true);
       setTimeout(() => setSavedJustNow(false), 2500);
+      return true;
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Failed to save to the lesson.");
+      return false;
     } finally {
       setSaving(false);
     }
+  }
+
+  /** The result view's Save Draft: saves the deck onto its lesson, then clears the form the same
+   * way an export does. (Leaving Edit mode also saves, but stays on the deck.) */
+  async function handleSaveDraftAndClear() {
+    const savedId = lessonId;
+    const savedTitle = ast?.lessonTitle || title.trim() || "Slide deck";
+    if (!(await handleSave())) return;
+    resetForNextDeck();
+    setDoneNotice({ title: savedTitle, message: "was saved as a draft on its lesson.", lessonId: savedId ?? undefined });
   }
 
   /** Toggling out of Edit mode persists automatically, per "saves or closes the editor". */
@@ -545,11 +594,13 @@ function IngestPageInner() {
       });
       const data = await parseJsonResponse(res, "Creating the deck took too long and timed out. Try again in a moment.");
       if (!res.ok) throw new Error(data.error || "Failed to create the slide deck.");
+      const exportedTitle = ast.lessonTitle || title.trim() || "Slide deck";
+      const exportedLessonId = lessonId;
       window.open(data.url, "_blank", "noopener,noreferrer");
-      // Export is the end of this page's job — the deck itself just opened in a new tab, so
-      // reset back to a blank form (same reset "Start Over" already does) instead of leaving
-      // the user staring at a finished result screen they'd otherwise have to dismiss by hand.
-      handleStartOver();
+      // Export is the end of this page's job: clear everything (not just the deck, which is all
+      // Start Over clears) and keep a link to the deck in case the new tab was blocked.
+      resetForNextDeck();
+      setDoneNotice({ title: exportedTitle, message: "was exported to Drive and saved under its lesson.", url: data.url, lessonId: exportedLessonId ?? undefined });
     } catch (err) {
       setExportError(err instanceof Error ? err.message : "Failed to create the slide deck.");
     } finally {
@@ -568,6 +619,29 @@ function IngestPageInner() {
           <Link href="/slides" className="font-semibold hover:underline" style={{ color: "var(--accent-text)" }}>Classic Slides</Link>
         </p>
       </div>
+
+      {doneNotice && !ast && (
+        <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-2xl px-4 py-3" style={{ background: "var(--accent-bg)", border: "1px solid var(--border)" }}>
+          <p className="text-sm" style={{ color: "var(--text-primary)" }}>
+            <span className="font-semibold">{doneNotice.title}</span> {doneNotice.message} The form is cleared for your next deck.
+          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            {doneNotice.url && (
+              <a href={doneNotice.url} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold hover:underline" style={{ color: "var(--accent-text)" }}>
+                Open deck ↗
+              </a>
+            )}
+            {doneNotice.lessonId && (
+              <Link href={`/lessons/${doneNotice.lessonId}`} className="text-sm font-semibold hover:underline" style={{ color: "var(--accent-text)" }}>
+                Go to lesson →
+              </Link>
+            )}
+            <button type="button" onClick={() => setDoneNotice(null)} className="text-xs font-semibold min-h-6 px-1" style={{ color: "var(--text-muted)" }} aria-label="Dismiss message">
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
 
       {!ast && <NotesToSlidesGuide />}
 
@@ -921,11 +995,11 @@ function IngestPageInner() {
               <button
                 onClick={handleSaveDraftInfo}
                 disabled={savingInfo || !title.trim() || !selectedCourseId}
-                title={!selectedCourseId ? "Select a course first" : !title.trim() ? "Add a lesson title first" : "Save Lesson Info without generating slides yet"}
+                title={!selectedCourseId ? "Select a course first" : !title.trim() ? "Add a lesson title first" : "Save the Lesson Info and your notes to the lesson without generating yet, then clear the form"}
                 className="shrink-0 rounded-full px-4 py-2 text-xs font-semibold transition disabled:opacity-50"
                 style={{ background: "var(--bg-card-hover)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}
               >
-                {savingInfo ? "Saving…" : savedInfoJustNow ? "Saved ✓" : "Save Draft"}
+                {savingInfo ? "Saving…" : "Save Draft"}
               </button>
 
               {generating && (
@@ -974,7 +1048,7 @@ function IngestPageInner() {
                 ) : "Export to PowerPoint"}
               </button>
               <button
-                onClick={handleSave}
+                onClick={handleSaveDraftAndClear}
                 disabled={saving}
                 className="rounded-full px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50"
                 style={{ background: "var(--bg-card-hover)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}

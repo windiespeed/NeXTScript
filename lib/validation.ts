@@ -63,6 +63,7 @@ export const lessonPatchSchema = z.object({
   presentationAST: z.unknown().optional(),
   selectedTheme: shortStr,
   presentationStatus: z.enum(["draft", "exported"]).nullish(),
+  slideNotes: z.string().max(200_000).nullish(),
   sections: z.record(z.string(), z.string().max(200_000)).nullish(),
 });
 

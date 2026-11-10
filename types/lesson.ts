@@ -85,6 +85,8 @@ export interface Lesson {
   /** "exported" once the current presentationAST has been exported to Drive (it's then the source
    * of the latest deck, not an unexported draft). Absent on older lessons = treated as "draft". */
   presentationStatus?: "draft" | "exported";
+  /** The raw notes last used in Notes to Slides, so a saved draft reopens with them. */
+  slideNotes?: string;
 
   // Dynamic content sections (see types/section.ts), keyed by SectionDef.id. Supersedes the
   // fixed fields above (overview, learningTargets, vocabulary, ...) once a lesson has been
