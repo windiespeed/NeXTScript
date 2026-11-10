@@ -31,15 +31,15 @@ export const LIMITS = {
   agenda: { items: 7, label: 48, minutes: 180 },
   objectives: { items: 5, text: 110 },
   concept: { lead: 160, bullets: 5, bullet: 130, asideLabel: 24, asideBody: 220, withAside: { bullets: 4, bullet: 100 } },
-  code: { language: 20, lines: 14, lineChars: 68, caption: 110, pointOut: 4, point: 110 },
+  code: { language: 20, lines: 14, lineChars: 68, caption: 100, pointOut: 4, point: 90 },
   compare: { heading: 30, points: 5, point: 90 },
   cards: { cards: 4, heading: 32, body: 120 },
   steps: { steps: 6, title: 32, detail: 100 },
   section: { title: 50, kicker: 40, subtitle: 110 },
   callout: { heading: 80, body: 240 },
-  pitfalls: { pairs: 3, text: 110 },
+  pitfalls: { pairs: 3, text: 80 },
   lab: { tasks: 6, task: 110, doneWhen: 3, criterion: 110, minutes: 180 },
-  exitTicket: { questions: 3, question: 130, homework: 200 },
+  exitTicket: { questions: 3, question: 120, homework: 150 },
   closing: { title: 60, takeaways: 3, takeaway: 100, nextUp: 110 },
 } as const;
 

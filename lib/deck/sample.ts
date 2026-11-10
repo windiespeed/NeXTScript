@@ -1,8 +1,8 @@
 import type { DeckContent } from "./schema";
 
 /**
- * A short NeXTStack-style deck used by the preview page and tests. It mixes typical slides with
- * one deliberately crowded slide, so the warning badges have something to show.
+ * A NeXTStack-style session deck using all 14 slide types, for the preview page and tests.
+ * One slide ("crowded") is deliberately overfull so the warning badges have something to show.
  */
 export const SAMPLE_DECK: DeckContent = {
   lessonTitle: "React components and props",
@@ -16,6 +16,39 @@ export const SAMPLE_DECK: DeckContent = {
       notes: "Welcome everyone back. Today is about thinking in components. Ask: who has used a site this morning that repeats the same card over and over?",
     },
     {
+      id: "agenda",
+      type: "agenda",
+      title: "Run of show",
+      items: [
+        { label: "Warm-up: spot the components", minutes: 15 },
+        { label: "Components", minutes: 35 },
+        { label: "Break", minutes: 15 },
+        { label: "Props", minutes: 35 },
+        { label: "Lab: profile cards", minutes: 50 },
+        { label: "Exit ticket", minutes: 10 },
+      ],
+      notes: "Walk through the day quickly. Point out that the lab is the longest block, so the concept blocks will move fast.",
+    },
+    {
+      id: "objectives",
+      type: "objectives",
+      title: "By the end of today you can",
+      objectives: [
+        "Explain what a React component is and when to make one",
+        "Pass data from a parent to a child with props",
+        "Build a reusable card component and render it from a list",
+      ],
+      notes: "Read each objective out loud. Tell students the exit ticket checks exactly these three things.",
+    },
+    {
+      id: "section-1",
+      type: "section",
+      kicker: "Part 1",
+      title: "Components",
+      subtitle: "Everything on screen is one",
+      notes: "Short transition. Ask students to close their laptops for the next ten minutes.",
+    },
+    {
       id: "what-is-a-component",
       type: "concept",
       title: "What a component is",
@@ -27,6 +60,70 @@ export const SAMPLE_DECK: DeckContent = {
         "Small and focused: one job per component",
       ],
       notes: "Draw a page on the board and box off the pieces. Ask students to name each box. Watch for anyone mixing up components and HTML elements.",
+    },
+    {
+      id: "first-component",
+      type: "code",
+      title: "Your first component",
+      language: "jsx",
+      lines: [
+        "function Greeting() {",
+        "  return <h1>Hello, NeXTStack!</h1>;",
+        "}",
+        "",
+        "export default function App() {",
+        "  return (",
+        "    <main>",
+        "      <Greeting />",
+        "      <Greeting />",
+        "    </main>",
+        "  );",
+        "}",
+      ],
+      caption: "Two copies, one definition.",
+      pointOut: [
+        "The capital G in Greeting",
+        "A component returns one root element",
+        "Using it twice renders it twice",
+      ],
+      notes: "Type this live instead of pasting. Pause after the first Greeting renders and ask what will happen when we add a second one.",
+    },
+    {
+      id: "class-vs-function",
+      type: "compare",
+      title: "Two ways you'll see components written",
+      left: { heading: "Function components", points: ["Plain functions", "Hooks for state", "What we use in this course"] },
+      right: { heading: "Class components", points: ["Older code bases", "this.state and lifecycle methods", "Read them, don't write them"] },
+      notes: "Students will find class components on Stack Overflow. Make it clear they only need to recognise them.",
+    },
+    {
+      id: "crowded",
+      type: "concept",
+      title: "When to split a component into smaller components",
+      lead: "This slide is deliberately crowded to show what a warning looks like in the preview.",
+      bullets: [
+        "If you scroll to read a component, it is probably doing more than one job and should be broken up",
+        "If two parts of the JSX change for different reasons, they belong in different components",
+        "If you copy and paste the same markup twice, turn it into a component and pass the differences as props",
+        "If a piece needs its own state that nothing else cares about, it can live in its own component",
+        "If you can't name a component in two or three words, it is probably doing too much at once",
+      ],
+      notes: "Go through each rule quickly with an example from last week's project. Let students vote on whether the NavBar should be split.",
+    },
+    {
+      id: "callout",
+      type: "callout",
+      variant: "key-idea",
+      heading: "Data flows down. Events flow up.",
+      body: "Parents hand data to children through props. Children tell parents something happened by calling a function they were given.",
+      notes: "Let this sit for a moment. We'll come back to the second half on Thursday when we cover state.",
+    },
+    {
+      id: "section-2",
+      type: "section",
+      kicker: "Part 2",
+      title: "Props",
+      notes: "Welcome back from the break. Quick show of hands: who remembers what a component returns?",
     },
     {
       id: "props",
@@ -44,27 +141,72 @@ export const SAMPLE_DECK: DeckContent = {
       notes: "Use the cookie-cutter analogy, then live-code a Greeting component with a name prop. Ask: what happens if we forget to pass name?",
     },
     {
-      id: "crowded",
-      type: "concept",
-      title: "When to split a component into smaller components",
-      lead: "This slide is deliberately crowded to show what a warning looks like in the preview.",
-      bullets: [
-        "If you scroll to read a component, it is probably doing more than one job and should be broken up",
-        "If two parts of the JSX change for different reasons, they belong in different components",
-        "If you copy and paste the same markup twice, turn it into a component and pass the differences as props",
-        "If a piece needs its own state that nothing else cares about, it can live in its own component",
-        "If you can't name a component in two or three words, it is probably doing too much at once",
+      id: "prop-types",
+      type: "cards",
+      title: "What you can pass as a prop",
+      cards: [
+        { heading: "Strings and numbers", body: "name=\"Ada\" or age={36}. Numbers need curly braces." },
+        { heading: "Arrays and objects", body: "items={cart} passes the whole list down." },
+        { heading: "Functions", body: "onSave={handleSave} lets the child call back up." },
       ],
-      notes: "Go through each rule quickly with an example from last week's project. Let students vote on whether the NavBar should be split.",
+      notes: "Ask students to guess which of these they will use most. Spoiler: all three, constantly.",
+    },
+    {
+      id: "steps",
+      type: "steps",
+      title: "Turning repeated markup into a component",
+      steps: [
+        { title: "Find the repeat", detail: "Look for markup you copied and pasted." },
+        { title: "Cut it out", detail: "Move it into a new function with a capital name." },
+        { title: "Spot the differences", detail: "Whatever changed between copies becomes a prop." },
+        { title: "Use it", detail: "Replace each copy with the component and its props." },
+      ],
+      notes: "Do this once together on the team-members page from last week before the lab.",
+    },
+    {
+      id: "pitfalls",
+      type: "pitfalls",
+      title: "Common mistakes with props",
+      pairs: [
+        { wrong: "function card(props)", right: "function Card(props)", why: "Lowercase names are treated as HTML tags." },
+        { wrong: "props.name = \"Ada\"", right: "Ask the parent to pass a new name", why: "Props are read-only inside the child." },
+        { wrong: "<Card name=Ada />", right: "<Card name=\"Ada\" />", why: "Strings need quotes, everything else needs braces." },
+      ],
+      notes: "Show each wrong version in the browser so students see the actual error message.",
     },
     {
       id: "lab",
       type: "lab",
       title: "Lab: build a profile card",
       minutes: 50,
-      tasks: ["Create a ProfileCard component", "Pass name, role and photo as props", "Render three cards with different data"],
+      tasks: [
+        "Create a ProfileCard component",
+        "Pass name, role and photo as props",
+        "Render three cards with different data",
+        "Stretch: render the cards from an array with map()",
+      ],
       doneWhen: ["Three different cards show on the page", "No markup is repeated"],
       notes: "Circulate. The common mistake is hard-coding values inside the card. Ask students to explain which values come from props.",
+    },
+    {
+      id: "exit-ticket",
+      type: "exit-ticket",
+      title: "Exit ticket",
+      questions: [
+        "In one sentence, what is a component?",
+        "Why can't a child component change its own props?",
+        "Name one thing on your favourite website that would make a good component.",
+      ],
+      homework: "Finish the stretch goal from the lab and push it to GitHub before tomorrow's warm-up.",
+      notes: "Give five minutes of silent writing. Collect answers in the form linked in Classroom.",
+    },
+    {
+      id: "closing",
+      type: "closing",
+      title: "Nice work today",
+      takeaways: ["Components are functions that return JSX", "Props pass data down and are read-only", "Repeated markup is a component waiting to happen"],
+      nextUp: "Tomorrow: state and the useState hook",
+      notes: "Thank everyone. Remind them office hours are at 4.",
     },
   ],
 };

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { THEMES, getTheme } from "@/lib/themes";
-import { DeckSchema, layoutConcept } from "@/lib/deck";
+import { DECK_SLIDE_TYPES, DeckSchema, layoutConcept } from "@/lib/deck";
 import { SAMPLE_DECK } from "@/lib/deck/sample";
 import { mix, resolvePalette } from "@/lib/deck/render/palette";
 import SlideCanvas from "@/components/deck/SlideCanvas";
@@ -32,7 +32,7 @@ describe("HTML preview", () => {
   });
 
   it("draws every element of a concept slide, positioned in percent", () => {
-    const layout = layoutConcept(SAMPLE_DECK.slides[2] as never);
+    const layout = layoutConcept(SAMPLE_DECK.slides.find(s => s.id === "props") as never);
     const html = renderToStaticMarkup(<SlideCanvas layout={layout} theme={getTheme("pearl")} label="Slide 3" />);
     expect(html).toContain('aria-label="Slide 3"');
     expect(html).toContain("Props pass data down");
@@ -51,13 +51,22 @@ describe("HTML preview", () => {
     expect(renderToStaticMarkup(<SlideCanvas layout={layout} theme={getTheme("pearl")} showWarnings={false} />)).not.toContain("dashed");
   });
 
-  it("renders the whole deck with badges, notes, and placeholders for unbuilt layouts", () => {
+  it("sample deck uses all 14 slide types", () => {
+    expect(new Set(SAMPLE_DECK.slides.map(s => s.type))).toEqual(new Set(DECK_SLIDE_TYPES));
+  });
+
+  it("renders the whole deck with badges and notes", () => {
     const entries = layoutEntries(SAMPLE_DECK);
-    expect(entries.map(e => e.layout !== null)).toEqual([false, true, true, true, false]);
+    expect(entries.every(e => e.layout !== null)).toBe(true);
     const html = renderToStaticMarkup(<DeckPreview deck={SAMPLE_DECK} theme={getTheme("vortex")} />);
-    expect(html).toContain("5 slides");
+    expect(html).toContain(`${SAMPLE_DECK.slides.length} slides`);
     expect(html).toContain("Speaker notes");
-    expect(html).toContain("the title layout isn&#x27;t built yet");
+    expect(html).not.toContain("isn&#x27;t built yet");
     expect(html).toMatch(/Shrunk|Overflow/);
+  });
+
+  it("the sample deck has warnings only on its deliberately crowded slide", () => {
+    const flagged = layoutEntries(SAMPLE_DECK).filter(e => e.layout!.warnings.length > 0).map(e => e.slide.id);
+    expect(flagged).toEqual(["crowded"]);
   });
 });
