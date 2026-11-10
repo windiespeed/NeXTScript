@@ -1,22 +1,13 @@
 "use client";
 
 import Image from "next/image";
+import Avatar, { AVATAR_CHANGED_EVENT } from "@/components/Avatar";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useMobileMenu } from "@/context/MobileMenu";
 import { useTheme } from "@/context/Theme";
-
-function initials(name?: string | null, email?: string | null): string {
-  if (name) {
-    const parts = name.trim().split(" ");
-    return parts.length >= 2
-      ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
-      : parts[0].slice(0, 2).toUpperCase();
-  }
-  return (email ?? "?")[0].toUpperCase();
-}
 
 function ThemeToggle() {
   const { dark, toggle } = useTheme();
@@ -56,12 +47,18 @@ export default function TopBar() {
   const mobileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (session?.user?.email) {
+    if (!session?.user?.email) return;
+    const load = () => {
       fetch("/api/user/settings")
-        .then(r => r.json())
-        .then(d => setAvatarUrl(d.avatarUrl ?? null))
+        .then(r => (r.ok ? r.json() : null))
+        .then(d => { if (d) setAvatarUrl(d.avatarUrl ?? null); })
         .catch(() => {});
-    }
+    };
+    load();
+    // The profile page announces photo uploads and removals so this updates without a reload.
+    const onChange = (e: Event) => setAvatarUrl((e as CustomEvent<string | null>).detail ?? null);
+    window.addEventListener(AVATAR_CHANGED_EVENT, onChange);
+    return () => window.removeEventListener(AVATAR_CHANGED_EVENT, onChange);
   }, [session?.user?.email]);
 
   useEffect(() => {
@@ -77,8 +74,6 @@ export default function TopBar() {
     setMobileSearchOpen(false);
   }
 
-  const displaySrc = avatarUrl ?? session?.user?.image ?? null;
-  const userInitials = initials(session?.user?.name, session?.user?.email);
 
   return (
     <header
@@ -143,14 +138,13 @@ export default function TopBar() {
                 className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center"
                 style={{ background: "var(--accent-purple-bg)" }}
               >
-                {displaySrc ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={displaySrc} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  <span className="text-xs font-bold" style={{ color: "var(--accent-purple)" }}>
-                    {userInitials}
-                  </span>
-                )}
+                <Avatar
+                  sources={[avatarUrl, session.user?.image]}
+                  name={session.user?.name}
+                  email={session.user?.email}
+                  initialsClassName="text-xs font-bold"
+                  initialsStyle={{ color: "var(--accent-purple)" }}
+                />
               </div>
               <span className="text-sm font-medium hidden md:block" style={{ color: "var(--text-primary)" }}>
                 {session.user?.name?.split(" ")[0] ?? ""}

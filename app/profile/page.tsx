@@ -5,19 +5,10 @@ import { useSession, signOut } from "next-auth/react";
 import { DEFAULT_SECTIONS, type SectionDef } from "@/types/section";
 import { resolveSections } from "@/lib/sections";
 import SectionsEditor from "@/components/SectionsEditor";
+import Avatar, { AVATAR_CHANGED_EVENT } from "@/components/Avatar";
 import { useTheme } from "@/context/Theme";
 import { clearDraft } from "@/lib/draftStorage";
 import { useDraftAutosave, useDraftRestore } from "@/hooks/useDraftAutosave";
-
-function initials(name?: string | null, email?: string | null): string {
-  if (name) {
-    const parts = name.trim().split(" ");
-    return parts.length >= 2
-      ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
-      : parts[0].slice(0, 2).toUpperCase();
-  }
-  return (email ?? "?")[0].toUpperCase();
-}
 
 function resizeToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -132,6 +123,7 @@ export default function ProfilePage() {
       });
       if (!res.ok) { const d = await res.json(); throw new Error(d.error); }
       setAvatarUrl(base64);
+      window.dispatchEvent(new CustomEvent(AVATAR_CHANGED_EVENT, { detail: base64 }));
       flash("Profile photo updated.");
     } catch (err: any) {
       flash(err.message || "Upload failed.", true);
@@ -145,9 +137,11 @@ export default function ProfilePage() {
     if (!confirm("Remove your profile photo?")) return;
     setRemovingAvatar(true);
     flash("");
-    await fetch("/api/user/avatar", { method: "DELETE" });
-    setAvatarUrl(null);
+    const res = await fetch("/api/user/avatar", { method: "DELETE" }).catch(() => null);
     setRemovingAvatar(false);
+    if (!res?.ok) { flash("Couldn't remove your photo. Please try again.", true); return; }
+    setAvatarUrl(null);
+    window.dispatchEvent(new CustomEvent(AVATAR_CHANGED_EVENT, { detail: null }));
     flash("Profile photo removed.");
   }
 
@@ -249,8 +243,6 @@ export default function ProfilePage() {
 
   if (status === "loading") return null;
 
-  const displayAvatar = avatarUrl ?? session?.user?.image ?? null;
-  const userInitials = initials(session?.user?.name, session?.user?.email);
 
   return (
     <div className="space-y-6">
@@ -271,14 +263,15 @@ export default function ProfilePage() {
               className="group relative w-20 h-20 rounded-full overflow-hidden focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)] focus:ring-offset-2"
               aria-label="Upload profile photo"
             >
-              {displayAvatar ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={displayAvatar} alt="Profile" className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full bg-[#0cc0df]/20 flex items-center justify-center">
-                  <span className="text-2xl font-bold text-[var(--accent-text)]">{userInitials}</span>
-                </div>
-              )}
+              <div className="w-full h-full bg-[#0cc0df]/20 flex items-center justify-center">
+                <Avatar
+                  sources={[avatarUrl, session?.user?.image]}
+                  name={session?.user?.name}
+                  email={session?.user?.email}
+                  alt="Profile"
+                  initialsClassName="text-2xl font-bold text-[var(--accent-text)]"
+                />
+              </div>
               <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 [@media(hover:none)]:opacity-100 group-disabled:opacity-0 transition-opacity rounded-full">
                 <span className="text-white text-xs font-semibold">{uploadingAvatar ? "…" : "Edit"}</span>
               </div>
