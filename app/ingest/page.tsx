@@ -14,6 +14,9 @@ import type { Course, CourseModule } from "@/types/course";
 import type { Lesson, LessonInput } from "@/types/lesson";
 import type { SectionDef } from "@/types/section";
 import { resolveSlideAnchors, describeAnchorReport } from "@/lib/slideAnchors";
+import { resolveSections } from "@/lib/sections";
+import { buildNotesFromLesson } from "@/lib/lessonSeed";
+import NotesToSlidesGuide from "@/components/notesToSlides/NotesToSlidesGuide";
 import type { HybridIngestRequest, HybridIngestResponse } from "@/types/ingest";
 import { clearDraft } from "@/lib/draftStorage";
 import { useDraftAutosave, useDraftRestore } from "@/hooks/useDraftAutosave";
@@ -99,6 +102,10 @@ function IngestPageInner() {
   const [lockedFromQuery, setLockedFromQuery] = useState(false);
   const [courseLessons, setCourseLessons] = useState<Lesson[]>([]);
   const [selectedExistingLessonId, setSelectedExistingLessonId] = useState("");
+  // The attached lesson as loaded, kept so "Start from this lesson's content" can read its
+  // classic Slide Content and section text without another fetch.
+  const [attachedLesson, setAttachedLesson] = useState<Lesson | null>(null);
+  const [seedStatus, setSeedStatus] = useState("");
 
   // Lesson info (mirrors LessonForm's "Lesson Info" section)
   const [title, setTitle] = useState("");
@@ -212,6 +219,7 @@ function IngestPageInner() {
       setExistingLessonId(lesson.id);
       setSelectedExistingLessonId(lesson.id);
       setAttachedLessonTitle(lesson.title);
+      setAttachedLesson(lesson);
       setLockedFromQuery(true);
       setSelectedCourseId(lesson.courseId ?? "");
       setTitle(lesson.title);
@@ -246,6 +254,7 @@ function IngestPageInner() {
       // Switched back to "Create new lesson" — clear anything a previously-picked
       // lesson's draft may have restored, same as handleDetachLesson.
       setExistingLessonId(null);
+      setAttachedLesson(null);
       setLessonId(null);
       setAst(null);
       setActiveIndex(0);
@@ -255,6 +264,7 @@ function IngestPageInner() {
     const lesson = courseLessons.find(l => l.id === id);
     if (!lesson) return;
     setExistingLessonId(lesson.id);
+    setAttachedLesson(lesson);
     setTitle(lesson.title);
     setSubtitle(lesson.subtitle ?? "");
     setTopics(lesson.topics ?? "");
@@ -270,8 +280,25 @@ function IngestPageInner() {
     setAst(lesson.presentationAST ?? null);
   }
 
+  // Classic content on the attached lesson, as Notes to Slides notes ("" when there's none).
+  const seedNotes = attachedLesson
+    ? buildNotesFromLesson(attachedLesson, resolveSections({ course: selectedCourse, userSettings: userSectionSettings }))
+    : "";
+
+  /** Bridge from Classic Slides: loads the lesson's Slide Content and slide-heading sections
+   * into the notes box. Appends below anything already typed so nothing is lost. */
+  function handleSeedFromLesson() {
+    if (!seedNotes) return;
+    setRawText(prev => (prev.trim() ? `${prev.trimEnd()}\n\n${seedNotes}` : seedNotes));
+    setSeedStatus(rawText.trim()
+      ? "Added this lesson's content below your notes."
+      : "Loaded this lesson's content into the notes box.");
+  }
+
   function handleDetachLesson() {
     setExistingLessonId(null);
+    setAttachedLesson(null);
+    setSeedStatus("");
     setSelectedExistingLessonId("");
     setLockedFromQuery(false);
     setAttachedLessonTitle("");
@@ -535,8 +562,12 @@ function IngestPageInner() {
         <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>Notes to Slides</h1>
         <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>
           Paste rough notes or a brain-dump and get an instantly-rendered, presentation-ready slide deck.
+          {" "}Looking for the old editor?{" "}
+          <Link href="/slides" className="font-semibold hover:underline" style={{ color: "var(--accent-text)" }}>Classic Slides</Link>
         </p>
       </div>
+
+      {!ast && <NotesToSlidesGuide />}
 
       {settingsLoaded && !hasAiKey ? (
         <div className="text-center py-20 rounded-3xl" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
@@ -794,9 +825,27 @@ function IngestPageInner() {
 
               {/* Content */}
               <div className="lg:col-span-3 flex flex-col">
-                <label htmlFor="ingest-content-notes-outline-or-brain" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
-                  Content · notes, outline, or brain-dump <span className="text-[var(--danger-text)]">*</span>
-                </label>
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
+                  <label htmlFor="ingest-content-notes-outline-or-brain" className="block text-xs font-semibold" style={{ color: "var(--text-primary)" }}>
+                    Content · notes, outline, or brain-dump <span className="text-[var(--danger-text)]">*</span>
+                  </label>
+                  {seedNotes && (
+                    <button
+                      type="button"
+                      onClick={handleSeedFromLesson}
+                      className="text-[11px] font-semibold rounded-full px-3 py-1 min-h-6 transition hover:opacity-80"
+                      style={{ background: "var(--accent-bg)", color: "var(--accent-text)", border: "1px solid var(--border)" }}
+                    >
+                      Start from this lesson&apos;s content
+                    </button>
+                  )}
+                </div>
+                {seedNotes && (
+                  <p className="text-[11px] mb-1" style={{ color: "var(--text-muted)" }}>
+                    This lesson has Classic Slides content. Load its Slide Content and section text here as a starting point, then generate.
+                  </p>
+                )}
+                <p role="status" aria-live="polite" className="text-[11px]" style={{ color: "var(--success-text)" }}>{seedStatus}</p>
                 <textarea id="ingest-content-notes-outline-or-brain"
                   value={rawText}
                   onChange={e => setRawText(e.target.value)}

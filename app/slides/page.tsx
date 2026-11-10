@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
+import ClassicSlidesBanner from "@/components/notesToSlides/ClassicSlidesBanner";
 import type { Lesson } from "@/types/lesson";
 import type { Course } from "@/types/course";
 import type { SavedProject } from "@/types/project";
@@ -243,7 +244,7 @@ export default function SlidesPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: "var(--text-muted)" }}>Content</p>
-          <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>Slides</h1>
+          <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>Classic Slides</h1>
           <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>
             Create and edit slide content for your lessons.
           </p>
@@ -255,6 +256,8 @@ export default function SlidesPage() {
           + New Slides
         </Link>
       </div>
+
+      <ClassicSlidesBanner />
 
       {/* Filter pills */}
       {!loading && (

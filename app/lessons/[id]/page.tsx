@@ -470,7 +470,7 @@ export default function LessonHubPage() {
       {/* Back + header */}
       <div>
         <button onClick={() => router.push(backHref)} className="text-sm text-[var(--accent-text)] hover:underline mb-3 block">
-          ← {lesson.courseId ? "Back to Course" : "Back to Slides"}
+          ← {lesson.courseId ? "Back to Course" : "Back to Classic Slides"}
         </button>
 
         <div className="flex items-start justify-between gap-4">
@@ -534,13 +534,24 @@ export default function LessonHubPage() {
             {lesson.subtitle && <p className="text-sm mt-0.5" style={{ color: "var(--text-secondary)" }}>{lesson.subtitle}</p>}
             {lesson.topics && <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>{lesson.topics}</p>}
           </div>
-          <button
-            onClick={startEditMeta}
-            className="rounded-full px-3 py-1.5 text-xs font-semibold shrink-0 transition hover:bg-[var(--bg-card-hover)]"
-            style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
-          >
-            Edit Info
-          </button>
+          <div className="flex flex-wrap justify-end gap-2 shrink-0">
+            {/* The lesson's section text and classic Slide Content are edited on the classic
+                page, which still feeds the Overview Doc, quizzes and Classic slide decks. */}
+            <Link
+              href={`/slides/${id}`}
+              className="rounded-full px-3 py-1.5 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)]"
+              style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+            >
+              Edit Content
+            </Link>
+            <button
+              onClick={startEditMeta}
+              className="rounded-full px-3 py-1.5 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)]"
+              style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+            >
+              Edit Info
+            </button>
+          </div>
         </div>
       </div>
 
@@ -687,7 +698,7 @@ export default function LessonHubPage() {
               // lesson's *current* draft, not necessarily this exact deck's own historical
               // snapshot, if the draft has since been regenerated.
               editHref={d.presentationAST ? `/ingest?lessonId=${id}` : `/slides/${id}`}
-              editLabel="Edit Slides"
+              editLabel={d.presentationAST ? "Edit Slides" : "Edit (Classic)"}
               onDelete={() => handleDeleteProject(d.id, d.title)}
               onRename={newTitle => handleRenameProject(d.id, newTitle)} />
           ))}
@@ -699,7 +710,7 @@ export default function LessonHubPage() {
               onDelete={handleDeleteSlideDraft} />
           )}
           {decks.length === 0 && !hasSlideDraft && (
-            <DocRow icon={RESOURCE_ICON.slides} color="var(--text-muted)" label="Slide Deck" badge="Not generated" badgeColor="var(--text-muted)" editHref={`/slides/${id}`} editLabel="Edit Slides" />
+            <DocRow icon={RESOURCE_ICON.slides} color="var(--text-muted)" label="Slide Deck" badge="Not generated" badgeColor="var(--text-muted)" editHref={`/ingest?lessonId=${id}`} editLabel="Create Slides →" />
           )}
           {lesson.overviewUrl ? (
             <DocRow icon={RESOURCE_ICON.doc} color="#0cc0df" label="Overview Doc" badge="Generated" badgeColor="#2dd4a0" url={lesson.overviewUrl}
@@ -748,7 +759,7 @@ export default function LessonHubPage() {
                     <div className={`flex flex-col gap-2 ${hubSizes["generate"] >= 2 ? "sm:flex-row sm:flex-wrap sm:items-center" : ""}`}>
                       <div className={`flex flex-wrap gap-2 ${hubSizes["generate"] >= 2 ? "justify-center sm:justify-start sm:flex-1" : "justify-center"}`}>
                         {([
-                          { key: "slides", label: "Slide Deck", state: genSlides, set: setGenSlides, disabled: false },
+                          { key: "slides", label: "Classic Slide Deck", state: genSlides, set: setGenSlides, disabled: false },
                           {
                             key: "quiz",
                             label: quizDrafts.length > 0

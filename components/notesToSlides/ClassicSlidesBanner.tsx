@@ -10,7 +10,7 @@ export default function ClassicSlidesBanner({ lessonId }: { lessonId?: string })
   return (
     <div
       className="rounded-2xl px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3"
-      style={{ background: "rgba(12,192,223,0.08)", border: "1px solid rgba(12,192,223,0.35)" }}
+      style={{ background: "var(--accent-bg)", border: "1px solid var(--border)" }}
     >
       <div className="flex-1 min-w-0">
         <p className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 
 const STORAGE_KEY = "notes-to-slides-guide-open";
@@ -35,67 +35,66 @@ const STEPS: { title: string; body: string }[] = [
 /** Collapsible how-to for Notes to Slides, including what changes for Classic Slides users.
  * Open by default on a first visit; the open/closed choice is remembered per browser. */
 export default function NotesToSlidesGuide() {
-  const [open, setOpen] = useState(true);
+  // Native <details>: keyboard and screen-reader support for free. The remembered choice is
+  // applied straight to the element after mount, so server and client render the same markup.
+  const ref = useRef<HTMLDetailsElement>(null);
 
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved !== null) setOpen(saved === "1");
+      if (saved !== null && ref.current) ref.current.open = saved === "1";
     } catch {}
   }, []);
 
-  function toggle() {
-    setOpen(prev => {
-      const next = !prev;
-      try { localStorage.setItem(STORAGE_KEY, next ? "1" : "0"); } catch {}
-      return next;
-    });
+  function handleToggle(e: React.SyntheticEvent<HTMLDetailsElement>) {
+    try { localStorage.setItem(STORAGE_KEY, e.currentTarget.open ? "1" : "0"); } catch {}
   }
 
   return (
-    <div className="rounded-3xl" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
-      <button
-        type="button"
-        onClick={toggle}
-        aria-expanded={open}
-        className="w-full flex items-center justify-between gap-3 px-6 py-4 text-left"
-      >
-        <span className="text-xs font-semibold uppercase tracking-widest text-[#0cc0df]">How Notes to Slides works</span>
-        <span className="text-[10px] font-semibold" style={{ color: "var(--text-muted)" }}>{open ? "Hide" : "Show"}</span>
-      </button>
+    <details
+      ref={ref}
+      open
+      onToggle={handleToggle}
+      className="group rounded-3xl"
+      style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}
+    >
+      <summary className="flex items-center justify-between gap-3 px-6 py-4 cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+        <span className="text-xs font-semibold uppercase tracking-widest text-[var(--accent-text)]">How Notes to Slides works</span>
+        <span className="text-[10px] font-semibold" style={{ color: "var(--text-muted)" }}>
+          <span className="group-open:hidden">Show</span>
+          <span className="hidden group-open:inline">Hide</span>
+        </span>
+      </summary>
+      <div className="px-6 pb-6 space-y-5">
+        <ol className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {STEPS.map((step, i) => (
+            <li
+              key={step.title}
+              className="rounded-2xl p-4 space-y-1"
+              style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)" }}
+            >
+              <p className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>
+                <span className="tabular-nums mr-1.5" style={{ color: "var(--accent-text)" }}>{i + 1}</span>
+                {step.title}
+              </p>
+              <p className="text-xs" style={{ color: "var(--text-secondary)" }}>{step.body}</p>
+            </li>
+          ))}
+        </ol>
 
-      {open && (
-        <div className="px-6 pb-6 space-y-5">
-          <ol className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {STEPS.map((step, i) => (
-              <li
-                key={step.title}
-                className="rounded-2xl p-4 space-y-1"
-                style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)" }}
-              >
-                <p className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>
-                  <span className="tabular-nums mr-1.5" style={{ color: "#0cc0df" }}>{i + 1}</span>
-                  {step.title}
-                </p>
-                <p className="text-xs" style={{ color: "var(--text-secondary)" }}>{step.body}</p>
-              </li>
-            ))}
-          </ol>
-
-          <div className="rounded-2xl p-4 space-y-2" style={{ background: "var(--accent-purple-bg)" }}>
-            <p className="text-xs font-semibold" style={{ color: "var(--accent-purple)" }}>Coming from Classic Slides?</p>
-            <ul className="text-xs space-y-1 list-disc pl-4" style={{ color: "var(--text-secondary)" }}>
-              <li>Your existing decks, lessons and Drive files are untouched, and Classic Slides still works.</li>
-              <li>To move a lesson over, open it here (or use “Notes to Slides →” on the lesson page), then click “Start from this lesson&apos;s content”. Its Slide Content and section text are loaded as notes, ready to generate.</li>
-              <li>Lesson content (overview, activities, rubric) is still edited on the lesson, and still feeds the Overview Doc and quizzes.</li>
-              <li>Notes to Slides decks don&apos;t use the course Google Slides template yet. Keep using Classic for a lesson if its template matters for now.</li>
-            </ul>
-            <Link href="/slides" className="inline-block text-[10px] font-semibold hover:underline" style={{ color: "var(--accent-purple)" }}>
-              Open Classic Slides →
-            </Link>
-          </div>
+        <div className="rounded-2xl p-4 space-y-2" style={{ background: "var(--accent-purple-bg)" }}>
+          <p className="text-xs font-semibold" style={{ color: "var(--accent-purple)" }}>Coming from Classic Slides?</p>
+          <ul className="text-xs space-y-1 list-disc pl-4" style={{ color: "var(--text-secondary)" }}>
+            <li>Your existing decks, lessons and Drive files are untouched, and Classic Slides still works.</li>
+            <li>To move a lesson over, open it here (or use “Notes to Slides →” on the lesson page), then click “Start from this lesson&apos;s content”. Its Slide Content and section text are loaded as notes, ready to generate.</li>
+            <li>Lesson content (overview, activities, rubric) is still edited with Edit Content on the lesson page, and still feeds the Overview Doc and quizzes.</li>
+            <li>Notes to Slides decks don&apos;t use the course Google Slides template yet. Keep using Classic for a lesson if its template matters for now.</li>
+          </ul>
+          <Link href="/slides" className="inline-block text-[10px] font-semibold hover:underline" style={{ color: "var(--accent-purple)" }}>
+            Open Classic Slides →
+          </Link>
         </div>
-      )}
-    </div>
+      </div>
+    </details>
   );
 }
