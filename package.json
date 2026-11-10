@@ -15,7 +15,7 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@google/genai": "^2.18.0",
-    "firebase-admin": "^13.7.0",
+    "firebase-admin": "^14.5.0",
     "googleapis": "^171.4.0",
     "next": "16.4.6",
     "next-auth": "^5.0.0-beta.30",
@@ -38,5 +38,8 @@
     "ts-node": "^10.9.2",
     "typescript": "^5",
     "vitest": "^3.2.7"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }
