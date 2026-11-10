@@ -7,6 +7,7 @@ import { DeckSchema } from "@/lib/deck/schema";
 import type { DeckContent } from "@/lib/deck/schema";
 import { SAMPLE_DECK } from "@/lib/deck/sample";
 import DeckPreview from "@/components/deck/DeckPreview";
+import DeckExportPanel from "@/components/deck/DeckExportPanel";
 
 const inputClass = "w-full rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)] transition placeholder:text-[var(--text-muted)]";
 const inputStyle = { background: "var(--bg-card-hover)", color: "var(--text-primary)", border: "1px solid var(--border)" };
@@ -114,6 +115,8 @@ export default function DeckPreviewPage() {
               Reset to the sample deck
             </button>
           </div>
+
+          <DeckExportPanel deck={deck} themeId={themeId} disabled={!!errors} />
         </div>
 
         <DeckPreview deck={deck} theme={getTheme(themeId)} />
