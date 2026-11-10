@@ -5,6 +5,7 @@ import { courseStore } from "@/lib/courseStore";
 import { canAccessCourse } from "@/lib/access";
 import type { ConceptInput } from "@/types/concept";
 import { serverError } from "@/lib/apiErrors";
+import { conceptCreateSchema, readBody } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";
 
@@ -34,10 +35,9 @@ export async function POST(req: Request) {
   try {
     const session = await auth();
     if (!session?.user?.email) return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
-    const body: ConceptInput & { courseId?: string; classId?: string } = await req.json();
-    if (!body.slug?.trim() || !body.label?.trim()) {
-      return NextResponse.json({ error: "Slug and label are required." }, { status: 400 });
-    }
+    const parsed = await readBody(req, conceptCreateSchema);
+    if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
+    const body = parsed.data;
     const courseId = body.courseId ?? body.classId;
     if (!courseId) {
       return NextResponse.json({ error: "courseId is required." }, { status: 400 });
@@ -46,7 +46,7 @@ export async function POST(req: Request) {
     if (!course) return NextResponse.json({ error: "Course not found." }, { status: 404 });
     if (!canAccessCourse(course, session.user.email)) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
     const { courseId: _cid, classId: _lid, ...input } = body;
-    const concept = await conceptStore.create(input, session.user.email, courseId);
+    const concept = await conceptStore.create(input as ConceptInput, session.user.email, courseId);
     return NextResponse.json(concept, { status: 201 });
   } catch (err) {
     return serverError(err);

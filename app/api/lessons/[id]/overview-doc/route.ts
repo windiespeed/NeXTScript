@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { overviewDocSchema, readBody } from "@/lib/validation";
 import { store } from "@/lib/store";
 import { courseStore } from "@/lib/courseStore";
 import { projectStore } from "@/lib/projectStore";
@@ -32,9 +33,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!lesson) return NextResponse.json({ error: "Lesson not found." }, { status: 404 });
   if (!(await canAccessLesson(lesson, session.user.email))) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
 
-  const body = await req.json().catch(() => ({}));
-  const deckIds: string[] = Array.isArray(body.deckIds) ? body.deckIds : [];
-  const quizIds: string[] = Array.isArray(body.quizIds) ? body.quizIds : [];
+  const parsed = await readBody(req, overviewDocSchema, { emptyOk: true });
+  if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
+  const { deckIds, quizIds } = parsed.data;
 
   try {
     // Re-resolve the selected projects server-side and re-check access — never trust that a

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { blankDocSchema, readBody } from "@/lib/validation";
 import { store } from "@/lib/store";
 import { courseStore } from "@/lib/courseStore";
 import { canAccessLesson } from "@/lib/access";
@@ -22,9 +23,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!lesson) return NextResponse.json({ error: "Not found." }, { status: 404 });
   if (!(await canAccessLesson(lesson, session.user.email))) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
 
-  const { name, docType } = await req.json() as { name: string; docType: "doc" | "sheet" | "slides" };
-  if (!name?.trim()) return NextResponse.json({ error: "name is required." }, { status: 400 });
-  if (!["doc", "sheet", "slides"].includes(docType)) return NextResponse.json({ error: "Invalid docType." }, { status: 400 });
+  const parsed = await readBody(req, blankDocSchema);
+  if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
+  const { name, docType } = parsed.data;
 
   // Best-effort — if folder setup fails, the file is created at Drive root instead, same as
   // before this fix. The course's "Repair Drive Access" action can pick it up later.

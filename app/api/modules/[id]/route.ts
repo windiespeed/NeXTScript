@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { courseStore } from "@/lib/courseStore";
 import { isCourseOwner } from "@/lib/access";
-import { stripProtected } from "@/lib/validation";
+import { legacyModulePatchSchema, readBody } from "@/lib/validation";
 import type { Course } from "@/types/course";
 import { serverError } from "@/lib/apiErrors";
 
@@ -32,9 +32,9 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     if (!isCourseOwner(existing, session.user.email)) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
     // Legacy alias of PUT /api/courses/[id]. Collaborators are managed there (it also
     // updates Drive sharing), so they can't be changed through this route.
-    const body = stripProtected(await req.json(), ["collaborators"]);
-    if (!body) return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
-    const updated = await courseStore.update(id, body as Partial<Course>);
+    const parsed = await readBody(req, legacyModulePatchSchema);
+    if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
+    const updated = await courseStore.update(id, parsed.data as Partial<Course>);
     return NextResponse.json(updated);
   } catch (err) {
     return serverError(err);

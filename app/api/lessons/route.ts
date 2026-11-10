@@ -5,6 +5,7 @@ import { courseStore } from "@/lib/courseStore";
 import { canAccessCourse } from "@/lib/access";
 import type { LessonInput } from "@/types/lesson";
 import { serverError } from "@/lib/apiErrors";
+import { lessonCreateSchema, readBody } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";
 
@@ -35,13 +36,9 @@ export async function POST(req: Request) {
     const session = await auth();
     if (!session?.user?.email) return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
 
-    const body: LessonInput = await req.json();
-    if (!body.title?.trim()) {
-      return NextResponse.json({ error: "Title is required." }, { status: 400 });
-    }
-    if (!body.courseId) {
-      return NextResponse.json({ error: "Course is required." }, { status: 400 });
-    }
+    const parsed = await readBody(req, lessonCreateSchema);
+    if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
+    const body = parsed.data as LessonInput & { courseId: string };
 
     const course = await courseStore.getById(body.courseId);
     if (!course) return NextResponse.json({ error: "Course not found." }, { status: 404 });

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { readBody, seedSchema } from "@/lib/validation";
 import { exerciseStore } from "@/lib/exerciseStore";
 import { courseStore } from "@/lib/courseStore";
 import { canAccessCourse } from "@/lib/access";
@@ -15,7 +16,9 @@ export async function POST(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const force = searchParams.get("force") === "true";
-    const { courseId } = await req.json();
+    const parsed = await readBody(req, seedSchema);
+    if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
+    const courseId = parsed.data.courseId ?? parsed.data.classId;
     if (!courseId) return NextResponse.json({ error: "courseId is required." }, { status: 400 });
 
     const course = await courseStore.getById(courseId);

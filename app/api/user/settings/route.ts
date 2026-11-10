@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { readBody, userSettingsPatchSchema } from "@/lib/validation";
 import { userSettings } from "@/lib/userSettings";
 import { FieldValue } from "firebase-admin/firestore";
-import type { SectionDef } from "@/types/section";
+import type { UserSettings } from "@/lib/userSettings";
 import { serverError } from "@/lib/apiErrors";
 
 export const dynamic = "force-dynamic";
@@ -37,50 +38,20 @@ export async function PUT(req: Request) {
     const session = await auth();
     if (!session?.user?.email) return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
 
-    const body = await req.json();
-    const update: Record<string, string | string[] | SectionDef[] | undefined> = {};
-
-    if ("anthropicKey" in body) {
-      if (typeof body.anthropicKey !== "string" || !body.anthropicKey.trim()) {
-        return NextResponse.json({ error: "Invalid key." }, { status: 400 });
-      }
-      update.anthropicKey = body.anthropicKey.trim();
-    }
-
-    if ("geminiKey" in body) {
-      if (typeof body.geminiKey !== "string" || !body.geminiKey.trim()) {
-        return NextResponse.json({ error: "Invalid key." }, { status: 400 });
-      }
-      update.geminiKey = body.geminiKey.trim();
-    }
-
-    if ("defaultSources" in body) {
-      update.defaultSources = typeof body.defaultSources === "string" ? body.defaultSources : "";
-    }
-
-    if ("folders" in body) {
-      update.folders = Array.isArray(body.folders) ? body.folders : [];
-    }
-
-    if ("lessonOrder" in body) {
-      update.lessonOrder = Array.isArray(body.lessonOrder) ? body.lessonOrder : [];
-    }
-
-    if ("industry" in body) {
-      update.industry = typeof body.industry === "string" ? body.industry : "";
-    }
-
-    if ("subject" in body) {
-      update.subject = typeof body.subject === "string" ? body.subject : "";
-    }
-
-    if ("sectionLabels" in body) {
-      update.sectionLabels = typeof body.sectionLabels === "object" ? body.sectionLabels : {};
-    }
-
-    if ("sections" in body) {
-      update.sections = Array.isArray(body.sections) ? body.sections : [];
-    }
+    // Only the keys that were sent are saved. A null clears that field to its empty value.
+    const parsed = await readBody(req, userSettingsPatchSchema);
+    if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
+    const body = parsed.data;
+    const update: Partial<UserSettings> = {};
+    if (body.anthropicKey !== undefined) update.anthropicKey = body.anthropicKey;
+    if (body.geminiKey !== undefined) update.geminiKey = body.geminiKey;
+    if (body.defaultSources !== undefined) update.defaultSources = body.defaultSources ?? "";
+    if (body.folders !== undefined) update.folders = body.folders ?? [];
+    if (body.lessonOrder !== undefined) update.lessonOrder = body.lessonOrder ?? [];
+    if (body.industry !== undefined) update.industry = body.industry ?? "";
+    if (body.subject !== undefined) update.subject = body.subject ?? "";
+    if (body.sectionLabels !== undefined) update.sectionLabels = body.sectionLabels ?? {};
+    if (body.sections !== undefined) update.sections = body.sections ?? [];
 
     await userSettings.save(session.user.email, update);
     return NextResponse.json({ success: true });

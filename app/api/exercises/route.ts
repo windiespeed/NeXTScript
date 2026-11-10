@@ -5,6 +5,7 @@ import { courseStore } from "@/lib/courseStore";
 import { canAccessCourse } from "@/lib/access";
 import type { ExerciseInput, ExerciseConcept } from "@/types/exercise";
 import { serverError } from "@/lib/apiErrors";
+import { exerciseCreateSchema, readBody } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";
 
@@ -35,9 +36,9 @@ export async function POST(req: Request) {
   try {
     const session = await auth();
     if (!session?.user?.email) return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
-    const body: ExerciseInput = await req.json();
-    if (!body.title?.trim()) return NextResponse.json({ error: "Title is required." }, { status: 400 });
-    if (!body.courseId) return NextResponse.json({ error: "courseId is required." }, { status: 400 });
+    const parsed = await readBody(req, exerciseCreateSchema);
+    if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
+    const body = parsed.data as ExerciseInput & { courseId: string };
     const course = await courseStore.getById(body.courseId);
     if (!course) return NextResponse.json({ error: "Course not found." }, { status: 404 });
     if (!canAccessCourse(course, session.user.email)) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
