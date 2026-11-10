@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { projectStore } from "@/lib/projectStore";
-import { getAccessibleProjects } from "@/lib/access";
-import type { FormQuestion } from "@/types/form";
+import { canAccessCourseId, getAccessibleProjects } from "@/lib/access";
+import { quizCreateSchema, readBody } from "@/lib/validation";
 import { serverError } from "@/lib/apiErrors";
 
 export const dynamic = "force-dynamic";
@@ -20,17 +20,12 @@ export async function POST(req: Request) {
     const session = await auth();
     if (!session?.user?.email) return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
 
-    const { title, lessonIds, moduleId, courseId, questions } = await req.json() as {
-      title: string;
-      lessonIds: string[];
-      moduleId?: string;
-      courseId?: string;
-      questions: FormQuestion[];
-    };
-
-    if (!title?.trim()) return NextResponse.json({ error: "Quiz title is required." }, { status: 400 });
-    if (!questions?.length) return NextResponse.json({ error: "Add at least one question." }, { status: 400 });
-    if (!courseId) return NextResponse.json({ error: "Course is required." }, { status: 400 });
+    const parsed = await readBody(req, quizCreateSchema);
+    if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
+    const { title, lessonIds, moduleId, courseId, questions } = parsed.data;
+    if (!(await canAccessCourseId(courseId, session.user.email))) {
+      return NextResponse.json({ error: "Forbidden: no access to this course." }, { status: 403 });
+    }
 
     // Save as a draft — no Google Form is created yet.
     // Generation happens when the user hits Generate on the lesson hub page.

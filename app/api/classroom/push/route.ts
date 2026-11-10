@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { classroomPushSchema, readBody } from "@/lib/validation";
 import { courseStore } from "@/lib/courseStore";
 import { canAccessCourse } from "@/lib/access";
 import { store } from "@/lib/store";
@@ -20,15 +21,9 @@ export async function POST(req: Request) {
     const accessToken = (session as any).accessToken as string | undefined;
     if (!accessToken) return NextResponse.json({ error: "No Google access token." }, { status: 401 });
 
-    const { lessonIds, courseId, moduleName } = await req.json() as {
-      lessonIds: string[];
-      courseId: string;
-      moduleName?: string;
-    };
-
-    if (!Array.isArray(lessonIds) || lessonIds.length === 0) {
-      return NextResponse.json({ error: "No lessons specified." }, { status: 400 });
-    }
+    const parsed = await readBody(req, classroomPushSchema);
+    if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
+    const { lessonIds, courseId, moduleName } = parsed.data;
 
     const course = await courseStore.getById(courseId);
     if (!course) return NextResponse.json({ error: "Course not found." }, { status: 404 });

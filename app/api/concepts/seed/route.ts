@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { readBody, seedSchema } from "@/lib/validation";
 import { conceptStore } from "@/lib/conceptStore";
 import { courseStore } from "@/lib/courseStore";
 import { canAccessCourse } from "@/lib/access";
@@ -12,8 +13,9 @@ export async function POST(req: Request) {
   try {
     const session = await auth();
     if (!session?.user?.email) return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
-    const body = await req.json();
-    const courseId: string | undefined = body.courseId ?? body.classId;
+    const parsed = await readBody(req, seedSchema);
+    if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
+    const courseId = parsed.data.courseId ?? parsed.data.classId;
     if (!courseId) return NextResponse.json({ error: "courseId is required." }, { status: 400 });
     const course = await courseStore.getById(courseId);
     if (!course) return NextResponse.json({ error: "Course not found." }, { status: 404 });

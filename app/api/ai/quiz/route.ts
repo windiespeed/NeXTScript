@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import type { LessonInput } from "@/types/lesson";
+import { aiQuizSchema, readBody } from "@/lib/validation";
 import { userSettings } from "@/lib/userSettings";
 import { courseStore } from "@/lib/courseStore";
 import { canAccessCourse } from "@/lib/access";
@@ -19,13 +21,9 @@ export async function POST(req: Request) {
     if (!settings.anthropicKey)
       return NextResponse.json({ error: "No Anthropic API key configured. Add your key in Profile." }, { status: 402 });
 
-    const body = await req.json();
-    const { lesson, mcCount, saCount, courseId } = body as {
-      lesson: Record<string, any>;
-      mcCount?: number;
-      saCount?: number;
-      courseId?: string;
-    };
+    const parsed = await readBody(req, aiQuizSchema);
+    if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
+    const { lesson, mcCount, saCount, courseId } = parsed.data;
 
     const rawCourse = courseId ? await courseStore.getById(courseId) : undefined;
     const course = rawCourse && canAccessCourse(rawCourse, session.user.email) ? rawCourse : undefined;
@@ -37,7 +35,7 @@ export async function POST(req: Request) {
     const sa = Math.min(50, Math.max(0, saCount ?? 2));
     if (mc + sa === 0)
       return NextResponse.json({ error: "Please set at least 1 question." }, { status: 400 });
-    const questions = await generateQuizQuestions(settings.anthropicKey, lesson, { industry, subject, sections }, mc, sa);
+    const questions = await generateQuizQuestions(settings.anthropicKey, lesson as Partial<LessonInput>, { industry, subject, sections }, mc, sa);
 
     if (questions.length === 0)
       return NextResponse.json({ error: "AI failed to generate questions. Try adding more topic detail." }, { status: 500 });

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { courseStore } from "@/lib/courseStore";
 import type { CourseInput } from "@/types/course";
+import { courseCreateSchema, readBody } from "@/lib/validation";
 import { serverError } from "@/lib/apiErrors";
 
 export const dynamic = "force-dynamic";
@@ -29,12 +30,10 @@ export async function POST(req: Request) {
     const session = await auth();
     if (!session?.user?.email) return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
 
-    const body: CourseInput = await req.json();
-    if (!body.title?.trim()) {
-      return NextResponse.json({ error: "Title is required." }, { status: 400 });
-    }
+    const parsed = await readBody(req, courseCreateSchema);
+    if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
 
-    const course = await courseStore.create(body, session.user.email);
+    const course = await courseStore.create(parsed.data as CourseInput, session.user.email);
     return NextResponse.json(course, { status: 201 });
   } catch (err) {
     return serverError(err);

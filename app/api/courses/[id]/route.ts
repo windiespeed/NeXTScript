@@ -6,6 +6,8 @@ import { getDb } from "@/lib/firebase";
 import { FieldValue } from "firebase-admin/firestore";
 import { shareDriveFile, revokeDriveAccess } from "@/lib/google";
 import { serverError } from "@/lib/apiErrors";
+import { coursePatchSchema, readBody } from "@/lib/validation";
+import type { Course } from "@/types/course";
 
 export const dynamic = "force-dynamic";
 
@@ -35,19 +37,19 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     if (!course) return NextResponse.json({ error: "Not found." }, { status: 404 });
     if (!canAccessCourse(course, session.user.email)) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
 
-    const patch = await req.json();
+    // The schema drops ownership and server-managed fields (id, userId, Drive folder, students).
+    const parsed = await readBody(req, coursePatchSchema);
+    if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
+    const { collaborators, ...rest } = parsed.data;
+    // Nulls clear a field (e.g. unlinking a classroom), as before.
+    const patch = rest as Partial<Course>;
     const owner = isCourseOwner(course, session.user.email);
 
-    // Immutable/ownership fields must never be reassignable via a plain patch.
-    delete patch.id;
-    delete patch.userId;
-    delete patch.createdAt;
-
-    if (Object.prototype.hasOwnProperty.call(patch, "collaborators")) {
+    if (collaborators !== undefined) {
       if (!owner) return NextResponse.json({ error: "Only the course owner can manage collaborators." }, { status: 403 });
 
       const before = new Set(course.collaborators ?? []);
-      const after: string[] = (patch.collaborators ?? []).map((e: string) => e.toLowerCase());
+      const after = Array.from(new Set(collaborators ?? []));
       const added = after.filter((e) => !before.has(e));
       const removed = Array.from(before).filter((e) => !after.includes(e));
 

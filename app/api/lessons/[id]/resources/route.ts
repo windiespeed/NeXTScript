@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { lessonResourceCreateSchema, readBody } from "@/lib/validation";
 import { store } from "@/lib/store";
 import { canAccessLesson } from "@/lib/access";
 import { v4 as uuidv4 } from "uuid";
@@ -28,16 +29,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!lesson) return NextResponse.json({ error: "Not found." }, { status: 404 });
   if (!(await canAccessLesson(lesson, session.user.email))) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
 
-  const body = await req.json() as { label: string; url: string; type: LessonResource["type"] };
-  if (!body.label?.trim() || !body.url?.trim()) {
-    return NextResponse.json({ error: "label and url are required." }, { status: 400 });
-  }
+  const parsed = await readBody(req, lessonResourceCreateSchema);
+  if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
+  const body = parsed.data;
 
   const resource: LessonResource = {
     id: uuidv4(),
-    type: body.type ?? "link",
-    label: body.label.trim(),
-    url: body.url.trim(),
+    type: body.type,
+    label: body.label,
+    url: body.url,
     createdAt: new Date().toISOString(),
   };
 
