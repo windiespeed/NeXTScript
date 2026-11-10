@@ -59,7 +59,7 @@ function TextListField({ label, items, onChange, rows }: { label: string; items:
     <div>
       <div className="flex items-center justify-between mb-1">
         <span className="text-xs font-semibold" style={labelStyle}>{label}</span>
-        <button type="button" aria-label={`Add ${label} item`} onClick={() => onChange([...items, ""])} className="text-[10px] font-semibold text-[#0cc0df] hover:underline">
+        <button type="button" aria-label={`Add ${label} item`} onClick={() => onChange([...items, ""])} className="text-[10px] font-semibold text-[var(--accent-text)] hover:underline">
           + Add
         </button>
       </div>
@@ -243,7 +243,7 @@ function StepGridEditor({ slide, onChange }: { slide: StepGridSlideNode; onChang
       <TitleSubtitleFields slide={slide} onChange={patch => onChange({ ...slide, ...patch })} />
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold" style={labelStyle}>Steps</span>
-        <button type="button" onClick={addStep} className="text-[10px] font-semibold text-[#0cc0df] hover:underline">+ Add Step</button>
+        <button type="button" onClick={addStep} className="text-[10px] font-semibold text-[var(--accent-text)] hover:underline">+ Add Step</button>
       </div>
       <div className="flex flex-col gap-2.5">
         {slide.steps.map((step, i) => (

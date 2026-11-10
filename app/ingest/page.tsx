@@ -713,10 +713,10 @@ function IngestPageInner() {
             </div>
 
             {hasAiKey && (
-              <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
+              <fieldset>
+                <legend className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
                   Student Level <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span>
-                </label>
+                </legend>
                 <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>
                   Adjusts the tone and complexity of AI-generated content to match your students&apos; experience.
                 </p>
@@ -736,7 +736,7 @@ function IngestPageInner() {
                   ))}
                 </div>
                 <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>{STUDENT_LEVEL_UI_HINTS[studentLevel]}</p>
-              </div>
+              </fieldset>
             )}
           </div>
 
