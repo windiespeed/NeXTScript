@@ -22,12 +22,12 @@ function count(warnings: OverflowWarning[], severity: WarningSeverity) {
   return warnings.filter(w => w.severity === severity).length;
 }
 
-export function WarningBadge({ severity, n }: { severity: WarningSeverity; n: number }) {
+function WarningBadge({ severity, n }: { severity: WarningSeverity; n: number }) {
   if (n === 0) return null;
   return (
     <span
-      className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold text-white"
-      style={{ background: WARNING_COLOR[severity] }}
+      className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold"
+      style={{ background: WARNING_COLOR[severity], color: severity === "shrunk" ? "#0a0b13" : "#ffffff" }}
     >
       {SEVERITY_LABEL[severity]}
       {n > 1 && <span>×{n}</span>}

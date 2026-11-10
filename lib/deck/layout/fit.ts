@@ -116,14 +116,6 @@ export function fitFont(paragraphs: Paragraph[], o: FitOpts): FitResult {
   return { fontSize: o.minSize, height: measure(o.minSize), severity: "overflow" };
 }
 
-/** Body copy: prose and bullets. */
-export function fitBodyFont(
-  paragraphs: Paragraph[],
-  o: Omit<FitOpts, "font" | "maxSize" | "minSize"> & Partial<Pick<FitOpts, "maxSize" | "minSize">>,
-): FitResult {
-  return fitFont(paragraphs, { maxSize: 18, minSize: 12, ...o, font: "body" });
-}
-
 /** Code panels. Code never wraps in a real editor, so overflow here means a line is too wide or too many lines. */
 export function fitCodeFont(
   lines: string[],

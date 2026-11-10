@@ -701,34 +701,6 @@ export async function deleteFile(fileId: string, accessToken: string): Promise<v
   await drive.files.delete({ fileId });
 }
 
-const REFERENCE_TEXT_MAX_SLIDES = 40;
-const REFERENCE_TEXT_MAX_CHARS = 8000;
-
-/**
- * Reads every slide of an existing Google Slides deck as plain text, one block per slide —
- * used to give the Notes to Slides AI a style/structure reference to mimic (tone, pacing,
- * layout choices) without treating it as the actual source material. Same text-extraction
- * shape as the title-slide reading in buildSlideDeck/buildSlideDeckFromAst above, just walking
- * every slide instead of only the first. Capped so a large reference deck can't balloon the
- * ingestion prompt's size or cost.
- */
-export async function extractPresentationText(presentationId: string, accessToken: string): Promise<string> {
-  const slides = google.slides({ version: "v1", auth: getAuthClient(accessToken) });
-  const pres = await slides.presentations.get({ presentationId });
-
-  const blocks: string[] = [];
-  for (const slide of (pres.data.slides || []).slice(0, REFERENCE_TEXT_MAX_SLIDES)) {
-    const slideText = (slide.pageElements || [])
-      .map(el => el.shape?.text?.textElements?.map(t => t.textRun?.content || "").join("") ?? "")
-      .filter(text => text.trim().length > 0)
-      .join("\n");
-    if (slideText.trim().length > 0) blocks.push(slideText.trim());
-  }
-
-  const joined = blocks.map((text, i) => `Slide ${i + 1}:\n${text}`).join("\n\n");
-  return joined.length > REFERENCE_TEXT_MAX_CHARS ? joined.slice(0, REFERENCE_TEXT_MAX_CHARS) : joined;
-}
-
 /** Extracts a Drive file id from any of the URL shapes this app generates (Slides/Docs/Forms). */
 export function extractDriveFileId(url: string): string | undefined {
   return url.match(/\/d\/([a-zA-Z0-9_-]+)/)?.[1];

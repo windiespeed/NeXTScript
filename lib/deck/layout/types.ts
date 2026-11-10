@@ -24,6 +24,7 @@ export type ColorToken =
   | "accent.secondary"
   | "accent.tertiary"
   | "code.bg"
+  | "code.label" // language tag on the code panel
   | "code.text";
 
 export type FontRole = "heading" | "body" | "code";

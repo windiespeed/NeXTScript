@@ -37,7 +37,7 @@ export function layoutCode(slide: SlideOf<"code">): SlideLayout {
   const panelH = GRID.bodyBottom - top - captionH;
 
   b.rect("code.panel", x, top, panelW, panelH, "code.bg", 8);
-  const labelH = b.label("code.label", slide.language, x + C.pad, top + 8, panelW - C.pad * 2, "accent.primary", C.labelSize);
+  const labelH = b.label("code.label", slide.language, x + C.pad, top + 8, panelW - C.pad * 2, "code.label", C.labelSize);
   const codeY = top + 8 + labelH + 6;
   const codeW = panelW - C.pad * 2;
   const codeH = top + panelH - 10 - codeY;
