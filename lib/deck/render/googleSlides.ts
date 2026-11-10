@@ -119,7 +119,7 @@ const THEME_LIGHT: Record<ColorToken, string> = {
   surface: "LIGHT1", panel: "LIGHT2",
   "text.primary": "DARK1", "text.secondary": "DARK2", "text.muted": "DARK2",
   "accent.primary": "ACCENT1", "accent.secondary": "ACCENT2", "accent.tertiary": "ACCENT3",
-  "code.bg": "", "code.text": "",
+  "code.bg": "", "code.label": "", "code.text": "",
 };
 const THEME_DARK: Record<ColorToken, string> = {
   ...THEME_LIGHT,
@@ -135,6 +135,8 @@ interface Ctx {
 function color(token: ColorToken, dark: boolean, ctx: Ctx): OpaqueColor {
   if (token === "code.bg") return rgb(CODE_BG);
   if (token === "code.text") return rgb(CODE_TEXT);
+  // The code panel is always dark, so its label can't follow the template's accent color.
+  if (token === "code.label") return rgb(resolvePalette(ctx.theme, dark)["code.label"]);
   if (ctx.template) return { themeColor: (dark ? THEME_DARK : THEME_LIGHT)[token] };
   return rgb(resolvePalette(ctx.theme, dark)[token]);
 }

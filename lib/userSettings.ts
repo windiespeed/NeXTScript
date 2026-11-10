@@ -8,10 +8,6 @@ export { DEFAULT_SECTION_LABELS, type SectionLabels };
 
 const COLLECTION = "userSettings";
 
-export function getMergedLabels(settings: { sectionLabels?: Partial<SectionLabels> }): SectionLabels {
-  return { ...DEFAULT_SECTION_LABELS, ...settings.sectionLabels };
-}
-
 export interface UserSettings {
   anthropicKey?: string;
   geminiKey?: string;

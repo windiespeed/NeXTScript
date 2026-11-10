@@ -59,11 +59,3 @@ export function getSectionContent(lesson: LessonContentSource, sectionId: string
   return "";
 }
 
-/** Every section's content as a plain id-keyed map — for duplicate-lesson and AI-fill-merge call sites. */
-export function getAllSectionContent(lesson: LessonContentSource, sections: SectionDef[]): Record<string, string> {
-  const result: Record<string, string> = {};
-  for (const section of sections) {
-    result[section.id] = getSectionContent(lesson, section.id);
-  }
-  return result;
-}
