@@ -279,8 +279,8 @@ export default function EditQuizPage() {
         <p className={sectionLabel}>Assignment</p>
 
         <div>
-          <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Course <span className="text-[var(--danger-text)]">*</span></label>
-          <select
+          <label htmlFor="quizzes-id-course" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Course <span className="text-[var(--danger-text)]">*</span></label>
+          <select id="quizzes-id-course"
             value={courseId}
             onChange={e => { setCourseId(e.target.value); setModuleId(""); setLessonIds([]); }}
             className={inputClass}
@@ -293,8 +293,8 @@ export default function EditQuizPage() {
 
         {courseId && modules.length > 0 && (
           <div>
-            <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Module <span className="text-[var(--danger-text)]">*</span></label>
-            <select value={moduleId} onChange={e => setModuleId(e.target.value)} className={inputClass} style={inputStyle}>
+            <label htmlFor="quizzes-id-module" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Module <span className="text-[var(--danger-text)]">*</span></label>
+            <select id="quizzes-id-module" value={moduleId} onChange={e => setModuleId(e.target.value)} className={inputClass} style={inputStyle}>
               <option value="">— Select a module —</option>
               {modules.map(m => <option key={m.id} value={m.id}>{m.title}</option>)}
             </select>
@@ -337,8 +337,8 @@ export default function EditQuizPage() {
       <div className={cardClass} style={cardStyle}>
         <p className={sectionLabel}>Quiz Info</p>
         <div>
-          <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Quiz Title <span className="text-[var(--danger-text)]">*</span></label>
-          <input
+          <label htmlFor="quizzes-id-quiz-title" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Quiz Title <span className="text-[var(--danger-text)]">*</span></label>
+          <input id="quizzes-id-quiz-title"
             type="text"
             value={quizTitle}
             onChange={e => setQuizTitle(e.target.value)}
@@ -358,15 +358,15 @@ export default function EditQuizPage() {
           </p>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Multiple Choice</label>
-              <input type="number" min={0} max={50} value={mcCount} onChange={e => setMcCount(Math.min(50, Math.max(0, Number(e.target.value))))} className={inputClass} style={inputStyle} />
+              <label htmlFor="quizzes-id-multiple-choice" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Multiple Choice</label>
+              <input id="quizzes-id-multiple-choice" type="number" min={0} max={50} value={mcCount} onChange={e => setMcCount(Math.min(50, Math.max(0, Number(e.target.value))))} className={inputClass} style={inputStyle} />
             </div>
             <div>
-              <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Short Answer</label>
-              <input type="number" min={0} max={50} value={saCount} onChange={e => setSaCount(Math.min(50, Math.max(0, Number(e.target.value))))} className={inputClass} style={inputStyle} />
+              <label htmlFor="quizzes-id-short-answer" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Short Answer</label>
+              <input id="quizzes-id-short-answer" type="number" min={0} max={50} value={saCount} onChange={e => setSaCount(Math.min(50, Math.max(0, Number(e.target.value))))} className={inputClass} style={inputStyle} />
             </div>
           </div>
-          {aiError && <p className="text-xs text-[var(--danger-text)]">{aiError}</p>}
+          {aiError && <p role="alert" className="text-xs text-[var(--danger-text)]">{aiError}</p>}
           <button
             onClick={handleAiGenerate}
             disabled={aiGenerating || !canAiGenerate}
@@ -411,7 +411,7 @@ export default function EditQuizPage() {
               Paste questions, one per blank line (or numbered &lsquo;1.&rsquo;, &lsquo;2.&rsquo;...). Lines starting with &lsquo;a)&rsquo;, &lsquo;-&rsquo;, or &lsquo;*&rsquo; become
               multiple-choice options — mark the correct one with a trailing *. Questions with no options become short-answer.
             </p>
-            <textarea
+            <textarea aria-label="Questions to import"
               value={importText}
               onChange={e => setImportText(e.target.value)}
               rows={8}
@@ -448,7 +448,7 @@ export default function EditQuizPage() {
                 <div className="flex items-start gap-2">
                   <span className="text-[10px] font-bold mt-1.5 shrink-0" style={{ color: "var(--text-muted)" }}>Q{i + 1}</span>
                   <div className="flex-1 space-y-2">
-                    <input
+                    <input aria-label={`Question ${i + 1} text`}
                       type="text"
                       value={q.text}
                       onChange={e => updateQuestion(q.id, { text: e.target.value })}
@@ -457,7 +457,7 @@ export default function EditQuizPage() {
                       style={inputStyle}
                     />
                     <div className="flex items-center gap-3">
-                      <select
+                      <select aria-label={`Question ${i + 1} type`}
                         value={q.type}
                         onChange={e => updateQuestion(q.id, { type: e.target.value as FormQuestion["type"] })}
                         className="rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[var(--focus-ring)]"
@@ -476,7 +476,7 @@ export default function EditQuizPage() {
                       <div className="space-y-1.5">
                         {q.options.map((opt, oi) => (
                           <div key={oi} className="flex items-center gap-2">
-                            <input
+                            <input aria-label={`Mark option ${oi + 1} correct`}
                               type="radio"
                               name={`correct-${q.id}`}
                               checked={q.correctAnswer === opt && opt.trim() !== ""}
@@ -484,7 +484,7 @@ export default function EditQuizPage() {
                               className="accent-[#0cc0df] shrink-0"
                               title="Mark as correct answer"
                             />
-                            <input
+                            <input aria-label={`Question ${i + 1} option ${oi + 1}`}
                               type="text"
                               value={opt}
                               onChange={e => updateOption(q.id, oi, e.target.value)}
@@ -493,7 +493,7 @@ export default function EditQuizPage() {
                               style={inputStyle}
                             />
                             {q.options.length > 2 && (
-                              <button onClick={() => removeOption(q.id, oi)} className="text-xs hover:text-[var(--danger-text)] transition shrink-0" style={{ color: "var(--text-muted)" }}>×</button>
+                              <button aria-label={`Remove option ${oi + 1}`} onClick={() => removeOption(q.id, oi)} className="text-xs hover:text-[var(--danger-text)] transition shrink-0" style={{ color: "var(--text-muted)" }}>×</button>
                             )}
                           </div>
                         ))}
@@ -503,7 +503,7 @@ export default function EditQuizPage() {
                       </div>
                     )}
                   </div>
-                  <button
+                  <button aria-label={`Remove question ${i + 1}`}
                     onClick={() => removeQuestion(q.id)}
                     className="p-1 rounded-full transition hover:text-[var(--danger-text)] hover:bg-red-500/10 shrink-0"
                     style={{ color: "var(--text-muted)" }}
@@ -535,10 +535,10 @@ export default function EditQuizPage() {
           >
             {generating ? "Generating…" : formUrl ? "Regenerate Google Form" : "Generate Google Form"}
           </button>
-          {saved && !saving && <p className="text-xs font-semibold" style={{ color: "var(--success-text)" }}>Changes saved!</p>}
+          {saved && !saving && <p role="status" className="text-xs font-semibold" style={{ color: "var(--success-text)" }}>Changes saved!</p>}
         </div>
-        {saveError && <p className="text-xs text-[var(--danger-text)]">{saveError}</p>}
-        {generateError && <p className="text-xs text-[var(--danger-text)]">{generateError}</p>}
+        {saveError && <p role="alert" className="text-xs text-[var(--danger-text)]">{saveError}</p>}
+        {generateError && <p role="alert" className="text-xs text-[var(--danger-text)]">{generateError}</p>}
         {formUrl && (
           <div className="flex items-center gap-3 rounded-2xl px-4 py-3" style={{ background: "rgba(12,192,223,0.06)", border: "1px solid rgba(12,192,223,0.2)" }}>
             <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="#0cc0df" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>

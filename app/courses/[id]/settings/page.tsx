@@ -370,28 +370,28 @@ export default function CourseSettingsPage() {
         <div className="rounded-3xl p-6 space-y-4" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
           <p className={sectionHeading}>Course Info</p>
           <div>
-            <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Title</label>
-            <input type="text" value={editTitle} onChange={e => setEditTitle(e.target.value)} className={inputClass} style={inputStyle} />
+            <label htmlFor="courses-id-settings-title" className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Title</label>
+            <input id="courses-id-settings-title" type="text" value={editTitle} onChange={e => setEditTitle(e.target.value)} className={inputClass} style={inputStyle} />
           </div>
           <div>
-            <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Description</label>
-            <textarea value={editDescription} onChange={e => setEditDescription(e.target.value)} rows={3} className={inputClass} style={inputStyle} />
+            <label htmlFor="courses-id-settings-description" className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Description</label>
+            <textarea id="courses-id-settings-description" value={editDescription} onChange={e => setEditDescription(e.target.value)} rows={3} className={inputClass} style={inputStyle} />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Grade Level</label>
-              <input type="text" value={editGradeLevel} onChange={e => setEditGradeLevel(e.target.value)} placeholder="e.g. 9th Grade, College" className={inputClass} style={inputStyle} />
+              <label htmlFor="courses-id-settings-grade-level" className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Grade Level</label>
+              <input id="courses-id-settings-grade-level" type="text" value={editGradeLevel} onChange={e => setEditGradeLevel(e.target.value)} placeholder="e.g. 9th Grade, College" className={inputClass} style={inputStyle} />
             </div>
             <div>
-              <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
+              <label htmlFor="courses-id-settings-term" className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
                 Term <span style={{ color: "var(--danger-text)" }}>*</span>
               </label>
               <div className="grid grid-cols-2 gap-2">
-                <select value={editTermMonth} onChange={e => setEditTermMonth(e.target.value)} className={inputClass} style={inputStyle}>
+                <select id="courses-id-settings-term" value={editTermMonth} onChange={e => setEditTermMonth(e.target.value)} className={inputClass} style={inputStyle}>
                   <option value="">Month</option>
                   {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
                 </select>
-                <select value={editTermYear} onChange={e => setEditTermYear(e.target.value)} className={inputClass} style={inputStyle}>
+                <select aria-label="Term year" value={editTermYear} onChange={e => setEditTermYear(e.target.value)} className={inputClass} style={inputStyle}>
                   <option value="">Year</option>
                   {TERM_YEARS.map(y => <option key={y} value={y}>{y}</option>)}
                 </select>
@@ -399,10 +399,10 @@ export default function CourseSettingsPage() {
             </div>
           </div>
           <div>
-            <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
+            <label htmlFor="courses-id-settings-semester-optional" className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
               Semester <span className="font-normal text-xs" style={{ color: "var(--text-muted)" }}>(optional)</span>
             </label>
-            <input type="text" value={editSemester} onChange={e => setEditSemester(e.target.value)} placeholder="e.g. Spring, Fall, Semester 1" className={inputClass} style={inputStyle} />
+            <input id="courses-id-settings-semester-optional" type="text" value={editSemester} onChange={e => setEditSemester(e.target.value)} placeholder="e.g. Spring, Fall, Semester 1" className={inputClass} style={inputStyle} />
           </div>
         </div>
 
@@ -412,17 +412,17 @@ export default function CourseSettingsPage() {
           <p className="text-xs -mt-1" style={{ color: "var(--text-muted)" }}>These override your global profile settings for every lesson in this course.</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Industry {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span>}</label>
-              <input type="text" value={editSettings.industry} onChange={e => patchSettings({ industry: e.target.value })} placeholder="e.g. Coding, Healthcare" className={inputClass} style={inputStyle} />
+              <label htmlFor="courses-id-settings-industry-used-by-ai" className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Industry {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span>}</label>
+              <input id="courses-id-settings-industry-used-by-ai" type="text" value={editSettings.industry} onChange={e => patchSettings({ industry: e.target.value })} placeholder="e.g. Coding, Healthcare" className={inputClass} style={inputStyle} />
             </div>
             <div>
-              <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Subject Area {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span>}</label>
-              <input type="text" value={editSettings.subject} onChange={e => patchSettings({ subject: e.target.value })} placeholder="e.g. JavaScript, Nursing 101" className={inputClass} style={inputStyle} />
+              <label htmlFor="courses-id-settings-subject-area-used-by-ai" className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Subject Area {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span>}</label>
+              <input id="courses-id-settings-subject-area-used-by-ai" type="text" value={editSettings.subject} onChange={e => patchSettings({ subject: e.target.value })} placeholder="e.g. JavaScript, Nursing 101" className={inputClass} style={inputStyle} />
             </div>
           </div>
           <div>
-            <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Student Level {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span>}</label>
-            <select value={editSettings.studentLevel} onChange={e => patchSettings({ studentLevel: e.target.value as CourseSettings["studentLevel"] })} className={inputClass} style={inputStyle}>
+            <label htmlFor="courses-id-settings-student-level-used-by-ai" className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Student Level {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span>}</label>
+            <select id="courses-id-settings-student-level-used-by-ai" value={editSettings.studentLevel} onChange={e => patchSettings({ studentLevel: e.target.value as CourseSettings["studentLevel"] })} className={inputClass} style={inputStyle}>
               <option value="">— Not specified —</option>
               <option value="beginner">Beginner</option>
               <option value="intermediate">Intermediate</option>
@@ -430,17 +430,17 @@ export default function CourseSettingsPage() {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Default Sources {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span>}</label>
+            <label htmlFor="courses-id-settings-default-sources-used-by-ai" className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Default Sources {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span>}</label>
             <p className="text-xs mb-1.5" style={{ color: "var(--text-muted)" }}>Pre-filled in every new lesson in this course. One URL per line.</p>
-            <textarea value={editSettings.defaultSources} onChange={e => patchSettings({ defaultSources: e.target.value })}
+            <textarea id="courses-id-settings-default-sources-used-by-ai" value={editSettings.defaultSources} onChange={e => patchSettings({ defaultSources: e.target.value })}
               rows={4} placeholder={"https://www.w3schools.com/\nhttps://developer.mozilla.org/"}
               className={`${inputClass} font-mono`} style={inputStyle} />
           </div>
           <div>
-            <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
+            <label htmlFor="courses-id-settings-slides-template-url-optional" className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
               Slides Template URL <span className="font-normal" style={{ color: "var(--text-muted)" }}>(optional)</span>
             </label>
-            <input type="url" value={editSettings.defaultTemplateUrl} onChange={e => patchSettings({ defaultTemplateUrl: e.target.value })} placeholder="https://docs.google.com/presentation/d/…" className={inputClass} style={inputStyle} />
+            <input id="courses-id-settings-slides-template-url-optional" type="url" value={editSettings.defaultTemplateUrl} onChange={e => patchSettings({ defaultTemplateUrl: e.target.value })} placeholder="https://docs.google.com/presentation/d/…" className={inputClass} style={inputStyle} />
           </div>
         </div>
 
@@ -454,13 +454,13 @@ export default function CourseSettingsPage() {
           />
         </div>
 
-        {saveError && <p className="text-sm text-[var(--danger-text)]">{saveError}</p>}
+        {saveError && <p role="alert" className="text-sm text-[var(--danger-text)]">{saveError}</p>}
         <div className="flex items-center gap-4">
           <button type="submit" disabled={saving}
             className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-6 py-2.5 text-sm font-semibold text-[#0a0b13] hover:opacity-90 disabled:opacity-50 transition shadow">
             {saving ? "Saving…" : "Save Settings"}
           </button>
-          {saveMsg && <p className="text-sm font-medium" style={{ color: "var(--success-text)" }}>{saveMsg}</p>}
+          {saveMsg && <p role="status" className="text-sm font-medium" style={{ color: "var(--success-text)" }}>{saveMsg}</p>}
         </div>
       </form>
 
@@ -511,16 +511,16 @@ export default function CourseSettingsPage() {
               {classroomsLoading ? "Loading classrooms…" : "Load my Google Classrooms"}
             </button>
             {classroomsError && (
-              <p className="text-xs" style={{ color: "var(--danger-text)" }}>{classroomsError}</p>
+              <p role="alert" className="text-xs" style={{ color: "var(--danger-text)" }}>{classroomsError}</p>
             )}
           </div>
         ) : (
           <div className="flex items-end gap-3 flex-wrap">
             <div className="flex-1 min-w-[200px]">
-              <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
+              <label htmlFor="courses-id-settings-select-classroom" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
                 Select Classroom
               </label>
-              <select
+              <select id="courses-id-settings-select-classroom"
                 value={selectedClassroomId}
                 onChange={e => setSelectedClassroomId(e.target.value)}
                 className={inputClass} style={inputStyle}>
@@ -539,7 +539,7 @@ export default function CourseSettingsPage() {
             </button>
           </div>
         )}
-        {classroomMsg && <p className="text-xs font-medium" style={{ color: "var(--success-text)" }}>{classroomMsg}</p>}
+        {classroomMsg && <p role="status" className="text-xs font-medium" style={{ color: "var(--success-text)" }}>{classroomMsg}</p>}
         <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>
           After linking, use the <strong>Release</strong> button on each lesson or module to push it to this classroom as a draft assignment.
           If a matching title already exists, a copy is created automatically.
@@ -560,8 +560,8 @@ export default function CourseSettingsPage() {
         {isOwner && (
           <div className="flex items-end gap-3 flex-wrap">
             <div className="flex-1 min-w-[220px]">
-              <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Invite by email</label>
-              <input type="email" value={newCollaboratorEmail} onChange={e => setNewCollaboratorEmail(e.target.value)}
+              <label htmlFor="courses-id-settings-invite-by-email" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Invite by email</label>
+              <input id="courses-id-settings-invite-by-email" type="email" value={newCollaboratorEmail} onChange={e => setNewCollaboratorEmail(e.target.value)}
                 placeholder="coteacher@school.edu" className={inputClass} style={inputStyle}
                 onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); handleAddCollaborator(); } }} />
             </div>
@@ -573,7 +573,7 @@ export default function CourseSettingsPage() {
           </div>
         )}
 
-        {collabError && <p className="text-xs" style={{ color: "var(--danger-text)" }}>{collabError}</p>}
+        {collabError && <p role="alert" className="text-xs" style={{ color: "var(--danger-text)" }}>{collabError}</p>}
 
         {collaborators.length > 0 && (
           <div className="space-y-2">
@@ -610,7 +610,7 @@ export default function CourseSettingsPage() {
         </div>
 
         {conceptError && (
-          <div className="rounded-2xl px-4 py-3 text-xs font-medium" style={{ background: "rgba(239,68,68,0.08)", color: "var(--danger-text)", border: "1px solid rgba(239,68,68,0.2)" }}>
+          <div role="alert" className="rounded-2xl px-4 py-3 text-xs font-medium" style={{ background: "rgba(239,68,68,0.08)", color: "var(--danger-text)", border: "1px solid rgba(239,68,68,0.2)" }}>
             {conceptError}
           </div>
         )}
@@ -638,12 +638,12 @@ export default function CourseSettingsPage() {
                       <span className="text-xs" style={{ color: "var(--text-muted)" }}>slug is permanent</span>
                     </div>
                     <div>
-                      <label className="text-xs mb-1 block" style={{ color: "var(--text-muted)" }}>Label</label>
-                      <input value={editLabel} onChange={e => setEditLabel(e.target.value)} className={inputClass} style={inputStyle} />
+                      <label htmlFor="courses-id-settings-label" className="text-xs mb-1 block" style={{ color: "var(--text-muted)" }}>Label</label>
+                      <input id="courses-id-settings-label" value={editLabel} onChange={e => setEditLabel(e.target.value)} className={inputClass} style={inputStyle} />
                     </div>
                     <div>
-                      <label className="text-xs mb-1 block" style={{ color: "var(--text-muted)" }}>Description</label>
-                      <textarea value={editDesc} onChange={e => setEditDesc(e.target.value)} rows={2} className={`${inputClass} resize-none`} style={inputStyle} />
+                      <label htmlFor="courses-id-settings-description-2" className="text-xs mb-1 block" style={{ color: "var(--text-muted)" }}>Description</label>
+                      <textarea id="courses-id-settings-description-2" value={editDesc} onChange={e => setEditDesc(e.target.value)} rows={2} className={`${inputClass} resize-none`} style={inputStyle} />
                     </div>
                     <div className="flex gap-2">
                       <button onClick={() => handleEditConcept(concept.id)} disabled={editSaving}
@@ -661,13 +661,13 @@ export default function CourseSettingsPage() {
                 ) : (
                   <div className="rounded-3xl px-4 py-3 flex items-start gap-3" style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)" }}>
                     <div className="flex flex-col gap-0.5 pt-0.5 shrink-0">
-                      <button onClick={() => moveUp(idx)} disabled={idx === 0}
-                        className="p-0.5 rounded transition hover:opacity-80 disabled:opacity-20" style={{ color: "var(--text-muted)" }}>
+                      <button aria-label={`Move ${concept.label} up`} onClick={() => moveUp(idx)} disabled={idx === 0}
+                        className="p-1.5 rounded transition hover:opacity-80 disabled:opacity-20" style={{ color: "var(--text-muted)" }}>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
                       </button>
                       <span className="text-[10px] text-center leading-none" style={{ color: "var(--text-muted)" }}>{idx + 1}</span>
-                      <button onClick={() => moveDown(idx)} disabled={idx === concepts.length - 1}
-                        className="p-0.5 rounded transition hover:opacity-80 disabled:opacity-20" style={{ color: "var(--text-muted)" }}>
+                      <button aria-label={`Move ${concept.label} down`} onClick={() => moveDown(idx)} disabled={idx === concepts.length - 1}
+                        className="p-1.5 rounded transition hover:opacity-80 disabled:opacity-20" style={{ color: "var(--text-muted)" }}>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
                       </button>
                     </div>
@@ -698,20 +698,20 @@ export default function CourseSettingsPage() {
             <p className={sectionHeading}>New Concept</p>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs mb-1 block" style={{ color: "var(--text-muted)" }}>Label</label>
-                <input value={newLabel}
+                <label htmlFor="courses-id-settings-label-2" className="text-xs mb-1 block" style={{ color: "var(--text-muted)" }}>Label</label>
+                <input id="courses-id-settings-label-2" value={newLabel}
                   onChange={e => { setNewLabel(e.target.value); if (!newSlug || newSlug === slugify(newLabel)) setNewSlug(slugify(e.target.value)); }}
                   placeholder="e.g. Control Flow" className={inputClass} style={inputStyle} />
               </div>
               <div>
-                <label className="text-xs mb-1 block" style={{ color: "var(--text-muted)" }}>Slug <span style={{ color: "var(--text-muted)" }}>(auto, permanent)</span></label>
-                <input value={newSlug} onChange={e => setNewSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
+                <label htmlFor="courses-id-settings-slug-auto-permanent" className="text-xs mb-1 block" style={{ color: "var(--text-muted)" }}>Slug <span style={{ color: "var(--text-muted)" }}>(auto, permanent)</span></label>
+                <input id="courses-id-settings-slug-auto-permanent" value={newSlug} onChange={e => setNewSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
                   placeholder="e.g. control-flow" className={inputClass} style={inputStyle} />
               </div>
             </div>
             <div>
-              <label className="text-xs mb-1 block" style={{ color: "var(--text-muted)" }}>Description</label>
-              <textarea value={newDesc} onChange={e => setNewDesc(e.target.value)} rows={2}
+              <label htmlFor="courses-id-settings-description-3" className="text-xs mb-1 block" style={{ color: "var(--text-muted)" }}>Description</label>
+              <textarea id="courses-id-settings-description-3" value={newDesc} onChange={e => setNewDesc(e.target.value)} rows={2}
                 placeholder="What will students learn in this concept?" className={`${inputClass} resize-none`} style={inputStyle} />
             </div>
             <div className="flex gap-2">

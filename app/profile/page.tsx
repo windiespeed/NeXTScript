@@ -279,7 +279,7 @@ export default function ProfilePage() {
                   <span className="text-2xl font-bold text-[var(--accent-text)]">{userInitials}</span>
                 </div>
               )}
-              <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 group-disabled:opacity-0 transition-opacity rounded-full">
+              <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 [@media(hover:none)]:opacity-100 group-disabled:opacity-0 transition-opacity rounded-full">
                 <span className="text-white text-xs font-semibold">{uploadingAvatar ? "…" : "Edit"}</span>
               </div>
             </button>
@@ -322,8 +322,8 @@ export default function ProfilePage() {
       </div>
 
       {/* Status messages */}
-      {message && <p className="text-sm text-[var(--success-text)]">{message}</p>}
-      {error && <p className="text-sm text-[var(--danger-text)]">{error}</p>}
+      {message && <p role="status" className="text-sm text-[var(--success-text)]">{message}</p>}
+      {error && <p role="alert" className="text-sm text-[var(--danger-text)]">{error}</p>}
 
       {/* Appearance */}
       <div className="rounded-3xl p-6" style={cardSty}>
@@ -351,7 +351,7 @@ export default function ProfilePage() {
           </p>
         </div>
         <form onSubmit={handleSaveSources} className="space-y-3">
-          <textarea
+          <textarea aria-label="Default sources"
             value={defaultSources}
             onChange={(e) => setDefaultSources(e.target.value)}
             rows={5}
@@ -380,8 +380,8 @@ export default function ProfilePage() {
         <form onSubmit={handleSaveCurriculum} className="space-y-5">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Industry</label>
-              <input
+              <label htmlFor="profile-industry" className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Industry</label>
+              <input id="profile-industry"
                 type="text"
                 value={industry}
                 onChange={e => setIndustry(e.target.value)}
@@ -391,8 +391,8 @@ export default function ProfilePage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Subject Area</label>
-              <input
+              <label htmlFor="profile-subject-area" className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Subject Area</label>
+              <input id="profile-subject-area"
                 type="text"
                 value={subject}
                 onChange={e => setSubject(e.target.value)}
@@ -444,10 +444,10 @@ export default function ProfilePage() {
         )}
 
         <form onSubmit={handleSaveKey} className="space-y-3">
-          <label className="block text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+          <label htmlFor="profile-input" className="block text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
             {hasKey ? "Replace key" : "Add key"}
           </label>
-          <input
+          <input id="profile-input"
             type="password"
             value={keyInput}
             onChange={(e) => setKeyInput(e.target.value)}
@@ -497,10 +497,10 @@ export default function ProfilePage() {
         )}
 
         <form onSubmit={handleSaveGeminiKey} className="space-y-3">
-          <label className="block text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+          <label htmlFor="profile-input-2" className="block text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
             {hasGeminiKey ? "Replace key" : "Add key"}
           </label>
-          <input
+          <input id="profile-input-2"
             type="password"
             value={geminiKeyInput}
             onChange={(e) => setGeminiKeyInput(e.target.value)}

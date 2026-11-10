@@ -58,8 +58,8 @@ function TextListField({ label, items, onChange, rows }: { label: string; items:
   return (
     <div>
       <div className="flex items-center justify-between mb-1">
-        <label className="text-xs font-semibold" style={labelStyle}>{label}</label>
-        <button type="button" onClick={() => onChange([...items, ""])} className="text-[10px] font-semibold text-[#0cc0df] hover:underline">
+        <span className="text-xs font-semibold" style={labelStyle}>{label}</span>
+        <button type="button" aria-label={`Add ${label} item`} onClick={() => onChange([...items, ""])} className="text-[10px] font-semibold text-[#0cc0df] hover:underline">
           + Add
         </button>
       </div>
@@ -68,6 +68,7 @@ function TextListField({ label, items, onChange, rows }: { label: string; items:
           <div key={i} className="flex items-start gap-1.5">
             <Field
               rows={rows}
+              aria-label={`${label} ${i + 1}`}
               value={item}
               onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
                 const next = [...items];
@@ -82,6 +83,7 @@ function TextListField({ label, items, onChange, rows }: { label: string; items:
               onClick={() => onChange(items.filter((_, j) => j !== i))}
               className="shrink-0 text-red-500 text-xs px-1.5 py-1 rounded hover:bg-red-500/10 transition"
               title="Remove"
+              aria-label={`Remove ${label} ${i + 1}`}
             >
               ×
             </button>
@@ -97,12 +99,12 @@ function TitleSubtitleFields({ slide, onChange }: { slide: SlideNode; onChange: 
   return (
     <>
       <div>
-        <label className={labelClass} style={labelStyle}>
+        <label htmlFor="slides-slideeditorpanel-title-locked-course-section" className={labelClass} style={labelStyle}>
           Title{slide.anchorId && <span className="font-normal" style={{ color: "var(--text-muted)" }}> · 🔒 locked course section</span>}
         </label>
         {/* Anchored slides carry the exact course section label — renaming would break the
             skeleton the export also enforces, so the field is read-only (subtitle stays free). */}
-        <input
+        <input id="slides-slideeditorpanel-title-locked-course-section"
           value={slide.title}
           readOnly={!!slide.anchorId}
           title={slide.anchorId ? "This heading comes from the course's Sections and can't be changed here." : undefined}
@@ -112,10 +114,10 @@ function TitleSubtitleFields({ slide, onChange }: { slide: SlideNode; onChange: 
         />
       </div>
       <div>
-        <label className={labelClass} style={labelStyle}>
+        <label htmlFor="slides-slideeditorpanel-subtitle-optional" className={labelClass} style={labelStyle}>
           Subtitle <span className="font-normal" style={{ color: "var(--text-muted)" }}>(optional)</span>
         </label>
-        <input value={slide.subtitle ?? ""} onChange={e => onChange({ subtitle: e.target.value || undefined })} className={inputClass} style={inputStyle} />
+        <input id="slides-slideeditorpanel-subtitle-optional" value={slide.subtitle ?? ""} onChange={e => onChange({ subtitle: e.target.value || undefined })} className={inputClass} style={inputStyle} />
       </div>
     </>
   );
@@ -138,8 +140,8 @@ function SplitColumnEditor({ slide, onChange }: { slide: SplitColumnSlideNode; o
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="flex flex-col gap-2">
           <div>
-            <label className={labelClass} style={labelStyle}>Left Heading</label>
-            <input
+            <label htmlFor="slides-slideeditorpanel-left-heading" className={labelClass} style={labelStyle}>Left Heading</label>
+            <input id="slides-slideeditorpanel-left-heading"
               value={slide.leftColumn.heading}
               onChange={e => onChange({ ...slide, leftColumn: { ...slide.leftColumn, heading: e.target.value } })}
               className={inputClass} style={inputStyle}
@@ -153,8 +155,8 @@ function SplitColumnEditor({ slide, onChange }: { slide: SplitColumnSlideNode; o
         </div>
         <div className="flex flex-col gap-2">
           <div>
-            <label className={labelClass} style={labelStyle}>Right Heading</label>
-            <input
+            <label htmlFor="slides-slideeditorpanel-right-heading" className={labelClass} style={labelStyle}>Right Heading</label>
+            <input id="slides-slideeditorpanel-right-heading"
               value={slide.rightColumn.heading}
               onChange={e => onChange({ ...slide, rightColumn: { ...slide.rightColumn, heading: e.target.value } })}
               className={inputClass} style={inputStyle}
@@ -176,8 +178,8 @@ function CodeExplainerEditor({ slide, onChange }: { slide: CodeExplainerSlideNod
     <div className="flex flex-col gap-3">
       <TitleSubtitleFields slide={slide} onChange={patch => onChange({ ...slide, ...patch })} />
       <div>
-        <label className={labelClass} style={labelStyle}>Language</label>
-        <input
+        <label htmlFor="slides-slideeditorpanel-language" className={labelClass} style={labelStyle}>Language</label>
+        <input id="slides-slideeditorpanel-language"
           value={slide.language}
           onChange={e => onChange({ ...slide, language: e.target.value })}
           placeholder="e.g. python, javascript, java, sql"
@@ -185,8 +187,8 @@ function CodeExplainerEditor({ slide, onChange }: { slide: CodeExplainerSlideNod
         />
       </div>
       <div>
-        <label className={labelClass} style={labelStyle}>Code Snippet</label>
-        <textarea
+        <label htmlFor="slides-slideeditorpanel-code-snippet" className={labelClass} style={labelStyle}>Code Snippet</label>
+        <textarea id="slides-slideeditorpanel-code-snippet"
           value={slide.codeSnippet}
           onChange={e => onChange({ ...slide, codeSnippet: e.target.value })}
           rows={6}
@@ -204,8 +206,8 @@ function CalloutEditor({ slide, onChange }: { slide: CalloutCardSlide; onChange:
     <div className="flex flex-col gap-3">
       <TitleSubtitleFields slide={slide} onChange={patch => onChange({ ...slide, ...patch })} />
       <div>
-        <label className={labelClass} style={labelStyle}>Variant</label>
-        <select
+        <label htmlFor="slides-slideeditorpanel-variant" className={labelClass} style={labelStyle}>Variant</label>
+        <select id="slides-slideeditorpanel-variant"
           value={slide.variant}
           onChange={e => onChange({ ...slide, variant: e.target.value as CalloutCardSlide["variant"] })}
           className={inputClass} style={inputStyle}
@@ -216,8 +218,8 @@ function CalloutEditor({ slide, onChange }: { slide: CalloutCardSlide; onChange:
         </select>
       </div>
       <div>
-        <label className={labelClass} style={labelStyle}>Content</label>
-        <textarea value={slide.content} onChange={e => onChange({ ...slide, content: e.target.value })} rows={4} className={inputClass} style={inputStyle} />
+        <label htmlFor="slides-slideeditorpanel-content" className={labelClass} style={labelStyle}>Content</label>
+        <textarea id="slides-slideeditorpanel-content" value={slide.content} onChange={e => onChange({ ...slide, content: e.target.value })} rows={4} className={inputClass} style={inputStyle} />
       </div>
     </div>
   );
@@ -240,7 +242,7 @@ function StepGridEditor({ slide, onChange }: { slide: StepGridSlideNode; onChang
     <div className="flex flex-col gap-3">
       <TitleSubtitleFields slide={slide} onChange={patch => onChange({ ...slide, ...patch })} />
       <div className="flex items-center justify-between">
-        <label className="text-xs font-semibold" style={labelStyle}>Steps</label>
+        <span className="text-xs font-semibold" style={labelStyle}>Steps</span>
         <button type="button" onClick={addStep} className="text-[10px] font-semibold text-[#0cc0df] hover:underline">+ Add Step</button>
       </div>
       <div className="flex flex-col gap-2.5">
@@ -248,7 +250,7 @@ function StepGridEditor({ slide, onChange }: { slide: StepGridSlideNode; onChang
           <div key={i} className="rounded-lg p-2.5 space-y-1.5" style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)" }}>
             <div className="flex items-center gap-1.5">
               <span className="text-[10px] font-bold shrink-0" style={{ color: "var(--accent)" }}>#{step.stepNumber}</span>
-              <input
+              <input aria-label={`Step ${i + 1} title`}
                 value={step.title}
                 onChange={e => updateStep(i, { title: e.target.value })}
                 placeholder="Step title"
@@ -258,7 +260,7 @@ function StepGridEditor({ slide, onChange }: { slide: StepGridSlideNode; onChang
                 ×
               </button>
             </div>
-            <textarea
+            <textarea aria-label={`Step ${i + 1} description`}
               value={step.description}
               onChange={e => updateStep(i, { description: e.target.value })}
               placeholder="Step description"
@@ -356,8 +358,8 @@ export default function SlideEditorPanel({ ast, activeIndex, onChange, onActiveI
         ))}
 
         <div className="pt-1">
-          <label className="text-[10px] font-semibold uppercase tracking-wide block mb-1" style={{ color: "var(--text-muted)" }}>Add Slide</label>
-          <select
+          <label htmlFor="slides-slideeditorpanel-add-slide" className="text-[10px] font-semibold uppercase tracking-wide block mb-1" style={{ color: "var(--text-muted)" }}>Add Slide</label>
+          <select id="slides-slideeditorpanel-add-slide"
             value=""
             onChange={e => { if (e.target.value) addSlide(e.target.value as SlideType); }}
             className={inputClass} style={inputStyle}

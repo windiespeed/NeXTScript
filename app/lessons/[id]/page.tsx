@@ -11,6 +11,7 @@ import {
   DndContext,
   closestCenter,
   PointerSensor,
+  KeyboardSensor,
   useSensor,
   useSensors,
   type DragEndEvent,
@@ -20,6 +21,7 @@ import {
   useSortable,
   rectSortingStrategy,
   arrayMove,
+  sortableKeyboardCoordinates,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import Dialog from "@/components/ui/Dialog";
@@ -72,11 +74,12 @@ function SortableHubWidget({ widgetId, span, onCycleSize, children }: {
       style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1, zIndex: isDragging ? 10 : undefined }}
       className={`relative group/widget ${span === 2 ? "md:col-span-2" : "md:col-span-1"}`}
     >
-      <div className="absolute bottom-3 right-3 z-20 opacity-0 group-hover/widget:opacity-100 transition-opacity flex items-center gap-1">
+      <div className="absolute bottom-3 right-3 z-20 opacity-0 group-hover/widget:opacity-100 group-focus-within/widget:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity flex items-center gap-1">
         <div
           {...listeners}
           {...attributes}
           title="Drag to reorder"
+          aria-label="Reorder widget"
           className="flex items-center justify-center rounded-full p-1.5 cursor-grab active:cursor-grabbing"
           style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)", color: "var(--text-secondary)" }}
         >
@@ -89,6 +92,7 @@ function SortableHubWidget({ widgetId, span, onCycleSize, children }: {
         <button
           onClick={onCycleSize}
           title={`Resize (${span}/2 columns)`}
+          aria-label={`Resize widget, currently ${span} of 2 columns`}
           className="flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-semibold"
           style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)", color: "var(--text-secondary)" }}
         >
@@ -160,7 +164,10 @@ export default function LessonHubPage() {
   // Widget order + sizes
   const [hubOrder, setHubOrder] = useState<HubWidgetId[]>(DEFAULT_HUB_ORDER);
   const [hubSizes, setHubSizes] = useState<Record<HubWidgetId, 1 | 2>>(DEFAULT_HUB_SIZES);
-  const hubSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  const hubSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
 
   useEffect(() => {
     try {
@@ -544,28 +551,28 @@ export default function LessonHubPage() {
             <h2 id="edit-lesson-info-title" className="text-base font-bold" style={{ color: "var(--text-primary)" }}>Edit Lesson Info</h2>
             <div className="space-y-3">
               <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Title {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span>}</label>
-                <input value={metaTitle} onChange={e => setMetaTitle(e.target.value)} className={inputClass} style={inputStyle} placeholder="Lesson title" />
+                <label htmlFor="lessons-id-title-used-by-ai" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Title {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span>}</label>
+                <input id="lessons-id-title-used-by-ai" value={metaTitle} onChange={e => setMetaTitle(e.target.value)} className={inputClass} style={inputStyle} placeholder="Lesson title" />
               </div>
               <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Subtitle {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span>}</label>
-                <input value={metaSubtitle} onChange={e => setMetaSubtitle(e.target.value)} className={inputClass} style={inputStyle} placeholder="Topic or subject" />
+                <label htmlFor="lessons-id-subtitle-used-by-ai" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Subtitle {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span>}</label>
+                <input id="lessons-id-subtitle-used-by-ai" value={metaSubtitle} onChange={e => setMetaSubtitle(e.target.value)} className={inputClass} style={inputStyle} placeholder="Topic or subject" />
               </div>
               <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
+                <label htmlFor="lessons-id-topics-used-by-ai" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
                   Topics {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span>}
                 </label>
-                <input value={metaTopics} onChange={e => setMetaTopics(e.target.value)} className={inputClass} style={inputStyle} placeholder="e.g. Variables, Data Types, Type Casting" />
+                <input id="lessons-id-topics-used-by-ai" value={metaTopics} onChange={e => setMetaTopics(e.target.value)} className={inputClass} style={inputStyle} placeholder="e.g. Variables, Data Types, Type Casting" />
                 <p className="text-[10px] mt-1" style={{ color: "var(--text-muted)" }}>Comma-separated. AI uses these to generate slide content, overviews, and quizzes.</p>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Deadline</label>
-                  <input type="date" value={metaDeadline} onChange={e => setMetaDeadline(e.target.value)} className={inputClass} style={inputStyle} />
+                  <label htmlFor="lessons-id-deadline" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Deadline</label>
+                  <input id="lessons-id-deadline" type="date" value={metaDeadline} onChange={e => setMetaDeadline(e.target.value)} className={inputClass} style={inputStyle} />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Type</label>
-                  <select value={metaType} onChange={e => setMetaType(e.target.value)} className={inputClass} style={inputStyle}>
+                  <label htmlFor="lessons-id-type" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Type</label>
+                  <select id="lessons-id-type" value={metaType} onChange={e => setMetaType(e.target.value)} className={inputClass} style={inputStyle}>
                     <option value="lesson">Lesson</option>
                     <option value="practice">Practice</option>
                     <option value="project">Project</option>
@@ -631,7 +638,7 @@ export default function LessonHubPage() {
               </div>
             </div>
 
-            {overviewError && <p className="text-xs text-[var(--danger-text)]">{overviewError}</p>}
+            {overviewError && <p role="alert" className="text-xs text-[var(--danger-text)]">{overviewError}</p>}
 
             <div className="flex gap-2 pt-2">
               <button onClick={() => setOverviewModalOpen(false)} className="flex-1 rounded-full py-2 text-sm font-semibold transition" style={{ border: "1px solid var(--border)", color: "var(--text-primary)" }}>
@@ -807,7 +814,7 @@ export default function LessonHubPage() {
                         )}
                       </div>
                     </div>
-                    {generateError && <p className="text-xs text-[var(--danger-text)]">{generateError}</p>}
+                    {generateError && <p role="alert" className="text-xs text-[var(--danger-text)]">{generateError}</p>}
                     {!generateError && lesson.status === "error" && lesson.errorMessage && (
                       <p className="text-xs text-[var(--danger-text)]">Last generation failed: {lesson.errorMessage}</p>
                     )}
@@ -866,12 +873,12 @@ export default function LessonHubPage() {
             <p className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>Create blank Google document</p>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Name</label>
-                <input value={blankDocName} onChange={e => setBlankDocName(e.target.value)} placeholder="Document name" className={inputClass} style={{ background: "var(--bg-card)", color: "var(--text-primary)", border: "1px solid var(--border)" }} />
+                <label htmlFor="lessons-id-name" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Name</label>
+                <input id="lessons-id-name" value={blankDocName} onChange={e => setBlankDocName(e.target.value)} placeholder="Document name" className={inputClass} style={{ background: "var(--bg-card)", color: "var(--text-primary)", border: "1px solid var(--border)" }} />
               </div>
               <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Type</label>
-                <select value={blankDocType} onChange={e => setBlankDocType(e.target.value as "doc" | "sheet" | "slides")} className={inputClass} style={{ background: "var(--bg-card)", color: "var(--text-primary)", border: "1px solid var(--border)" }}>
+                <label htmlFor="lessons-id-type-2" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Type</label>
+                <select id="lessons-id-type-2" value={blankDocType} onChange={e => setBlankDocType(e.target.value as "doc" | "sheet" | "slides")} className={inputClass} style={{ background: "var(--bg-card)", color: "var(--text-primary)", border: "1px solid var(--border)" }}>
                   <option value="doc">Google Doc</option>
                   <option value="sheet">Google Sheet</option>
                   <option value="slides">Google Slides</option>
@@ -892,9 +899,9 @@ export default function LessonHubPage() {
           <div className="rounded-2xl p-4 space-y-3" style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)" }}>
             <p className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>Attach a link</p>
             <div className="space-y-2">
-              <input value={linkLabel} onChange={e => setLinkLabel(e.target.value)} placeholder="Label (e.g. Module 1 Textbook)" className={inputClass} style={{ background: "var(--bg-card)", color: "var(--text-primary)", border: "1px solid var(--border)" }} />
-              <input value={linkUrl} onChange={e => setLinkUrl(e.target.value)} placeholder="https://…" className={inputClass} style={{ background: "var(--bg-card)", color: "var(--text-primary)", border: "1px solid var(--border)" }} />
-              <select value={linkType} onChange={e => setLinkType(e.target.value as LessonResource["type"])} className={inputClass} style={{ background: "var(--bg-card)", color: "var(--text-primary)", border: "1px solid var(--border)" }}>
+              <input aria-label="Link label" value={linkLabel} onChange={e => setLinkLabel(e.target.value)} placeholder="Label (e.g. Module 1 Textbook)" className={inputClass} style={{ background: "var(--bg-card)", color: "var(--text-primary)", border: "1px solid var(--border)" }} />
+              <input aria-label="Link URL" value={linkUrl} onChange={e => setLinkUrl(e.target.value)} placeholder="https://…" className={inputClass} style={{ background: "var(--bg-card)", color: "var(--text-primary)", border: "1px solid var(--border)" }} />
+              <select aria-label="Link type" value={linkType} onChange={e => setLinkType(e.target.value as LessonResource["type"])} className={inputClass} style={{ background: "var(--bg-card)", color: "var(--text-primary)", border: "1px solid var(--border)" }}>
                 <option value="link">Link</option>
                 <option value="pdf">PDF</option>
                 <option value="image">Image</option>
@@ -928,7 +935,7 @@ export default function LessonHubPage() {
                   <p className="text-[10px] truncate" style={{ color: "var(--text-muted)" }}>{r.url}</p>
                 </div>
                 <a href={r.url} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold shrink-0 hover:underline" style={{ color: "var(--accent-text)" }}>Open ↗</a>
-                <button onClick={() => handleDeleteResource(r.id)} className="p-1 rounded-full shrink-0 hover:text-[var(--danger-text)] transition" style={{ color: "var(--text-muted)" }}>
+                <button aria-label={`Remove ${r.label}`} onClick={() => handleDeleteResource(r.id)} className="p-1 rounded-full shrink-0 hover:text-[var(--danger-text)] transition" style={{ color: "var(--text-muted)" }}>
                   <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
                 </button>
               </div>
@@ -991,7 +998,7 @@ function DocRow({ icon, color, label, sublabel, badge, badgeColor, url, editHref
       <span style={{ color }}>{icon}</span>
       <div className="flex-1 min-w-0">
         {renaming ? (
-          <input
+          <input aria-label="Resource name"
             autoFocus
             value={draftLabel}
             onChange={e => setDraftLabel(e.target.value)}

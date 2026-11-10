@@ -156,8 +156,8 @@ function NewLessonInner() {
           <p className={sectionLabel}>Assignment</p>
 
           <div>
-            <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Course <span className="text-[var(--danger-text)]">*</span></label>
-            <select
+            <label htmlFor="lessons-new-course" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Course <span className="text-[var(--danger-text)]">*</span></label>
+            <select id="lessons-new-course"
               value={selectedCourseId}
               onChange={e => setSelectedCourseId(e.target.value)}
               className={inputClass}
@@ -170,8 +170,8 @@ function NewLessonInner() {
 
           {selectedCourseId && modules.length > 0 && (
             <div>
-              <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Module <span className="font-normal" style={{ color: "var(--text-muted)" }}>(optional)</span></label>
-              <select
+              <label htmlFor="lessons-new-module-optional" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Module <span className="font-normal" style={{ color: "var(--text-muted)" }}>(optional)</span></label>
+              <select id="lessons-new-module-optional"
                 value={selectedModuleId}
                 onChange={e => setSelectedModuleId(e.target.value)}
                 className={inputClass}
@@ -189,8 +189,8 @@ function NewLessonInner() {
           <p className={sectionLabel}>Lesson Info</p>
 
           <div>
-            <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Title <span className="text-[var(--danger-text)]">*</span> {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span>}</label>
-            <input
+            <label htmlFor="lessons-new-title-used-by-ai" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Title <span className="text-[var(--danger-text)]">*</span> {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span>}</label>
+            <input id="lessons-new-title-used-by-ai"
               type="text"
               value={title}
               onChange={e => setTitle(e.target.value)}
@@ -202,8 +202,8 @@ function NewLessonInner() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Subtitle <span className="font-normal" style={{ color: "var(--text-muted)" }}>(optional)</span> {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span>}</label>
-            <input
+            <label htmlFor="lessons-new-subtitle-optional-used-by-ai" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Subtitle <span className="font-normal" style={{ color: "var(--text-muted)" }}>(optional)</span> {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span>}</label>
+            <input id="lessons-new-subtitle-optional-used-by-ai"
               type="text"
               value={subtitle}
               onChange={e => setSubtitle(e.target.value)}
@@ -215,8 +215,8 @@ function NewLessonInner() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Type</label>
-              <select
+              <label htmlFor="lessons-new-type" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Type</label>
+              <select id="lessons-new-type"
                 value={lessonType}
                 onChange={e => setLessonType(e.target.value)}
                 className={inputClass}
@@ -226,8 +226,8 @@ function NewLessonInner() {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Deadline <span className="font-normal" style={{ color: "var(--text-muted)" }}>(optional)</span></label>
-              <input
+              <label htmlFor="lessons-new-deadline-optional" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Deadline <span className="font-normal" style={{ color: "var(--text-muted)" }}>(optional)</span></label>
+              <input id="lessons-new-deadline-optional"
                 type="text"
                 value={deadline}
                 onChange={e => setDeadline(e.target.value)}
@@ -239,10 +239,10 @@ function NewLessonInner() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
+            <label htmlFor="lessons-new-topics-used-by-ai" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
               Topics {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span>}
             </label>
-            <input
+            <input id="lessons-new-topics-used-by-ai"
               type="text"
               value={topics}
               onChange={e => setTopics(e.target.value)}
@@ -254,7 +254,7 @@ function NewLessonInner() {
           </div>
         </div>
 
-        {error && <p className="text-xs text-[var(--danger-text)]">{error}</p>}
+        {error && <p role="alert" className="text-xs text-[var(--danger-text)]">{error}</p>}
 
         <div className="flex items-center gap-3">
           <button

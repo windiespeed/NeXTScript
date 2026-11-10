@@ -304,7 +304,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
     <>
     <form onSubmit={handleSubmit} className="space-y-4">
       {error && (
-        <div className="rounded-2xl bg-red-50 border border-red-200 p-4 text-red-700 text-sm">
+        <div role="alert" className="rounded-2xl bg-red-50 border border-red-200 p-4 text-red-700 text-sm">
           {error}
         </div>
       )}
@@ -317,11 +317,11 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
         </div>
 
         <div>
-          <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
+          <label htmlFor="lessonform-lesson-title-used-by-ai" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
             Lesson Title <span className="text-[var(--danger-text)]">*</span> {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span>}
           </label>
           <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>Module number and lesson number (e.g. Module 3, Lesson 2)</p>
-          <input
+          <input id="lessonform-lesson-title-used-by-ai"
             required
             type="text"
             value={form.title}
@@ -333,9 +333,9 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
         </div>
 
         <div>
-          <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Lesson Subtitle {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span>}</label>
+          <label htmlFor="lessonform-lesson-subtitle-used-by-ai" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Lesson Subtitle {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span>}</label>
           <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>Specific topic or subject covered in this lesson</p>
-          <input
+          <input id="lessonform-lesson-subtitle-used-by-ai"
             type="text"
             value={form.subtitle}
             onChange={(e) => set("subtitle", e.target.value)}
@@ -346,11 +346,11 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
         </div>
 
         <div>
-          <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
+          <label htmlFor="lessonform-topics-used-by-ai" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
             Topics {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span>}
           </label>
           <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>Comma-separated. AI uses these to generate slide content, overviews, and quizzes.</p>
-          <input
+          <input id="lessonform-topics-used-by-ai"
             type="text"
             value={form.topics}
             onChange={(e) => set("topics", e.target.value)}
@@ -362,9 +362,9 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
-            <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Deadline</label>
+            <label htmlFor="lessonform-deadline" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Deadline</label>
             <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>The due date for this lesson&apos;s assignments.</p>
-            <input
+            <input id="lessonform-deadline"
               type="date"
               value={form.deadline}
               onChange={(e) => set("deadline", e.target.value)}
@@ -374,9 +374,9 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
           </div>
 
           <div>
-            <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Lesson Type</label>
+            <label htmlFor="lessonform-lesson-type" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Lesson Type</label>
             <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>Classify the type of activity for this lesson.</p>
-            <select
+            <select id="lessonform-lesson-type"
               value={form.lessonType ?? "lesson"}
               onChange={(e) => set("lessonType", e.target.value)}
               className={inputClass}
@@ -392,7 +392,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
         </div>
 
         <div>
-          <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Sources {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span>}</label>
+          <label htmlFor="lessonform-sources-used-by-ai" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Sources {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span>}</label>
           <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>
             One URL per line. These are passed to the AI as reference material when generating lesson content.
             {form.sources
@@ -401,7 +401,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
                 : " The URLs below are pre-filled from your default sources — add, remove, or edit as needed for this lesson."
               : " No sources set — add URLs or configure defaults in your Profile settings."}
           </p>
-          <textarea
+          <textarea id="lessonform-sources-used-by-ai"
             value={form.sources}
             onChange={(e) => set("sources", e.target.value)}
             rows={4}
@@ -492,14 +492,14 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
         </div>
         {preSlideSections.map(({ id, label, hint, rows }) => (
           <div key={id}>
-            <label className="flex items-center gap-2 text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
+            <label htmlFor={`lessonform-section-${id}`} className="flex items-center gap-2 text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
               {label}
               {aiFilledFields.has(id) && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-[#0cc0df] px-2 py-0.5 text-[10px] font-bold text-[#0a0b13] shadow-sm">✦ AI</span>
               )}
             </label>
             {hint && <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>{hint}</p>}
-            <textarea
+            <textarea id={`lessonform-section-${id}`}
               value={form.sections?.[id] ?? ""}
               onChange={(e) => { setSection(id, e.target.value); setAiFilledFields(prev => { const next = new Set(prev); next.delete(id); return next; }); }}
               rows={rows ?? 4}
@@ -516,8 +516,8 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
           <p className={sectionLabel}>Slides</p>
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1.5">
-              <label className="text-xs font-medium" style={{ color: "var(--text-muted)" }}>AI slides:</label>
-              <input
+              <label htmlFor="lessonform-ai-slides" className="text-xs font-medium" style={{ color: "var(--text-muted)" }}>AI slides:</label>
+              <input id="lessonform-ai-slides"
                 type="number"
                 min={1}
                 max={20}
@@ -574,7 +574,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
                   </button>
                 </div>
               </div>
-              <input
+              <input aria-label={`Slide ${i + 1} title`}
                 type="text"
                 value={slide.title}
                 onChange={(e) => setSlide(i, "title", e.target.value)}
@@ -582,7 +582,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
                 className={inputClass}
                 style={{ background: "var(--bg-card)", color: "var(--text-primary)", border: "1px solid var(--border)" }}
               />
-              <textarea
+              <textarea aria-label={`Slide ${i + 1} content`}
                 value={slide.body}
                 onChange={(e) => setSlide(i, "body", e.target.value)}
                 rows={4}
@@ -603,14 +603,14 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
         </div>
         {postSlideSections.map(({ id, label, hint, rows }) => (
           <div key={id}>
-            <label className="flex items-center gap-2 text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
+            <label htmlFor={`lessonform-section-${id}`} className="flex items-center gap-2 text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
               {label}
               {aiFilledFields.has(id) && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-[#0cc0df] px-2 py-0.5 text-[10px] font-bold text-[#0a0b13] shadow-sm">✦ AI</span>
               )}
             </label>
             {hint && <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>{hint}</p>}
-            <textarea
+            <textarea id={`lessonform-section-${id}`}
               value={form.sections?.[id] ?? ""}
               onChange={(e) => { setSection(id, e.target.value); setAiFilledFields(prev => { const next = new Set(prev); next.delete(id); return next; }); }}
               rows={rows ?? 4}
@@ -630,7 +630,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
           </div>
           <SectionClearBtn onClick={() => clearSection(["notes"])} />
         </div>
-        <textarea
+        <textarea aria-label="Instructor notes"
           value={form.notes ?? ""}
           onChange={(e) => set("notes", e.target.value)}
           rows={4}

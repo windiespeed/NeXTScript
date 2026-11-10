@@ -172,8 +172,8 @@ export default function EditSlidesPage() {
         <p className={sectionLabel}>Assignment</p>
 
         <div>
-          <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Course</label>
-          <select
+          <label htmlFor="slides-id-course" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Course</label>
+          <select id="slides-id-course"
             value={selectedCourseId}
             onChange={e => setSelectedCourseId(e.target.value)}
             className={inputClass}
@@ -186,10 +186,10 @@ export default function EditSlidesPage() {
 
         {selectedCourseId && modules.length > 0 && (
           <div>
-            <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
+            <label htmlFor="slides-id-module-optional" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
               Module <span className="font-normal" style={{ color: "var(--text-muted)" }}>(optional)</span>
             </label>
-            <select
+            <select id="slides-id-module-optional"
               value={selectedModuleId}
               onChange={e => setSelectedModuleId(e.target.value)}
               className={inputClass}

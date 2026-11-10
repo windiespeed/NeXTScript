@@ -555,20 +555,20 @@ function IngestPageInner() {
           <div className={cardClass} style={cardStyle}>
             <p className={sectionLabel}>Assignment</p>
             <div>
-              <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
+              <label htmlFor="ingest-course" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
                 Course <span className="text-[var(--danger-text)]">*</span>
               </label>
-              <select required disabled={lockedFromQuery} value={selectedCourseId} onChange={e => setSelectedCourseId(e.target.value)} className={inputClass} style={inputStyle}>
+              <select id="ingest-course" required disabled={lockedFromQuery} value={selectedCourseId} onChange={e => setSelectedCourseId(e.target.value)} className={inputClass} style={inputStyle}>
                 <option value="">— Select a course —</option>
                 {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
               </select>
             </div>
             {selectedCourseId && modules.length > 0 && !lockedFromQuery && (
               <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
+                <label htmlFor="ingest-module-optional" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
                   Module <span className="font-normal" style={{ color: "var(--text-muted)" }}>(optional)</span>
                 </label>
-                <select value={selectedModuleId} onChange={e => setSelectedModuleId(e.target.value)} className={inputClass} style={inputStyle}>
+                <select id="ingest-module-optional" value={selectedModuleId} onChange={e => setSelectedModuleId(e.target.value)} className={inputClass} style={inputStyle}>
                   <option value="">— No module —</option>
                   {modules.map(m => <option key={m.id} value={m.id}>{m.title}</option>)}
                 </select>
@@ -585,10 +585,10 @@ function IngestPageInner() {
               </div>
             ) : selectedCourseId && (
               <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
+                <label htmlFor="ingest-attach-to-lesson-optional" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
                   Attach to Lesson <span className="font-normal" style={{ color: "var(--text-muted)" }}>(optional)</span>
                 </label>
-                <select value={selectedExistingLessonId} onChange={e => handlePickExistingLesson(e.target.value)} className={inputClass} style={inputStyle}>
+                <select id="ingest-attach-to-lesson-optional" value={selectedExistingLessonId} onChange={e => handlePickExistingLesson(e.target.value)} className={inputClass} style={inputStyle}>
                   <option value="">— Create new lesson —</option>
                   {courseLessons.map(l => <option key={l.id} value={l.id}>{l.title}{l.subtitle ? ` — ${l.subtitle}` : ""}</option>)}
                 </select>
@@ -616,11 +616,11 @@ function IngestPageInner() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
+              <label htmlFor="ingest-lesson-title-used-by-ai" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
                 Lesson Title <span className="text-[var(--danger-text)]">*</span> {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span>}
               </label>
               <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>Module number and lesson number (e.g. Module 3, Lesson 2)</p>
-              <input
+              <input id="ingest-lesson-title-used-by-ai"
                 required
                 type="text"
                 value={title}
@@ -632,11 +632,11 @@ function IngestPageInner() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
+              <label htmlFor="ingest-lesson-subtitle-used-by-ai" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
                 Lesson Subtitle {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span>}
               </label>
               <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>Specific topic or subject covered in this lesson</p>
-              <input
+              <input id="ingest-lesson-subtitle-used-by-ai"
                 type="text"
                 value={subtitle}
                 onChange={e => setSubtitle(e.target.value)}
@@ -647,11 +647,11 @@ function IngestPageInner() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
+              <label htmlFor="ingest-topics-used-by-ai" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
                 Topics {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span>}
               </label>
               <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>Comma-separated. Extra context passed to Notes to Slides alongside your raw notes.</p>
-              <input
+              <input id="ingest-topics-used-by-ai"
                 type="text"
                 value={topics}
                 onChange={e => setTopics(e.target.value)}
@@ -663,9 +663,9 @@ function IngestPageInner() {
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Deadline</label>
+                <label htmlFor="ingest-deadline" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Deadline</label>
                 <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>The due date for this lesson&apos;s assignments.</p>
-                <input
+                <input id="ingest-deadline"
                   type="date"
                   value={deadline}
                   onChange={e => setDeadline(e.target.value)}
@@ -675,9 +675,9 @@ function IngestPageInner() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Lesson Type</label>
+                <label htmlFor="ingest-lesson-type" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Lesson Type</label>
                 <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>Classify the type of activity for this lesson.</p>
-                <select
+                <select id="ingest-lesson-type"
                   value={lessonType}
                   onChange={e => setLessonType(e.target.value as LessonType)}
                   className={inputClass}
@@ -693,7 +693,7 @@ function IngestPageInner() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
+              <label htmlFor="ingest-sources-used-by-ai" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
                 Sources {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span>}
               </label>
               <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>
@@ -702,7 +702,7 @@ function IngestPageInner() {
                   ? " Pre-filled from your default sources — add, remove, or edit as needed for this lesson."
                   : " No sources set — add URLs or configure defaults in your Profile settings."}
               </p>
-              <textarea
+              <textarea id="ingest-sources-used-by-ai"
                 value={sources}
                 onChange={e => setSources(e.target.value)}
                 rows={4}
@@ -794,10 +794,10 @@ function IngestPageInner() {
 
               {/* Content */}
               <div className="lg:col-span-3 flex flex-col">
-                <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
+                <label htmlFor="ingest-content-notes-outline-or-brain" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
                   Content · notes, outline, or brain-dump <span className="text-[var(--danger-text)]">*</span>
                 </label>
-                <textarea
+                <textarea id="ingest-content-notes-outline-or-brain"
                   value={rawText}
                   onChange={e => setRawText(e.target.value)}
                   rows={14}
@@ -809,8 +809,8 @@ function IngestPageInner() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>AI Model</label>
-              <select value={aiModel} onChange={e => setAiModel(e.target.value as IngestModelId)} className={inputClass} style={inputStyle}>
+              <label htmlFor="ingest-ai-model" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>AI Model</label>
+              <select id="ingest-ai-model" value={aiModel} onChange={e => setAiModel(e.target.value as IngestModelId)} className={inputClass} style={inputStyle}>
                 <optgroup label="Claude">
                   {INGEST_MODEL_OPTIONS.filter(m => m.provider === "anthropic").map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
                 </optgroup>
@@ -825,13 +825,13 @@ function IngestPageInner() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
+                <label htmlFor="ingest-target-audience-optional" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
                   Target Audience <span className="font-normal" style={{ color: "var(--text-muted)" }}>(optional)</span>
                 </label>
                 <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>
                   Only needed if Student Level above isn&apos;t specific enough — e.g. a grade level or prior-course context.
                 </p>
-                <input
+                <input id="ingest-target-audience-optional"
                   type="text"
                   value={targetAudience}
                   onChange={e => setTargetAudience(e.target.value)}
@@ -841,7 +841,7 @@ function IngestPageInner() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
+                <label htmlFor="ingest-approx-slide-count-optional" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
                   Approx. Slide Count <span className="font-normal" style={{ color: "var(--text-muted)" }}>(optional)</span>
                 </label>
                 {/* Invisible twin of the Target Audience hint (same classes/text) so both inputs
@@ -849,7 +849,7 @@ function IngestPageInner() {
                 <p className="text-xs mb-1 invisible" aria-hidden="true">
                   Only needed if Student Level above isn&apos;t specific enough — e.g. a grade level or prior-course context.
                 </p>
-                <input
+                <input id="ingest-approx-slide-count-optional"
                   type="number"
                   min={1}
                   max={30}
@@ -862,8 +862,8 @@ function IngestPageInner() {
               </div>
             </div>
 
-            {error && <p className="text-xs text-[var(--danger-text)]">{error}</p>}
-            {saveInfoError && <p className="text-xs text-[var(--danger-text)]">{saveInfoError}</p>}
+            {error && <p role="alert" className="text-xs text-[var(--danger-text)]">{error}</p>}
+            {saveInfoError && <p role="alert" className="text-xs text-[var(--danger-text)]">{saveInfoError}</p>}
 
             <div className="flex items-center gap-3">
               <button
@@ -965,8 +965,8 @@ function IngestPageInner() {
               {anchorNotes.map(note => <p key={note}>{note}</p>)}
             </div>
           )}
-          {exportError && <p className="text-xs text-[var(--danger-text)]">{exportError}</p>}
-          {saveError && <p className="text-xs text-[var(--danger-text)]">{saveError}</p>}
+          {exportError && <p role="alert" className="text-xs text-[var(--danger-text)]">{exportError}</p>}
+          {saveError && <p role="alert" className="text-xs text-[var(--danger-text)]">{saveError}</p>}
 
           {viewMode === "edit" ? (
             <SlideEditorPanel ast={ast} activeIndex={activeIndex} onChange={setAst} onActiveIndexChange={setActiveIndex} />

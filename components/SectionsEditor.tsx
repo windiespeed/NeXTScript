@@ -80,15 +80,15 @@ export default function SectionsEditor({ value, onChange, scope }: Props) {
       <div className="space-y-2">
         {value.map((s, i) => (
           <div key={s.id} className="flex items-center gap-2 rounded-xl px-3 py-2" style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)" }}>
-            <div className="flex flex-col shrink-0">
-              <button type="button" onClick={() => move(i, "up")} disabled={i === 0} title="Move up" className="p-0.5 rounded text-[var(--text-muted)] hover:text-[var(--accent-text)] disabled:opacity-20 transition">
+            <div className="flex shrink-0">
+              <button type="button" aria-label={`Move ${s.label || "section"} up`} onClick={() => move(i, "up")} disabled={i === 0} title="Move up" className="p-1.5 rounded text-[var(--text-muted)] hover:text-[var(--accent-text)] disabled:opacity-20 transition">
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
               </button>
-              <button type="button" onClick={() => move(i, "down")} disabled={i === value.length - 1} title="Move down" className="p-0.5 rounded text-[var(--text-muted)] hover:text-[var(--accent-text)] disabled:opacity-20 transition">
+              <button type="button" aria-label={`Move ${s.label || "section"} down`} onClick={() => move(i, "down")} disabled={i === value.length - 1} title="Move down" className="p-1.5 rounded text-[var(--text-muted)] hover:text-[var(--accent-text)] disabled:opacity-20 transition">
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
               </button>
             </div>
-            <input
+            <input aria-label={`Section ${i + 1} name`}
               type="text"
               value={s.label}
               onChange={e => update(s.id, { label: e.target.value })}

@@ -136,6 +136,7 @@ export default function Sidebar() {
   const [nav, setNav] = useState<NavItem[]>(DEFAULT_NAV);
   const dragIndex = useRef<number | null>(null);
   const [dragOver, setDragOver] = useState<number | null>(null);
+  const [reorderMsg, setReorderMsg] = useState("");
 
   const [sidebarCourses, setSidebarCourses] = useState<SidebarCourse[]>([]);
   const [sidebarLessons, setSidebarLessons] = useState<SidebarLesson[]>([]);
@@ -195,6 +196,38 @@ export default function Sidebar() {
     setDragOver(null);
   }
 
+  // Keyboard alternative to drag-and-drop: focus a grip and press ArrowUp/ArrowDown.
+  function moveNav(i: number, delta: number, navEl: HTMLElement | null) {
+    const j = i + delta;
+    if (j < 0 || j >= nav.length) return;
+    const next = [...nav];
+    const [moved] = next.splice(i, 1);
+    next.splice(j, 0, moved);
+    setNav(next);
+    saveOrder(next.map(n => n.href));
+    setReorderMsg(`${moved.label} moved to position ${j + 1} of ${next.length}`);
+    requestAnimationFrame(() => navEl?.querySelector<HTMLElement>(`[data-grip="${moved.href}"]`)?.focus());
+  }
+
+  function gripButton(item: NavItem, i: number, className: string) {
+    return (
+      <button
+        type="button"
+        data-grip={item.href}
+        aria-label={`Reorder ${item.label}. Use up and down arrow keys.`}
+        title="Drag, or use arrow keys, to reorder"
+        onKeyDown={e => {
+          if (e.key === "ArrowUp") { e.preventDefault(); moveNav(i, -1, e.currentTarget.closest("nav")); }
+          if (e.key === "ArrowDown") { e.preventDefault(); moveNav(i, 1, e.currentTarget.closest("nav")); }
+        }}
+        className={`${className} rounded opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity cursor-grab active:cursor-grabbing`}
+        style={{ color: "var(--text-muted)" }}
+      >
+        {gripSVG}
+      </button>
+    );
+  }
+
   function renderCoursesItem(item: NavItem, i: number) {
     const active = isActive(item.href);
     return (
@@ -221,12 +254,7 @@ export default function Sidebar() {
             </span>
             <span className="truncate">{item.label}</span>
           </Link>
-          <div
-            className="flex-shrink-0 p-1 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing"
-            style={{ color: "var(--text-muted)" }}
-          >
-            {gripSVG}
-          </div>
+          {gripButton(item, i, "flex-shrink-0 p-1")}
           <button
             onClick={() => setCoursesOpen(o => !o)}
             aria-label={coursesOpen ? "Hide courses" : "Show courses"}
@@ -348,6 +376,7 @@ export default function Sidebar() {
 
   const sidebarContent = (
     <nav aria-label="Main" className="flex-1 overflow-y-auto px-3 py-4 flex flex-col">
+      <p className="sr-only" role="status">{reorderMsg}</p>
       <div className="space-y-1.5 flex-1">
         {nav.map((item, i) => {
           if (item.href === "/courses") return renderCoursesItem(item, i);
@@ -376,12 +405,7 @@ export default function Sidebar() {
                 </span>
                 {item.label}
               </Link>
-              <div
-                className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing"
-                style={{ color: "var(--text-muted)" }}
-              >
-                {gripSVG}
-              </div>
+              {gripButton(item, i, "absolute right-2 top-1/2 -translate-y-1/2 p-1")}
             </div>
           );
         })}

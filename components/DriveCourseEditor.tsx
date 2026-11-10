@@ -10,6 +10,7 @@ import {
   DragOverlay,
   closestCenter,
   PointerSensor,
+  KeyboardSensor,
   useSensor,
   useSensors,
   useDroppable,
@@ -21,6 +22,7 @@ import {
   useSortable,
   verticalListSortingStrategy,
   arrayMove,
+  sortableKeyboardCoordinates,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import Dialog from "@/components/ui/Dialog";
@@ -77,7 +79,8 @@ function SortableLessonItem({ id, render }: { id: string; render: (s: SortablePr
           <div
             {...listeners} {...attributes}
             title="Drag to reorder"
-            className="p-1 rounded-full cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition shrink-0"
+            aria-label="Reorder lesson"
+            className="p-1 rounded-full cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 [@media(hover:none)]:opacity-100 transition shrink-0"
             style={{ color: "var(--text-muted)" }}
           >
             {gripSVG}
@@ -182,7 +185,10 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
     addResourceOpen, newResourceLabel, newResourceUrl, editingModuleId, editModuleTitle,
   }, !loading);
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
 
   useEffect(() => {
     try {
@@ -714,8 +720,8 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
               <div key={r.id} className="group inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold"
                 style={{ background: "var(--accent-purple-bg)", border: "1px solid rgba(99,102,241,0.30)", color: "var(--accent-purple)" }}>
                 <a href={r.url} target="_blank" rel="noopener noreferrer" className="hover:underline">{r.label} ↗</a>
-                <button onClick={() => handleRemoveResource(r.id)}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity text-[var(--danger-text)] hover:text-[var(--danger-text)] leading-none">×</button>
+                <button aria-label={`Remove ${r.label}`} onClick={() => handleRemoveResource(r.id)}
+                  className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity text-[var(--danger-text)] hover:text-[var(--danger-text)] leading-none">×</button>
               </div>
             ))}
           </div>
@@ -724,7 +730,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
 
       {/* Release feedback */}
       {releaseMsg && (
-        <div className="rounded-2xl px-4 py-2.5 text-xs font-medium" style={{
+        <div role="status" className="rounded-2xl px-4 py-2.5 text-xs font-medium" style={{
           background: releaseMsg.ok ? "rgba(45,212,160,0.08)" : "rgba(239,68,68,0.08)",
           border: `1px solid ${releaseMsg.ok ? "rgba(45,212,160,0.25)" : "rgba(239,68,68,0.25)"}`,
           color: releaseMsg.ok ? "var(--success-text)" : "var(--danger-text)",
@@ -974,7 +980,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                       );
                     })()}
                     {(course?.assignedConcepts?.length ?? 0) > 0 && !selecting && (
-                      <select
+                      <select aria-label={`Concept for ${lesson.title}`}
                         value={lesson.concept ?? ""}
                         onChange={e => { e.stopPropagation(); handlePatchLesson(lesson.id, { concept: e.target.value || undefined }); }}
                         onClick={e => e.stopPropagation()}
@@ -1072,8 +1078,8 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                         <div className="absolute right-0 top-full mt-1 z-30 rounded-2xl p-3 min-w-[200px] space-y-3" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)" }}>
                           <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>NeXTBox Overrides</p>
                           <div>
-                            <label className="block text-[10px] mb-1" style={{ color: "var(--text-muted)" }}>Progress Mode</label>
-                            <select
+                            <label htmlFor={`progress-mode-${lesson.id}`} className="block text-[10px] mb-1" style={{ color: "var(--text-muted)" }}>Progress Mode</label>
+                            <select id={`progress-mode-${lesson.id}`}
                               value={lesson.progressMode ?? ""}
                               onChange={e => handlePatchLesson(lesson.id, { progressMode: (e.target.value || undefined) as any })}
                               className="w-full rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[var(--focus-ring)]"
@@ -1085,8 +1091,8 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                             </select>
                           </div>
                           <div>
-                            <label className="block text-[10px] mb-1" style={{ color: "var(--text-muted)" }}>Solution After (attempts)</label>
-                            <input
+                            <label htmlFor={`solution-after-${lesson.id}`} className="block text-[10px] mb-1" style={{ color: "var(--text-muted)" }}>Solution After (attempts)</label>
+                            <input id={`solution-after-${lesson.id}`}
                               type="number" min="1"
                               value={lesson.solutionRevealAttempts ?? ""}
                               onChange={e => handlePatchLesson(lesson.id, { solutionRevealAttempts: e.target.value === "" ? null : parseInt(e.target.value, 10) })}
@@ -1148,11 +1154,11 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                     <div key={mod.id} className="rounded-3xl" style={{ border: "1px solid var(--border)" }}>
                       <div className={`flex items-center gap-2 px-4 py-2.5 rounded-t-3xl ${collapsed ? "rounded-b-3xl" : ""}`}
                         style={{ background: "var(--bg-card)", borderBottom: collapsed ? undefined : "1px solid var(--border)" }}>
-                        <button onClick={() => toggleModuleCollapse(mod.id)} className="p-0.5 rounded transition hover:bg-[var(--bg-card)]" style={{ color: "var(--text-muted)" }}>
+                        <button aria-label={collapsed ? `Expand ${mod.title}` : `Collapse ${mod.title}`} aria-expanded={!collapsed} onClick={() => toggleModuleCollapse(mod.id)} className="p-1 rounded transition hover:bg-[var(--bg-card)]" style={{ color: "var(--text-muted)" }}>
                           <svg xmlns="http://www.w3.org/2000/svg" className={`w-3.5 h-3.5 transition-transform ${collapsed ? "-rotate-90" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
                         </button>
                         {editingModuleId === mod.id ? (
-                          <input autoFocus value={editModuleTitle} onChange={e => setEditModuleTitle(e.target.value)}
+                          <input aria-label="Module title" autoFocus value={editModuleTitle} onChange={e => setEditModuleTitle(e.target.value)}
                             onBlur={() => handleSaveModuleTitle(mod.id)}
                             onKeyDown={e => { if (e.key === "Enter") handleSaveModuleTitle(mod.id); if (e.key === "Escape") setEditingModuleId(null); }}
                             className="flex-1 rounded-md px-2 py-0.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
@@ -1190,8 +1196,8 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                           <div className="flex items-center gap-4 px-4 py-2 border-b" style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}>
                             <span className="text-[10px] font-semibold uppercase tracking-widest shrink-0" style={{ color: "var(--text-muted)" }}>NeXTBox</span>
                             <div className="flex items-center gap-1.5">
-                              <label className="text-[10px]" style={{ color: "var(--text-muted)" }}>Progress:</label>
-                              <select
+                              <label htmlFor={`module-progress-${mod.id}`} className="text-[10px]" style={{ color: "var(--text-muted)" }}>Progress:</label>
+                              <select id={`module-progress-${mod.id}`}
                                 value={mod.progressMode ?? ""}
                                 onChange={e => saveModules(driveModules.map(m => m.id === mod.id ? { ...m, progressMode: (e.target.value || undefined) as any } : m))}
                                 className="rounded px-1.5 py-0.5 text-[10px] focus:outline-none focus:ring-1 focus:ring-[var(--focus-ring)]"
@@ -1203,8 +1209,8 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                               </select>
                             </div>
                             <div className="flex items-center gap-1.5">
-                              <label className="text-[10px]" style={{ color: "var(--text-muted)" }}>Solution after:</label>
-                              <input
+                              <label htmlFor={`module-solution-after-${mod.id}`} className="text-[10px]" style={{ color: "var(--text-muted)" }}>Solution after:</label>
+                              <input id={`module-solution-after-${mod.id}`}
                                 type="number" min="1"
                                 value={mod.solutionRevealAttempts ?? ""}
                                 onChange={e => saveModules(driveModules.map(m => m.id === mod.id ? { ...m, solutionRevealAttempts: e.target.value === "" ? null : parseInt(e.target.value, 10) } : m))}
@@ -1233,7 +1239,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                                 <div className="absolute right-0 top-full mt-1 z-50 rounded-xl shadow-lg p-3 min-w-[220px]"
                                   style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
                                   <div className="flex items-center gap-2 mb-2 pb-2" style={{ borderBottom: "1px solid var(--border)" }}>
-                                    <input
+                                    <input aria-label="Select all lessons in module"
                                       type="checkbox"
                                       checked={releasePickerSelected.size === modLessons.length && modLessons.length > 0}
                                       onChange={e => setReleasePickerSelected(e.target.checked ? new Set(modLessons.map(l => l.id)) : new Set())} />
@@ -1327,7 +1333,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
           <div className="relative w-full max-w-lg max-h-[80vh] flex flex-col rounded-3xl overflow-hidden" style={{ background: "var(--bg-card)", boxShadow: "var(--shadow-float)" }}>
             <div className="flex items-center justify-between px-6 py-4 shrink-0" style={{ borderBottom: "1px solid var(--border)" }}>
               <h2 id="add-existing-lessons-title" className="text-base font-bold" style={{ color: "var(--text-primary)" }}>Add Existing Lessons</h2>
-              <button onClick={() => setAddExistingOpen(false)} className="p-1.5 rounded-full transition hover:bg-[var(--bg-card-hover)]" style={{ color: "var(--text-muted)" }}>
+              <button aria-label="Close" onClick={() => setAddExistingOpen(false)} className="p-1.5 rounded-full transition hover:bg-[var(--bg-card-hover)]" style={{ color: "var(--text-muted)" }}>
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
             </div>
@@ -1369,19 +1375,19 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
           <div className="relative w-full max-w-sm rounded-3xl overflow-hidden" style={{ background: "var(--bg-card)", boxShadow: "var(--shadow-float)" }}>
             <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: "1px solid var(--border)" }}>
               <h2 id="add-resource-title" className="text-base font-bold" style={{ color: "var(--text-primary)" }}>Add Resource</h2>
-              <button onClick={() => setAddResourceOpen(false)} className="p-1.5 rounded-full transition hover:bg-[var(--bg-card-hover)]" style={{ color: "var(--text-muted)" }}>
+              <button aria-label="Close" onClick={() => setAddResourceOpen(false)} className="p-1.5 rounded-full transition hover:bg-[var(--bg-card-hover)]" style={{ color: "var(--text-muted)" }}>
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
             </div>
             <div className="px-6 py-5 space-y-4">
               <div>
-                <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Label</label>
-                <input type="text" value={newResourceLabel} onChange={e => setNewResourceLabel(e.target.value)}
+                <label htmlFor="drivecourseeditor-label" className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Label</label>
+                <input id="drivecourseeditor-label" type="text" value={newResourceLabel} onChange={e => setNewResourceLabel(e.target.value)}
                   placeholder="e.g. Syllabus, Reference Sheet" className={inputClass} style={inputStyle} autoFocus />
               </div>
               <div>
-                <label className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>URL</label>
-                <input type="url" value={newResourceUrl} onChange={e => setNewResourceUrl(e.target.value)}
+                <label htmlFor="drivecourseeditor-url" className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>URL</label>
+                <input id="drivecourseeditor-url" type="url" value={newResourceUrl} onChange={e => setNewResourceUrl(e.target.value)}
                   placeholder="https://drive.google.com/…" className={inputClass} style={inputStyle} />
               </div>
             </div>
