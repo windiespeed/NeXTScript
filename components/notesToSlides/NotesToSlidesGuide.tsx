@@ -20,11 +20,11 @@ const STEPS: { title: string; body: string }[] = [
   },
   {
     title: "Generate, then review",
-    body: "Use the arrow keys to page through the preview and Edit Slides to fix any slide. Save Draft keeps your work on the lesson without exporting.",
+    body: "Use the arrow keys to page through the preview and Edit Slides to fix any slide. Save Draft keeps the deck on its lesson without exporting and clears the form; reopen it from the lesson page.",
   },
   {
     title: "Export to Drive",
-    body: "Export saves the deck into the lesson's Drive folder and lists it under the lesson's Documents.",
+    body: "Export saves the deck into the lesson's Drive folder, lists it under the lesson's Documents, and clears the form for your next deck.",
   },
   {
     title: "Push to Google Classroom",
