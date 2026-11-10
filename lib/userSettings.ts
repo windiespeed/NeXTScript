@@ -11,6 +11,8 @@ const COLLECTION = "userSettings";
 export interface UserSettings {
   anthropicKey?: string;
   geminiKey?: string;
+  /** Profile → Advanced: "auto" or an AI model id (see lib/aiModels.ts). Absent = "auto". */
+  preferredAiModel?: string;
   avatarUrl?: string;
   defaultSources?: string;
   folders?: string[];

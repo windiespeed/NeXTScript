@@ -18,6 +18,7 @@ export async function GET() {
       hasKey: !!s.anthropicKey,
       maskedKey: s.anthropicKey ? `${s.anthropicKey.slice(0, 12)}…${s.anthropicKey.slice(-4)}` : null,
       hasGeminiKey: !!s.geminiKey,
+      preferredAiModel: s.preferredAiModel ?? "auto",
       maskedGeminiKey: s.geminiKey ? `${s.geminiKey.slice(0, 12)}…${s.geminiKey.slice(-4)}` : null,
       avatarUrl: s.avatarUrl ?? null,
       defaultSources: s.defaultSources ?? "",
@@ -52,6 +53,7 @@ export async function PUT(req: Request) {
     if (body.subject !== undefined) update.subject = body.subject ?? "";
     if (body.sectionLabels !== undefined) update.sectionLabels = body.sectionLabels ?? {};
     if (body.sections !== undefined) update.sections = body.sections ?? [];
+    if (body.preferredAiModel !== undefined) update.preferredAiModel = body.preferredAiModel ?? "auto";
 
     await userSettings.save(session.user.email, update);
     return NextResponse.json({ success: true });

@@ -9,7 +9,7 @@ import { parsePatch } from "@/lib/validation";
 import { userSettings } from "@/lib/userSettings";
 import { loadCourseSkeleton } from "@/lib/courseSkeleton";
 import { DeckGenerationError, generateDeck } from "@/lib/deck/generate";
-import { DEFAULT_DECK_MODEL, DECK_MODELS, isDeckModelId } from "@/lib/deck/models";
+import { resolveAiModel, type ClaudeModelId } from "@/lib/aiModels";
 import type { Lesson } from "@/types/lesson";
 
 export const dynamic = "force-dynamic";
@@ -24,7 +24,6 @@ const generateSchema = z.object({
   notes: z.string().min(1).max(60_000),
   lessonTitle: z.string().max(200).optional(),
   audience: z.string().max(500).optional(),
-  model: z.enum(DECK_MODELS.map(m => m.id) as [string, ...string[]]).optional(),
   lessonId: z.string().max(200).optional(),
   courseId: z.string().max(200).optional(),
   themeId: z.string().max(100).optional(),
@@ -73,7 +72,8 @@ export async function POST(req: Request) {
         lessonTitle: input.lessonTitle ?? lesson?.title,
         audience: input.audience,
         context: context || undefined,
-        model: isDeckModelId(input.model) ? input.model : DEFAULT_DECK_MODEL,
+        // Claude only (structured outputs): the saved preference if it's a Claude model, else the default.
+        model: resolveAiModel(settings.preferredAiModel, { anthropic: true, gemini: false }, ["anthropic"]) as ClaudeModelId,
       });
     } catch (err) {
       if (err instanceof DeckGenerationError) return NextResponse.json({ error: err.message, reason: err.reason }, { status: 422 });

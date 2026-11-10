@@ -58,7 +58,7 @@ describe("generateDeck", () => {
     const r = await generateDeck("k", { notes: "components and props", lessonTitle: "React" }, client);
     expect(r.attempts).toBe(1);
     expect(r.deck.slides).toHaveLength(SAMPLE_DECK.slides.length);
-    expect(r.model).toBe("claude-opus-5-5");
+    expect(r.model).toBe("claude-sonnet-5-5");
     const params = calls[0] as unknown as { output_config: { effort: string; format: { type: string } }; max_tokens: number };
     expect(params.output_config.format.type).toBe("json_schema");
     expect(params.output_config.effort).toBe("high");

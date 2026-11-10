@@ -1,6 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import type { PresentationAST } from "@/types/slideAst";
-import type { IngestModelId } from "@/lib/ingestModels";
+import { DEFAULT_MODEL, type AiModelId } from "@/lib/aiModels";
 import {
   CURRICULUM_ARCHITECT_SYSTEM_PROMPT,
   PRESENTATION_AST_JSON_SCHEMA,
@@ -25,13 +25,13 @@ import {
 export async function ingestRawContentGemini(
   apiKey: string,
   rawText: string,
-  opts: IngestionOptions & { model?: IngestModelId } = {}
+  opts: IngestionOptions & { model?: AiModelId } = {}
 ): Promise<PresentationAST> {
   if (!rawText.trim()) throw new Error("Nothing to ingest — the input was empty.");
 
   const client = new GoogleGenAI({ apiKey });
   const userContent = buildUserPrompt(rawText, opts);
-  const modelId = opts.model ?? "gemini-3.1-pro-preview";
+  const modelId = opts.model ?? DEFAULT_MODEL.gemini;
 
   const interaction = await client.interactions.create({
     model: modelId,

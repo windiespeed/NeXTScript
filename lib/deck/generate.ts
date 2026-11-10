@@ -12,11 +12,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import { DeckSchema, LIMITS } from "./schema";
 import type { DeckContent } from "./schema";
 import { toStructuredOutputSchema } from "./wireSchema";
-import { DECK_MODELS, DEFAULT_DECK_MODEL } from "./models";
-import type { DeckModelId } from "./models";
+import { DEFAULT_MODEL, getAiModel, type ClaudeModelId } from "@/lib/aiModels";
 
-export { DECK_MODELS, DEFAULT_DECK_MODEL, isDeckModelId } from "./models";
-export type { DeckModelId } from "./models";
 
 export const DECK_SYSTEM_PROMPT = `You write slide decks for NeXTStack, Mississippi Coding Academies' full-stack developer program. Students are adults learning to code; instructors teach live, in person.
 
@@ -50,12 +47,12 @@ export interface GenerateDeckInput {
   audience?: string;
   /** Free-text extra context: course name, week, what came before. */
   context?: string;
-  model?: DeckModelId;
+  model?: ClaudeModelId;
 }
 
 export interface GenerateDeckResult {
   deck: DeckContent;
-  model: DeckModelId;
+  model: ClaudeModelId;
   /** 1 when the first response was valid, 2 when it needed the repair turn. */
   attempts: number;
   usage: { input: number; output: number };
@@ -101,8 +98,8 @@ function textOf(message: Anthropic.Message): string {
 
 export async function generateDeck(apiKey: string, input: GenerateDeckInput, client = new Anthropic({ apiKey })): Promise<GenerateDeckResult> {
   if (!input.notes.trim()) throw new DeckGenerationError("Add some notes first.", "empty");
-  const model = input.model ?? DEFAULT_DECK_MODEL;
-  const effort = DECK_MODELS.find(m => m.id === model)!.effort;
+  const model: ClaudeModelId = input.model ?? (DEFAULT_MODEL.anthropic as ClaudeModelId);
+  const effort = getAiModel(model).effort ?? "high";
   const wireFormat = { type: "json_schema" as const, schema: toStructuredOutputSchema(DeckSchema) };
 
   const messages: Anthropic.MessageParam[] = [{ role: "user", content: buildUserMessage(input) }];

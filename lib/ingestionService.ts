@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { PresentationAST } from "@/types/slideAst";
-import { INGEST_MODEL_OPTIONS, DEFAULT_INGEST_MODEL, type IngestModelId } from "@/lib/ingestModels";
+import { DEFAULT_MODEL, getAiModel, type ClaudeModelId } from "@/lib/aiModels";
 import {
   CURRICULUM_ARCHITECT_SYSTEM_PROMPT,
   buildUserPrompt,
@@ -22,20 +22,21 @@ import {
 export async function ingestRawContent(
   apiKey: string,
   rawText: string,
-  opts: IngestionOptions & { model?: IngestModelId } = {}
+  opts: IngestionOptions & { model?: ClaudeModelId } = {}
 ): Promise<PresentationAST> {
   if (!rawText.trim()) throw new Error("Nothing to ingest — the input was empty.");
 
   const client = new Anthropic({ apiKey });
   const userContent = buildUserPrompt(rawText, opts);
-  const modelId = opts.model ?? DEFAULT_INGEST_MODEL;
-  // Adaptive thinking is only supported on 4.6-tier-and-newer models — Haiku 4.5 rejects
-  // the `thinking` param outright, so it's only included for models that support it.
-  const supportsAdaptiveThinking = INGEST_MODEL_OPTIONS.find(m => m.id === modelId)?.supportsAdaptiveThinking ?? false;
+  const modelId: ClaudeModelId = opts.model ?? (DEFAULT_MODEL.anthropic as ClaudeModelId);
+  // Every current Claude model thinks adaptively; effort is set explicitly because the models'
+  // own defaults differ (Opus 5.5 and Haiku 5.5 default to medium, Sonnet 5.5 to high).
+  const effort = getAiModel(modelId).effort ?? "high";
   const requestParams = {
     model: modelId,
     max_tokens: 24000,
-    ...(supportsAdaptiveThinking ? { thinking: { type: "adaptive" as const } } : {}),
+    thinking: { type: "adaptive" as const },
+    output_config: { effort },
     system: CURRICULUM_ARCHITECT_SYSTEM_PROMPT,
     // Hard caps deliberately tighter than they used to be — each fetch/search costs real
     // wall-clock time against Vercel's maxDuration (300s), and a long/complex raw-notes input

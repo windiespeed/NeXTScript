@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { DeckContent } from "@/lib/deck/schema";
-import { DECK_MODELS, DEFAULT_DECK_MODEL } from "@/lib/deck/models";
+import AiModelNote from "@/components/AiModelNote";
+import type { SavedKeys } from "@/lib/aiModels";
 
 const inputClass = "w-full rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)] transition placeholder:text-[var(--text-muted)]";
 const inputStyle = { background: "var(--bg-card-hover)", color: "var(--text-primary)", border: "1px solid var(--border)" };
@@ -11,9 +12,23 @@ const inputStyle = { background: "var(--bg-card-hover)", color: "var(--text-prim
 export default function DeckGeneratePanel({ onDeck }: { onDeck: (deck: DeckContent) => void }) {
   const [notes, setNotes] = useState("");
   const [lessonTitle, setLessonTitle] = useState("");
-  const [model, setModel] = useState<string>(DEFAULT_DECK_MODEL);
+  // Which model runs is decided on the server from the saved key and Profile preference; this
+  // only loads enough to say which one.
+  const [keys, setKeys] = useState<SavedKeys | null>(null);
+  const [preference, setPreference] = useState<string>("auto");
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/user/settings")
+      .then(r => (r.ok ? r.json() : null))
+      .then(s => {
+        if (!s) return;
+        setKeys({ anthropic: !!s.hasKey, gemini: !!s.hasGeminiKey });
+        setPreference(s.preferredAiModel ?? "auto");
+      })
+      .catch(() => {});
+  }, []);
 
   async function generate() {
     setBusy(true);
@@ -22,7 +37,7 @@ export default function DeckGeneratePanel({ onDeck }: { onDeck: (deck: DeckConte
       const res = await fetch("/api/deck/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ notes, model, ...(lessonTitle.trim() ? { lessonTitle: lessonTitle.trim() } : {}) }),
+        body: JSON.stringify({ notes, ...(lessonTitle.trim() ? { lessonTitle: lessonTitle.trim() } : {}) }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error ?? `Generation failed (${res.status}).`);
@@ -35,8 +50,6 @@ export default function DeckGeneratePanel({ onDeck }: { onDeck: (deck: DeckConte
       setBusy(false);
     }
   }
-
-  const modelHint = DECK_MODELS.find(m => m.id === model)?.hint;
 
   return (
     <section aria-labelledby="deck-generate-heading" className="space-y-3 rounded-2xl p-4" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
@@ -63,21 +76,7 @@ export default function DeckGeneratePanel({ onDeck }: { onDeck: (deck: DeckConte
           placeholder="Rough notes, an outline, or a brain-dump for one lesson."
         />
       </div>
-      <div>
-        <label htmlFor="deck-generate-model" className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-primary)" }}>
-          Model
-        </label>
-        <select id="deck-generate-model" className={inputClass} style={inputStyle} value={model} onChange={e => setModel(e.target.value)} aria-describedby="deck-generate-model-hint">
-          {DECK_MODELS.map(m => (
-            <option key={m.id} value={m.id}>
-              {m.label}
-            </option>
-          ))}
-        </select>
-        <p id="deck-generate-model-hint" className="mt-1 text-xs" style={{ color: "var(--text-muted)" }}>
-          {modelHint}. Uses the Anthropic key in your Settings.
-        </p>
-      </div>
+      <AiModelNote preference={preference} keys={keys} providers={["anthropic"]} />
       <button
         type="button"
         className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-xs font-bold text-[#0a0b13] transition hover:opacity-90 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
