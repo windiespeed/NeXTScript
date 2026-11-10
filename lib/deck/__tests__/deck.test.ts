@@ -169,12 +169,16 @@ describe("concept layout", () => {
 });
 
 describe("registry", () => {
-  it("routes concept slides and refuses types without a layout yet", () => {
+  it("routes every slide type to its layout", () => {
     expect(layoutSlide(concept()).slideId).toBe("s1");
     const title: DeckSlide = { id: "t", type: "title", title: "Day 1", notes };
-    expect(() => layoutSlide(title)).toThrow(UnsupportedSlideTypeError);
+    expect(layoutSlide(title).dark).toBe(true);
     const { slides, unsupported } = layoutDeck({ lessonTitle: "Components", slides: [title, concept()] });
-    expect(slides).toHaveLength(1);
-    expect(unsupported.map(s => s.type)).toEqual(["title"]);
+    expect(slides.map(s => s.slideId)).toEqual(["t", "s1"]);
+    expect(unsupported).toEqual([]);
+  });
+
+  it("refuses a slide type it doesn't know", () => {
+    expect(() => layoutSlide({ ...concept(), type: "mystery" } as never)).toThrow(UnsupportedSlideTypeError);
   });
 });

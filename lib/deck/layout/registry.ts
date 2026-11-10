@@ -2,12 +2,16 @@
  * Layout registry: one function per slide type, each returning positioned elements.
  * Adapters (HTML preview, pptx, Google Slides) consume `SlideLayout` and never repeat geometry.
  *
- * Only `concept` is implemented so far. The rest of the 14 types land in later steps of the
- * deck-builder plan; until then `layoutSlide` reports them as unsupported instead of guessing.
+ * Every one of the 14 slide types has a layout. `UnsupportedSlideTypeError` and the `unsupported`
+ * list stay as a guard for slide types added to the schema before their layout exists.
  */
 
 import type { DeckContent, DeckSlide, DeckSlideType, SlideOf } from "../schema";
+import { layoutCode } from "./code";
 import { layoutConcept } from "./concept";
+import { layoutAgenda, layoutExitTicket, layoutObjectives } from "./lists";
+import { layoutCards, layoutCompare, layoutLab, layoutPitfalls, layoutSteps } from "./panels";
+import { layoutCallout, layoutClosing, layoutSection, layoutTitle } from "./statement";
 import type { SlideLayout } from "./types";
 
 export type LayoutFn<T extends DeckSlideType> = (slide: SlideOf<T>) => SlideLayout;
@@ -15,7 +19,20 @@ export type LayoutFn<T extends DeckSlideType> = (slide: SlideOf<T>) => SlideLayo
 type Registry = { [T in DeckSlideType]?: LayoutFn<T> };
 
 export const LAYOUTS: Registry = {
+  title: layoutTitle,
+  agenda: layoutAgenda,
+  objectives: layoutObjectives,
   concept: layoutConcept,
+  code: layoutCode,
+  compare: layoutCompare,
+  cards: layoutCards,
+  steps: layoutSteps,
+  section: layoutSection,
+  callout: layoutCallout,
+  pitfalls: layoutPitfalls,
+  lab: layoutLab,
+  "exit-ticket": layoutExitTicket,
+  closing: layoutClosing,
 };
 
 export function hasLayout(type: DeckSlideType): boolean {

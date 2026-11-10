@@ -3,3 +3,8 @@ export * from "./layout/types";
 export * from "./layout/fit";
 export * from "./layout/registry";
 export { layoutConcept, CONCEPT } from "./layout/concept";
+export { layoutTitle, layoutSection, layoutCallout, layoutClosing } from "./layout/statement";
+export { layoutAgenda, layoutObjectives, layoutExitTicket } from "./layout/lists";
+export { layoutCompare, layoutCards, layoutSteps, layoutPitfalls, layoutLab } from "./layout/panels";
+export { layoutCode, CODE } from "./layout/code";
+export { GRID, HEADER, SlideBuilder } from "./layout/kit";

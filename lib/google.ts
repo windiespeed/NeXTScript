@@ -168,10 +168,21 @@ const PPTX_MIME = "application/vnd.openxmlformats-officedocument.presentationml.
 /** Uploads a .pptx file (as produced by lib/pptxDeck.ts) to Drive as a real PowerPoint file —
  * deliberately not converted to native Google Slides format, since that conversion is lossy.
  * Drive/Slides can open and edit a .pptx in place without conversion. */
-export async function uploadPptxToDrive(buffer: Buffer, name: string, accessToken: string): Promise<{ id: string; webViewLink: string }> {
+export const GOOGLE_SLIDES_MIME = "application/vnd.google-apps.presentation";
+
+/**
+ * Uploads a .pptx to Drive. With `convertToSlides`, Drive converts it to an editable Google
+ * Slides deck on the way in (speaker notes survive the conversion).
+ */
+export async function uploadPptxToDrive(
+  buffer: Buffer,
+  name: string,
+  accessToken: string,
+  opts: { convertToSlides?: boolean } = {},
+): Promise<{ id: string; webViewLink: string }> {
   const drive = google.drive({ version: "v3", auth: getAuthClient(accessToken) });
   const res = await drive.files.create({
-    requestBody: { name, mimeType: PPTX_MIME },
+    requestBody: { name, mimeType: opts.convertToSlides ? GOOGLE_SLIDES_MIME : PPTX_MIME },
     media: { mimeType: PPTX_MIME, body: Readable.from(buffer) },
     fields: "id, webViewLink",
   });
