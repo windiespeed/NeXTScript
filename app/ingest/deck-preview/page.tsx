@@ -53,8 +53,8 @@ export default function DeckPreviewPage() {
   return (
     <div className="space-y-6">
       <div className="space-y-1">
-        <Link href="/slides" className="text-xs font-semibold" style={{ color: "var(--accent-text)" }}>
-          ← Slides
+        <Link href="/ingest" className="text-xs font-semibold" style={{ color: "var(--accent-text)" }}>
+          ← Notes to Slides
         </Link>
         <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>
           Deck preview

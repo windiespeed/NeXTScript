@@ -248,17 +248,12 @@ export default function SlidesPage() {
             Create and edit slide content for your lessons.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <Link href="/slides/deck-preview" className="text-sm font-semibold" style={{ color: "var(--accent-text)" }}>
-            Deck preview (beta)
-          </Link>
-          <Link
-            href="/slides/new"
-            className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-bold text-[#0a0b13] hover:opacity-90 transition shadow"
-          >
-            + New Slides
-          </Link>
-        </div>
+        <Link
+          href="/slides/new"
+          className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-bold text-[#0a0b13] hover:opacity-90 transition shadow"
+        >
+          + New Slides
+        </Link>
       </div>
 
       {/* Filter pills */}
