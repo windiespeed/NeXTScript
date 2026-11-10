@@ -53,6 +53,18 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
+### Preview test login (optional)
+
+Signed-in flows can be tested on Vercel preview deployments without signing in with Google. Set these in Vercel for the **Preview** environment only:
+
+| Variable | Purpose |
+|---|---|
+| `TEST_LOGIN_SECRET` | Turns the test login on. At least 24 characters (`openssl rand -base64 32`). |
+| `TEST_LOGIN_EMAIL` | The test user's email. Defaults to `test@nextscript.test`; must pass `ALLOWED_EMAIL_DOMAINS`. |
+| `TEST_LOGIN_GOOGLE_REFRESH_TOKEN` | Optional. The refresh token of a dedicated test Google account, so Drive, Slides and Classroom work for the test user. Without it those features answer "No Google access token". |
+
+Then open `/api/auth/signin` on the preview, enter the secret under "Preview test login", and you're signed in as the test user. The test login is never registered when `VERCEL_ENV=production`, and also works under `npm run dev`. See `lib/testLogin.ts`.
+
 ## Workflow
 
 1. **Sign in with Google** (top right) — grants Drive/Slides/Docs/Forms access

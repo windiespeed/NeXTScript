@@ -1,6 +1,8 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
+import Credentials from "next-auth/providers/credentials";
 import { isAllowedEmail } from "@/lib/emailDomain";
+import { authorizeTestLogin, isTestLoginEnabled } from "@/lib/testLogin";
 
 // Bump this number whenever scope changes require all users to re-authenticate.
 const SESSION_VERSION = 3;
@@ -57,15 +59,36 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         },
       },
     }),
+    // Preview-only test login (lib/testLogin.ts). Never registered in production.
+    ...(isTestLoginEnabled()
+      ? [
+          Credentials({
+            id: "test-login",
+            name: "Preview test login",
+            credentials: { secret: { label: "Test login secret", type: "password" } },
+            authorize: (credentials) => authorizeTestLogin(credentials?.secret),
+          }),
+        ]
+      : []),
   ],
   callbacks: {
-    async signIn({ profile }) {
+    async signIn({ account, user, profile }) {
+      if (account?.provider === "test-login") return isTestLoginEnabled() && isAllowedEmail(user?.email);
       // Google only reports verified addresses for Workspace accounts, but check anyway.
       if (profile?.email_verified === false) return false;
       return isAllowedEmail(profile?.email);
     },
     async jwt({ token, account }) {
       // Store tokens on first sign-in
+      if (account?.provider === "test-login") {
+        // With a test Google account's refresh token, fetch a real access token right away
+        // (expiry 0 forces a refresh). Without one, the user simply has no Google access.
+        const refreshToken = process.env.TEST_LOGIN_GOOGLE_REFRESH_TOKEN;
+        const base = { ...token, sessionVersion: SESSION_VERSION, testLogin: true };
+        return refreshToken
+          ? refreshAccessToken({ ...base, refreshToken, accessTokenExpires: 0 })
+          : { ...base, accessTokenExpires: Number.MAX_SAFE_INTEGER };
+      }
       if (account) {
         return {
           ...token,
