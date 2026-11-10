@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import LessonForm from "@/components/LessonForm";
+import ClassicSlidesBanner from "@/components/notesToSlides/ClassicSlidesBanner";
 import type { Lesson, LessonInput } from "@/types/lesson";
 import type { Course, CourseModule } from "@/types/course";
 
@@ -158,14 +159,16 @@ export default function EditSlidesPage() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <button onClick={() => router.push(backHref)} className="text-sm text-[var(--accent-text)] hover:underline mb-2 block">
-            ← {lesson.courseId ? "Back to Lesson" : "Back to Slides"}
+            ← {lesson.courseId ? "Back to Lesson" : "Back to Classic Slides"}
           </button>
-          <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>Edit Slides</h1>
+          <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>Edit Lesson Content</h1>
           <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>
-            Edit content fields. Generate from the lesson hub.
+            These fields feed the Overview Doc, quizzes and Classic slide decks. Generate from the lesson hub.
           </p>
         </div>
       </div>
+
+      <ClassicSlidesBanner lessonId={id} />
 
       {/* ── Assignment ── */}
       <div className={cardClass} style={cardStyle}>

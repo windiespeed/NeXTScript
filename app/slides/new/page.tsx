@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import LessonForm from "@/components/LessonForm";
+import ClassicSlidesBanner from "@/components/notesToSlides/ClassicSlidesBanner";
 import type { LessonInput } from "@/types/lesson";
 import type { Course, CourseModule } from "@/types/course";
 
@@ -115,14 +116,16 @@ function NewSlidesInner() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <button onClick={() => router.push(backHref)} className="text-sm text-[var(--accent-text)] hover:underline mb-2 block">
-            ← {selectedCourseId ? "Back to Course" : "Back to Slides"}
+            ← {selectedCourseId ? "Back to Course" : "Back to Classic Slides"}
           </button>
-          <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>New Slides</h1>
+          <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>New Lesson (Classic Slides)</h1>
           <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>
             Add content for AI generation. Generate from the lesson hub.
           </p>
         </div>
       </div>
+
+      <ClassicSlidesBanner />
 
       {/* ── Assignment ── */}
       <div className={cardClass} style={cardStyle}>
