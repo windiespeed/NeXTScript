@@ -4,7 +4,7 @@ import Image from "next/image";
 import TopMenu from "@/components/TopMenu";
 import Avatar, { AVATAR_CHANGED_EVENT } from "@/components/Avatar";
 import Link from "next/link";
-import { useSession } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useMobileMenu } from "@/context/MobileMenu";
@@ -35,6 +35,65 @@ function ThemeToggle() {
         </svg>
       )}
     </button>
+  );
+}
+
+// MOCKUP: Profile/Settings live in a menu under your picture and name (top right).
+function AccountMenu({ name, email, sources }: { name?: string | null; email?: string | null; sources: (string | null | undefined)[] }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
+  const [lastPath, setLastPath] = useState(pathname);
+  if (pathname !== lastPath) { setLastPath(pathname); setOpen(false); }
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => { document.removeEventListener("mousedown", onDown); document.removeEventListener("keydown", onKey); };
+  }, [open]);
+
+  const item = "flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-left transition hover:bg-[var(--bg-card-hover)]";
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label="Account menu"
+        className="flex items-center gap-2.5 rounded-full px-2.5 py-1.5 transition hover:bg-[var(--bg-card-hover)]"
+      >
+        <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center" style={{ background: "var(--accent-purple-bg)" }}>
+          <Avatar sources={sources} name={name} email={email} initialsClassName="text-xs font-bold" initialsStyle={{ color: "var(--accent-purple)" }} />
+        </div>
+        <span className="text-sm font-medium hidden md:block" style={{ color: "var(--text-primary)" }}>{name?.split(" ")[0] ?? ""}</span>
+        <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+          className="hidden md:block" style={{ color: "var(--text-muted)", transform: open ? "rotate(180deg)" : "none", transition: "transform .2s" }}>
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </button>
+      {open && (
+        <div role="menu" className="absolute right-0 top-full z-50 mt-2 w-60 rounded-2xl p-2" style={{ background: "var(--bg-sidebar)", boxShadow: "var(--shadow-card)", border: "1px solid var(--border)" }}>
+          <div className="px-3 pb-2 pt-1" style={{ borderBottom: "1px solid var(--border)" }}>
+            <p className="truncate text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{name}</p>
+            <p className="truncate text-xs" style={{ color: "var(--text-muted)" }}>{email}</p>
+          </div>
+          <div className="pt-1">
+            <Link role="menuitem" href="/profile" className={item} style={{ color: "var(--text-secondary)" }}>
+              <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/></svg>
+              Profile &amp; settings
+            </Link>
+            <button role="menuitem" type="button" onClick={() => signOut({ callbackUrl: "/" })} className={item} style={{ color: "var(--text-secondary)" }}>
+              <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+              Sign out
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -138,29 +197,7 @@ export default function TopBar() {
         <div className="ml-auto flex items-center gap-1">
           <ThemeToggle />
 
-          {session && (
-            <Link
-              href="/profile"
-              className="flex items-center gap-2.5 rounded-full px-2.5 py-1.5 transition hover:bg-[var(--bg-card-hover)]"
-              aria-label="Your profile"
-            >
-              <div
-                className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center"
-                style={{ background: "var(--accent-purple-bg)" }}
-              >
-                <Avatar
-                  sources={[avatarUrl, session.user?.image]}
-                  name={session.user?.name}
-                  email={session.user?.email}
-                  initialsClassName="text-xs font-bold"
-                  initialsStyle={{ color: "var(--accent-purple)" }}
-                />
-              </div>
-              <span className="text-sm font-medium hidden md:block" style={{ color: "var(--text-primary)" }}>
-                {session.user?.name?.split(" ")[0] ?? ""}
-              </span>
-            </Link>
-          )}
+          {session && <AccountMenu name={session.user?.name} email={session.user?.email} sources={[avatarUrl, session.user?.image]} />}
 
           {/* Mobile search icon */}
           <button
@@ -178,7 +215,7 @@ export default function TopBar() {
           {/* Mobile hamburger */}
           <button
             onClick={toggle}
-            className="hidden p-2 rounded-full transition-colors hover:bg-[var(--bg-card-hover)]"
+            className="lg:hidden p-2 rounded-full transition-colors hover:bg-[var(--bg-card-hover)]"
             style={{ color: "var(--text-secondary)" }}
             aria-label={menuOpen ? "Close menu" : "Open menu"}
             aria-expanded={menuOpen}

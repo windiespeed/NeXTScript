@@ -2,11 +2,14 @@
 
 // MOCKUP: the main menu as a horizontal bar under the top navbar, instead of the left sidebar.
 // Desktop: one row of pills, Courses opens a dropdown of your courses, NeXTBox sits at the right end.
-// Phone/tablet: the same pills in a row you can swipe sideways (no hamburger needed).
+// Phone/tablet: the hamburger opens the same items as a slide-in panel.
+// Profile/Settings moved to the account menu under your picture (TopBar).
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { useMobileMenu } from "@/context/MobileMenu";
+import Dialog from "@/components/ui/Dialog";
 
 const icon = (d: React.ReactNode) => (
   <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{d}</svg>
@@ -18,7 +21,6 @@ const NAV = [
   { label: "Notes to Slides", href: "/ingest", icon: icon(<><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/><path d="M6.5 6.5l2.5 2.5M15 15l2.5 2.5M6.5 17.5L9 15M15 9l2.5-2.5"/></>) },
   { label: "Schedule", href: "/schedule", icon: icon(<><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></>) },
   { label: "Resources", href: "/resources", icon: icon(<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>) },
-  { label: "Profile", href: "/profile", icon: icon(<><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/></>) },
 ];
 
 const nextboxIcon = icon(<><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/><path d="M9 8l3 3-3 3"/><path d="M15 14h-3"/></>);
@@ -28,6 +30,7 @@ export default function TopMenu() {
   const [coursesOpen, setCoursesOpen] = useState(false);
   const [courses, setCourses] = useState<{ id: string; title: string }[] | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const { open: mobileOpen, close } = useMobileMenu();
 
   useEffect(() => { setCoursesOpen(false); }, [pathname]);
 
@@ -51,15 +54,16 @@ export default function TopMenu() {
   const pillStyle = (active: boolean) => (active ? {} : { color: "var(--text-secondary)" });
 
   return (
-    <nav aria-label="Main" style={{ borderTop: "1px solid var(--border)" }}>
-      <div className="mx-auto flex h-12 max-w-6xl items-center gap-1 px-4 sm:px-6 lg:px-10">
-        <div className="no-scrollbar flex flex-1 items-center gap-1 overflow-x-auto lg:overflow-visible">
+    <>
+    <nav aria-label="Main" className="hidden lg:block" style={{ background: "var(--bg-body)" }}>
+      <div className="mx-auto flex h-12 max-w-6xl items-center gap-1">
+        <div className="flex flex-1 items-center gap-1">
           {NAV.map(item => {
             const active = isActive(item.href);
             if (item.href === "/courses") {
               return (
                 <div key={item.href} ref={wrapRef} className="relative flex items-center">
-                  <Link href={item.href} className={`${pill(active)} lg:pr-2`} style={pillStyle(active)}>
+                  <Link href={item.href} className={`${pill(active)} pr-2`} style={pillStyle(active)}>
                     <span style={{ color: active ? "#0a0b13" : "var(--text-muted)" }}>{item.icon}</span>
                     {item.label}
                   </Link>
@@ -68,7 +72,7 @@ export default function TopMenu() {
                     onClick={() => setCoursesOpen(o => !o)}
                     aria-label={coursesOpen ? "Hide your courses" : "Show your courses"}
                     aria-expanded={coursesOpen}
-                    className="hidden lg:flex -ml-1 rounded-full p-1.5 transition hover:bg-[var(--bg-card-hover)]"
+                    className="flex -ml-1 rounded-full p-1.5 transition hover:bg-[var(--bg-card-hover)]"
                     style={{ color: "var(--text-muted)" }}
                   >
                     <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
@@ -107,17 +111,36 @@ export default function TopMenu() {
               </Link>
             );
           })}
-          {/* NeXTBox placeholder (intentional): shown, not a link. In the swipe row on small screens. */}
-          <span aria-disabled="true" className="flex lg:hidden items-center gap-2 whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-medium" style={{ color: "var(--text-muted)" }}>
-            {nextboxIcon} NeXTBox
-            <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ background: "var(--bg-card-hover)", color: "var(--text-secondary)" }}>Soon</span>
-          </span>
         </div>
-        <span aria-disabled="true" className="hidden lg:flex items-center gap-2 whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-medium cursor-default" style={{ color: "var(--text-secondary)", border: "1px dashed var(--border)" }}>
+        <span aria-disabled="true" className="flex items-center gap-2 whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-medium cursor-default" style={{ color: "var(--text-secondary)", border: "1px dashed var(--border)" }}>
           <span style={{ color: "var(--text-muted)" }}>{nextboxIcon}</span> NeXTBox
           <span className="rounded-full px-2 py-0.5 text-[11px] font-semibold" style={{ background: "var(--bg-card-hover)", color: "var(--text-secondary)" }}>Coming soon</span>
         </span>
       </div>
     </nav>
+
+    {/* Smaller screens: hamburger (in TopBar) opens this panel. */}
+    <Dialog open={mobileOpen} onClose={close} placement="left" className="lg:hidden" labelledBy="mobile-menu-label">
+      <nav aria-label="Main" className="flex h-full w-56 flex-col rounded-3xl px-3 py-4" style={{ background: "var(--bg-sidebar)" }}>
+        <span id="mobile-menu-label" className="sr-only">Main menu</span>
+        <div className="flex-1 space-y-1.5">
+          {NAV.map(item => {
+            const active = isActive(item.href);
+            return (
+              <Link key={item.href} href={item.href} className={`${pill(active)} w-full py-2`} style={pillStyle(active)} aria-current={active ? "page" : undefined}>
+                <span style={{ color: active ? "#0a0b13" : "var(--text-muted)" }}>{item.icon}</span>
+                {item.label}
+              </Link>
+            );
+          })}
+        </div>
+        <div aria-disabled="true" className="flex items-center gap-2 px-3.5 pt-3 pb-1 text-sm font-medium" style={{ color: "var(--text-secondary)", borderTop: "1px solid var(--border)" }}>
+          <span style={{ color: "var(--text-muted)" }}>{nextboxIcon}</span>
+          <span className="flex-1">NeXTBox</span>
+          <span className="whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold" style={{ background: "var(--bg-card-hover)", color: "var(--text-secondary)" }}>Coming soon</span>
+        </div>
+      </nav>
+    </Dialog>
+    </>
   );
 }

@@ -26,11 +26,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <MobileMenuProvider>
             <a href="#main-content" className="skip-link">Skip to content</a>
             <TopBar />
-            {/* MOCKUP: offset for top bar (64px) + horizontal menu bar (48px + 1px border) */}
-            <div className="pt-[113px] min-h-screen">
-              <main id="main-content" tabIndex={-1} className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-10 focus:outline-none">
-                {children}
-              </main>
+            {/* MOCKUP: offset for top bar (64px) + menu bar on desktop (48px). Page content sits in a white container. */}
+            <div className="pt-[76px] lg:pt-[112px] min-h-screen px-3 pb-3 sm:px-4 lg:px-6">
+              <div className="mx-auto max-w-6xl rounded-3xl min-h-[calc(100dvh-88px)] lg:min-h-[calc(100dvh-124px)]" style={{ background: "var(--bg-sidebar)", boxShadow: "var(--shadow-card)" }}>
+                <main id="main-content" tabIndex={-1} className="px-4 py-6 sm:px-6 sm:py-8 lg:px-10 focus:outline-none">
+                  {children}
+                </main>
+              </div>
             </div>
           </MobileMenuProvider>
           </ThemeProvider>
