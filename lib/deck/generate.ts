@@ -1,11 +1,14 @@
 /**
- * AI generation for the new deck format: one lesson per call, structured outputs against
- * DeckSchema, with one repair turn if the response breaks a limit.
+ * AI generation for the new deck format: one lesson per call, JSON against DeckSchema, with one
+ * repair turn if the response breaks a limit.
  *
- * The schema goes out as structured-output JSON Schema (lib/deck/wireSchema.ts). Limits the
- * grammar can't enforce (string lengths, item counts) are spelled out in the field descriptions
- * and validated here against DeckSchema after the response arrives. A response that fails validation gets one follow-up
- * turn listing the problems; the model fixes only those.
+ * The schema (lib/deck/wireSchema.ts) goes in the system prompt, not in structured outputs: the
+ * API compiles a structured-output schema into a grammar, and a deck's 14 slide types make that
+ * grammar too large ("The compiled grammar is too large", 400, seen live on Nov 12, 2026, even
+ * with every field required). Limits (string lengths, item counts, the slide type set) are spelled
+ * out in the schema's descriptions and checked here against DeckSchema after the response
+ * arrives. A response that fails validation gets one follow-up turn listing the problems; the
+ * model fixes only those.
  */
 
 import Anthropic from "@anthropic-ai/sdk";
@@ -92,6 +95,24 @@ export function describeIssues(issues: { path: PropertyKey[]; message: string }[
     .join("\n");
 }
 
+let systemPrompt: string | undefined;
+
+/** The system prompt plus the deck's JSON Schema, which tells the model the exact output shape. */
+export function deckSystemPrompt(): string {
+  systemPrompt ??= `${DECK_SYSTEM_PROMPT}
+
+Output format: reply with a single JSON object and nothing else (no prose, no markdown code fence). It must match this JSON Schema exactly, including each slide's "type" value, every field marked required, and the limits written in each description:
+${JSON.stringify(toStructuredOutputSchema(DeckSchema))}`;
+  return systemPrompt;
+}
+
+/** The JSON object in a reply, tolerating a code fence or a stray line around it. */
+export function extractJson(raw: string): string {
+  const start = raw.indexOf("{");
+  const end = raw.lastIndexOf("}");
+  return start >= 0 && end > start ? raw.slice(start, end + 1) : raw;
+}
+
 function textOf(message: Anthropic.Message): string {
   return message.content.map(b => (b.type === "text" ? b.text : "")).join("");
 }
@@ -100,7 +121,6 @@ export async function generateDeck(apiKey: string, input: GenerateDeckInput, cli
   if (!input.notes.trim()) throw new DeckGenerationError("Add some notes first.", "empty");
   const model: ClaudeModelId = input.model ?? (DEFAULT_MODEL.anthropic as ClaudeModelId);
   const effort = getAiModel(model).effort ?? "high";
-  const wireFormat = { type: "json_schema" as const, schema: toStructuredOutputSchema(DeckSchema) };
 
   const messages: Anthropic.MessageParam[] = [{ role: "user", content: buildUserMessage(input) }];
   const usage = { input: 0, output: 0 };
@@ -110,8 +130,8 @@ export async function generateDeck(apiKey: string, input: GenerateDeckInput, cli
       .stream({
         model,
         max_tokens: 64000,
-        system: DECK_SYSTEM_PROMPT,
-        output_config: { format: wireFormat, effort },
+        system: deckSystemPrompt(),
+        output_config: { effort },
         messages,
       })
       .finalMessage();
@@ -128,7 +148,7 @@ export async function generateDeck(apiKey: string, input: GenerateDeckInput, cli
     const raw = textOf(message);
     let json: unknown;
     try {
-      json = JSON.parse(raw);
+      json = JSON.parse(extractJson(raw));
     } catch {
       json = undefined;
     }

@@ -1,6 +1,10 @@
 /**
  * JSON Schema for structured outputs, built from DeckSchema.
  *
+ * For now it is sent in the system prompt rather than as output_config.format: the API rejects
+ * the grammar it compiles from the deck's 14 slide types as too large (see lib/deck/generate.ts).
+ * It stays within the structured-output subset so it can move back if that limit is raised.
+ *
  * Structured outputs accept a subset of JSON Schema: types, properties/required, items, enum,
  * const, anyOf/allOf, $ref/$defs, a few string formats, minItems of 0 or 1, and
  * additionalProperties: false. Length and count limits aren't enforced by the grammar, so they're
