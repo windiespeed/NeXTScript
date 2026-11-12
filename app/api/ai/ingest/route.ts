@@ -43,9 +43,9 @@ export async function POST(req: Request) {
     const skeleton = await loadCourseSkeleton(courseId, session.user.email, settings);
     if (!skeleton) return NextResponse.json({ error: "Course not found or you don't have access to it." }, { status: 403 });
 
-    const { targetAudience, slideCount, lessonTitle, lessonSubtitle, topics, outline } = body;
-    // Student Level and Sources come from Course Settings only.
-    const { studentLevel, sources } = courseAiInputs(skeleton.course);
+    const { slideCount, lessonTitle, lessonSubtitle, topics, outline } = body;
+    // Student Level, Sources and the audience (Grade Level) come from Course Settings only.
+    const { studentLevel, sources, targetAudience } = courseAiInputs(skeleton.course);
 
     const opts = {
       targetAudience, slideCount, anchors: skeleton.anchors, studentLevel, lessonTitle, lessonSubtitle, topics, sources, outline,

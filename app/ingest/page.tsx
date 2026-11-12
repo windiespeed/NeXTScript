@@ -74,7 +74,6 @@ interface IngestDraft {
   deadline: string;
   lessonType: LessonType;
   rawText: string;
-  targetAudience: string;
   slideCount: string;
   ast: PresentationAST | null;
   activeIndex: number;
@@ -147,7 +146,6 @@ function IngestPageInner() {
 
   // Raw content
   const [rawText, setRawText] = useState("");
-  const [targetAudience, setTargetAudience] = useState("");
   const [slideCount, setSlideCount] = useState("");
   // No model menu: the server picks from the saved key and Profile preference (lib/aiModels.ts).
   const [savedKeys, setSavedKeys] = useState<SavedKeys | null>(null);
@@ -208,7 +206,6 @@ function IngestPageInner() {
     setDeadline(draft.deadline);
     setLessonType(draft.lessonType);
     setRawText(draft.rawText);
-    setTargetAudience(draft.targetAudience);
     setSlideCount(draft.slideCount);
     setAst(draft.ast);
     setActiveIndex(draft.activeIndex);
@@ -225,7 +222,7 @@ function IngestPageInner() {
   useDraftAutosave<IngestDraft>(draftKey, {
     selectedCourseId, selectedModuleId, selectedExistingLessonId,
     title, subtitle, topics, deadline, lessonType,
-    rawText, targetAudience, slideCount,
+    rawText, slideCount,
     ast, activeIndex, viewMode, outline,
   });
 
@@ -452,7 +449,6 @@ function IngestPageInner() {
     return {
       courseConfig: { courseId: selectedCourseId, anchors: slideAnchors, themeId: courseThemeId },
       rawNotes: rawText,
-      targetAudience: targetAudience.trim() || undefined,
       slideCount: slideCount ? Number(slideCount) : undefined,
       lessonTitle: title.trim() || undefined,
       lessonSubtitle: subtitle.trim() || undefined,
@@ -584,7 +580,6 @@ function IngestPageInner() {
     setSeedStatus("");
     handleClearLessonInfo();
     setRawText("");
-    setTargetAudience("");
     setSlideCount("");
     setSaveInfoError(null);
     setRestoredDraft(false);
@@ -880,142 +875,108 @@ function IngestPageInner() {
             <div>
               <p className={sectionLabel}>Generate Deck</p>
               <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
-                Your course&apos;s sections are the deck&apos;s skeleton: each one becomes a slide heading, in order.
-                Paste your notes and the AI distributes them under those headings, expands them, and picks a layout for each.
+                Paste your notes. The AI sorts them under the course&apos;s slide headings, expands them, and picks a layout for each slide.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-              {/* Skeleton */}
-              <div className="lg:col-span-2 rounded-2xl p-4 space-y-2" style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)" }}>
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>🔒 Skeleton · locked slide anchors</p>
-                  {selectedCourse && (
-                    <Link href={`/courses/${selectedCourse.id}/settings`} className="text-[10px] font-semibold shrink-0 hover:underline" style={{ color: "var(--accent-text)" }}>
-                      Edit Sections
-                    </Link>
-                  )}
-                </div>
+            {/* Skeleton: a slim, secondary strip. The headings are fixed by Course Settings, so this
+                only shows what they are; the Content box below is where the work happens. */}
+            <div className="rounded-lg px-3 py-2 space-y-1.5" style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)" }}>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <p className="text-[11px] font-semibold uppercase tracking-wider shrink-0" style={{ color: "var(--text-muted)" }}>
+                  🔒 Slide headings{selectedCourse && slideAnchors.length > 0 ? ` (${slideAnchors.length})` : ""}
+                </p>
                 {!selectedCourse ? (
-                  <p className="text-xs" style={{ color: "var(--text-muted)" }}>Select a course above to load its slide anchors.</p>
+                  <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>Select a course above to load its slide headings.</span>
                 ) : slideAnchors.length > 0 ? (
-                  <>
-                    <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
-                      From {selectedCourse.title}&apos;s sections marked &ldquo;Slide heading&rdquo;. Headings are used exactly as written and can&apos;t be renamed or removed in the deck.
-                    </p>
-                    <ol className="space-y-1">
-                      {slideAnchors.map((anchor, i) => (
-                        <li
-                          key={anchor.id}
-                          className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs"
-                          style={{ background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}
-                        >
-                          <span className="tabular-nums w-4 text-right shrink-0" style={{ color: "var(--text-muted)" }}>{i + 1}</span>
-                          <span className="flex-1 truncate" style={{ color: "var(--text-primary)" }}>{anchor.label}</span>
-                        </li>
-                      ))}
-                    </ol>
-                  </>
+                  <ol className="flex flex-wrap gap-1" aria-label={`Locked slide headings from ${selectedCourse.title}`} title="From this course's sections marked “Slide heading”. Used exactly as written, in this order.">
+                    {slideAnchors.map((anchor, i) => (
+                      <li key={anchor.id} className="rounded px-1.5 py-0.5 text-[11px]" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
+                        <span className="tabular-nums mr-1" style={{ color: "var(--text-muted)" }}>{i + 1}</span>{anchor.label}
+                      </li>
+                    ))}
+                  </ol>
                 ) : (
-                  <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-                    No sections are marked as slide headings, so the AI will structure the deck from your notes alone.
-                  </p>
+                  <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>None set, so the AI structures the deck from your notes alone.</span>
                 )}
-                {selectedCourse && (courseTemplateUrl ? (
-                  <label htmlFor="ingest-use-course-template" className="flex items-start gap-2 pt-1 text-xs cursor-pointer" style={{ color: "var(--text-secondary)" }}>
-                    <input
-                      id="ingest-use-course-template"
-                      type="checkbox"
-                      className="mt-0.5"
-                      checked={useCourseTemplate}
-                      onChange={e => setUseCourseTemplate(e.target.checked)}
-                    />
-                    <span>
-                      Use course template:{" "}
-                      <a href={courseTemplateUrl} target="_blank" rel="noopener noreferrer" className="underline" style={{ color: "var(--accent-text)" }}>
-                        {templateInfo?.name ?? "open template"}
-                      </a>
-                      <span className="block text-[11px]" style={{ color: templateInfo?.error && useCourseTemplate ? "var(--danger-text)" : "var(--text-muted)" }}>
-                        {!useCourseTemplate
-                          ? `The preview and export use the built-in ${getTheme(courseThemeId).name} look instead.`
-                          : templateInfo?.error
-                            ? templateInfo.error
-                            : templateInfo && !templateInfo.theme
-                              ? "Export copies this template. Its look comes from its theme, which the preview can't show, so the preview uses the built-in look."
-                              : "The preview and the Google Slides export follow this template's look."}
-                      </span>
+                {selectedCourse && (
+                  <Link href={`/courses/${selectedCourse.id}/settings`} className="ml-auto text-[11px] font-semibold shrink-0 hover:underline" style={{ color: "var(--accent-text)" }}>
+                    Edit in Course Settings
+                  </Link>
+                )}
+              </div>
+              {selectedCourse && (courseTemplateUrl ? (
+                <label htmlFor="ingest-use-course-template" className="flex items-start gap-2 pt-1 text-xs cursor-pointer" style={{ color: "var(--text-secondary)" }}>
+                  <input
+                    id="ingest-use-course-template"
+                    type="checkbox"
+                    className="mt-0.5"
+                    checked={useCourseTemplate}
+                    onChange={e => setUseCourseTemplate(e.target.checked)}
+                  />
+                  <span>
+                    Use course template:{" "}
+                    <a href={courseTemplateUrl} target="_blank" rel="noopener noreferrer" className="underline" style={{ color: "var(--accent-text)" }}>
+                      {templateInfo?.name ?? "open template"}
+                    </a>
+                    <span className="block text-[11px]" style={{ color: templateInfo?.error && useCourseTemplate ? "var(--danger-text)" : "var(--text-muted)" }}>
+                      {!useCourseTemplate
+                        ? `The preview and export use the built-in ${getTheme(courseThemeId).name} look instead.`
+                        : templateInfo?.error
+                          ? templateInfo.error
+                          : templateInfo && !templateInfo.theme
+                            ? "Export copies this template. Its look comes from its theme, which the preview can't show, so the preview uses the built-in look."
+                            : "The preview and the Google Slides export follow this template's look."}
                     </span>
-                  </label>
-                ) : (
-                  <p className="text-[11px] pt-1" style={{ color: "var(--text-muted)" }}>
-                    No Slides template on this course, so export uses the built-in {getTheme(courseThemeId).name} look.{" "}
-                    <Link href={`/courses/${selectedCourse.id}/settings`} className="underline" style={{ color: "var(--accent-text)" }}>Add one in Course Settings</Link>
-                  </p>
-                ))}
-              </div>
-
-              {/* Content */}
-              <div className="lg:col-span-3 flex flex-col">
-                <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
-                  <label htmlFor="ingest-content-notes-outline-or-brain" className="block text-xs font-semibold" style={{ color: "var(--text-primary)" }}>
-                    Content · notes, outline, or brain-dump <span className="text-[var(--danger-text)]">*</span>
-                  </label>
-                  {seedNotes && (
-                    <button
-                      type="button"
-                      onClick={handleSeedFromLesson}
-                      className="text-[11px] font-semibold rounded-full px-3 py-1 min-h-6 transition hover:opacity-80"
-                      style={{ background: "var(--accent-bg)", color: "var(--accent-text)", border: "1px solid var(--border)" }}
-                    >
-                      Start from this lesson&apos;s content
-                    </button>
-                  )}
-                </div>
-                {seedNotes && (
-                  <p className="text-[11px] mb-1" style={{ color: "var(--text-muted)" }}>
-                    This lesson has saved content (from Classic Slides or Edit Content). Load it here as a starting point, then generate.
-                  </p>
-                )}
-                <p role="status" aria-live="polite" className="text-[11px]" style={{ color: "var(--success-text)" }}>{seedStatus}</p>
-                <textarea id="ingest-content-notes-outline-or-brain"
-                  value={rawText}
-                  onChange={e => setRawText(e.target.value)}
-                  rows={14}
-                  placeholder={"Paste raw outlines, meeting notes, or loose bullets, e.g.\n- explain the core concept\n- compare two approaches or viewpoints\n- steps to complete the process\n\nYou don't need to match the section names; the AI sorts points under the right heading."}
-                  className={`${inputClass} flex-1`}
-                  style={{ ...inputStyle, resize: "vertical" }}
-                />
-              </div>
+                  </span>
+                </label>
+              ) : (
+                <p className="text-[11px] pt-1" style={{ color: "var(--text-muted)" }}>
+                  No Slides template on this course, so export uses the built-in {getTheme(courseThemeId).name} look.{" "}
+                  <Link href={`/courses/${selectedCourse.id}/settings`} className="underline" style={{ color: "var(--accent-text)" }}>Add one in Course Settings</Link>
+                </p>
+              ))}
             </div>
 
-            <AiModelNote preference={preferredAiModel} keys={savedKeys} />
+            {/* Content: the main field. */}
+            <div className="flex flex-col">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
+              <label htmlFor="ingest-content-notes-outline-or-brain" className="block text-xs font-semibold" style={{ color: "var(--text-primary)" }}>
+                Content · notes, outline, or brain-dump <span className="text-[var(--danger-text)]">*</span>
+              </label>
+              {seedNotes && (
+                <button
+                  type="button"
+                  onClick={handleSeedFromLesson}
+                  className="text-[11px] font-semibold rounded-full px-3 py-1 min-h-6 transition hover:opacity-80"
+                  style={{ background: "var(--accent-bg)", color: "var(--accent-text)", border: "1px solid var(--border)" }}
+                >
+                  Start from this lesson&apos;s content
+                </button>
+              )}
+            </div>
+            {seedNotes && (
+              <p className="text-[11px] mb-1" style={{ color: "var(--text-muted)" }}>
+                This lesson has saved content (from Classic Slides or Edit Content). Load it here as a starting point, then generate.
+              </p>
+            )}
+            <p role="status" aria-live="polite" className="text-[11px]" style={{ color: "var(--success-text)" }}>{seedStatus}</p>
+            <textarea id="ingest-content-notes-outline-or-brain"
+              value={rawText}
+              onChange={e => setRawText(e.target.value)}
+              rows={18}
+              placeholder={"Paste raw outlines, meeting notes, or loose bullets, e.g.\n- explain the core concept\n- compare two approaches or viewpoints\n- steps to complete the process\n\nYou don't need to match the section names; the AI sorts points under the right heading."}
+              className={`${inputClass} min-h-[20rem]`}
+              style={{ ...inputStyle, resize: "vertical" }}
+            />
+            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="ingest-target-audience-optional" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
-                  Target Audience <span className="font-normal" style={{ color: "var(--text-muted)" }}>(optional)</span>
-                </label>
-                <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>
-                  Only needed if Student Level above isn&apos;t specific enough — e.g. a grade level or prior-course context.
-                </p>
-                <input id="ingest-target-audience-optional"
-                  type="text"
-                  value={targetAudience}
-                  onChange={e => setTargetAudience(e.target.value)}
-                  placeholder="e.g. 9th graders new to this topic"
-                  className={inputClass}
-                  style={inputStyle}
-                />
-              </div>
-              <div>
+            <div className="flex flex-wrap items-end justify-between gap-4">
+              <AiModelNote preference={preferredAiModel} keys={savedKeys} />
+              <div className="w-44">
                 <label htmlFor="ingest-approx-slide-count-optional" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
                   Approx. Slide Count <span className="font-normal" style={{ color: "var(--text-muted)" }}>(optional)</span>
                 </label>
-                {/* Invisible twin of the Target Audience hint (same classes/text) so both inputs
-                    stay aligned regardless of how the sibling hint wraps at a given width. */}
-                <p className="text-xs mb-1 invisible" aria-hidden="true">
-                  Only needed if Student Level above isn&apos;t specific enough — e.g. a grade level or prior-course context.
-                </p>
                 <input id="ingest-approx-slide-count-optional"
                   type="number"
                   min={1}
