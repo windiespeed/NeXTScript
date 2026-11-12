@@ -99,6 +99,29 @@ describe("learnTemplateStyle", () => {
     expect(s.footer).toBeUndefined();
   });
 
+  it("keeps a logo that sits in the same spot on most slides, but not a one-off picture", () => {
+    const logo = (id: string): slides_v1.Schema$PageElement => ({
+      objectId: id,
+      size: { width: { magnitude: 600000, unit: "EMU" }, height: { magnitude: 300000, unit: "EMU" } },
+      transform: { scaleX: 1, scaleY: 1, translateX: 8400000, translateY: 4700000, unit: "EMU" },
+      image: { contentUrl: "https://example.com/logo.png" },
+    });
+    const photo: slides_v1.Schema$PageElement = {
+      objectId: "photo",
+      size: { width: { magnitude: 3000000, unit: "EMU" }, height: { magnitude: 2000000, unit: "EMU" } },
+      transform: { scaleX: 1, scaleY: 1, translateX: 500000, translateY: 1500000, unit: "EMU" },
+      image: { contentUrl: "https://example.com/photo.png" },
+    };
+    const withLogo = {
+      ...handStyled,
+      slides: handStyled.slides!.map((sl, i) => ({ ...sl, pageElements: [...sl.pageElements!, logo(`logo${i}`), ...(sl.objectId === "s2" ? [photo] : [])] })),
+    };
+    const s = learnTemplateStyle(withLogo)!;
+    expect(s.contentBackdrop!.keep).toEqual(["g2", "logo1"]);
+    expect(s.contentBackdrop!.drop).toContain("photo");
+    expect(s.coverBackdrop!.keep).toEqual(["g1", "logo0"]);
+  });
+
   it("leaves templates whose slides set nothing to the master and layouts", () => {
     expect(learnTemplateStyle({ ...handStyled, slides: [{ objectId: "x", pageElements: [] }] })).toBeUndefined();
     expect(learnTemplateStyle({ ...handStyled, slides: [] })).toBeUndefined();

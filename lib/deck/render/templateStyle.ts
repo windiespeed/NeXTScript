@@ -15,7 +15,8 @@
  * Slides API can't read or write gradient fills, and decks often paint their background with a
  * full-slide gradient shape (or image). So each style also names a "backdrop": a template slide
  * and its full-slide, text-free elements. The exporter duplicates that slide, keeps only those
- * elements, and draws on top, so gradients and background art carry over exactly.
+ * elements, and draws on top, so gradients and background art carry over exactly. Logos and other
+ * chrome (visual elements in the same spot on most slides of that style) are kept the same way.
  *
  * It also notices the small text a deck repeats on its slides: a label above the title ("PART 1 ·
  * SQL VS NOSQL") and a footer line. The generator writes that text; the template decides whether it
@@ -318,16 +319,50 @@ function decoration(seen: Run[], slideCount: number): Decoration | undefined {
   return { color, size, bold: seen.filter(r => r.bold).length * 2 > seen.length };
 }
 
-/** Full-slide, text-free elements of a slide (background gradients, art), if it has any. */
-export function backdropOf(slide: Page, pageArea: number): Backdrop | undefined {
+const hasText = (el: slides_v1.Schema$PageElement) => (el.shape?.text?.textElements ?? []).some(t => t.textRun?.content?.trim());
+/** An image, or a shape with no text: something drawn, not written. */
+const isVisual = (el: slides_v1.Schema$PageElement) => !!el.image || (!!el.shape && !hasText(el));
+
+/** Where and how big a visual element is, rounded, so the same logo on many slides matches. */
+function placeKey(el: slides_v1.Schema$PageElement): string {
+  const r = (v: number | null | undefined) => Math.round((v ?? 0) / 50000);
+  const w = (el.size?.width?.magnitude ?? 0) * Math.abs(el.transform?.scaleX ?? 1);
+  const h = (el.size?.height?.magnitude ?? 0) * Math.abs(el.transform?.scaleY ?? 1);
+  return `${el.image ? "img" : "shape"}:${r(el.transform?.translateX)},${r(el.transform?.translateY)},${r(w)},${r(h)}`;
+}
+
+/**
+ * Template chrome: visual elements near the edges that sit in the same place on most slides (a
+ * logo, a corner stripe). One-off pictures and repeated cards in the middle aren't chrome.
+ */
+export function chromeKeys(slides: Page[], pageW: number, pageH: number): Set<string> {
+  // Chrome lives along the edges; a card in the middle that repeats is still content.
+  const nearEdge = (el: slides_v1.Schema$PageElement) => {
+    if (!pageW || !pageH) return false;
+    const w = (el.size?.width?.magnitude ?? 0) * Math.abs(el.transform?.scaleX ?? 1);
+    const h = (el.size?.height?.magnitude ?? 0) * Math.abs(el.transform?.scaleY ?? 1);
+    const cx = ((el.transform?.translateX ?? 0) + w / 2) / pageW;
+    const cy = ((el.transform?.translateY ?? 0) + h / 2) / pageH;
+    return cx < 0.15 || cx > 0.85 || cy < 0.15 || cy > 0.85;
+  };
+  const counts = new Map<string, number>();
+  for (const slide of slides) {
+    const keys = new Set((slide.pageElements ?? []).filter(el => isVisual(el) && nearEdge(el)).map(placeKey));
+    for (const k of keys) add(counts, k, 1);
+  }
+  const min = Math.max(2, Math.ceil(slides.length * 0.5));
+  return new Set([...counts].filter(([, n]) => n >= min).map(([k]) => k));
+}
+
+/** A slide's background pieces (full-slide gradients, art) and chrome (logos), if it has any. */
+export function backdropOf(slide: Page, pageArea: number, chrome: Set<string> = new Set()): Backdrop | undefined {
   if (!slide.objectId || !pageArea) return undefined;
   const keep: string[] = [];
   const drop: string[] = [];
   for (const el of slide.pageElements ?? []) {
     if (!el.objectId) continue;
-    const hasText = (el.shape?.text?.textElements ?? []).some(t => t.textRun?.content?.trim());
-    const visual = !!el.image || (!!el.shape && !hasText);
-    (visual && extent(el) >= pageArea * 0.85 ? keep : drop).push(el.objectId);
+    const kept = isVisual(el) && (extent(el) >= pageArea * 0.85 || chrome.has(placeKey(el)));
+    (kept ? keep : drop).push(el.objectId);
   }
   return keep.length ? { slideId: slide.objectId, keep, drop } : undefined;
 }
@@ -369,7 +404,11 @@ export function learnTemplateStyle(pres: slides_v1.Schema$Presentation): Learned
   const coverPalette = coverBg ? palette(cover, coverBg, contentPalette) : contentPalette;
   // Page size in the same unit as element sizes (EMU from presentations.get).
   const pageArea = (pres.pageSize?.width?.magnitude ?? 0) * (pres.pageSize?.height?.magnitude ?? 0);
-  const firstWith = (bgColor: string) => info.map(i => (i.bg === bgColor ? backdropOf(i.slide, pageArea) : undefined)).find(Boolean);
+  const sameBg = (bgColor: string) => info.filter(i => i.bg === bgColor).map(i => i.slide);
+  const firstWith = (bgColor: string) => {
+    const chrome = chromeKeys(sameBg(bgColor), pres.pageSize?.width?.magnitude ?? 0, pageH);
+    return info.map(i => (i.bg === bgColor ? backdropOf(i.slide, pageArea, chrome) : undefined)).find(Boolean);
+  };
   const contentBackdrop = firstWith(contentBg);
 
   const contentSlides = info.filter(i => i.bg === contentBg);
