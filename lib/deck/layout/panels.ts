@@ -17,7 +17,13 @@ export function layoutCompare(slide: SlideOf<"compare">): SlideLayout {
   const b = new SlideBuilder(slide.id, slide.notes);
   const top = b.header(slide.title) + HEADER.bodyGap;
   const colW = split(W, 2, GRID.gutter);
-  const h = bodyBottom() - top;
+  const maxH = bodyBottom() - top;
+  // Both panels hug the fuller column's content at the preferred sizes, like the reference decks.
+  const innerW = colW - PAD * 2;
+  const colH = (col: SlideOf<"compare">["left"]) =>
+    PAD + 4 + b.measure({ paragraphs: [{ text: col.heading, bold: true }], w: innerW, h: 44, font: "heading", maxSize: 16, minSize: 16, lineHeight: 1.15 }) + 10 +
+    b.measure({ paragraphs: bullets(col.points), w: innerW, h: maxH, maxSize: 16, minSize: 16, gapEm: 0.5 }) + PAD;
+  const h = Math.min(maxH, Math.max(120, Math.max(colH(slide.left), colH(slide.right)) + 6));
 
   ([["left", slide.left, "accent.primary"], ["right", slide.right, "accent.secondary"]] as const).forEach(([side, col, accent], i) => {
     const x = x0 + i * (colW + GRID.gutter);

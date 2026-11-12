@@ -94,6 +94,8 @@ export function layoutConcept(slide: ConceptSlide): SlideLayout {
     x, y, w: bodyW, h: availH,
     maxSize: C.body.maxSize, minSize: C.body.minSize, warnBelow: C.body.warnBelow,
     lineHeight: C.body.lineHeight, gapEm: C.body.gapEm, color: "text.secondary",
+    // Hug the bullets so a takeaway line can sit right under them.
+    hug: true,
   });
 
   if (slide.aside) {

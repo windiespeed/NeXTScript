@@ -65,8 +65,15 @@ export function decorate(layout: SlideLayout, slide: DeckSlide): SlideLayout {
   if (takeaway) {
     const fit = fitTakeaway(takeaway);
     const h = Math.ceil(Math.min(fit.height, TAKEAWAY.maxH));
+    // Right under the content when it ends early (panels and lists hug their content), else at
+    // the bottom of the body area, where the layout left room for it.
+    const contentBottom = Math.max(
+      0,
+      ...elements.filter(e => !(Object.values(DECORATION_IDS) as string[]).includes(e.id) && e.id !== "title" && e.id !== "accent").map(e => e.y + e.h),
+    );
+    const y = Math.min(GRID.bodyBottom - h, Math.ceil(contentBottom) + TAKEAWAY.gap + 6);
     elements.push({
-      ...textEl(DECORATION_IDS.takeaway, takeaway, GRID.bodyBottom - h, fit.fontSize, {
+      ...textEl(DECORATION_IDS.takeaway, takeaway, y, fit.fontSize, {
         color: "accent.primary", lineHeight: TAKEAWAY.lineHeight, paragraphs: [{ text: takeaway, bold: true }],
       }),
       h,
