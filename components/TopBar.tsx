@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import TopMenu from "@/components/TopMenu";
 import Avatar, { AVATAR_CHANGED_EVENT } from "@/components/Avatar";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
@@ -177,7 +178,7 @@ export default function TopBar() {
           {/* Mobile hamburger */}
           <button
             onClick={toggle}
-            className="lg:hidden p-2 rounded-full transition-colors hover:bg-[var(--bg-card-hover)]"
+            className="hidden p-2 rounded-full transition-colors hover:bg-[var(--bg-card-hover)]"
             style={{ color: "var(--text-secondary)" }}
             aria-label={menuOpen ? "Close menu" : "Open menu"}
             aria-expanded={menuOpen}
@@ -190,6 +191,9 @@ export default function TopBar() {
           </button>
         </div>
       </div>
+
+      {/* MOCKUP: main menu as a horizontal bar under the navbar */}
+      <TopMenu />
 
       {/* Mobile search bar — slides down when open */}
       {mobileSearchOpen && (

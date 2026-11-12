@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import "./globals.css";
 import Providers from "./providers";
-import Sidebar from "@/components/Sidebar";
 import TopBar from "@/components/TopBar";
 import { MobileMenuProvider } from "@/context/MobileMenu";
 import { ThemeProvider } from "@/context/Theme";
@@ -27,9 +26,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <MobileMenuProvider>
             <a href="#main-content" className="skip-link">Skip to content</a>
             <TopBar />
-            <Sidebar />
-            {/* Offset: top bar (64px) + floating sidebar (224px + 12px margin = 236px) */}
-            <div className="lg:pl-[236px] pt-16 min-h-screen">
+            {/* MOCKUP: offset for top bar (64px) + horizontal menu bar (48px + 1px border) */}
+            <div className="pt-[113px] min-h-screen">
               <main id="main-content" tabIndex={-1} className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-10 focus:outline-none">
                 {children}
               </main>

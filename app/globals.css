@@ -135,3 +135,7 @@ button, a, [role="button"] {
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
+/* Horizontal menu (mockup): swipeable row without a visible scrollbar */
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
