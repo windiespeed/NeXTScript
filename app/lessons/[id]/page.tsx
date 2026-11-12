@@ -573,7 +573,7 @@ export default function LessonHubPage() {
                 <label htmlFor="lessons-id-topics-used-by-ai" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
                   Topics {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span>}
                 </label>
-                <input id="lessons-id-topics-used-by-ai" value={metaTopics} onChange={e => setMetaTopics(e.target.value)} className={inputClass} style={inputStyle} placeholder="e.g. Variables, Data Types, Type Casting" />
+                <input id="lessons-id-topics-used-by-ai" value={metaTopics} onChange={e => setMetaTopics(e.target.value)} className={inputClass} style={inputStyle} placeholder="e.g. Claims, Evidence, Counterarguments" />
                 <p className="text-[10px] mt-1" style={{ color: "var(--text-muted)" }}>Comma-separated. AI uses these to generate slide content, overviews, and quizzes.</p>
               </div>
               <div className="grid grid-cols-2 gap-3">

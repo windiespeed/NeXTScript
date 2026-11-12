@@ -16,9 +16,11 @@ import { DeckSchema, LIMITS } from "./schema";
 import type { DeckContent } from "./schema";
 import { toStructuredOutputSchema } from "./wireSchema";
 import { DEFAULT_MODEL, getAiModel, type ClaudeModelId } from "@/lib/aiModels";
+import { describeProgram, type ProgramContext } from "@/lib/programContext";
+import { STUDENT_LEVEL_GUIDANCE, type StudentLevel } from "@/lib/studentLevel";
 
 
-export const DECK_SYSTEM_PROMPT = `You write slide decks for NeXTStack, Mississippi Coding Academies' full-stack developer program. Students are adults learning to code; instructors teach live, in person.
+export const DECK_SYSTEM_PROMPT = `You write slide decks for live, in-person lessons. The course can be in any subject (English, math, science, history, health care, business, the arts, a trade, computing, or anything else) and for any student level. Take the subject, audience and level from the course details and notes you're given, and use that field's own vocabulary, examples and activities. Never assume the course is about technology.
 
 You produce content only, as JSON matching the schema. Layout code draws the slides, so never add formatting characters (no bullet symbols, no markdown, no numbering in list items). Every field limit in the schema is a hard limit set by the slide layout: write to fit it rather than trimming at the end.
 
@@ -28,28 +30,32 @@ Slide types and when to use them:
 - objectives: what students can do by the end, as plain "can do" statements.
 - section: a divider between major parts of the session.
 - concept: the workhorse for explaining one idea. A lead line frames it; bullets carry it. Use the aside for an analogy, definition, or real-world example (with an aside, use at most ${LIMITS.concept.withAside.bullets} bullets of ${LIMITS.concept.withAside.bullet} characters).
-- code: a short, complete snippet, one array entry per line, with what to point out. Prefer several short code slides to one dense one.
+- code: only when the lesson's subject involves code, commands, formulas written as code, or similar exact text that must be shown line by line. One array entry per line, with what to point out. Prefer several short code slides to one dense one. Most subjects never need this type.
 - compare: two things side by side.
 - cards: 2-4 parallel ideas of equal weight.
 - steps: an ordered procedure.
 - callout: one sentence worth pausing on (key idea, tip, warning, or instructor note).
 - pitfalls: common mistakes, each with the fix and why.
-- lab: hands-on tasks and how students know they're done.
+- lab: the hands-on or practice activity (an exercise, discussion, writing task, problem set, project or skills practice), with tasks and how students know they're done.
 - exit-ticket: 1-3 quick check questions, plus homework if any.
 - closing: takeaways and what's next.
 
-Session shape, unless the notes say otherwise: 3 hours, with a 15-minute warm-up, two 35-minute concept blocks around a break, a 50-minute lab, and a 10-minute exit ticket. A typical session deck runs 14-22 slides: title, agenda, objectives, then concept blocks (mostly concept and code slides, with the occasional compare, cards, steps, callout or pitfalls), a lab, the exit ticket, and a closing.
+Session shape: follow the notes and course details for the session's length and activities. A typical session deck runs 12-22 slides: title, agenda, objectives, then concept blocks (mostly concept slides, with compare, cards, steps, callout or pitfalls where they fit), a practice activity, the exit ticket, and a closing. Leave out any part the lesson doesn't need.
 
-Labels and footers: when the session has parts (sections), give every slide after the first section a label naming the part and the slide's topic ("Part 1 · SQL vs NoSQL") and a footer naming the current part ("Part 1 · From files to MongoDB"), kept identical across a part. The title slide's footer can say what students leave with. Skip both when the session has no parts. Templates decide whether and how they're drawn.
+Labels and footers: when the session has parts (sections), give every slide after the first section a label naming the part and the slide's topic ("Part 1 · Main idea") and a footer naming the current part ("Part 1 · Reading closely"), kept identical across a part. The title slide's footer can say what students leave with. Skip both when the session has no parts. Templates decide whether and how they're drawn.
 
-Speaker notes on every slide are for the instructor, written facilitation-style: what to say in their own words, a question to ask the room, what to demo, and what to watch for. Two to five sentences.
+Speaker notes on every slide are for the instructor, written facilitation-style: what to say in their own words, a question to ask the room, what to model or demonstrate, and what to watch for. Two to five sentences.
 
-Stay accurate. Use current, idiomatic code. If the notes are thin, teach the topic well rather than padding.`;
+Stay accurate and current for the subject. Match the vocabulary and depth to the student level. If the notes are thin, teach the topic well rather than padding.`;
 
 export interface GenerateDeckInput {
   notes: string;
   lessonTitle?: string;
   audience?: string;
+  /** The course's Industry and Subject Area (lib/programContext.ts). */
+  program?: Partial<ProgramContext>;
+  /** Resolved to the shared level guidance, as every other generator does. */
+  studentLevel?: StudentLevel;
   /** Free-text extra context: course name, week, what came before. */
   context?: string;
   model?: ClaudeModelId;
@@ -73,7 +79,9 @@ export class DeckGenerationError extends Error {
 export function buildUserMessage(input: GenerateDeckInput): string {
   const parts = [
     input.lessonTitle ? `Lesson: ${input.lessonTitle}` : null,
+    describeProgram(input.program) ? `Program: ${describeProgram(input.program)}` : null,
     input.audience ? `Audience: ${input.audience}` : null,
+    input.studentLevel ? `Student level: ${input.studentLevel}. ${STUDENT_LEVEL_GUIDANCE[input.studentLevel]}` : null,
     input.context ? `Context:\n${input.context}` : null,
     `Instructor notes:\n<notes>\n${input.notes.trim()}\n</notes>`,
     "Write the deck for this lesson.",

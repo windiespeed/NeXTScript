@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from "uuid";
 import type { PresentationAST, SlideNode, SlideType } from "@/types/slideAst";
 import { STUDENT_LEVEL_GUIDANCE, type StudentLevel } from "@/lib/studentLevel";
 import type { SlideAnchor } from "@/lib/slideAnchors";
+import { describeProgram, type ProgramContext } from "@/lib/programContext";
 
 /**
  * Provider-agnostic pieces of the Notes to Slides ingestion pipeline — the prompt, the schema
@@ -10,19 +11,19 @@ import type { SlideAnchor } from "@/lib/slideAnchors";
  * instructional content and the safety net around malformed output stay identical regardless of
  * which model produced it.
  */
-export const CURRICULUM_ARCHITECT_SYSTEM_PROMPT = `You are a Senior Curriculum Architect and Instructional Designer. You build a slide deck from two inputs: a SKELETON of mandatory slide anchors defined by the course configuration, and CONTENT in the form of raw, unstructured user notes (meeting notes, rough outlines, brain-dumps, loose bullet points).
+export const CURRICULUM_ARCHITECT_SYSTEM_PROMPT = `You are a Senior Curriculum Architect and Instructional Designer who writes for any subject (English, math, science, history, health care, business, the arts, a trade, computing, or anything else) and any student level. Take the subject from the program and lesson details and the notes, use that field's own vocabulary and examples, and never assume the course is about technology. You build a slide deck from two inputs: a SKELETON of mandatory slide anchors defined by the course configuration, and CONTENT in the form of raw, unstructured user notes (meeting notes, rough outlines, brain-dumps, loose bullet points).
 
 Core Objectives:
 1. Mandatory Anchors: You are given a list of mandatory slide titles/section labels defined by the course configuration. Every single one of these labels must be used as a primary slide heading (anchor) in the exact order specified. Copy each label character-for-character into that slide's "title" and set the slide's "anchorId" to the id given for it. Never rename, merge, reorder, or skip an anchor, and never give a non-anchor slide an "anchorId". If the notes say nothing about an anchor, still write that slide using your own instructional judgment for this lesson's topic.
-2. Content Distribution & Expansion: Take the unstructured notes provided by the user and intelligently distribute the relevant points under each corresponding slide anchor. Do not leave slides sparse; expand short points into robust educational content with definitions, use cases, and instructor notes. For example, a brief note like "talk about error handling" becomes:
-   - A concise technical definition.
+2. Content Distribution & Expansion: Take the unstructured notes provided by the user and intelligently distribute the relevant points under each corresponding slide anchor. Do not leave slides sparse; expand short points into robust educational content with definitions, use cases, and instructor notes. For example, a brief note like "talk about the main idea" becomes:
+   - A concise definition in the subject's own terms.
    - A real-world use case or "why it matters".
    - An "Instructor Note" or pro-tip to help the educator deliver the concept effectively.
    When an anchor's material is too much for one slide, add supporting slides directly after that anchor slide (with their own descriptive titles and no "anchorId"). Notes that fit no anchor go under the closest related anchor rather than being dropped. A single title/intro slide before the first anchor is allowed.
 3. Dynamic Layout Mapping per Anchor: For each slide anchor, analyze the distributed content and assign the optimal layout component type (\`standard\`, \`split-column\`, \`code-explainer\`, \`callout\`, or \`step-grid\`) based on the nature of the notes. Vary it deliberately; don't fall into a repetitive cycle (always alternating the same two types, or defaulting everything to \`standard\`). Supporting slides get the same treatment:
    - Use \`standard\` for core concepts, general overviews, and prose-heavy material that doesn't fit any of the categories below.
    - Use \`split-column\` for comparisons, pros/cons, trade-offs, or conceptual-vs-practical breakdowns.
-   - Use \`code-explainer\` whenever code syntax, configuration snippets, or commands are referenced; never render code as plain prose in a \`standard\` slide.
+   - Use \`code-explainer\` only when the subject involves code, configuration snippets, or commands and the notes reference them; never render code as plain prose in a \`standard\` slide. Most subjects never need it.
    - Use \`callout\` for crucial warnings, best practices, tips, or instructor call-outs; anything that reads as an aside rather than core content.
    - Use \`step-grid\` for chronological workflows, setup instructions, or sequential guides.
 4. No Anchors Given: If the user turn lists no slide anchors, logically break the notes into instructional sections yourself and apply objectives 2 and 3 to those sections.
@@ -52,6 +53,8 @@ export interface IngestionOptions {
   /** Known lesson title/subtitle from Lesson Info — given as background context, not copied verbatim (the notes may warrant a different in-deck title). */
   lessonTitle?: string;
   lessonSubtitle?: string;
+  /** The course's Industry and Subject Area (lib/programContext.ts) — tells the model what field it's writing for. */
+  program?: Partial<ProgramContext>;
   /** Comma-separated topics from Lesson Info — same context role "Topics" plays in fillLesson's prompt. */
   topics?: string;
   /** Reference URLs from Lesson Info (one per line) — same context role "Sources" plays in fillLesson's prompt. */
@@ -208,6 +211,8 @@ export function buildUserPrompt(rawText: string, opts: IngestionOptions): string
   // Same context role Title/Subtitle/Topics/Sources play in fillLesson's prompt (lib/ai.ts) —
   // background for framing, not raw material to transcribe onto slides.
   const contextLines: string[] = [];
+  const program = describeProgram(opts.program);
+  if (program) contextLines.push(`Program: ${program}`);
   if (opts.lessonTitle) contextLines.push(`Lesson Title: ${opts.lessonTitle}`);
   if (opts.lessonSubtitle) contextLines.push(`Lesson Subtitle: ${opts.lessonSubtitle}`);
   if (opts.topics) contextLines.push(`Topics: ${opts.topics}`);

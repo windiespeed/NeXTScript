@@ -339,7 +339,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
             type="text"
             value={form.subtitle}
             onChange={(e) => set("subtitle", e.target.value)}
-            placeholder="e.g. Introduction to CSS Flexbox"
+            placeholder="e.g. Introduction to Persuasive Writing"
             className={inputClass}
             style={inputStyle}
           />
@@ -354,7 +354,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
             type="text"
             value={form.topics}
             onChange={(e) => set("topics", e.target.value)}
-            placeholder="e.g. Flexbox, CSS Layout"
+            placeholder="e.g. Claims, Evidence, Counterarguments"
             className={inputClass}
             style={inputStyle}
           />
@@ -405,7 +405,7 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
             value={form.sources}
             onChange={(e) => set("sources", e.target.value)}
             rows={4}
-            placeholder={"https://www.w3.org/\nhttps://www.w3schools.com/\nhttps://www.wcag.com/"}
+            placeholder={"https://www.khanacademy.org/\nhttps://www.britannica.com/"}
             className={`${inputClass} font-mono`}
             style={inputStyle}
           />

@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import type { LessonInput } from "@/types/lesson";
 import { aiLessonSchema, readBody } from "@/lib/validation";
 import { userSettings } from "@/lib/userSettings";
+import { resolveProgramContext } from "@/lib/programContext";
 import { courseStore } from "@/lib/courseStore";
 import { canAccessCourse } from "@/lib/access";
 import { fillLesson } from "@/lib/ai";
@@ -31,8 +32,7 @@ export async function POST(req: Request) {
     const course = rawCourse && canAccessCourse(rawCourse, session.user.email) ? rawCourse : undefined;
 
     // Merge: defaults → user profile → course settings (course wins)
-    const industry = (course?.settings?.industry || settings.industry) ?? "";
-    const subject  = (course?.settings?.subject  || settings.subject)  ?? "";
+    const { industry, subject } = resolveProgramContext(course, settings);
     const sections = resolveSections({ course, userSettings: settings });
 
     const count = typeof lesson.slideCount === "number" ? Math.min(20, Math.max(1, lesson.slideCount)) : 10;

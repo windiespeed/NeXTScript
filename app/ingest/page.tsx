@@ -771,7 +771,7 @@ function IngestPageInner() {
                 type="text"
                 value={subtitle}
                 onChange={e => setSubtitle(e.target.value)}
-                placeholder="e.g. Introduction to CSS Flexbox"
+                placeholder="e.g. Introduction to Persuasive Writing"
                 className={inputClass}
                 style={inputStyle}
               />
@@ -786,7 +786,7 @@ function IngestPageInner() {
                 type="text"
                 value={topics}
                 onChange={e => setTopics(e.target.value)}
-                placeholder="e.g. Flexbox, CSS Layout"
+                placeholder="e.g. Claims, Evidence, Counterarguments"
                 className={inputClass}
                 style={inputStyle}
               />
@@ -837,7 +837,7 @@ function IngestPageInner() {
                 value={sources}
                 onChange={e => setSources(e.target.value)}
                 rows={4}
-                placeholder={"https://www.w3.org/\nhttps://www.w3schools.com/\nhttps://www.wcag.com/"}
+                placeholder={"https://www.khanacademy.org/\nhttps://www.britannica.com/"}
                 className={`${inputClass} font-mono`}
                 style={inputStyle}
               />
@@ -999,7 +999,7 @@ function IngestPageInner() {
                   type="text"
                   value={targetAudience}
                   onChange={e => setTargetAudience(e.target.value)}
-                  placeholder="e.g. 9th graders who just finished Intro to Python"
+                  placeholder="e.g. 9th graders new to this topic"
                   className={inputClass}
                   style={inputStyle}
                 />
