@@ -470,6 +470,21 @@ export async function exportDeckToGoogleSlides(opts: {
     id = created.data.presentationId!;
   }
 
+  try {
+    await fillPresentation(id, opts, slides);
+  } catch (err) {
+    // Don't leave a half-built copy of the template behind in the user's Drive.
+    await drive.files.delete({ fileId: id, supportsAllDrives: true }).catch(() => {});
+    throw err;
+  }
+  return { id, url: `https://docs.google.com/presentation/d/${id}/edit` };
+}
+
+async function fillPresentation(
+  id: string,
+  opts: { deck: DeckContent; theme: ThemeConfig; templateId?: string },
+  slides: ReturnType<typeof google.slides>,
+): Promise<void> {
   const pres = await slides.presentations.get({ presentationId: id });
   const template = opts.templateId ? inspectTemplate(pres.data) : undefined;
   const learned = opts.templateId ? learnTemplateStyle(pres.data) : undefined;
@@ -502,11 +517,10 @@ export async function exportDeckToGoogleSlides(opts: {
   for (let i = 0; i < noteRequests.length; i += BATCH) {
     await slides.presentations.batchUpdate({ presentationId: id, requestBody: { requests: noteRequests.slice(i, i + BATCH) } });
   }
-
-  return { id, url: `https://docs.google.com/presentation/d/${id}/edit` };
 }
 
 /** The presentation id in a Google Slides URL (…/presentation/d/<id>/…), if there is one. */
 export function presentationIdFromUrl(url: string | undefined): string | undefined {
-  return url?.match(/\/d\/([a-zA-Z0-9_-]+)/)?.[1];
+  // Only a Slides link: a Docs or Sheets "/d/<id>" link would fail later with a confusing error.
+  return url?.match(/\/presentation\/d\/([a-zA-Z0-9_-]+)/)?.[1];
 }

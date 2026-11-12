@@ -90,11 +90,19 @@ export const courseStore = {
     await ref.update({ lessonIds: FieldValue.arrayUnion(lessonId), updatedAt: new Date().toISOString() });
   },
 
-  /** Remove a lesson ID from a course's ordered list. Atomic for the same reason as addLesson. */
+  /**
+   * Take a deleted lesson out of its course: the ordered lessonIds list and every module's list.
+   * One transaction, so a concurrent reorder or module edit isn't lost or overwritten.
+   */
   async removeLesson(courseId: string, lessonId: string): Promise<void> {
     const ref = getDb().collection(COLLECTION).doc(courseId);
-    const doc = await ref.get();
-    if (!doc.exists) return;
-    await ref.update({ lessonIds: FieldValue.arrayRemove(lessonId), updatedAt: new Date().toISOString() });
+    await mergeDoc<Course>(ref, (existing) => ({
+      ...existing,
+      lessonIds: (existing.lessonIds ?? []).filter((id) => id !== lessonId),
+      ...(existing.modules
+        ? { modules: existing.modules.map((m) => ({ ...m, lessonIds: (m.lessonIds ?? []).filter((id) => id !== lessonId) })) }
+        : {}),
+      updatedAt: new Date().toISOString(),
+    }));
   },
 };

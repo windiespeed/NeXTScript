@@ -382,6 +382,15 @@ export const aiQuizSchema = z.object({
 });
 
 /** Reads a JSON request body and parses it. An empty or malformed body is a 400, or `{}` with emptyOk. */
+/** The request's JSON body, or undefined when it isn't valid JSON (the schema then rejects it with a 400). */
+export async function readJson(req: Request): Promise<unknown> {
+  try {
+    return await req.json();
+  } catch {
+    return undefined;
+  }
+}
+
 export async function readBody<S extends z.ZodType>(
   req: Request,
   schema: S,

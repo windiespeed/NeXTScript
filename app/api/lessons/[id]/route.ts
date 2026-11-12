@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { store } from "@/lib/store";
+import { courseStore } from "@/lib/courseStore";
 import { canAccessLesson, canAccessCourseId } from "@/lib/access";
 import type { Lesson } from "@/types/lesson";
 import { lessonPatchSchema, parsePatch } from "@/lib/validation";
@@ -59,6 +60,8 @@ export async function DELETE(_: Request, { params }: { params: Promise<{ id: str
     if (!existing) return NextResponse.json({ error: "Not found." }, { status: 404 });
     if (!(await canAccessLesson(existing, session.user.email))) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
     await store.delete(id);
+    // Keep the course's lesson order and modules from pointing at a lesson that no longer exists.
+    if (existing.courseId) await courseStore.removeLesson(existing.courseId, id);
     return NextResponse.json({ success: true });
   } catch (err) {
     return serverError(err);
