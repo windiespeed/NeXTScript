@@ -358,8 +358,8 @@ function NewQuizPageInner() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <button onClick={() => router.push("/quizzes")} className="text-sm text-[var(--accent-text)] hover:underline mb-2 block">
-          ← Back to Quizzes
+        <button onClick={() => router.push(selectedCourseId ? `/courses/${selectedCourseId}` : "/courses")} className="text-sm text-[var(--accent-text)] hover:underline mb-2 block">
+          ← {selectedCourseId ? "Back to Course" : "Back to Courses"}
         </button>
         <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>New Quiz</h1>
         <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>
@@ -680,7 +680,7 @@ function NewQuizPageInner() {
           {savedDraftId && !generating && (
             <p className="text-xs font-semibold text-[var(--success-text)]">
               Draft saved!{" "}
-              <button onClick={() => router.push("/quizzes")} className="underline">View all quizzes</button>
+              <button onClick={() => router.push(`/courses/${selectedCourseId}`)} className="underline">View course quizzes</button>
             </p>
           )}
         </div>

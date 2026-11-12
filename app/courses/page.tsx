@@ -21,6 +21,8 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { Course } from "@/types/course";
+import type { Lesson } from "@/types/lesson";
+import type { SavedProject } from "@/types/project";
 
 function fmt(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
@@ -213,6 +215,27 @@ export default function CoursesPage() {
     });
   }, []);
 
+  // Lessons and quizzes have no menus of their own any more; they're reached through their
+  // course. Anything that isn't in a course is surfaced here so it can still be found and assigned.
+  const [unassigned, setUnassigned] = useState<{ lessons: number; quizzes: number }>({ lessons: 0, quizzes: 0 });
+  useEffect(() => {
+    Promise.all([
+      fetch("/api/lessons").then(r => r.json()),
+      fetch("/api/quizzes").then(r => r.json()),
+    ]).then(([l, q]) => {
+      const lessons: Lesson[] = Array.isArray(l) ? l : [];
+      const quizzes: SavedProject[] = Array.isArray(q) ? q : [];
+      const lessonCourse = new Map(lessons.map(x => [x.id, x.courseId]));
+      const quizHasCourse = (x: SavedProject) =>
+        !!x.courseId ||
+        [x.lessonId, ...(x.lessonIds ?? [])].some(id => !!id && !!lessonCourse.get(id));
+      setUnassigned({
+        lessons: lessons.filter(x => !x.courseId).length,
+        quizzes: quizzes.filter(x => !quizHasCourse(x)).length,
+      });
+    }).catch(() => {});
+  }, []);
+
   async function handleDelete(id: string) {
     if (!confirm("Delete this course? This will not delete its lessons.")) return;
     await fetch(`/api/courses/${id}`, { method: "DELETE" });
@@ -271,6 +294,24 @@ export default function CoursesPage() {
             + New Course
           </Link>
         </div>
+
+        {(unassigned.lessons > 0 || unassigned.quizzes > 0) && (
+          <div role="status" className="mb-6 rounded-2xl px-4 py-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs"
+            style={{ background: "var(--accent-purple-bg)", border: "1px solid rgba(99,102,241,0.30)", color: "var(--text-secondary)" }}>
+            <span className="font-semibold" style={{ color: "var(--accent-purple)" }}>Not in a course:</span>
+            {unassigned.lessons > 0 && (
+              <Link href="/lessons?course=unassigned" className="font-semibold hover:underline" style={{ color: "var(--accent-purple)" }}>
+                {unassigned.lessons} lesson{unassigned.lessons !== 1 ? "s" : ""} →
+              </Link>
+            )}
+            {unassigned.quizzes > 0 && (
+              <Link href="/quizzes?course=unassigned" className="font-semibold hover:underline" style={{ color: "var(--accent-purple)" }}>
+                {unassigned.quizzes} quiz{unassigned.quizzes !== 1 ? "zes" : ""} →
+              </Link>
+            )}
+            <span>Add them to a course so they show up there.</span>
+          </div>
+        )}
 
         {loading ? (
           <p className="text-sm text-[var(--accent-text)]">Loading…</p>

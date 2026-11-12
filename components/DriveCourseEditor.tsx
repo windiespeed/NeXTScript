@@ -26,6 +26,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import Dialog from "@/components/ui/Dialog";
+import CourseQuizzes from "@/components/CourseQuizzes";
 
 const inputClass = "w-full rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)] transition placeholder:text-[var(--text-muted)]";
 const inputStyle = { background: "var(--bg-card-hover)", color: "var(--text-primary)", border: "1px solid var(--border)" };
@@ -1328,6 +1329,9 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
           );
         })()}
       </div>
+
+      {/* Quizzes — the only place course-wide, module and standalone quizzes are listed */}
+      <CourseQuizzes courseId={id} lessons={lessons} modules={driveModules} />
 
       {/* Add Existing Lesson Modal */}
       {addExistingOpen && (

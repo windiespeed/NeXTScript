@@ -89,8 +89,8 @@ export default function NotesToSlidesGuide() {
             <li>To rebuild a lesson&apos;s deck, open it here (or use “Edit Slides” on the lesson page), then click “Start from this lesson&apos;s content”. Its old Slide Content and section text are loaded as notes, ready to generate.</li>
             <li>Lesson sections (overview, activities, rubric) are still edited with Edit Content on the lesson page, and still feed the Overview Doc and quizzes.</li>
           </ul>
-          <Link href="/lessons" className="inline-block text-[10px] font-semibold hover:underline" style={{ color: "var(--accent-purple)" }}>
-            See all lessons →
+          <Link href="/courses" className="inline-block text-[10px] font-semibold hover:underline" style={{ color: "var(--accent-purple)" }}>
+            Go to your courses →
           </Link>
         </div>
       </div>

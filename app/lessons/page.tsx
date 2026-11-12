@@ -153,6 +153,9 @@ export default function LessonsPage() {
     ]).then(([l, c, p]) => {
       setLessons(Array.isArray(l) ? l : []);
       setCourses(Array.isArray(c) ? c : []);
+      // Opened from the Courses page's "not in a course" notice as ?course=unassigned.
+      const courseParam = new URLSearchParams(window.location.search).get("course");
+      if (courseParam) setFilterCourse(courseParam);
       setProjects(Array.isArray(p) ? p : []);
       setLoading(false);
     });
