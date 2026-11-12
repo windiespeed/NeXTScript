@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useSyncExternalStore } from "react";
 import Link from "next/link";
 
 const STORAGE_KEY = "notes-to-slides-guide-open";
@@ -33,32 +33,41 @@ const STEPS: { title: string; body: string }[] = [
 ];
 
 /** Collapsible how-to for Notes to Slides, including where Classic Slides users' work went.
- * Open by default on a first visit; the open/closed choice is remembered per browser. */
+ * Open by default on a first visit; Show/Hide is remembered per browser. */
+// The remembered choice, read straight from localStorage. Same-tab changes are announced with
+// CHANGED, other tabs through the "storage" event.
+const CHANGED = "notes-to-slides-guide-changed";
+function readOpen(): boolean {
+  try { return localStorage.getItem(STORAGE_KEY) !== "0"; } catch { return true; }
+}
+function subscribe(onChange: () => void) {
+  window.addEventListener("storage", onChange);
+  window.addEventListener(CHANGED, onChange);
+  return () => {
+    window.removeEventListener("storage", onChange);
+    window.removeEventListener(CHANGED, onChange);
+  };
+}
+
 export default function NotesToSlidesGuide() {
-  // Native <details>: keyboard and screen-reader support for free. The remembered choice is
-  // applied straight to the element after mount, so server and client render the same markup.
-  const ref = useRef<HTMLDetailsElement>(null);
+  // Saved only when the instructor clicks Show/Hide. (The old version saved from <details>'
+  // "toggle" event, which the browser also fires when the element first appears open, so a
+  // remembered "Hide" could be overwritten.)
+  const open = useSyncExternalStore(subscribe, readOpen, () => true);
 
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved !== null && ref.current) ref.current.open = saved === "1";
-    } catch {}
-  }, []);
-
-  function handleToggle(e: React.SyntheticEvent<HTMLDetailsElement>) {
-    try { localStorage.setItem(STORAGE_KEY, e.currentTarget.open ? "1" : "0"); } catch {}
+  function handleSummaryClick(e: React.MouseEvent<HTMLElement>) {
+    e.preventDefault();
+    try { localStorage.setItem(STORAGE_KEY, open ? "0" : "1"); } catch {}
+    window.dispatchEvent(new Event(CHANGED));
   }
 
   return (
     <details
-      ref={ref}
-      open
-      onToggle={handleToggle}
+      open={open}
       className="group rounded-3xl"
       style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}
     >
-      <summary className="flex items-center justify-between gap-3 px-6 py-4 cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+      <summary onClick={handleSummaryClick} className="flex items-center justify-between gap-3 px-6 py-4 cursor-pointer list-none [&::-webkit-details-marker]:hidden">
         <span className="text-xs font-semibold uppercase tracking-widest text-[var(--accent-text)]">How Notes to Slides works</span>
         <span className="text-[10px] font-semibold" style={{ color: "var(--text-muted)" }}>
           <span className="group-open:hidden">Show</span>

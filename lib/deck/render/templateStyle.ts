@@ -532,6 +532,7 @@ export function themeFromLearned(style: LearnedStyle, name = "Course template"):
     accent: { primary: c.accent1, secondary: c.accent2, tertiary: c.accent3 },
     border: c.panel,
     radius: "0",
+    exactColors: true,
     darkSlides: {
       surface: v.background,
       panel: v.panel,

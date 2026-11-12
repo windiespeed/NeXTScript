@@ -37,6 +37,8 @@ interface Props {
 export default function SlideCanvas({ layout, theme, showWarnings = true, label, className = "" }: Props) {
   const palette = resolvePalette(theme, layout.dark);
   const backdrop = backdropFor(theme.backdrop, layout.dark);
+  // A course template's own gradients (as CSS) win over the built-in backdrop images.
+  const templateArt = layout.dark ? theme.backdropCss?.dark : theme.backdropCss?.content;
   const flagged = new Map<string, WarningSeverity>();
   if (showWarnings) {
     for (const w of layout.warnings) {
@@ -74,9 +76,12 @@ export default function SlideCanvas({ layout, theme, showWarnings = true, label,
         overflow: "hidden",
         aspectRatio: `${CANVAS_W} / ${CANVAS_H}`,
         containerType: "inline-size",
-        background: palette[layout.background],
-        backgroundImage: backdrop ? `url(data:image/jpeg;base64,${backdrop})` : undefined,
+        // Longhand properties only: mixing the "background" shorthand with backgroundSize makes
+        // React drop the image on re-render (and warn), so the backdrop vanished from the preview.
+        backgroundColor: palette[layout.background],
+        backgroundImage: templateArt ? templateArt.image : backdrop ? `url(data:image/jpeg;base64,${backdrop})` : undefined,
         backgroundSize: "cover",
+        backgroundPosition: "center",
       }}
     >
       {layout.elements.map(el => {

@@ -22,3 +22,13 @@ describe("themeFromLearned", () => {
     expect(resolvePalette(theme, true).surface).toBe("#4D3522");
   });
 });
+
+describe("themeFromLearned colors are exact", () => {
+  it("keeps the template's light cover text even where the contrast fix would darken it", () => {
+    // The cover's page color is a mid brown, but the template draws a dark gradient over it, and
+    // the export uses the template's light text as is. The preview must too.
+    const brown: LearnedStyle = { content: pal("#262E3E", "#F0A050"), cover: { ...pal("#AF7B51", "#F0A050"), title: "#E8EAED" } };
+    const p = resolvePalette(themeFromLearned(brown), true);
+    expect(p["text.primary"]).toBe("#E8EAED");
+  });
+});
