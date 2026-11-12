@@ -21,13 +21,9 @@ import {
   sortableKeyboardCoordinates,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import GenerateModal from "@/components/GenerateModal";
 import type { Lesson } from "@/types/lesson";
-import type { SavedProject } from "@/types/project";
 import type { Course } from "@/types/course";
 
-type FileChoice = "slides" | "quiz";
-type Destination = "drive" | "download";
 type WidgetId = "activity" | "progress" | "activeCourse" | "schedule";
 const DEFAULT_WIDGET_ORDER: WidgetId[] = ["activity", "progress", "activeCourse", "schedule"];
 
@@ -211,11 +207,8 @@ function SortableWidget({ widgetId, span, onCycleSize, children }: {
 function Dashboard() {
   const { data: session, status } = useSession();
   const [lessons, setLessons] = useState<Lesson[]>([]);
-  const [projects, setProjects] = useState<SavedProject[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
-  const [modalLessonId, setModalLessonId] = useState<string | null>(null);
-  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   // ── Widget sizes + order ──────────────────────────────────────────────────────
   const DEFAULT_WIDGET_SIZES: Record<WidgetId, 1 | 2 | 3> = { activity: 1, progress: 1, activeCourse: 1, schedule: 3 };
@@ -226,10 +219,6 @@ function Dashboard() {
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
-  const modalLesson = lessons.find(l => l.id === modalLessonId) ?? null;
-  const modalLessonHasQuizDraft = modalLesson
-    ? projects.some(p => p.type === "form" && p.status === "draft" && (p.lessonId === modalLesson.id || p.lessonIds?.includes(modalLesson.id)))
-    : false;
   const scheduleRef = useDragScroll();
 
   // ── Computed stats ──────────────────────────────────────────────────────────
@@ -272,53 +261,10 @@ function Dashboard() {
     setLessons(Array.isArray(data) ? data : []);
   }
 
-  async function loadProjects() {
-    const data = await fetch("/api/projects").then(r => r.json());
-    setProjects(Array.isArray(data) ? data : []);
-  }
-
-  async function handleGenerateWithOptions(id: string, files: FileChoice[], destination: Destination) {
-    const lesson = lessons.find(l => l.id === id);
-    const inProgressStatus = lesson?.status === "done" ? "regenerating" : "generating";
-    setLessons(prev => prev.map(l => l.id === id ? { ...l, status: inProgressStatus } : l));
-    const res = await fetch(`/api/generate/${id}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ files, destination }),
-    });
-    if (!res.ok) {
-      const data = await res.json();
-      setLessons(prev => prev.map(l => l.id === id ? { ...l, status: "error", errorMessage: data.error } : l));
-      setToast({ message: data.error || "Generation failed.", type: "error" });
-      setTimeout(() => setToast(null), 5000);
-      return;
-    }
-    if (destination === "drive") {
-      const data = await res.json();
-      setLessons(prev => prev.map(l => l.id === id ? { ...l, ...data } : l));
-      await loadProjects();
-      setToast({ message: "Bundle saved to Google Drive!", type: "success" });
-    } else {
-      const { downloads } = await res.json();
-      for (const file of downloads) {
-        const bytes = Uint8Array.from(atob(file.data), c => c.charCodeAt(0));
-        const blob = new Blob([bytes], { type: "application/pdf" });
-        const url = URL.createObjectURL(blob);
-        const a = Object.assign(document.createElement("a"), { href: url, download: file.filename });
-        document.body.appendChild(a); a.click(); document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-      }
-      setLessons(prev => prev.map(l => l.id === id ? { ...l, status: "done" } : l));
-      setToast({ message: "PDFs downloaded!", type: "success" });
-    }
-    setTimeout(() => setToast(null), 4000);
-  }
-
   useEffect(() => {
     if (status === "authenticated") {
       Promise.all([
         loadLessons(),
-        loadProjects(),
         fetch("/api/courses").then(r => r.json()).then(d => setCourses(Array.isArray(d) ? d : [])),
       ]).then(() => setLoading(false));
     }
@@ -565,7 +511,7 @@ function Dashboard() {
           </div>
           <p className="text-sm font-semibold mb-1" style={{ color: "var(--accent-text)" }}>Curriculum Builder</p>
           <p className="text-sm mb-8" style={{ color: "var(--text-secondary)" }}>
-            Create and edit lessons, then generate a full Google Drive bundle — slides, poster, and quiz — with one click.
+            Plan courses, turn lesson notes into slide decks on your course template, and push them to Google Classroom.
           </p>
           <button
             onClick={() => signIn("google")}
@@ -637,15 +583,6 @@ function Dashboard() {
         </DndContext>
       )}
 
-      <GenerateModal lesson={modalLesson} hasQuizDraft={modalLessonHasQuizDraft} onClose={() => setModalLessonId(null)} onGenerate={handleGenerateWithOptions} />
-
-      {toast && (
-        <div role="status" className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-3xl px-5 py-3.5 shadow-2xl text-sm font-semibold transition-all ${toast.type === "success" ? "bg-[#2dd4a0] text-[#0a0b13]" : "bg-red-500 text-white"}`}>
-          <span>{toast.type === "success" ? "✓" : "✕"}</span>
-          {toast.message}
-          <button aria-label="Dismiss notification" onClick={() => setToast(null)} className="ml-2 opacity-60 hover:opacity-100 text-xs">✕</button>
-        </div>
-      )}
     </div>
   );
 }

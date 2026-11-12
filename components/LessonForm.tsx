@@ -5,15 +5,6 @@ import type { Lesson, LessonInput } from "@/types/lesson";
 import { STUDENT_LEVEL_UI_HINTS } from "@/lib/studentLevel";
 import { DEFAULT_SECTIONS, type SectionDef } from "@/types/section";
 import { resolveSections, getSectionContent } from "@/lib/sections";
-import { clearDraft } from "@/lib/draftStorage";
-import { useDraftAutosave, useDraftRestore } from "@/hooks/useDraftAutosave";
-
-interface LessonDraft {
-  form: LessonInput;
-  slides: Slide[];
-  slideCount: number;
-  overviewSlides: boolean[];
-}
 
 const cardClass = "rounded-3xl p-5 space-y-4";
 const cardStyle = { background: "var(--bg-card)", border: "1px solid var(--border)" };
@@ -24,31 +15,11 @@ const inputStyle = { background: "var(--bg-card-hover)", color: "var(--text-prim
 interface Props {
   initial?: Partial<Lesson>;
   onSubmit: (data: LessonInput) => Promise<void>;
-  onSaveDraft?: (data: LessonInput) => Promise<void>;
   autoSave?: (data: LessonInput) => Promise<void>;
   onCancel?: () => void;
   submitLabel?: string;
   hasAiKey?: boolean;
   isEditing?: boolean;
-}
-
-interface Slide {
-  title: string;
-  body: string;
-}
-
-function parseSlides(raw: string): Slide[] {
-  if (!raw.trim()) return [{ title: "", body: "" }];
-  const sep = /\n---\n/;
-  const blocks = sep.test(raw) ? raw.split(sep) : raw.split(/\n\n+/);
-  return blocks.map((block) => {
-    const lines = block.trim().split("\n");
-    return { title: lines[0] ?? "", body: lines.slice(1).join("\n") };
-  });
-}
-
-function serializeSlides(slides: Slide[]): string {
-  return slides.map((s) => `${s.title}\n${s.body}`.trimEnd()).join("\n---\n");
 }
 
 const EMPTY: LessonInput = {
@@ -89,35 +60,19 @@ function SectionClearBtn({ onClick }: { onClick: () => void }) {
   );
 }
 
-export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSave, onCancel, submitLabel = "Save Lesson", hasAiKey = false, isEditing = false }: Props) {
+/**
+ * Edits a lesson's info and section text (used for AI quiz drafts). Slides are built in Notes
+ * to Slides; a lesson's old Classic Slide Content is kept as-is (it still seeds Notes to Slides
+ * and quizzes) but is no longer edited here.
+ */
+export default function LessonForm({ initial = {}, onSubmit, autoSave, onCancel, submitLabel = "Save Lesson", hasAiKey = false, isEditing = false }: Props) {
   const [form, setForm] = useState<LessonInput>({ ...EMPTY, ...initial });
-  const [slides, setSlides] = useState<Slide[]>(() => parseSlides(initial.slideContent ?? ""));
-  const [slideCount, setSlideCount] = useState<number>(initial.slideCount ?? 10);
-  const [overviewSlides, setOverviewSlides] = useState<boolean[]>(() => {
-    const count = parseSlides(initial.slideContent ?? "").length;
-    const saved = initial.overviewSlides;
-    if (saved && saved.length === count) return saved;
-    return Array(count).fill(false);
-  });
   const [saving, setSaving] = useState(false);
-  const [savingDraft, setSavingDraft] = useState(false);
   const [aiFilling, setAiFilling] = useState(false);
   const [aiFilledFields, setAiFilledFields] = useState<Set<string>>(new Set());
   const [error, setError] = useState("");
   const [autoSaveStatus, setAutoSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const [sections, setSections] = useState<SectionDef[]>(DEFAULT_SECTIONS);
-
-  // Only for brand-new, unsaved lessons — edit mode already has real Firestore
-  // autosave (below) firing into the actual doc, so a second localStorage draft
-  // would just be a second, conflicting source of truth for the same content.
-  const draftKey = isEditing ? null : "lesson:new";
-  useDraftRestore<LessonDraft>(draftKey, (draft) => {
-    setForm(f => ({ ...f, ...draft.form }));
-    setSlides(draft.slides);
-    setSlideCount(draft.slideCount);
-    setOverviewSlides(draft.overviewSlides);
-  });
-  useDraftAutosave<LessonDraft>(draftKey, { form, slides, slideCount, overviewSlides });
 
   function clearSection(keys: (keyof LessonInput)[], extra?: () => void) {
     setForm(f => {
@@ -193,48 +148,17 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
       if (!autoSaveRef.current) return;
       setAutoSaveStatus("saving");
       try {
-        await autoSaveRef.current({ ...form, slideContent: serializeSlides(slides), slideCount, overviewSlides });
+        await autoSaveRef.current(form);
         setAutoSaveStatus("saved");
       } catch {
         setAutoSaveStatus("idle");
       }
     }, 3000);
     return () => clearTimeout(timer);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form, slides, slideCount, overviewSlides]);
+  }, [form]);
 
   function set(key: keyof LessonInput, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
-  }
-
-  function setSlide(index: number, field: keyof Slide, value: string) {
-    setSlides((prev) => prev.map((s, i) => i === index ? { ...s, [field]: value } : s));
-  }
-
-  function addSlide() {
-    setSlides((prev) => [...prev, { title: "", body: "" }]);
-    setOverviewSlides((prev) => [...prev, false]);
-  }
-
-  function removeSlide(index: number) {
-    setSlides((prev) => prev.length > 1 ? prev.filter((_, i) => i !== index) : prev);
-    setOverviewSlides((prev) => prev.length > 1 ? prev.filter((_, i) => i !== index) : prev);
-  }
-
-  function moveSlide(index: number, direction: "up" | "down") {
-    const swapWith = direction === "up" ? index - 1 : index + 1;
-    setSlides((prev) => {
-      const next = [...prev];
-      if (swapWith < 0 || swapWith >= next.length) return prev;
-      [next[index], next[swapWith]] = [next[swapWith], next[index]];
-      return next;
-    });
-    setOverviewSlides((prev) => {
-      const next = [...prev];
-      if (swapWith < 0 || swapWith >= next.length) return prev;
-      [next[index], next[swapWith]] = [next[swapWith], next[index]];
-      return next;
-    });
   }
 
   async function handleAiFill() {
@@ -244,11 +168,11 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
       const res = await fetch("/api/ai/lesson", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, slideContent: serializeSlides(slides), slideCount }),
+        body: JSON.stringify(form),
       });
-      const data = await res.json() as { slides?: Slide[]; sections?: Record<string, string>; error?: string };
+      const data = await res.json() as { sections?: Record<string, string>; error?: string };
       if (!res.ok) throw new Error(data.error || "AI fill failed.");
-      const { slides: aiSlides, sections: aiSections } = data;
+      const { sections: aiSections } = data;
       const filled = new Set<string>();
       setForm((f) => {
         const nextSections = { ...f.sections };
@@ -260,12 +184,6 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
         }
         return { ...f, sections: nextSections };
       });
-      const currentSlideContent = serializeSlides(slides).trim();
-      if (aiSlides?.length && !currentSlideContent) {
-        setSlides(aiSlides);
-        setOverviewSlides(Array(aiSlides.length).fill(false));
-        filled.add("slideContent");
-      }
       setAiFilledFields(prev => new Set([...prev, ...filled]));
     } catch (err: any) {
       setError(err.message);
@@ -274,26 +192,12 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
     }
   }
 
-  async function handleSaveDraft() {
-    if (!onSaveDraft) return;
-    setSavingDraft(true);
-    setError("");
-    try {
-      await onSaveDraft({ ...form, slideContent: serializeSlides(slides), slideCount, overviewSlides });
-    } catch (err: any) {
-      setError(err.message || "Failed to save draft.");
-    } finally {
-      setSavingDraft(false);
-    }
-  }
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setSaving(true);
     try {
-      await onSubmit({ ...form, slideContent: serializeSlides(slides), slideCount, overviewSlides });
-      if (draftKey) clearDraft(draftKey);
+      await onSubmit(form);
     } catch (err: any) {
       setError(err.message || "Something went wrong.");
     } finally {
@@ -511,91 +415,6 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
         ))}
       </div>
 
-      {/* ── Slides ───────────────────────────────────────────────────── */}
-      <div className={cardClass} style={cardStyle}>
-        <div className="flex items-center justify-between">
-          <p className={sectionLabel}>Slides</p>
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5">
-              <label htmlFor="lessonform-ai-slides" className="text-xs font-medium" style={{ color: "var(--text-muted)" }}>AI slides:</label>
-              <input id="lessonform-ai-slides"
-                type="number"
-                min={1}
-                max={20}
-                value={slideCount}
-                onChange={e => setSlideCount(Math.min(20, Math.max(1, Number(e.target.value))))}
-                className="w-14 rounded-lg px-2 py-1 text-xs text-center focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
-                style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
-                title="Number of slides AI will generate"
-              />
-            </div>
-            <button
-              type="button"
-              onClick={() => { setSlides([{ title: "", body: "" }]); setOverviewSlides([true]); setAiFilledFields(prev => { const next = new Set(prev); next.delete("slideContent"); return next; }); }}
-              className="rounded-full px-3 py-1.5 text-xs font-semibold transition hover:bg-red-500/10 hover:text-[var(--danger-text)] text-[var(--text-muted)]"
-              style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)" }}
-            >
-              Clear
-            </button>
-            <button
-              type="button"
-              onClick={addSlide}
-              className="rounded-full px-3 py-1.5 text-xs font-semibold transition"
-              style={{ background: "var(--bg-card-hover)", color: "var(--text-primary)", border: "1px solid var(--border)" }}
-            >
-              + Add Slide
-            </button>
-          </div>
-        </div>
-        <p className="text-xs -mt-2" style={{ color: "var(--text-secondary)" }}>Each card is one slide. The title becomes the slide heading.</p>
-
-        <div className="space-y-3">
-          {slides.map((slide, i) => (
-            <div key={i} className="rounded-2xl p-4 space-y-2" style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)" }}>
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>Slide {i + 1}</span>
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => setOverviewSlides(prev => prev.map((v, idx) => idx === i ? !v : v))}
-                    title={overviewSlides[i] ? "Included in Overview Doc — click to exclude" : "Excluded from Overview Doc — click to include"}
-                    className={`rounded-full px-2 py-0.5 text-[10px] font-semibold transition ${overviewSlides[i] ? "bg-[#0cc0df]/15 text-[var(--accent-text)]" : "text-[var(--text-muted)] hover:bg-[var(--bg-card)]"}`}
-                    style={overviewSlides[i] ? {} : { border: "1px solid var(--border)" }}
-                  >
-                    Overview
-                  </button>
-                  <button type="button" onClick={() => moveSlide(i, "up")} disabled={i === 0} title="Move up" className="p-1 rounded text-[var(--text-muted)] hover:text-[var(--accent-text)] disabled:opacity-20 transition">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
-                  </button>
-                  <button type="button" onClick={() => moveSlide(i, "down")} disabled={i === slides.length - 1} title="Move down" className="p-1 rounded text-[var(--text-muted)] hover:text-[var(--accent-text)] disabled:opacity-20 transition">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-                  </button>
-                  <button type="button" onClick={() => removeSlide(i)} disabled={slides.length === 1} className="text-xs text-[var(--danger-text)] hover:text-red-700 disabled:opacity-30 transition ml-1">
-                    Remove
-                  </button>
-                </div>
-              </div>
-              <input aria-label={`Slide ${i + 1} title`}
-                type="text"
-                value={slide.title}
-                onChange={(e) => setSlide(i, "title", e.target.value)}
-                placeholder="Slide title"
-                className={inputClass}
-                style={{ background: "var(--bg-card)", color: "var(--text-primary)", border: "1px solid var(--border)" }}
-              />
-              <textarea aria-label={`Slide ${i + 1} content`}
-                value={slide.body}
-                onChange={(e) => setSlide(i, "body", e.target.value)}
-                rows={4}
-                placeholder="Slide content…"
-                className={`${inputClass} font-mono`}
-                style={{ background: "var(--bg-card)", color: "var(--text-primary)", border: "1px solid var(--border)" }}
-              />
-            </div>
-          ))}
-        </div>
-      </div>
-
       {/* ── Activities & Assessment ───────────────────────────────────── */}
       <div className={cardClass} style={cardStyle}>
         <div className="flex items-center justify-between">
@@ -647,28 +466,17 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
             <button
               type="button"
               onClick={onCancel}
-              disabled={saving || savingDraft}
+              disabled={saving}
               className="flex-1 rounded-full px-4 py-2.5 text-sm font-semibold disabled:opacity-50 transition"
               style={{ border: "1px solid var(--border)", color: "var(--text-primary)" }}
             >
               Cancel
             </button>
           )}
-          {onSaveDraft && (
-            <button
-              type="button"
-              onClick={handleSaveDraft}
-              disabled={saving || savingDraft}
-              className="flex-1 rounded-full px-4 py-2.5 text-sm font-semibold hover:opacity-80 disabled:opacity-50 transition"
-              style={{ border: "1px solid var(--border)", background: "var(--bg-card-hover)", color: "var(--text-primary)" }}
-            >
-              {savingDraft ? "Saving…" : "Save Draft"}
-            </button>
-          )}
           <button
             type="submit"
-            disabled={saving || savingDraft}
-            className={`rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2.5 text-sm font-semibold text-[#0a0b13] shadow hover:opacity-90 disabled:opacity-50 transition ${onCancel || onSaveDraft ? "flex-1" : "w-full"}`}
+            disabled={saving}
+            className={`rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2.5 text-sm font-semibold text-[#0a0b13] shadow hover:opacity-90 disabled:opacity-50 transition ${onCancel ? "flex-1" : "w-full"}`}
           >
             {saving ? "Saving…" : submitLabel}
           </button>

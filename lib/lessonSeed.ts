@@ -7,10 +7,9 @@ export interface SeedableLesson {
   sections?: Record<string, string>;
 }
 
-/** Splits a classic slideContent string into {title, body} blocks, the same way the classic
- * Slide Deck builder in lib/google.ts does ("---" lines between slides, else blank lines;
- * first line of each block is the slide title). Kept here so client code can use it without
- * pulling in googleapis. */
+/** Splits a retired Classic Slides slideContent string into {title, body} blocks ("---" lines
+ * between slides, else blank lines; first line of each block is the slide title). Used to seed
+ * Notes to Slides and by the Overview Doc for old Classic decks. */
 export function parseClassicSlideBlocks(raw: string): { title: string; body: string }[] {
   if (!raw.trim()) return [];
   const sep = /\n---\n/;

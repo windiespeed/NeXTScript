@@ -210,7 +210,8 @@ function NewQuizPageInner() {
       learningTargets: targetLessons.map(l => getSectionContent(l, "learningTargets")).filter(Boolean).join("\n\n"),
       vocabulary: targetLessons.map(l => getSectionContent(l, "vocabulary")).filter(Boolean).join("\n\n"),
       overview: targetLessons.map(l => getSectionContent(l, "lessonOverview")).filter(Boolean).join("\n\n"),
-      slideContent: targetLessons.map(l => l.slideContent).filter(Boolean).join("\n\n"),
+      // Notes to Slides notes when the lesson has them, else its old Classic Slide Content.
+      slideContent: targetLessons.map(l => l.slideNotes || l.slideContent).filter(Boolean).join("\n\n"),
       guidedLab: targetLessons.map(l => getSectionContent(l, "guidedLab")).filter(Boolean).join("\n\n"),
       industryBestPractices: targetLessons.map(l => getSectionContent(l, "industryBestPractices")).filter(Boolean).join("\n\n"),
       studentLevel: targetLessons[0]?.studentLevel,

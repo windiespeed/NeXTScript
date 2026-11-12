@@ -11,7 +11,7 @@ export interface SectionDef {
   position?: "before-slides" | "after-slides"; // where it renders in LessonForm / the Slide Deck — default "after-slides"
   includeInOverviewDoc: boolean;  // course-level toggle: does this section's content appear in the Overview Doc body?
   includeInQuizContext?: boolean; // does this section's content feed AI quiz generation? default true
-  skipIfEmpty?: boolean;          // Slide Deck: omit this section's slide entirely when its content is blank
+  skipIfEmpty?: boolean;          // Read only by the retired Classic Slides generator; kept so saved section settings still load
   /** Notes to Slides: is this section a locked slide heading (anchor)? Absent = the builtin's
    * default from DEFAULT_SECTIONS, or true for a custom section — see isSlideAnchor(). */
   slideAnchor?: boolean;
@@ -65,8 +65,7 @@ export const LEGACY_LESSON_FIELD: Record<BuiltinSectionId, string[]> = {
  *   TITLE only, never body content).
  * - includeInQuizContext matches generateQuizQuestions' current hardcoded field list
  *   (lessonOverview/overview, learningTargets, vocabulary, guidedLab, industryBestPractices).
- * - skipIfEmpty is true only for vocabulary, matching buildSlideDeck's existing
- *   `lesson.vocabulary ? ... : []` check.
+ * - skipIfEmpty is true only for vocabulary (Classic Slides only, now retired).
  * Labels here are overridden by DEFAULT_SECTION_LABELS / user / course settings at
  * resolution time (see lib/sections.ts) — the strings below are the last-resort fallback.
  */

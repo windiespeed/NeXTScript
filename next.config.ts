@@ -21,6 +21,17 @@ const noFramingHeaders = [
 
 const nextConfig: NextConfig = {
   devIndicators: false,
+  // Classic Slides was retired in favor of Notes to Slides. Old bookmarks land on the closest
+  // page that still exists. Temporary redirects, so they can be dropped later without browsers
+  // having cached them.
+  async redirects() {
+    return [
+      { source: "/slides", destination: "/lessons", permanent: false },
+      { source: "/slides/new", destination: "/ingest", permanent: false },
+      { source: "/slides/:id", destination: "/lessons/:id/edit", permanent: false },
+      { source: "/courses/:id/batch-slides", destination: "/courses/:id", permanent: false },
+    ];
+  },
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },

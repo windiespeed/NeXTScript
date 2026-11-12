@@ -35,8 +35,7 @@ export async function POST(req: Request) {
     const { industry, subject } = resolveProgramContext(course, settings);
     const sections = resolveSections({ course, userSettings: settings });
 
-    const count = typeof lesson.slideCount === "number" ? Math.min(20, Math.max(1, lesson.slideCount)) : 10;
-    const result = await fillLesson(apiKey, lesson as Partial<LessonInput>, { industry, subject, sections }, count);
+    const result = await fillLesson(apiKey, lesson as Partial<LessonInput>, { industry, subject, sections });
     return NextResponse.json(result);
   } catch (err: any) {
     // Surface Anthropic billing/auth errors clearly

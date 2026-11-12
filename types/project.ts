@@ -19,7 +19,7 @@ export interface SavedProject {
   // Content snapshots for "deck" projects — captured once at creation so a lesson can have
   // multiple decks and each keeps its own source content, independent of the lesson's own
   // (mutable) fields. Exactly one of these is set, depending on which pipeline built the deck.
-  slideContent?: string;           // classic pipeline (buildSlideDeck) snapshot
+  slideContent?: string;           // retired Classic Slides snapshot (old decks only)
   presentationAST?: PresentationAST; // Notes to Slides (buildSlideDeckFromAst) snapshot
   createdAt: string;
 }
