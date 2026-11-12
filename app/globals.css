@@ -136,13 +136,10 @@ button, a, [role="button"] {
   display: none;
 }
 
-/* Horizontal menu (mockup): swipeable row without a visible scrollbar */
-.no-scrollbar { scrollbar-width: none; }
-.no-scrollbar::-webkit-scrollbar { display: none; }
 
-/* ── MOCKUP: NeXT Central look ─────────────────────────────────────────────
+/* ── NeXT Central look ─────────────────────────────────────────────
    Navy/teal brand gradient, smaller corners, flatter cards with a hairline edge.
-   Colors are eyeballed from a NeXT Central screenshot; swap in the exact values once known. */
+   Colors are approximated from NeXT Central; swap in its exact values once known. */
 :root {
   --brand-navy: #1b3a5c;
   --brand-teal: #1fa3b9;

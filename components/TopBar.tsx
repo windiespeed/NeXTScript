@@ -38,7 +38,7 @@ function ThemeToggle() {
   );
 }
 
-// MOCKUP: Profile/Settings live in a menu under your picture and name (top right).
+// Profile/Settings and Sign out live in a menu under your picture and name (top right).
 function AccountMenu({ name, email, sources }: { name?: string | null; email?: string | null; sources: (string | null | undefined)[] }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -229,7 +229,7 @@ export default function TopBar() {
         </div>
       </div>
 
-      {/* MOCKUP: main menu as a horizontal bar under the navbar */}
+      {/* Main menu: a horizontal bar under the navbar on desktop; the hamburger panel on smaller screens */}
       <TopMenu />
 
       {/* Mobile search bar — slides down when open */}

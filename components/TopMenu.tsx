@@ -1,7 +1,7 @@
 "use client";
 
-// MOCKUP: the main menu as a horizontal bar under the top navbar, instead of the left sidebar.
-// Desktop: one row of pills, Courses opens a dropdown of your courses, NeXTBox sits at the right end.
+// The main menu: a horizontal bar under the top navbar (it replaced the left sidebar).
+// Desktop: one row of tabs, Courses opens a dropdown of your courses, NeXTBox sits at the right end.
 // Phone/tablet: the hamburger opens the same items as a slide-in panel.
 // Profile/Settings moved to the account menu under your picture (TopBar).
 
@@ -32,7 +32,9 @@ export default function TopMenu() {
   const wrapRef = useRef<HTMLDivElement>(null);
   const { open: mobileOpen, close } = useMobileMenu();
 
-  useEffect(() => { setCoursesOpen(false); }, [pathname]);
+  // Close the courses dropdown on navigation.
+  const [lastPath, setLastPath] = useState(pathname);
+  if (pathname !== lastPath) { setLastPath(pathname); setCoursesOpen(false); }
 
   useEffect(() => {
     if (!coursesOpen) return;
