@@ -42,17 +42,19 @@ export async function POST(req: Request) {
     const skeleton = await loadCourseSkeleton(courseId, session.user.email, settings);
     if (!skeleton) return NextResponse.json({ error: "Course not found or you don't have access to it." }, { status: 403 });
 
-    const { targetAudience, slideCount, studentLevel, lessonTitle, lessonSubtitle, topics, sources } = body;
+    const { targetAudience, slideCount, studentLevel, lessonTitle, lessonSubtitle, topics, sources, outline } = body;
 
     const opts = {
-      targetAudience, slideCount, anchors: skeleton.anchors, studentLevel, lessonTitle, lessonSubtitle, topics, sources,
+      targetAudience, slideCount, anchors: skeleton.anchors, studentLevel, lessonTitle, lessonSubtitle, topics, sources, outline,
       program: resolveProgramContext(skeleton.course, settings),
     };
     const generated = provider === "gemini"
       ? await ingestRawContentGemini(apiKey, rawText, { ...opts, model })
       : await ingestRawContent(apiKey, rawText, { ...opts, model: model as ClaudeModelId });
     // Models follow the anchor rules most of the time, not always — lock the skeleton in code.
-    const { ast, report } = applySlideAnchors({ ...generated, themeId: skeleton.themeId }, skeleton.anchors);
+    // The cover's tagline: the model's, else the instructor's own subtitle from Lesson Info.
+    const subtitle = generated.lessonSubtitle?.trim() || lessonSubtitle?.trim() || undefined;
+    const { ast, report } = applySlideAnchors({ ...generated, lessonSubtitle: subtitle, themeId: skeleton.themeId }, skeleton.anchors);
     const response: HybridIngestResponse = { ast, anchors: skeleton.anchors, anchorReport: report };
     return NextResponse.json(response);
   } catch (err: any) {

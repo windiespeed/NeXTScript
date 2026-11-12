@@ -27,6 +27,8 @@ export const LIMITS = {
   /** Small label above a content slide's title, and the footer line. */
   label: 40,
   footer: 70,
+  /** One-sentence takeaway line along the bottom of a content slide. */
+  takeaway: 120,
   deckTitle: 80,
   slidesPerDeck: 40,
 
@@ -34,9 +36,10 @@ export const LIMITS = {
   agenda: { items: 7, label: 48, minutes: 180 },
   objectives: { items: 5, text: 110 },
   concept: { lead: 160, bullets: 5, bullet: 130, asideLabel: 24, asideBody: 220, withAside: { bullets: 4, bullet: 100 } },
-  code: { language: 20, lines: 14, lineChars: 68, caption: 100, pointOut: 4, point: 90 },
+  code: { language: 20, lines: 14, lineChars: 68, caption: 100, pointOut: 4, point: 90, outputLines: 4 },
   compare: { heading: 30, points: 5, point: 90 },
-  cards: { cards: 4, heading: 32, body: 120 },
+  cards: { cards: 4, heading: 32, body: 120, tag: 16 },
+  table: { columns: 4, minColumns: 2, rows: 5, cell: 60 },
   steps: { steps: 6, title: 32, detail: 100 },
   section: { title: 50, kicker: 40, subtitle: 110 },
   callout: { heading: 80, body: 240 },
@@ -62,6 +65,9 @@ const base = {
   footer: text(L.footer)
     .optional()
     .describe('Footer line along the bottom, usually the current part, e.g. "Part 1 · Reading closely".'),
+  takeaway: text(L.takeaway)
+    .optional()
+    .describe("One short sentence drawn in the accent color at the bottom of a content slide: the point to leave with. Ignored on title, section, callout and closing slides."),
 };
 
 const contentTitle = text(L.slideTitle);
@@ -131,6 +137,9 @@ export const ConceptSlideSchema = z.object({
   });
 });
 
+/** Lines of code room the output panel's label and padding take. */
+export const CODE_OUTPUT_OVERHEAD = 3;
+
 export const CodeSlideSchema = z.object({
   ...base,
   type: z.literal("code"),
@@ -142,11 +151,25 @@ export const CodeSlideSchema = z.object({
     .max(L.code.lines)
     .describe(`Code or other exact text (commands, formulas), one array entry per line, at most ${L.code.lineChars} characters each.`),
   caption: text(L.code.caption).optional(),
+  output: z
+    .array(z.string().max(L.code.lineChars))
+    .min(1)
+    .max(L.code.outputLines)
+    .optional()
+    .describe(`What running the code prints or shows, one entry per line, drawn in a console panel under the code. With output, lines + output + ${3} must stay within ${L.code.lines}.`),
   pointOut: z
     .array(text(L.code.point))
     .min(1)
     .max(L.code.pointOut)
     .describe("What to point out in the code."),
+}).superRefine((slide, ctx) => {
+  // The console panel takes the room of its lines plus about three more (label and padding).
+  if (slide.output && slide.lines.length + slide.output.length + CODE_OUTPUT_OVERHEAD > L.code.lines) {
+    ctx.addIssue({
+      code: "custom", path: ["lines"],
+      message: `With output, at most ${L.code.lines - slide.output.length - CODE_OUTPUT_OVERHEAD} lines of code fit.`,
+    });
+  }
 });
 
 const compareSide = z.object({
@@ -167,9 +190,35 @@ export const CardsSlideSchema = z.object({
   type: z.literal("cards"),
   title: contentTitle,
   cards: z
-    .array(z.object({ heading: text(L.cards.heading), body: text(L.cards.body) }))
+    .array(z.object({
+      tag: text(L.cards.tag).optional().describe('Small chip above the heading naming the card\'s role, e.g. "Structure".'),
+      heading: text(L.cards.heading),
+      body: text(L.cards.body),
+    }))
     .min(2)
     .max(L.cards.cards),
+});
+
+export const TableSlideSchema = z.object({
+  ...base,
+  type: z.literal("table"),
+  title: contentTitle,
+  columns: z
+    .array(z.string().trim().max(L.table.cell))
+    .min(L.table.minColumns)
+    .max(L.table.columns)
+    .describe("Header row. The first cell may be empty when the first column holds row names."),
+  rows: z
+    .array(z.array(z.string().trim().max(L.table.cell)).min(L.table.minColumns).max(L.table.columns))
+    .min(1)
+    .max(L.table.rows)
+    .describe("Body rows, each with one cell per column."),
+}).superRefine((slide, ctx) => {
+  slide.rows.forEach((row, i) => {
+    if (row.length !== slide.columns.length) {
+      ctx.addIssue({ code: "custom", path: ["rows", i], message: `Each row needs ${slide.columns.length} cells, one per column.` });
+    }
+  });
 });
 
 export const StepsSlideSchema = z.object({
@@ -256,6 +305,7 @@ export const SlideSchema = z.discriminatedUnion("type", [
   CodeSlideSchema,
   CompareSlideSchema,
   CardsSlideSchema,
+  TableSlideSchema,
   StepsSlideSchema,
   SectionSlideSchema,
   CalloutSlideSchema,
@@ -277,7 +327,7 @@ export type SlideOf<T extends DeckSlideType> = Extract<DeckSlide, { type: T }>;
 
 export type ConceptSlide = SlideOf<"concept">;
 
-/** All 14 slide types, in the order they typically appear in a session deck. */
+/** All slide types, in the order they typically appear in a session deck. */
 export const DECK_SLIDE_TYPES = SlideSchema.options.map(o => o.shape.type.value) as DeckSlideType[];
 
 /** Types drawn on a dark surface regardless of theme. */

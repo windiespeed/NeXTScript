@@ -3,6 +3,7 @@ import type { ThemeConfig } from "@/types/theme";
 import type { SlideLayout, TextElement, WarningSeverity } from "@/lib/deck/layout/types";
 import { CANVAS_H, CANVAS_W } from "@/lib/deck/layout/types";
 import { fontFamily, resolvePalette } from "@/lib/deck/render/palette";
+import { backdropFor } from "@/lib/deck/render/backdrops";
 
 /**
  * HTML adapter for the layout registry: draws a SlideLayout at any width.
@@ -35,6 +36,7 @@ interface Props {
 
 export default function SlideCanvas({ layout, theme, showWarnings = true, label, className = "" }: Props) {
   const palette = resolvePalette(theme, layout.dark);
+  const backdrop = backdropFor(theme.backdrop, layout.dark);
   const flagged = new Map<string, WarningSeverity>();
   if (showWarnings) {
     for (const w of layout.warnings) {
@@ -73,6 +75,8 @@ export default function SlideCanvas({ layout, theme, showWarnings = true, label,
         aspectRatio: `${CANVAS_W} / ${CANVAS_H}`,
         containerType: "inline-size",
         background: palette[layout.background],
+        backgroundImage: backdrop ? `url(data:image/jpeg;base64,${backdrop})` : undefined,
+        backgroundSize: "cover",
       }}
     >
       {layout.elements.map(el => {

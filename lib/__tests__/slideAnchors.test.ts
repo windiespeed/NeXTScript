@@ -22,26 +22,36 @@ describe("applySlideAnchors", () => {
   it("leaves a conforming deck unchanged", () => {
     const input = deck([
       std("t", "Intro"),
-      std("a", "Lesson Overview", { anchorId: "lessonOverview" }),
-      std("b", "Vocabulary", { anchorId: "vocabulary" }),
-      std("b2", "More terms"),
-      std("c", "Guided Activity", { anchorId: "guidedLab" }),
+      std("a", "Why we're here", { anchorId: "lessonOverview", label: "Lesson Overview" }),
+      std("b", "Words to know", { anchorId: "vocabulary", label: "Vocabulary" }),
+      std("b2", "More terms", { label: "Vocabulary" }),
+      std("c", "Your first program", { anchorId: "guidedLab", label: "Guided Activity" }),
     ]);
     const { ast, report } = applySlideAnchors(input, anchors);
     expect(ast.slides).toEqual(input.slides);
-    expect(report).toEqual({ placeholders: [], retitled: [], reordered: false });
+    expect(report).toEqual({ placeholders: [], reordered: false });
   });
 
-  it("matches by heading, locks the exact label, and keeps the model's detail as subtitle", () => {
-    const { ast, report } = applySlideAnchors(deck([
+  it("matches by heading or label, puts the exact section name in the label, and keeps the headline", () => {
+    const { ast } = applySlideAnchors(deck([
       std("a", "lesson overview"),
       std("b", "Vocabulary: Key Terms"),
-      std("c", "Guided Activity"),
+      std("c", "Your first program", { label: "guided activity" }),
     ]), anchors);
-    expect(titles(ast)).toEqual(["Lesson Overview", "Vocabulary", "Guided Activity"]);
-    expect(ast.slides[1].subtitle).toBe("Key Terms");
+    expect(ast.slides.map(s => s.label)).toEqual(["Lesson Overview", "Vocabulary", "Guided Activity"]);
+    expect(titles(ast)).toEqual(["Lesson Overview", "Key Terms", "Your first program"]);
     expect(ast.slides.map(s => s.anchorId)).toEqual(["lessonOverview", "vocabulary", "guidedLab"]);
-    expect(report.retitled).toEqual(["Lesson Overview", "Vocabulary"]);
+  });
+
+  it("labels supporting slides with their section and clears labels before the first section", () => {
+    const { ast } = applySlideAnchors(deck([
+      std("t", "Welcome", { label: "Stray" }),
+      std("a", "Why it matters", { anchorId: "lessonOverview" }),
+      std("a2", "A closer look", { label: "Something else" }),
+      std("b", "Words", { anchorId: "vocabulary" }),
+      std("c", "Try it", { anchorId: "guidedLab" }),
+    ]), anchors);
+    expect(ast.slides.map(s => s.label)).toEqual([undefined, "Lesson Overview", "Lesson Overview", "Vocabulary", "Guided Activity"]);
   });
 
   it("restores course order and carries supporting slides with their anchor", () => {
@@ -81,7 +91,7 @@ describe("applySlideAnchors", () => {
     const once = applySlideAnchors(deck([std("c", "Guided Activity"), std("x", "Extra")]), anchors).ast;
     const twice = applySlideAnchors(once, anchors);
     expect(twice.ast.slides).toEqual(once.slides);
-    expect(twice.report).toEqual({ placeholders: [], retitled: [], reordered: false });
+    expect(twice.report).toEqual({ placeholders: [], reordered: false });
   });
 
   it("strips anchors when the course has none", () => {

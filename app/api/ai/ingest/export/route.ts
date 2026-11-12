@@ -8,12 +8,12 @@ import { loadCourseSkeleton } from "@/lib/courseSkeleton";
 import { applySlideAnchors } from "@/lib/slideAnchors";
 import { ingestExportSchema, parseBody, readJson } from "@/lib/validation";
 import { uploadPptxToDrive, moveFileToFolder, autoDeckName } from "@/lib/google";
-import { buildPptxFromAst } from "@/lib/pptxDeck";
 import { ensureLessonFolderId, ensureCourseFolderId } from "@/lib/lessonFolders";
 import { assertValidAst } from "@/lib/ingestionPrompt";
 import { DEFAULT_THEME_ID, THEMES, getTheme } from "@/lib/themes";
 import { astToDeck } from "@/lib/deck/fromAst";
 import { exportDeckToGoogleSlides, presentationIdFromUrl } from "@/lib/deck/render/googleSlides";
+import { buildDeckPptx } from "@/lib/deck/render/pptx";
 import type { PresentationAST } from "@/types/slideAst";
 import type { SavedProject } from "@/types/project";
 import type { Lesson } from "@/types/lesson";
@@ -74,7 +74,8 @@ export async function POST(req: Request) {
     const finalAst: PresentationAST = { ...ast, themeId };
     const name = autoDeckName(lesson?.title, lesson?.subtitle);
     // With a course Slides template (and the box left checked), draw the deck onto a copy of it,
-    // learning the template's look; otherwise build the .pptx in the deck's theme as before.
+    // learning the template's look; otherwise build the .pptx in the deck's theme. Both go through
+    // the same layouts as the preview (lib/deck), so what the instructor saw is what they get.
     const templateId = body.useTemplate !== false ? presentationIdFromUrl(course?.settings?.defaultTemplateUrl) : undefined;
     let deckId: string;
     let webViewLink: string;
@@ -92,7 +93,7 @@ export async function POST(req: Request) {
         throw err;
       }
     } else {
-      const buffer = await buildPptxFromAst(finalAst, themeId);
+      const buffer = await buildDeckPptx(astToDeck(finalAst), getTheme(themeId));
       ({ id: deckId, webViewLink } = await uploadPptxToDrive(buffer, name, accessToken));
     }
 

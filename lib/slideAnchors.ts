@@ -49,8 +49,6 @@ export function normalizeHeading(text: string): string {
 export interface AnchorReport {
   /** Anchors the model skipped — a placeholder slide was inserted for each. */
   placeholders: string[];
-  /** Anchors whose slide heading had to be rewritten to the exact course label. */
-  retitled: string[];
   /** True when slides had to be moved to put the anchors back in course order. */
   reordered: boolean;
 }
@@ -58,28 +56,32 @@ export interface AnchorReport {
 export const PLACEHOLDER_TEXT = "Add content for this section — the notes didn't cover it.";
 
 function placeholderSlide(anchor: SlideAnchor): SlideNode {
-  return { id: uuidv4(), type: "standard", anchorId: anchor.id, title: anchor.label, paragraphs: [PLACEHOLDER_TEXT] };
+  return { id: uuidv4(), type: "standard", anchorId: anchor.id, label: anchor.label, title: anchor.label, paragraphs: [PLACEHOLDER_TEXT] };
 }
 
-/** "Vocabulary: Key Terms" under anchor "Vocabulary" → "Key Terms", so the detail isn't lost when the heading is locked. */
-function leftoverDetail(originalTitle: string, label: string): string | undefined {
+/**
+ * The headline an anchored slide keeps. The section name now lives in the label above the title,
+ * so a title that only repeats it ("Vocabulary: Key Terms") drops the repeat ("Key Terms").
+ */
+function headlineFor(originalTitle: string, label: string): string {
   const original = originalTitle.trim();
-  if (normalizeHeading(original) === normalizeHeading(label)) return undefined;
+  if (!original || normalizeHeading(original) === normalizeHeading(label)) return label;
   if (original.toLowerCase().startsWith(label.toLowerCase())) {
     const rest = original.slice(label.length).replace(/^[\s:–—\-|·]+/, "").trim();
-    return rest || undefined;
+    return rest || label;
   }
   return original;
 }
 
 /**
  * Forces a deck onto the course skeleton:
- * - each anchor is matched to one slide (by `anchorId` first, then exact heading, then a heading
- *   that starts with or contains the label);
- * - the matched slide's title is set to the exact anchor label (the model's own wording moves to
- *   the subtitle when there isn't one already);
+ * - each anchor is matched to one slide (by `anchorId` first, then an exact heading or label,
+ *   then a heading that starts with or contains the label);
+ * - the course section name goes in the slide's `label` (the small line above the title), exactly
+ *   as the course spells it, and the slide keeps the model's own headline as its title;
+ * - supporting slides after an anchor carry that anchor's label too, so a section reads as one part;
  * - anchors are put back in course order, each followed by the supporting slides that came
- *   after it in the model's output; slides before the first anchor stay at the front;
+ *   after it in the model's output; slides before the first anchor stay at the front, unlabeled;
  * - an anchor nothing matched gets a placeholder slide, so the skeleton is always complete;
  * - stray `anchorId`s (unknown or duplicate) are removed.
  *
@@ -87,7 +89,7 @@ function leftoverDetail(originalTitle: string, label: string): string | undefine
  * re-apply it to a client-edited deck.
  */
 export function applySlideAnchors(ast: PresentationAST, anchors: SlideAnchor[]): { ast: PresentationAST; report: AnchorReport } {
-  const report: AnchorReport = { placeholders: [], retitled: [], reordered: false };
+  const report: AnchorReport = { placeholders: [], reordered: false };
   if (anchors.length === 0) {
     const slides = ast.slides.map(stripAnchor);
     return { ast: { ...ast, slides }, report };
@@ -106,19 +108,22 @@ export function applySlideAnchors(ast: PresentationAST, anchors: SlideAnchor[]):
   });
 
   // Pass 2/3: match remaining anchors by heading — exact first (for every anchor), then loose.
-  const tryMatch = (test: (title: string, label: string) => boolean) => {
+  const tryMatch = (test: (slide: SlideNode, label: string) => boolean) => {
     for (const anchor of anchors) {
       if (claimed.has(anchor.id)) continue;
       const label = normalizeHeading(anchor.label);
-      const idx = ast.slides.findIndex((s, i) => !claimedBy.has(i) && test(normalizeHeading(s.title ?? ""), label));
+      const idx = ast.slides.findIndex((s, i) => !claimedBy.has(i) && test(s, label));
       if (idx !== -1) {
         claimedBy.set(idx, anchor.id);
         claimed.add(anchor.id);
       }
     }
   };
-  tryMatch((title, label) => title === label);
-  tryMatch((title, label) => label.length > 0 && (title.startsWith(label + " ") || ` ${title} `.includes(` ${label} `)));
+  tryMatch((s, label) => normalizeHeading(s.title ?? "") === label || normalizeHeading(s.label ?? "") === label);
+  tryMatch((s, label) => {
+    const title = normalizeHeading(s.title ?? "");
+    return label.length > 0 && (title.startsWith(label + " ") || ` ${title} `.includes(` ${label} `));
+  });
 
   // Group: prelude (before any anchor) + each anchor's own slide and its supporting slides.
   const prelude: SlideNode[] = [];
@@ -129,23 +134,15 @@ export function applySlideAnchors(ast: PresentationAST, anchors: SlideAnchor[]):
     const anchorId = claimedBy.get(i);
     if (anchorId) {
       const anchor = anchorById.get(anchorId)!;
-      const exact = slide.title === anchor.label;
-      if (!exact) report.retitled.push(anchor.label);
-      const detail = exact ? undefined : leftoverDetail(slide.title ?? "", anchor.label);
-      const anchorSlide: SlideNode = {
-        ...slide,
-        anchorId,
-        title: anchor.label,
-        ...(detail && !slide.subtitle ? { subtitle: detail } : {}),
-      };
+      const anchorSlide: SlideNode = { ...slide, anchorId, label: anchor.label, title: headlineFor(slide.title ?? "", anchor.label) };
       groups.set(anchorId, { anchorSlide, supporting: [] });
       anchorOrderSeen.push(anchorId);
       current = anchorId;
       return;
     }
     const plain = stripAnchor(slide);
-    if (current) groups.get(current)!.supporting.push(plain);
-    else prelude.push(plain);
+    if (current) groups.get(current)!.supporting.push({ ...plain, label: anchorById.get(current)!.label });
+    else prelude.push(withoutLabel(plain));
   });
 
   const expectedOrder = anchors.filter(a => groups.has(a.id)).map(a => a.id);
@@ -169,6 +166,13 @@ function stripAnchor(slide: SlideNode): SlideNode {
   if (slide.anchorId === undefined) return slide;
   const rest = { ...slide };
   delete rest.anchorId;
+  return rest;
+}
+
+function withoutLabel(slide: SlideNode): SlideNode {
+  if (slide.label === undefined) return slide;
+  const rest = { ...slide };
+  delete rest.label;
   return rest;
 }
 

@@ -3,7 +3,7 @@
  */
 
 import type { SlideOf } from "../schema";
-import { GRID, HEADER, SlideBuilder, split } from "./kit";
+import { GRID, bodyBottom, HEADER, SlideBuilder, split } from "./kit";
 import type { SlideLayout } from "./types";
 
 const x = GRID.marginX;
@@ -16,7 +16,7 @@ export function layoutAgenda(slide: SlideOf<"agenda">): SlideLayout {
   const items = slide.items;
   const total = items.every(i => i.minutes) ? items.reduce((n, i) => n + (i.minutes ?? 0), 0) : null;
   const footerH = total ? 22 : 0;
-  const rowH = Math.min(44, (GRID.bodyBottom - footerH - top) / items.length);
+  const rowH = Math.min(44, (bodyBottom() - footerH - top) / items.length);
   const timeW = 80;
 
   items.forEach((item, i) => {
@@ -41,7 +41,7 @@ export function layoutAgenda(slide: SlideOf<"agenda">): SlideLayout {
     b.text({
       id: "total", what: "Total time",
       paragraphs: [{ text: `${total} min total` }],
-      x, y: GRID.bodyBottom - footerH + 6, w: W, h: footerH - 6,
+      x, y: bodyBottom() - footerH + 6, w: W, h: footerH - 6,
       maxSize: 11, minSize: 10, color: "text.muted", align: "right",
     });
   }
@@ -54,7 +54,7 @@ export function layoutObjectives(slide: SlideOf<"objectives">): SlideLayout {
   const top = b.header(slide.title) + HEADER.bodyGap;
   const n = slide.objectives.length;
   const gap = 12;
-  const rowH = Math.min(64, split(GRID.bodyBottom - top, n, gap));
+  const rowH = Math.min(64, split(bodyBottom() - top, n, gap));
   const badge = 30;
 
   slide.objectives.forEach((text, i) => {
@@ -84,7 +84,7 @@ export function layoutExitTicket(slide: SlideOf<"exit-ticket">): SlideLayout {
   const hwGap = slide.homework ? 12 : 0;
   const n = slide.questions.length;
   const gap = 8;
-  const cardH = Math.min(80, split(GRID.bodyBottom - hwH - hwGap - top, n, gap));
+  const cardH = Math.min(80, split(bodyBottom() - hwH - hwGap - top, n, gap));
   const pad = 8;
   const numW = 30;
 
@@ -106,7 +106,7 @@ export function layoutExitTicket(slide: SlideOf<"exit-ticket">): SlideLayout {
   });
 
   if (slide.homework) {
-    const y = GRID.bodyBottom - hwH;
+    const y = bodyBottom() - hwH;
     b.rect("homework.stripe", x, y, 4, hwH, "accent.secondary");
     const lh = b.label("homework.label", "Homework", x + 16, y + 4, W - 16, "accent.secondary");
     b.text({

@@ -18,6 +18,29 @@ export const GRID = {
   gutter: 20,
 } as const;
 
+/**
+ * Space held back at the bottom of the body area while a slide is laid out, for the takeaway
+ * line (lib/deck/layout/decorations.ts). Layouts are synchronous, so the registry sets it around
+ * one layout call and every content layout reads it through `bodyBottom()`.
+ */
+let reservedBottom = 0;
+
+/** Bottom edge of the body area for the slide being laid out. */
+export function bodyBottom(): number {
+  return GRID.bodyBottom - reservedBottom;
+}
+
+/** Runs `fn` with `pt` reserved at the bottom of the body area. */
+export function withReservedBottom<T>(pt: number, fn: () => T): T {
+  const before = reservedBottom;
+  reservedBottom = pt;
+  try {
+    return fn();
+  } finally {
+    reservedBottom = before;
+  }
+}
+
 export const HEADER = {
   accentBar: { w: 40, h: 4 },
   titleGap: 10,

@@ -44,3 +44,53 @@ describe("astToDeck", () => {
     expect(layoutDeck(deck).unsupported).toEqual([]);
   });
 });
+
+describe("astToDeck: labels, notes, takeaways and the new layouts", () => {
+  const rich: PresentationAST = {
+    lessonTitle: "Meet JavaScript",
+    lessonSubtitle: "A friendly first look",
+    targetAudience: "Beginners",
+    slides: [
+      { id: "a", type: "standard", label: "Lesson Overview", anchorId: "overview", title: "JavaScript makes pages respond", paragraphs: ["Pages that react to you."], bulletPoints: ["Clicks", "Forms"], notes: "Ask who has clicked a like button today.", takeaway: "JavaScript adds behavior." },
+      { id: "b", type: "card-row", label: "Lesson Overview", title: "Three languages, three jobs", cards: [{ tag: "Structure", heading: "HTML", body: "The skeleton." }, { tag: "Style", heading: "CSS", body: "The look." }, { tag: "Action", heading: "JavaScript", body: "The behavior." }] },
+      { id: "c", type: "table", title: "Props vs. state", columns: ["", "Props", "State"], rows: [["Comes from", "Parent", "Itself"], ["Changes?", "No", "Yes"]] },
+      { id: "d", type: "code-explainer", title: "Say hello", language: "javascript", codeSnippet: "console.log(\"Hello!\");", output: "Hello!", explanationPoints: ["console.log prints a message"] },
+    ],
+  };
+  const deck = astToDeck(rich);
+
+  it("makes a cover with the tagline and footers with the lesson title", () => {
+    expect(deck.slides[0]).toMatchObject({ type: "title", title: "Meet JavaScript", subtitle: "A friendly first look" });
+    expect(deck.slides.slice(1).every(s => s.footer === "Meet JavaScript")).toBe(true);
+  });
+
+  it("carries the section label, notes and takeaway", () => {
+    expect(deck.slides[1]).toMatchObject({ label: "Lesson Overview", title: "JavaScript makes pages respond", notes: "Ask who has clicked a like button today.", takeaway: "JavaScript adds behavior." });
+    expect(deck.slides[3].label).toBeUndefined();
+  });
+
+  it("maps card rows, tables and code output", () => {
+    expect(deck.slides[2]).toMatchObject({ type: "cards", cards: [{ tag: "Structure", heading: "HTML" }, { tag: "Style" }, { tag: "Action" }] });
+    expect(deck.slides[3]).toMatchObject({ type: "table", columns: ["", "Props", "State"], rows: [["Comes from", "Parent", "Itself"], ["Changes?", "No", "Yes"]] });
+    expect(deck.slides[4]).toMatchObject({ type: "code", output: ["Hello!"] });
+  });
+
+  it("lays every slide out without overflow", () => {
+    const { slides } = layoutDeck(deck);
+    expect(slides.flatMap(s => s.warnings).filter(w => w.severity === "overflow")).toEqual([]);
+    const code = slides.find(s => s.slideId === "d")!;
+    expect(code.elements.some(e => e.id === "output.panel")).toBe(true);
+    const first = slides.find(s => s.slideId === "a")!;
+    const takeaway = first.elements.find(e => e.id === "takeaway")!;
+    const body = first.elements.find(e => e.id === "body")!;
+    expect(body.y + body.h).toBeLessThanOrEqual(takeaway.y);
+  });
+
+  it("keeps long code with output on slides that fit", () => {
+    const long = astToDeck({ ...rich, slides: [{ id: "x", type: "code-explainer", title: "Loop", language: "js", codeSnippet: Array.from({ length: 14 }, (_, i) => `step${i}();`).join("\n"), output: "1\n2", explanationPoints: ["Runs in order"] }] });
+    const parts = long.slides.filter(s => s.type === "code");
+    expect(parts.length).toBe(2);
+    expect(parts[1]).toMatchObject({ output: ["1", "2"] });
+    expect(layoutDeck(long).slides.flatMap(s => s.warnings).filter(w => w.severity === "overflow")).toEqual([]);
+  });
+});
