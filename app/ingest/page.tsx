@@ -882,29 +882,29 @@ function IngestPageInner() {
             {/* Skeleton: a slim, secondary strip. The headings are fixed by Course Settings, so this
                 only shows what they are; the Content box below is where the work happens. */}
             <div className="rounded-lg px-3 py-2 space-y-1.5" style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)" }}>
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                <p className="text-[11px] font-semibold uppercase tracking-wider shrink-0" style={{ color: "var(--text-muted)" }}>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>
                   🔒 Slide headings{selectedCourse && slideAnchors.length > 0 ? ` (${slideAnchors.length})` : ""}
                 </p>
-                {!selectedCourse ? (
-                  <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>Select a course above to load its slide headings.</span>
-                ) : slideAnchors.length > 0 ? (
-                  <ol className="flex flex-wrap gap-1" aria-label={`Locked slide headings from ${selectedCourse.title}`} title="From this course's sections marked “Slide heading”. Used exactly as written, in this order.">
-                    {slideAnchors.map((anchor, i) => (
-                      <li key={anchor.id} className="rounded px-1.5 py-0.5 text-[11px]" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
-                        <span className="tabular-nums mr-1" style={{ color: "var(--text-muted)" }}>{i + 1}</span>{anchor.label}
-                      </li>
-                    ))}
-                  </ol>
-                ) : (
-                  <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>None set, so the AI structures the deck from your notes alone.</span>
-                )}
                 {selectedCourse && (
-                  <Link href={`/courses/${selectedCourse.id}/settings`} className="ml-auto text-[11px] font-semibold shrink-0 hover:underline" style={{ color: "var(--accent-text)" }}>
+                  <Link href={`/courses/${selectedCourse.id}/settings`} className="text-[11px] font-semibold shrink-0 hover:underline" style={{ color: "var(--accent-text)" }}>
                     Edit in Course Settings
                   </Link>
                 )}
               </div>
+              {!selectedCourse ? (
+                <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>Select a course above to load its slide headings.</p>
+              ) : slideAnchors.length > 0 ? (
+                <ol className="flex flex-wrap gap-1" aria-label={`Locked slide headings from ${selectedCourse.title}`} title="From this course's sections marked “Slide heading”. Used exactly as written, in this order.">
+                  {slideAnchors.map((anchor, i) => (
+                    <li key={anchor.id} className="rounded px-1.5 py-0.5 text-[11px]" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
+                      <span className="tabular-nums mr-1" style={{ color: "var(--text-muted)" }}>{i + 1}</span>{anchor.label}
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>None set, so the AI structures the deck from your notes alone.</p>
+              )}
               {selectedCourse && (courseTemplateUrl ? (
                 <label htmlFor="ingest-use-course-template" className="flex items-start gap-2 pt-1 text-xs cursor-pointer" style={{ color: "var(--text-secondary)" }}>
                   <input
