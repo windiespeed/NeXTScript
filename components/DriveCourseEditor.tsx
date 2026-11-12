@@ -301,9 +301,12 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
     if (driveModules.some(m => m.lessonIds.some(lid => selectedIds.has(lid)))) {
       await saveModules(driveModules.map(m => ({ ...m, lessonIds: m.lessonIds.filter(lid => !selectedIds.has(lid)) })));
     }
-    await Promise.all(ids.map(lid => fetch(`/api/lessons/${lid}`, { method: "DELETE" })));
-    setLessons(prev => prev.filter(l => !selectedIds.has(l.id)));
-    setCourse(prev => prev ? { ...prev, lessonIds: prev.lessonIds.filter(l => !selectedIds.has(l)) } : prev);
+    // Only drop the lessons the server actually deleted (it also takes them out of the course).
+    const results = await Promise.all(ids.map(lid => fetch(`/api/lessons/${lid}`, { method: "DELETE" }).then(r => r.ok).catch(() => false)));
+    const deleted = new Set(ids.filter((_, i) => results[i]));
+    setLessons(prev => prev.filter(l => !deleted.has(l.id)));
+    setCourse(prev => prev ? { ...prev, lessonIds: prev.lessonIds.filter(l => !deleted.has(l)) } : prev);
+    if (deleted.size < ids.length) alert(`${ids.length - deleted.size} lesson${ids.length - deleted.size > 1 ? "s" : ""} couldn't be deleted. Refresh and try again.`);
     setSelectedIds(new Set()); setSelecting(false); setBulkDeleting(false);
   }
 

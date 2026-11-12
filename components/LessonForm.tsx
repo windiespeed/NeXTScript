@@ -75,6 +75,20 @@ const EMPTY: LessonInput = {
   sections: {},
 };
 
+/** Defined outside LessonForm so React doesn't remount it on every keystroke. */
+function SectionClearBtn({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="text-[10px] font-semibold rounded-full px-2 py-0.5 transition hover:bg-red-500/10 hover:text-[var(--danger-text)]"
+      style={{ color: "var(--text-muted)", border: "1px solid var(--border)" }}
+    >
+      Clear
+    </button>
+  );
+}
+
 export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSave, onCancel, submitLabel = "Save Lesson", hasAiKey = false, isEditing = false }: Props) {
   const [form, setForm] = useState<LessonInput>({ ...EMPTY, ...initial });
   const [slides, setSlides] = useState<Slide[]>(() => parseSlides(initial.slideContent ?? ""));
@@ -134,19 +148,6 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
       ids.forEach(id => next.delete(id));
       return next;
     });
-  }
-
-  function SectionClearBtn({ onClick }: { onClick: () => void }) {
-    return (
-      <button
-        type="button"
-        onClick={onClick}
-        className="text-[10px] font-semibold rounded-full px-2 py-0.5 transition hover:bg-red-500/10 hover:text-[var(--danger-text)]"
-        style={{ color: "var(--text-muted)", border: "1px solid var(--border)" }}
-      >
-        Clear
-      </button>
-    );
   }
 
   // Resolves the active section list (course-level > user-level > synthesized defaults) and,

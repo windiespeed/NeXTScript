@@ -50,19 +50,6 @@ export const exerciseStore = {
     return exercise;
   },
 
-  async createMany(inputs: ExerciseInput[], userId: string, courseId: string): Promise<void> {
-    const now = new Date().toISOString();
-    const db = getDb();
-    const BATCH_SIZE = 400;
-    for (let i = 0; i < inputs.length; i += BATCH_SIZE) {
-      const batch = db.batch();
-      inputs.slice(i, i + BATCH_SIZE).forEach((input) => {
-        const exercise: Exercise = { ...input, id: uuidv4(), userId, courseId, createdAt: now, updatedAt: now };
-        batch.set(db.collection(COLLECTION).doc(exercise.id), exercise);
-      });
-      await batch.commit();
-    }
-  },
 
   async update(id: string, patch: Partial<Exercise>): Promise<Exercise | null> {
     const ref = getDb().collection(COLLECTION).doc(id);
@@ -74,14 +61,5 @@ export const exerciseStore = {
     if (!(await ref.get()).exists) return false;
     await ref.delete();
     return true;
-  },
-
-  async hasSeededCourse(courseId: string): Promise<boolean> {
-    const snap = await getDb().collection(COLLECTION)
-      .where("courseId", "==", courseId)
-      .where("isSeeded", "==", true)
-      .limit(1)
-      .get();
-    return !snap.empty;
   },
 };

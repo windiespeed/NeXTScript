@@ -24,7 +24,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
     const url = course.settings?.defaultTemplateUrl?.trim();
     const presentationId = presentationIdFromUrl(url);
-    if (!presentationId) return NextResponse.json({ template: null });
+    if (!url) return NextResponse.json({ template: null });
+    if (!presentationId) {
+      return NextResponse.json({ template: { url, name: null, theme: null, error: "This course's template link isn't a Google Slides link, so export uses the built-in look. Fix it in Course Settings." } });
+    }
 
     const accessToken = (session as { accessToken?: string }).accessToken;
     if (!accessToken) return NextResponse.json({ template: { url, name: null, theme: null, error: "No Google access. Sign out and in again." } });

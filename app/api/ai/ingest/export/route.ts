@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
+import { serverError } from "@/lib/apiErrors";
 import { auth } from "@/lib/auth";
 import { projectStore } from "@/lib/projectStore";
 import { store } from "@/lib/store";
 import { canAccessLesson } from "@/lib/access";
 import { loadCourseSkeleton } from "@/lib/courseSkeleton";
 import { applySlideAnchors } from "@/lib/slideAnchors";
-import { ingestExportSchema, parseBody } from "@/lib/validation";
+import { ingestExportSchema, parseBody, readJson } from "@/lib/validation";
 import { uploadPptxToDrive, moveFileToFolder, autoDeckName } from "@/lib/google";
 import { buildPptxFromAst } from "@/lib/pptxDeck";
 import { ensureLessonFolderId, ensureCourseFolderId } from "@/lib/lessonFolders";
@@ -33,7 +34,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "No Google access token. Please sign out and sign in again." }, { status: 401 });
     }
 
-    const parsed = parseBody(ingestExportSchema, await req.json());
+    const parsed = parseBody(ingestExportSchema, await readJson(req));
     if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
     const body = parsed.data;
 
@@ -132,8 +133,7 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ url, ast: finalAst });
-  } catch (err: any) {
-    const msg = err instanceof Error ? err.message : typeof err === "string" ? err : JSON.stringify(err);
-    return NextResponse.json({ error: msg }, { status: 500 });
+  } catch (err) {
+    return serverError(err, "notes to slides export");
   }
 }

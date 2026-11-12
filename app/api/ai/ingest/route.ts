@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { serverError } from "@/lib/apiErrors";
 import { auth } from "@/lib/auth";
 import { userSettings } from "@/lib/userSettings";
 import { ingestRawContent } from "@/lib/ingestionService";
@@ -7,7 +8,7 @@ import { resolveAiModel, getAiModel, type AiProvider, type ClaudeModelId } from 
 import { loadCourseSkeleton } from "@/lib/courseSkeleton";
 import { resolveProgramContext } from "@/lib/programContext";
 import { applySlideAnchors } from "@/lib/slideAnchors";
-import { hybridIngestSchema, parseBody } from "@/lib/validation";
+import { hybridIngestSchema, parseBody, readJson } from "@/lib/validation";
 import type { HybridIngestResponse } from "@/types/ingest";
 
 export const dynamic = "force-dynamic";
@@ -21,7 +22,7 @@ export async function POST(req: Request) {
 
     const settings = await userSettings.get(session.user.email);
 
-    const parsed = parseBody(hybridIngestSchema, await req.json());
+    const parsed = parseBody(hybridIngestSchema, await readJson(req));
     if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
     const body = parsed.data;
     // No model picker: use the saved preference if its key is there, else the default model for
@@ -64,8 +65,13 @@ export async function POST(req: Request) {
     } else {
       if (err.status === 401) return NextResponse.json({ error: "Invalid Anthropic API key." }, { status: 402 });
       if (err.status === 402) return NextResponse.json({ error: "Anthropic credits exhausted. Top up your account at console.anthropic.com." }, { status: 402 });
+      if (err.status === 429) return NextResponse.json({ error: "Anthropic rate limit reached. Try again in a minute." }, { status: 429 });
     }
-    const msg = err instanceof Error ? err.message : typeof err === "string" ? err : JSON.stringify(err);
-    return NextResponse.json({ error: msg }, { status: 500 });
+    // The generators' own errors ("couldn't be parsed as JSON. Please try again.") are written for
+    // the user; anything from an SDK or Firestore carries a status/code and stays in the server log.
+    if (err instanceof Error && !("status" in err) && !("code" in err)) {
+      return NextResponse.json({ error: err.message }, { status: 500 });
+    }
+    return serverError(err, "notes to slides generate");
   }
 }

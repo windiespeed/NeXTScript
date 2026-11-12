@@ -82,7 +82,6 @@ export default function CourseSettingsPage() {
 
   // Concepts
   const [concepts, setConcepts] = useState<Concept[]>([]);
-  const [seeding, setSeeding] = useState(false);
   const [conceptError, setConceptError] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
   const [newLabel, setNewLabel] = useState("");
@@ -259,23 +258,6 @@ export default function CourseSettingsPage() {
     } else {
       setSaveError("Failed to save settings.");
     }
-  }
-
-  async function handleSeed() {
-    setSeeding(true);
-    setConceptError("");
-    const res = await fetch("/api/concepts/seed", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ courseId }),
-    });
-    if (res.ok) {
-      await loadConcepts();
-    } else {
-      const data = await res.json();
-      setConceptError(data.error || "Seeding failed.");
-    }
-    setSeeding(false);
   }
 
   async function handleAddConcept() {
@@ -618,13 +600,8 @@ export default function CourseSettingsPage() {
           <div className="text-center py-6 space-y-3">
             <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>No concepts yet</p>
             <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-              Create your own for any subject, or seed the JavaScript defaults to get started.
+              Add the topics students work through in this course, in order.
             </p>
-            <button onClick={handleSeed} disabled={seeding}
-              className="rounded-full px-5 py-2 text-xs font-bold transition hover:opacity-90 disabled:opacity-50"
-              style={{ background: "var(--accent-bg)", color: "var(--accent-text)", border: "1px solid rgba(12,192,223,0.3)" }}>
-              {seeding ? "Seeding…" : "Seed JavaScript Defaults"}
-            </button>
           </div>
         ) : (
           <div className="space-y-2">
