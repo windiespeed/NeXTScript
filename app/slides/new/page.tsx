@@ -40,13 +40,9 @@ function NewSlidesInner() {
       const courseList: Course[] = Array.isArray(coursesData) ? coursesData : [];
       setCourses(courseList);
 
-      // Load default sources from the selected course or user settings
+      // Sources come from the selected course's settings
       const course = courseList.find(c => c.id === courseIdParam);
-      if (course?.settings?.defaultSources) {
-        setDefaultSources(course.settings.defaultSources);
-      } else {
-        setDefaultSources(userSettings.defaultSources ?? "");
-      }
+      setDefaultSources(course?.settings?.defaultSources ?? "");
     }).catch(() => {}).finally(() => setSettingsLoaded(true));
   }, [courseIdParam]);
 
@@ -57,9 +53,7 @@ function NewSlidesInner() {
     setSelectedModuleId("");
     // Update default sources when course changes after initial load
     if (settingsLoaded) {
-      if (course?.settings?.defaultSources) {
-        setDefaultSources(course.settings.defaultSources);
-      }
+      setDefaultSources(course?.settings?.defaultSources ?? "");
     }
   }, [selectedCourseId, courses, settingsLoaded]);
 

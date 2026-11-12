@@ -357,7 +357,6 @@ export const userSettingsPatchSchema = z
   .object({
     anthropicKey: apiKey,
     geminiKey: apiKey,
-    defaultSources: z.string().max(20_000).nullable(),
     folders: z.array(label).max(500).nullable(),
     lessonOrder: ids(5_000).nullable(),
     industry: label.nullable(),
