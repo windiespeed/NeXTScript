@@ -162,6 +162,8 @@ export const ingestExportSchema = z.object({
   ast: z.unknown(),
   lessonId: z.string().max(200).nullish(),
   courseId: z.string().max(200).nullish(),
+  /** Draw the deck onto the course's Google Slides template, when it has one. Default true. */
+  useTemplate: z.boolean().optional(),
 });
 
 // ---------------------------------------------------------------------------------------------

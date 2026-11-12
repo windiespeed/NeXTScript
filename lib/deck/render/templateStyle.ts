@@ -28,6 +28,7 @@
 
 import type { slides_v1 } from "googleapis";
 import type { ColorToken } from "../layout/types";
+import type { ThemeConfig } from "@/types/theme";
 
 type Page = slides_v1.Schema$Page;
 
@@ -59,7 +60,19 @@ export interface Decoration {
   bold: boolean;
 }
 
+/** Where a template puts things on its content slides, in pt from the page's top left. */
+export interface LearnedFrame {
+  /** Left (and right) margin of the text. */
+  left: number;
+  /** Top of the header: the label when there is one, else just above the title. */
+  top: number;
+  /** Top of the footer line, or where it would be. */
+  footerTop: number;
+}
+
 export interface LearnedStyle {
+  /** The template's margins and positions, when its content slides agree on them. */
+  frame?: LearnedFrame;
   /** Present only when the template's content slides have a label above the title. */
   label?: Decoration;
   /** Present only when the template's slides have a footer line. */
@@ -279,7 +292,10 @@ const TOP_BAND = 0.2;
 const BOTTOM_BAND = 0.82;
 
 interface Line {
+  /** Top edge as a share of the page height. */
   y: number;
+  /** Left edge, in EMU. */
+  x: number;
   run: Run;
 }
 
@@ -289,19 +305,62 @@ function linesOf(slide: Page, scheme: Scheme, pageH: number): Line[] {
   for (const el of slide.pageElements ?? []) {
     const run = el.shape ? runsOf(el, scheme)[0] : undefined;
     if (!run || !pageH) continue;
-    out.push({ y: (el.transform?.translateY ?? 0) / pageH, run: { ...run, text: runsOf(el, scheme).map(r => r.text).join(" ") } });
+    out.push({ y: (el.transform?.translateY ?? 0) / pageH, x: el.transform?.translateX ?? 0, run: { ...run, text: runsOf(el, scheme).map(r => r.text).join(" ") } });
   }
   return out;
 }
 
 /** Small label lines above the title, and footer lines, on one slide. */
 function decorationsOf(lines: Line[]): { label?: Run; footer?: Run } {
+  const d = decorationLines(lines);
+  return { label: d.label?.run, footer: d.footer?.run };
+}
+
+function decorationLines(lines: Line[]): { title?: Line; label?: Line; footer?: Line } {
   const titleSize = Math.max(0, ...lines.map(l => l.run.size ?? 0));
   const title = lines.find(l => l.run.size === titleSize);
   const small = (l: Line, max: number) => !!l.run.size && l.run.size < titleSize && l.run.size <= 16 && l.run.text.length <= max;
   const label = title && lines.find(l => l !== title && l.y < TOP_BAND && l.y < title.y && small(l, 60));
   const footer = lines.find(l => l.y >= BOTTOM_BAND && small(l, 100));
-  return { label: label?.run, footer: footer?.run };
+  return { title, label: label || undefined, footer };
+}
+
+const EMU_PER_PT = 12700;
+
+function median(values: number[]): number | undefined {
+  if (!values.length) return undefined;
+  const v = [...values].sort((a, b) => a - b);
+  return v[Math.floor(v.length / 2)];
+}
+
+/**
+ * The template's margins and positions, from its content slides: the left edge most text starts
+ * at, the header top (label, or title less a label's height) and the footer line.
+ */
+export function learnFrame(slides: Page[], scheme: (s: Page) => Scheme, pageW: number, pageH: number): LearnedFrame | undefined {
+  if (!pageW || !pageH || !slides.length) return undefined;
+  const lefts: number[] = [];
+  const tops: number[] = [];
+  const footers: number[] = [];
+  for (const slide of slides) {
+    const lines = linesOf(slide, scheme(slide), pageH);
+    if (!lines.length) continue;
+    lefts.push(Math.min(...lines.map(l => l.x)) / EMU_PER_PT);
+    const d = decorationLines(lines);
+    const ptH = pageH / EMU_PER_PT;
+    if (d.label) tops.push(d.label.y * ptH);
+    else if (d.title) tops.push(d.title.y * ptH - 0.035 * ptH);
+    if (d.footer) footers.push(d.footer.y * ptH);
+  }
+  const W = pageW / EMU_PER_PT;
+  const H = pageH / EMU_PER_PT;
+  const left = median(lefts);
+  const top = median(tops);
+  if (left === undefined || top === undefined) return undefined;
+  // Sanity: margins inside the page's outer quarter, and a header in the top fifth.
+  if (left < 0 || left > W * 0.25 || top < 0 || top > H * 0.2) return undefined;
+  const footerTop = median(footers) ?? H * 0.94;
+  return { left, top, footerTop };
 }
 
 /** The common style of a decoration seen on at least a few slides, or undefined. */
@@ -414,7 +473,9 @@ export function learnTemplateStyle(pres: slides_v1.Schema$Presentation): Learned
   const contentSlides = info.filter(i => i.bg === contentBg);
   const labels = contentSlides.map(i => decorationsOf(linesOf(i.slide, i.scheme, pageH)).label).filter((r): r is Run => !!r);
   const footers = info.map(i => decorationsOf(linesOf(i.slide, i.scheme, pageH)).footer).filter((r): r is Run => !!r);
+  const schemeOf = new Map(info.map(i => [i.slide, i.scheme]));
   return {
+    frame: learnFrame(contentSlides.map(i => i.slide), sl => schemeOf.get(sl) ?? new Map(), pres.pageSize?.width?.magnitude ?? 0, pageH),
     label: decoration(labels, contentSlides.length),
     footer: decoration(footers, info.length),
     content: contentPalette,
@@ -440,4 +501,35 @@ export function learnedColor(style: LearnedStyle, token: ColorToken, dark: boole
     case "accent.tertiary": return p.accent3;
     default: return undefined;
   }
+}
+
+/**
+ * A learned style as a ThemeConfig, so the in-browser preview can draw slides the way the Google
+ * Slides export will (minus gradients and logos, which only the export copies).
+ */
+export function themeFromLearned(style: LearnedStyle, name = "Course template"): ThemeConfig {
+  const c = style.content;
+  const v = style.cover;
+  const stack = (font: string | undefined, fallback: string) => (font ? `"${font}", ${fallback}` : fallback);
+  return {
+    id: "course-template",
+    name,
+    category: luminance(c.background) < 0.4 ? "dark" : "light",
+    background: { page: v.background, card: c.background, cardAlt: c.panel },
+    typography: {
+      headingFont: stack(style.headingFont, "Calibri, Carlito, Arial, sans-serif"),
+      bodyFont: stack(style.bodyFont, "Calibri, Carlito, Arial, sans-serif"),
+      headingWeight: 700,
+    },
+    text: { primary: c.title, secondary: c.body, muted: c.muted },
+    accent: { primary: c.accent1, secondary: c.accent2, tertiary: c.accent3 },
+    border: c.panel,
+    radius: "0",
+    darkSlides: {
+      surface: v.background,
+      panel: v.panel,
+      text: { primary: v.title, secondary: v.body, muted: v.muted },
+      accent: { primary: v.accent1, secondary: v.accent2, tertiary: v.accent3 },
+    },
+  };
 }

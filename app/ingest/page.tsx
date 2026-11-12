@@ -11,6 +11,10 @@ import { STUDENT_LEVEL_UI_HINTS, type StudentLevel } from "@/lib/studentLevel";
 import AiModelNote from "@/components/AiModelNote";
 import type { SavedKeys } from "@/lib/aiModels";
 import type { PresentationAST } from "@/types/slideAst";
+import type { ThemeConfig } from "@/types/theme";
+import SlideCanvas from "@/components/deck/SlideCanvas";
+import { convertAstSlide } from "@/lib/deck/fromAst";
+import { layoutSlide } from "@/lib/deck/layout/registry";
 import type { Course, CourseModule } from "@/types/course";
 import type { Lesson, LessonInput } from "@/types/lesson";
 import type { SectionDef } from "@/types/section";
@@ -123,6 +127,28 @@ function IngestPageInner() {
   // locked slide anchor, in order. Display copy only — the server re-resolves and enforces it.
   const slideAnchors = resolveSlideAnchors(selectedCourse, userSectionSettings);
   const courseThemeId = getTheme(selectedCourse?.settings?.defaultThemeId).id;
+  // The course's Google Slides template. Export draws onto it unless the instructor unchecks it.
+  const courseTemplateUrl = selectedCourse?.settings?.defaultTemplateUrl?.trim() || "";
+  const [useCourseTemplate, setUseCourseTemplate] = useState(true);
+  // The template's name and learned look, so the form can name it and the preview can match it.
+  const [courseTemplate, setCourseTemplate] = useState<{ courseId: string; name: string | null; theme: ThemeConfig | null; error?: string } | null>(null);
+  const templateInfo = courseTemplate && courseTemplate.courseId === selectedCourse?.id ? courseTemplate : null;
+  const templateOn = !!courseTemplateUrl && useCourseTemplate;
+  useEffect(() => {
+    const id = selectedCourse?.id;
+    if (!id || !courseTemplateUrl) return;
+    let cancelled = false;
+    fetch(`/api/courses/${id}/template-style`)
+      .then(r => (r.ok ? r.json() : null))
+      .then(data => {
+        if (cancelled || !data?.template) return;
+        setCourseTemplate({ courseId: id, name: data.template.name ?? null, theme: data.template.theme ?? null, error: data.template.error });
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedCourse?.id, courseTemplateUrl]);
 
   // Raw content
   const [rawText, setRawText] = useState("");
@@ -590,6 +616,7 @@ function IngestPageInner() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ast, lessonId: lessonId ?? undefined, courseId: selectedCourseId || undefined,
+          useTemplate: useCourseTemplate,
         }),
       });
       const data = await parseJsonResponse(res, "Creating the deck took too long and timed out. Try again in a moment.");
@@ -894,9 +921,37 @@ function IngestPageInner() {
                     No sections are marked as slide headings, so the AI will structure the deck from your notes alone.
                   </p>
                 )}
-                {selectedCourse && (
-                  <p className="text-[11px] pt-1" style={{ color: "var(--text-muted)" }}>Theme: {getTheme(courseThemeId).name}</p>
-                )}
+                {selectedCourse && (courseTemplateUrl ? (
+                  <label htmlFor="ingest-use-course-template" className="flex items-start gap-2 pt-1 text-xs cursor-pointer" style={{ color: "var(--text-secondary)" }}>
+                    <input
+                      id="ingest-use-course-template"
+                      type="checkbox"
+                      className="mt-0.5"
+                      checked={useCourseTemplate}
+                      onChange={e => setUseCourseTemplate(e.target.checked)}
+                    />
+                    <span>
+                      Use course template:{" "}
+                      <a href={courseTemplateUrl} target="_blank" rel="noopener noreferrer" className="underline" style={{ color: "var(--accent-text)" }}>
+                        {templateInfo?.name ?? "open template"}
+                      </a>
+                      <span className="block text-[11px]" style={{ color: templateInfo?.error && useCourseTemplate ? "var(--danger-text)" : "var(--text-muted)" }}>
+                        {!useCourseTemplate
+                          ? `The preview and export use the built-in ${getTheme(courseThemeId).name} look instead.`
+                          : templateInfo?.error
+                            ? templateInfo.error
+                            : templateInfo && !templateInfo.theme
+                              ? "Export copies this template. Its look comes from its theme, which the preview can't show, so the preview uses the built-in look."
+                              : "The preview and the Google Slides export follow this template's look."}
+                      </span>
+                    </span>
+                  </label>
+                ) : (
+                  <p className="text-[11px] pt-1" style={{ color: "var(--text-muted)" }}>
+                    No Slides template on this course, so export uses the built-in {getTheme(courseThemeId).name} look.{" "}
+                    <Link href={`/courses/${selectedCourse.id}/settings`} className="underline" style={{ color: "var(--accent-text)" }}>Add one in Course Settings</Link>
+                  </p>
+                ))}
               </div>
 
               {/* Content */}
@@ -1045,7 +1100,7 @@ function IngestPageInner() {
                     {SPINNER}
                     Creating deck…
                   </span>
-                ) : "Export to PowerPoint"}
+                ) : courseTemplateUrl && useCourseTemplate ? "Export to Google Slides" : "Export to PowerPoint"}
               </button>
               <button
                 onClick={handleSaveDraftAndClear}
@@ -1085,9 +1140,21 @@ function IngestPageInner() {
           ) : (
             <>
               {/* Active slide */}
-              <div className="min-h-[420px]" style={{ background: theme.background.page, borderRadius: theme.radius }}>
-                <SlideRenderer slide={ast.slides[activeIndex]} theme={theme} />
-              </div>
+              {templateOn && templateInfo?.theme ? (
+                // Drawn the way the template export will draw it (gradients and logos are added on export).
+                <div className="space-y-3">
+                  {convertAstSlide(ast.slides[activeIndex]).map(s => (
+                    <SlideCanvas key={s.id} layout={layoutSlide(s)} theme={templateInfo.theme!} showWarnings={false} label={`Slide ${activeIndex + 1}: ${ast.slides[activeIndex].title}`} className="rounded-xl" />
+                  ))}
+                  <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
+                    Shown in {templateInfo.name ?? "the course template"}&apos;s colors and fonts. Its background art and logos are added when you export.
+                  </p>
+                </div>
+              ) : (
+                <div className="min-h-[420px]" style={{ background: theme.background.page, borderRadius: theme.radius }}>
+                  <SlideRenderer slide={ast.slides[activeIndex]} theme={theme} />
+                </div>
+              )}
 
               {/* Navigator */}
               <div className="flex items-center justify-between gap-4">
