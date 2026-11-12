@@ -115,6 +115,9 @@ export default function QuizzesPage() {
     ]).then(([q, c, l]) => {
       setQuizzes(Array.isArray(q) ? q : []);
       setCourses(Array.isArray(c) ? c : []);
+      // Opened from the Courses page's "not in a course" notice as ?course=unassigned.
+      const courseParam = new URLSearchParams(window.location.search).get("course");
+      if (courseParam) setFilterCourse(courseParam);
       setLessons(Array.isArray(l) ? l : []);
     }).catch(() => {}).finally(() => setLoading(false));
   }, []);

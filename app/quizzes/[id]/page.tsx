@@ -106,6 +106,8 @@ export default function EditQuizPage() {
   const selectedCourse = courses.find(c => c.id === courseId);
   const modules: CourseModule[] = selectedCourse?.modules ?? [];
   const courseLessons = allLessons.filter(l => l.courseId === courseId);
+  // Quizzes are reached through their course, so Back returns there (older quizzes only link lessons).
+  const backCourseId = courseId || allLessons.find(l => lessonIds.includes(l.id))?.courseId || "";
   const selectedLessonIds = new Set(lessonIds);
 
   function toggleLesson(lid: string) {
@@ -266,8 +268,8 @@ export default function EditQuizPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <button onClick={() => router.push("/quizzes")} className="text-sm text-[var(--accent-text)] hover:underline mb-2 block">
-          ← Back to Quizzes
+        <button onClick={() => router.push(backCourseId ? `/courses/${backCourseId}` : "/courses")} className="text-sm text-[var(--accent-text)] hover:underline mb-2 block">
+          ← {backCourseId ? "Back to Course" : "Back to Courses"}
         </button>
         <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>Edit Quiz</h1>
         <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>

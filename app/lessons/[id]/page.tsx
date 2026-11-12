@@ -362,7 +362,7 @@ export default function LessonHubPage() {
   if (!lesson) return <p className="text-sm text-[var(--danger-text)] mt-10">Lesson not found.</p>;
 
   const currentModule = courseModules.find(m => m.lessonIds.includes(id));
-  const backHref = lesson.courseId ? `/courses/${lesson.courseId}` : "/lessons";
+  const backHref = lesson.courseId ? `/courses/${lesson.courseId}` : "/courses";
 
   // A lesson can now have several decks (every Generate/Export click adds a new, distinctly
   // named one instead of silently replacing the last) — already sorted newest-first by
@@ -428,7 +428,7 @@ export default function LessonHubPage() {
       {/* Back + header */}
       <div>
         <button onClick={() => router.push(backHref)} className="text-sm text-[var(--accent-text)] hover:underline mb-3 block">
-          ← {lesson.courseId ? "Back to Course" : "Back to Lessons"}
+          ← {lesson.courseId ? "Back to Course" : "Back to Courses"}
         </button>
 
         <div className="flex items-start justify-between gap-4">
@@ -634,9 +634,11 @@ export default function LessonHubPage() {
                 Open in Drive ↗
               </a>
             )}
-            <Link href="/quizzes" className="text-[10px] font-semibold hover:underline" style={{ color: "var(--accent-text)" }}>
-              View All Quizzes →
-            </Link>
+            {lesson.courseId && (
+              <Link href={`/courses/${lesson.courseId}`} className="text-[10px] font-semibold hover:underline" style={{ color: "var(--accent-text)" }}>
+                Course Quizzes →
+              </Link>
+            )}
           </div>
         </div>
         <div className="space-y-2">
