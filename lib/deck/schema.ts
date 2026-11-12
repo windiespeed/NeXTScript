@@ -24,6 +24,9 @@ import { z } from "zod";
 export const LIMITS = {
   notes: 1500,
   slideTitle: 60,
+  /** Small label above a content slide's title, and the footer line. */
+  label: 40,
+  footer: 70,
   deckTitle: 80,
   slidesPerDeck: 40,
 
@@ -53,6 +56,12 @@ const base = {
   notes: text(L.notes).describe(
     "Facilitation-style speaker notes: what to say, what to ask, what to watch for. Required on every slide.",
   ),
+  label: text(L.label)
+    .optional()
+    .describe('Small label above the title of content slides, naming the part and topic, e.g. "Part 1 · SQL vs NoSQL". Ignored on title, section, callout and closing slides.'),
+  footer: text(L.footer)
+    .optional()
+    .describe('Footer line along the bottom, usually the current part, e.g. "Part 1 · From files to MongoDB".'),
 };
 
 const contentTitle = text(L.slideTitle);

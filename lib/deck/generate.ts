@@ -40,6 +40,8 @@ Slide types and when to use them:
 
 Session shape, unless the notes say otherwise: 3 hours, with a 15-minute warm-up, two 35-minute concept blocks around a break, a 50-minute lab, and a 10-minute exit ticket. A typical session deck runs 14-22 slides: title, agenda, objectives, then concept blocks (mostly concept and code slides, with the occasional compare, cards, steps, callout or pitfalls), a lab, the exit ticket, and a closing.
 
+Labels and footers: when the session has parts (sections), give every slide after the first section a label naming the part and the slide's topic ("Part 1 · SQL vs NoSQL") and a footer naming the current part ("Part 1 · From files to MongoDB"), kept identical across a part. The title slide's footer can say what students leave with. Skip both when the session has no parts. Templates decide whether and how they're drawn.
+
 Speaker notes on every slide are for the instructor, written facilitation-style: what to say in their own words, a question to ask the room, what to demo, and what to watch for. Two to five sentences.
 
 Stay accurate. Use current, idiomatic code. If the notes are thin, teach the topic well rather than padding.`;

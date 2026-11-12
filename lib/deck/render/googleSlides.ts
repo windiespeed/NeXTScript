@@ -9,6 +9,9 @@
  * - Colors are the template's theme colors (DARK1, LIGHT2, ACCENT1…), not fixed hex values, so a
  *   template's palette carries through. Code panels stay dark for legibility.
  * - Fonts are read from the template's master title and body placeholders where it sets them.
+ * - Most hand-built decks style each slide directly and leave the master at Google's defaults.
+ *   For those, the look is learned from the slides themselves (templateStyle.ts): backgrounds,
+ *   fonts, and text, accent and panel colors, and every slide is drawn in that style.
  *
  * Without a template the same adapter draws with the NeXTScript theme's own colors and fonts.
  * The request building is pure (no network) so it can be tested; `exportDeckToGoogleSlides`
@@ -23,7 +26,8 @@ import { layoutSlide } from "../layout/registry";
 import type { ColorToken, SlideLayout, TextElement } from "../layout/types";
 import { CANVAS_H, CANVAS_W } from "../layout/types";
 import { CODE_BG, CODE_TEXT, fontFamily, resolvePalette } from "./palette";
-import { firstFont } from "./pptx";
+import { DECORATION_IDS } from "../layout/decorations";
+import { learnTemplateStyle, learnedColor, type Backdrop, type Decoration, type LearnedStyle } from "./templateStyle";
 
 type Request = slides_v1.Schema$Request;
 type OpaqueColor = slides_v1.Schema$OpaqueColor;
@@ -130,6 +134,8 @@ const THEME_DARK: Record<ColorToken, string> = {
 interface Ctx {
   theme: ThemeConfig;
   template?: TemplateInfo;
+  /** The template's look as read from its slides, when they set one (see templateStyle.ts). */
+  learned?: LearnedStyle;
 }
 
 function color(token: ColorToken, dark: boolean, ctx: Ctx): OpaqueColor {
@@ -137,15 +143,39 @@ function color(token: ColorToken, dark: boolean, ctx: Ctx): OpaqueColor {
   if (token === "code.text") return rgb(CODE_TEXT);
   // The code panel is always dark, so its label can't follow the template's accent color.
   if (token === "code.label") return rgb(resolvePalette(ctx.theme, dark)["code.label"]);
+  const learned = ctx.learned && learnedColor(ctx.learned, token, dark);
+  if (learned) return rgb(learned);
   if (ctx.template) return { themeColor: (dark ? THEME_DARK : THEME_LIGHT)[token] };
   return rgb(resolvePalette(ctx.theme, dark)[token]);
 }
 
+/**
+ * Fonts Google Slides can render. Anything else (Segoe UI, system-ui) silently falls back to
+ * Times New Roman there, so a theme's font stack is walked until one of these turns up.
+ */
+const SLIDES_FONTS = new Set(
+  ["Arial", "Calibri", "Cambria", "Comic Sans MS", "Courier New", "Georgia", "Impact", "Times New Roman", "Trebuchet MS", "Verdana",
+    "Inter", "Lato", "Montserrat", "Open Sans", "Poppins", "Raleway", "Roboto", "Roboto Mono", "Source Sans Pro", "Fraunces",
+    "Playfair Display", "Merriweather", "Nunito", "Oswald", "PT Sans", "Work Sans", "DM Sans", "Space Grotesk", "Lora"].map(f => f.toLowerCase()),
+);
+
+export function slidesFont(stack: string): string {
+  const fonts = stack.split(",").map(f => f.trim().replace(/^['"]|['"]$/g, ""));
+  return fonts.find(f => SLIDES_FONTS.has(f.toLowerCase())) ?? (/serif/i.test(stack) && !/sans-serif/i.test(stack) ? "Georgia" : "Arial");
+}
+
 function font(el: TextElement, ctx: Ctx): string {
   if (el.font === "code") return "Roboto Mono";
+  const learned = el.font === "heading" ? ctx.learned?.headingFont : ctx.learned?.bodyFont;
   const fromTemplate = el.font === "heading" ? ctx.template?.headingFont : ctx.template?.bodyFont;
-  return fromTemplate ?? firstFont(fontFamily(ctx.theme, el.font));
+  return learned ?? fromTemplate ?? slidesFont(fontFamily(ctx.theme, el.font));
 }
+
+/**
+ * Slides can't set a corner radius: a ROUND_RECTANGLE's corners scale with the shape, so a big
+ * panel turns into a bubble. Only small shapes (badges, stripes) keep rounded corners.
+ */
+const MAX_ROUNDED = 28;
 
 // ─── Requests ────────────────────────────────────────────────────────────────
 
@@ -171,10 +201,11 @@ function transform(pageObjectId: string, x: number, y: number, w: number, h: num
   };
 }
 
-function textRequests(el: TextElement, objectId: string, pageId: string, dark: boolean, ctx: Ctx, sx: number, sy: number): Request[] {
+function textRequests(el: TextElement, objectId: string, pageId: string, dark: boolean, ctx: Ctx, sx: number, sy: number, deco?: Decoration): Request[] {
   const paragraphs = el.paragraphs.map(p => (el.uppercase ? p.text.toUpperCase() : p.text));
   const text = paragraphs.join("\n");
-  const fs = el.fontSize * Math.min(sx, sy);
+  // A template's label or footer keeps the template's own size and color.
+  const fs = deco ? deco.size : el.fontSize * Math.min(sx, sy);
   const reqs: Request[] = [
     {
       createShape: {
@@ -201,8 +232,8 @@ function textRequests(el: TextElement, objectId: string, pageId: string, dark: b
         style: {
           fontFamily: font(el, ctx),
           fontSize: { magnitude: Math.round(fs * 2) / 2, unit: "PT" },
-          foregroundColor: { opaqueColor: color(el.color, dark, ctx) },
-          bold: el.font === "heading",
+          foregroundColor: { opaqueColor: deco ? rgb(deco.color) : color(el.color, dark, ctx) },
+          bold: deco ? deco.bold : el.font === "heading",
         },
         fields: "fontFamily,fontSize,foregroundColor,bold",
       },
@@ -229,7 +260,7 @@ function textRequests(el: TextElement, objectId: string, pageId: string, dark: b
     if (end > start) {
       const style: slides_v1.Schema$TextStyle = {};
       const fields: string[] = [];
-      if (p.bold) {
+      if (p.bold && !deco) {
         style.bold = true;
         fields.push("bold");
       }
@@ -237,7 +268,7 @@ function textRequests(el: TextElement, objectId: string, pageId: string, dark: b
         style.italic = true;
         fields.push("italic");
       }
-      if (p.color) {
+      if (p.color && !deco) {
         style.foregroundColor = { opaqueColor: color(p.color, dark, ctx) };
         fields.push("foregroundColor");
       }
@@ -253,21 +284,42 @@ function textRequests(el: TextElement, objectId: string, pageId: string, dark: b
   return reqs;
 }
 
+/**
+ * A copy of a template slide with only its background elements left, moved into place. The Slides
+ * API can't create gradient fills, so copying them is the only way to keep them.
+ */
+function backdropSlide(b: Backdrop, pageId: string, ids: Ids, insertionIndex: number): Request[] {
+  const objectIds: Record<string, string> = { [b.slideId]: pageId };
+  const dropped = b.drop.map(id => (objectIds[id] = ids.next("x")));
+  for (const id of b.keep) objectIds[id] = ids.next("k");
+  return [
+    { duplicateObject: { objectId: b.slideId, objectIds } },
+    ...dropped.map(objectId => ({ deleteObject: { objectId } })),
+    // The copy lands right after its source; insertionIndex counts slides before the move, and
+    // the copy itself is one of them, so it goes one further to land at `insertionIndex`.
+    { updateSlidesPosition: { slideObjectIds: [pageId], insertionIndex: insertionIndex + 1 } },
+  ];
+}
+
 function drawnSlide(layout: SlideLayout, pageId: string, ids: Ids, ctx: Ctx, insertionIndex: number): Request[] {
   const dark = layout.dark;
   const sx = (ctx.template?.pageW ?? CANVAS_W) / CANVAS_W;
   const sy = (ctx.template?.pageH ?? CANVAS_H) / CANVAS_H;
-  const reqs: Request[] = [
-    {
-      createSlide: {
-        objectId: pageId,
-        insertionIndex,
-        slideLayoutReference: ctx.template?.blankLayoutId ? { layoutId: ctx.template.blankLayoutId } : { predefinedLayout: "BLANK" },
-      },
-    },
-  ];
-  // Light slides on a template keep the template's own background; everything else is filled.
-  if (!ctx.template || dark) {
+  const backdrop = dark ? ctx.learned?.coverBackdrop : ctx.learned?.contentBackdrop;
+  const reqs: Request[] = backdrop
+    ? backdropSlide(backdrop, pageId, ids, insertionIndex)
+    : [
+        {
+          createSlide: {
+            objectId: pageId,
+            insertionIndex,
+            slideLayoutReference: ctx.template?.blankLayoutId ? { layoutId: ctx.template.blankLayoutId } : { predefinedLayout: "BLANK" },
+          },
+        },
+      ];
+  // Light slides on a template keep the template's own background, unless its look comes from its
+  // slides (a learned style), where every slide gets the learned background.
+  if (!ctx.template || dark || ctx.learned) {
     reqs.push({
       updatePageProperties: {
         objectId: pageId,
@@ -277,13 +329,17 @@ function drawnSlide(layout: SlideLayout, pageId: string, ids: Ids, ctx: Ctx, ins
     });
   }
   for (const el of layout.elements) {
+    // With a learned template, labels and footers appear only if the template has them.
+    const decoKind = el.kind === "text" && (el.id === DECORATION_IDS.label ? "label" : el.id === DECORATION_IDS.footer ? "footer" : undefined);
+    const deco = decoKind ? ctx.learned?.[decoKind] : undefined;
+    if (decoKind && ctx.learned && !deco) continue;
     const objectId = ids.next(el.kind === "rect" ? "r" : "t");
     if (el.kind === "rect") {
       reqs.push(
         {
           createShape: {
             objectId,
-            shapeType: el.radius > 0 ? "ROUND_RECTANGLE" : "RECTANGLE",
+            shapeType: el.radius > 0 && Math.min(el.w * sx, el.h * sy) <= MAX_ROUNDED ? "ROUND_RECTANGLE" : "RECTANGLE",
             elementProperties: transform(pageId, el.x, el.y, el.w, el.h, sx, sy),
           },
         },
@@ -299,7 +355,7 @@ function drawnSlide(layout: SlideLayout, pageId: string, ids: Ids, ctx: Ctx, ins
         },
       );
     } else {
-      reqs.push(...textRequests(el, objectId, pageId, dark, ctx, sx, sy));
+      reqs.push(...textRequests(el, objectId, pageId, dark, ctx, sx, sy, deco));
     }
   }
   return reqs;
@@ -338,7 +394,9 @@ export function buildSlidesRequests(deck: DeckContent, ctx: Ctx, idPrefix = "nx"
   deck.slides.forEach((slide, i) => {
     const pageId = ids.next("p");
     const index = offset + i;
-    const placeholder = slide.type === "title" ? ctx.template?.titleLayout : slide.type === "section" ? ctx.template?.sectionLayout : undefined;
+    // A template styled slide by slide has plain layouts; its title and section look is learned.
+    const layouts = ctx.learned ? undefined : ctx.template;
+    const placeholder = slide.type === "title" ? layouts?.titleLayout : slide.type === "section" ? layouts?.sectionLayout : undefined;
     if (placeholder && (slide.type === "title" || slide.type === "section")) {
       requests.push(...placeholderSlide(slide, placeholder, pageId, ids, index));
     } else {
@@ -388,7 +446,8 @@ export async function exportDeckToGoogleSlides(opts: {
 
   const pres = await slides.presentations.get({ presentationId: id });
   const template = opts.templateId ? inspectTemplate(pres.data) : undefined;
-  const built = buildSlidesRequests(opts.deck, { theme: opts.theme, template });
+  const learned = opts.templateId ? learnTemplateStyle(pres.data) : undefined;
+  const built = buildSlidesRequests(opts.deck, { theme: opts.theme, template, learned });
   // A new presentation starts with one empty title slide; remove it once the deck is in.
   if (!template) {
     for (const s of pres.data.slides ?? []) if (s.objectId) built.requests.push({ deleteObject: { objectId: s.objectId } });
@@ -401,13 +460,18 @@ export async function exportDeckToGoogleSlides(opts: {
   // Speaker notes: each slide's notes shape only exists once the slide does.
   const after = await slides.presentations.get({
     presentationId: id,
-    fields: "slides(objectId,slideProperties(notesPage(notesProperties(speakerNotesObjectId))))",
+    fields: "slides(objectId,slideProperties(notesPage(notesProperties(speakerNotesObjectId),pageElements(objectId,shape(text(textElements(textRun(content))))))))",
   });
-  const notesShape = new Map((after.data.slides ?? []).map(s => [s.objectId, s.slideProperties?.notesPage?.notesProperties?.speakerNotesObjectId]));
   const noteRequests: Request[] = [];
+  const bySlide = new Map((after.data.slides ?? []).map(s => [s.objectId, s.slideProperties?.notesPage]));
   built.slideIds.forEach((slideId, i) => {
-    const shape = notesShape.get(slideId);
-    if (shape && built.notes[i]) noteRequests.push({ insertText: { objectId: shape, insertionIndex: 0, text: built.notes[i] } });
+    const page = bySlide.get(slideId);
+    const shape = page?.notesProperties?.speakerNotesObjectId;
+    if (!shape) return;
+    // A slide copied from the template (a backdrop) brings the template's notes along.
+    const existing = page?.pageElements?.find(e => e.objectId === shape)?.shape?.text?.textElements?.some(t => t.textRun?.content?.trim());
+    if (existing) noteRequests.push({ deleteText: { objectId: shape, textRange: { type: "ALL" } } });
+    if (built.notes[i]) noteRequests.push({ insertText: { objectId: shape, insertionIndex: 0, text: built.notes[i] } });
   });
   for (let i = 0; i < noteRequests.length; i += BATCH) {
     await slides.presentations.batchUpdate({ presentationId: id, requestBody: { requests: noteRequests.slice(i, i + BATCH) } });
