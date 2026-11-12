@@ -51,7 +51,7 @@ describe("HTML preview", () => {
     expect(renderToStaticMarkup(<SlideCanvas layout={layout} theme={getTheme("pearl")} showWarnings={false} />)).not.toContain("dashed");
   });
 
-  it("sample deck uses all 14 slide types", () => {
+  it("sample deck uses every slide type", () => {
     expect(new Set(SAMPLE_DECK.slides.map(s => s.type))).toEqual(new Set(DECK_SLIDE_TYPES));
   });
 

@@ -1,5 +1,6 @@
 import type { AnchorReport, SlideAnchor } from "@/lib/slideAnchors";
 import type { StudentLevel } from "@/lib/studentLevel";
+import type { Outline, OutlineItem } from "@/lib/ingestionPrompt";
 import type { PresentationAST } from "@/types/slideAst";
 
 /**
@@ -26,6 +27,13 @@ export interface HybridIngestRequest {
   lessonSubtitle?: string;
   topics?: string;
   sources?: string;
+  /** The reviewed outline, when the instructor planned first (POST /api/ai/ingest only). */
+  outline?: OutlineItem[];
+}
+
+/** POST /api/ai/ingest/outline — the plan the instructor reviews before generating. */
+export interface OutlineResponse {
+  outline: Outline;
 }
 
 export interface HybridIngestResponse {

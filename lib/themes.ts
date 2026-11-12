@@ -13,6 +13,8 @@ export const THEMES: ThemeConfig[] = [
     accent: { primary: "#F2A365", secondary: "#F2777A", tertiary: "#6EA8FE" },
     border: "#2C3038",
     radius: "0.25rem",
+    // Navy gradient on content slides, warm brown glow on cover/section slides (from the course decks).
+    backdrop: "nextstack",
     darkSlides: {
       surface: "#4D3522",
       panel: "#3A2819",

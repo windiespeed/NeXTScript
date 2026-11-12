@@ -164,7 +164,7 @@ export async function moveFileToFolder(fileId: string, folderId: string, accessT
 
 const PPTX_MIME = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
 
-/** Uploads a .pptx file (as produced by lib/pptxDeck.ts) to Drive as a real PowerPoint file —
+/** Uploads a .pptx file (as produced by lib/deck/render/pptx.ts) to Drive as a real PowerPoint file —
  * deliberately not converted to native Google Slides format, since that conversion is lossy.
  * Drive/Slides can open and edit a .pptx in place without conversion. */
 export const GOOGLE_SLIDES_MIME = "application/vnd.google-apps.presentation";
@@ -202,7 +202,7 @@ function sectionDocContent(lesson: Lesson, sectionId: string): string {
   return sectionId === "rubric" ? lesson.rubric ?? (lesson as any).taChecklist ?? "" : getSectionContent(lesson, sectionId);
 }
 
-/** Flattens one AST slide node (any of the 5 layout types, see types/slideAst.ts) into plain
+/** Flattens one AST slide node (any layout type, see types/slideAst.ts) into plain
  * {title, body} text. Used by the Overview Doc to summarize a Notes-to-Slides deck. */
 function flattenAstSlide(slide: SlideNode): { title: string; body: string } {
   switch (slide.type) {
@@ -216,11 +216,16 @@ function flattenAstSlide(slide: SlideNode): { title: string; body: string } {
       return { title: slide.title, body: `${left}\n\n${right}` };
     }
     case "code-explainer": {
-      const body = [`[${slide.language}]`, slide.codeSnippet, "", ...slide.explanationPoints.map(p => `• ${p}`)].join("\n");
+      const output = slide.output?.trim() ? ["Output:", slide.output.trim(), ""] : [];
+      const body = [`[${slide.language}]`, slide.codeSnippet, "", ...output, ...slide.explanationPoints.map(p => `• ${p}`)].join("\n");
       return { title: slide.title, body };
     }
     case "callout":
       return { title: slide.title, body: slide.content };
+    case "card-row":
+      return { title: slide.title, body: slide.cards.map(c => `• ${c.heading}${c.tag ? ` (${c.tag})` : ""}: ${c.body}`).join("\n") };
+    case "table":
+      return { title: slide.title, body: [slide.columns.join(" | "), ...slide.rows.map(r => r.join(" | "))].join("\n") };
     case "step-grid": {
       const steps = [...slide.steps]
         .sort((a, b) => a.stepNumber - b.stepNumber)

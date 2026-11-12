@@ -155,6 +155,14 @@ export const hybridIngestSchema = z.object({
   lessonSubtitle: optionalText(2_000),
   topics: optionalText(20_000),
   sources: optionalText(20_000),
+  /** The outline the instructor reviewed first, when they did; the deck follows it. */
+  outline: z.array(z.object({
+    title: z.string().trim().min(1).max(200),
+    label: z.string().max(200).optional(),
+    anchorId: z.string().max(200).optional(),
+    type: z.enum(["standard", "split-column", "code-explainer", "callout", "step-grid", "card-row", "table"]).optional(),
+    summary: z.string().max(500).optional(),
+  })).max(40).nullish().transform(v => (v?.length ? v : undefined)),
 });
 
 /** POST /api/ai/ingest/export — the deck itself is checked separately by assertValidAst. */

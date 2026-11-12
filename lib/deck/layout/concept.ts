@@ -16,7 +16,7 @@
  */
 
 import type { ConceptSlide } from "../schema";
-import { GRID, HEADER, SlideBuilder, bullets } from "./kit";
+import { GRID, bodyBottom, HEADER, SlideBuilder, bullets } from "./kit";
 import type { SlideLayout } from "./types";
 
 /** Geometry constants, exported so tests and other layouts share them. */
@@ -85,7 +85,7 @@ export function layoutConcept(slide: ConceptSlide): SlideLayout {
   }
 
   y += HEADER.bodyGap;
-  const availH = GRID.bodyBottom - y;
+  const availH = bodyBottom() - y;
   const bodyW = slide.aside ? GRID.contentW - C.aside.gap - C.aside.w : GRID.contentW;
 
   b.text({
@@ -94,6 +94,8 @@ export function layoutConcept(slide: ConceptSlide): SlideLayout {
     x, y, w: bodyW, h: availH,
     maxSize: C.body.maxSize, minSize: C.body.minSize, warnBelow: C.body.warnBelow,
     lineHeight: C.body.lineHeight, gapEm: C.body.gapEm, color: "text.secondary",
+    // Hug the bullets so a takeaway line can sit right under them.
+    hug: true,
   });
 
   if (slide.aside) {

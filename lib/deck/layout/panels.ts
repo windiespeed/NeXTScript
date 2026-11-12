@@ -4,7 +4,7 @@
 
 import type { SlideOf } from "../schema";
 import { asidePanel } from "./concept";
-import { GRID, HEADER, SlideBuilder, bullets, numbered, split } from "./kit";
+import { GRID, bodyBottom, HEADER, SlideBuilder, bullets, numbered, split } from "./kit";
 import type { ColorToken, SlideLayout } from "./types";
 
 const x0 = GRID.marginX;
@@ -17,7 +17,13 @@ export function layoutCompare(slide: SlideOf<"compare">): SlideLayout {
   const b = new SlideBuilder(slide.id, slide.notes);
   const top = b.header(slide.title) + HEADER.bodyGap;
   const colW = split(W, 2, GRID.gutter);
-  const h = GRID.bodyBottom - top;
+  const maxH = bodyBottom() - top;
+  // Both panels hug the fuller column's content at the preferred sizes, like the reference decks.
+  const innerW = colW - PAD * 2;
+  const colH = (col: SlideOf<"compare">["left"]) =>
+    PAD + 4 + b.measure({ paragraphs: [{ text: col.heading, bold: true }], w: innerW, h: 44, font: "heading", maxSize: 16, minSize: 16, lineHeight: 1.15 }) + 10 +
+    b.measure({ paragraphs: bullets(col.points), w: innerW, h: maxH, maxSize: 16, minSize: 16, gapEm: 0.5 }) + PAD;
+  const h = Math.min(maxH, Math.max(120, Math.max(colH(slide.left), colH(slide.right)) + 6));
 
   ([["left", slide.left, "accent.primary"], ["right", slide.right, "accent.secondary"]] as const).forEach(([side, col, accent], i) => {
     const x = x0 + i * (colW + GRID.gutter);
@@ -40,31 +46,52 @@ export function layoutCompare(slide: SlideOf<"compare">): SlideLayout {
   return b.build();
 }
 
-/** Cards: 2–4 cards in one row, each with an accent strip, a heading, and a short body. */
+/** Cards: 2–4 cards in one row, each with an accent strip, an optional tag chip, a heading, and a short body. */
 export function layoutCards(slide: SlideOf<"cards">): SlideLayout {
   const b = new SlideBuilder(slide.id, slide.notes);
   const top = b.header(slide.title) + HEADER.bodyGap;
   const n = slide.cards.length;
   const gap = 16;
   const cardW = split(W, n, gap);
-  const h = Math.min(220, GRID.bodyBottom - top);
+  const innerW = cardW - PAD * 2;
+  const maxH = bodyBottom() - top;
+  const tagH = slide.cards.some(c => c.tag) ? 16 + 8 : 0;
+
+  // Cards hug their content: all the same height, set by the fullest card at the preferred sizes.
+  const headH = (t: string) => b.measure({ paragraphs: [{ text: t, bold: true }], w: innerW, h: 48, font: "heading", maxSize: 17, minSize: 17, lineHeight: 1.15 });
+  const bodyH = (t: string) => b.measure({ paragraphs: [{ text: t }], w: innerW, h: maxH, maxSize: 15, minSize: 15 });
+  const wanted = Math.max(...slide.cards.map(c => PAD + 4 + tagH + headH(c.heading) + 8 + bodyH(c.body) + PAD));
+  const h = Math.min(maxH, Math.max(110, wanted + 4));
 
   slide.cards.forEach((card, i) => {
     const x = x0 + i * (cardW + gap);
     const accent = ACCENTS[i % ACCENTS.length];
     b.rect(`card.${i}.panel`, x, top, cardW, h, "panel", 10);
     b.rect(`card.${i}.bar`, x, top, cardW, 4, accent);
+    let hy = top + PAD + 4;
+    if (card.tag) {
+      // A filled chip: accent background, the card color as text, sized to the tag.
+      const chipW = Math.min(innerW, Math.ceil(card.tag.length * 9 * 0.62 + 14));
+      b.rect(`card.${i}.tag.chip`, x + PAD, hy, chipW, 16, accent, 3);
+      b.elements.push({
+        kind: "text", id: `card.${i}.tag`, x: x + PAD, y: hy, w: chipW, h: 16,
+        font: "body", fontSize: 9, lineHeight: 1, paragraphGap: 0,
+        color: "panel", align: "center", valign: "middle", uppercase: true, letterSpacing: 0.8,
+        paragraphs: [{ text: card.tag, bold: true }],
+      });
+    }
+    hy += tagH;
     const head = b.text({
       id: `card.${i}.heading`, what: `Card ${i + 1} heading`,
       paragraphs: [{ text: card.heading, bold: true }],
-      x: x + PAD, y: top + PAD + 4, w: cardW - PAD * 2, h: 48,
+      x: x + PAD, y: hy, w: innerW, h: 48,
       font: "heading", maxSize: 17, minSize: 13, lineHeight: 1.15, color: "text.primary", hug: true,
     });
-    const by = top + PAD + 4 + head.h + 8;
+    const by = hy + head.h + 8;
     b.text({
       id: `card.${i}.body`, what: `Card ${i + 1} text`,
       paragraphs: [{ text: card.body }],
-      x: x + PAD, y: by, w: cardW - PAD * 2, h: top + h - PAD - by,
+      x: x + PAD, y: by, w: innerW, h: top + h - PAD - by,
       maxSize: 15, minSize: 11, warnBelow: 13, color: "text.secondary",
     });
   });
@@ -80,7 +107,7 @@ export function layoutSteps(slide: SlideOf<"steps">): SlideLayout {
   const rows = Math.ceil(n / cols);
   const gap = 14;
   const cardW = split(W, cols, gap);
-  const cardH = Math.min(200, split(GRID.bodyBottom - top, rows, gap));
+  const cardH = Math.min(200, split(bodyBottom() - top, rows, gap));
   const badge = 26;
 
   slide.steps.forEach((step, i) => {
@@ -135,7 +162,7 @@ export function layoutPitfalls(slide: SlideOf<"pitfalls">): SlideLayout {
 
   const n = slide.pairs.length;
   const rowGap = 10;
-  const rowH = Math.min(110, split(GRID.bodyBottom - top, n, rowGap));
+  const rowH = Math.min(110, split(bodyBottom() - top, n, rowGap));
   const pad = 10;
 
   slide.pairs.forEach((pair, i) => {
@@ -178,7 +205,7 @@ export function layoutLab(slide: SlideOf<"lab">): SlideLayout {
   const panelW = 230;
   const gap = 24;
   const tasksW = W - panelW - gap;
-  const h = GRID.bodyBottom - top;
+  const h = bodyBottom() - top;
 
   b.label("tasks.label", "Tasks", x0, top, tasksW);
   b.text({
@@ -188,5 +215,65 @@ export function layoutLab(slide: SlideOf<"lab">): SlideLayout {
     maxSize: 17, minSize: 11, warnBelow: 14, gapEm: 0.55, color: "text.primary",
   });
   asidePanel(b, "done", "Done-when list", "Done when", bullets(slide.doneWhen), x0 + tasksW + gap, top, panelW, h, "accent.secondary");
+  return b.build();
+}
+
+/**
+ * Table: a header row in the accent color over a panel, then body rows on alternating fills.
+ * Column widths follow how much text each column holds; the first column is bold.
+ */
+export function layoutTable(slide: SlideOf<"table">): SlideLayout {
+  const b = new SlideBuilder(slide.id, slide.notes);
+  const top = b.header(slide.title) + HEADER.bodyGap;
+  const cols = slide.columns.length;
+  const rows = slide.rows.map(r => Array.from({ length: cols }, (_, c) => r[c] ?? ""));
+  const pad = 6;
+
+  // Width by content: the longest text in each column, with every column at least a share.
+  const weight = slide.columns.map((h, c) => Math.max(h.length, ...rows.map(r => r[c].length), 8));
+  const total = weight.reduce((a, n) => a + n, 0);
+  const minW = W / cols / 2;
+  const raw = weight.map(n => Math.max(minW, (n / total) * W));
+  const scale = W / raw.reduce((a, n) => a + n, 0);
+  const colW = raw.map(n => n * scale);
+  const colX = colW.map((_, c) => x0 + colW.slice(0, c).reduce((a, n) => a + n, 0));
+
+  const headH = 26;
+  const availH = bodyBottom() - top - headH;
+  // Every row gets the height its tallest cell needs at the preferred size, then all rows share
+  // what's left if that's too much.
+  const cellH = (text: string, c: number, size: number) =>
+    b.measure({ paragraphs: [{ text }], w: colW[c] - pad * 2, h: 200, maxSize: size, minSize: size, lineHeight: 1.25 });
+  const wanted = rows.map(r => Math.max(...r.map((t, c) => cellH(t || " ", c, 14))) + pad * 2);
+  const sum = wanted.reduce((a, n) => a + n, 0);
+  const rowH = sum <= availH ? wanted : wanted.map(h => (h / sum) * availH);
+
+  b.rect("table.head", x0, top, W, headH, "panel", 0);
+  b.rect("table.head.bar", x0, top + headH - 2, W, 2, "accent.primary");
+  slide.columns.forEach((h, c) => {
+    b.text({
+      id: `table.h.${c}`, what: `Column ${c + 1} heading`,
+      paragraphs: [{ text: h, bold: true }],
+      x: colX[c] + pad, y: top + 5, w: colW[c] - pad * 2, h: headH - 8,
+      maxSize: 12, minSize: 9, color: "accent.primary", valign: "middle",
+    });
+  });
+
+  let y = top + headH;
+  rows.forEach((row, r) => {
+    const h = rowH[r];
+    if (r % 2 === 1) b.rect(`table.row.${r}`, x0, y, W, h, "panel", 0);
+    row.forEach((cell, c) => {
+      if (!cell) return;
+      b.text({
+        id: `table.c.${r}.${c}`, what: `Row ${r + 1}, column ${c + 1}`,
+        paragraphs: [{ text: cell, bold: c === 0 }],
+        x: colX[c] + pad, y: y + pad, w: colW[c] - pad * 2, h: h - pad * 2,
+        maxSize: 14, minSize: 9, warnBelow: 11, lineHeight: 1.25,
+        color: c === 0 ? "text.primary" : "text.secondary",
+      });
+    });
+    y += h;
+  });
   return b.build();
 }

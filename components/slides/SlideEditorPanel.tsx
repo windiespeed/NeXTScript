@@ -11,6 +11,8 @@ import type {
   CodeExplainerSlide as CodeExplainerSlideNode,
   CalloutCardSlide,
   StepGridSlide as StepGridSlideNode,
+  CardRowSlide,
+  TableSlide,
 } from "@/types/slideAst";
 
 const inputClass = "w-full rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)] transition placeholder:text-[var(--text-muted)]";
@@ -19,11 +21,13 @@ const labelClass = "block text-xs font-semibold mb-1";
 const labelStyle = { color: "var(--text-primary)" };
 
 const SLIDE_TYPE_LABELS: Record<SlideType, string> = {
-  standard: "Standard",
-  "split-column": "Split Column",
-  "code-explainer": "Code Explainer",
+  standard: "Text and Bullets",
+  "card-row": "Card Row",
+  "split-column": "Two Columns",
+  table: "Table",
+  "step-grid": "Steps",
+  "code-explainer": "Code",
   callout: "Callout",
-  "step-grid": "Step Grid",
 };
 
 function blankSlide(type: SlideType): SlideNode {
@@ -43,6 +47,10 @@ function blankSlide(type: SlideType): SlideNode {
       return { id, type: "callout", title: "New Slide", variant: "tip", content: "" };
     case "step-grid":
       return { id, type: "step-grid", title: "New Slide", steps: [{ stepNumber: 1, title: "", description: "" }] };
+    case "card-row":
+      return { id, type: "card-row", title: "New Slide", cards: [{ heading: "", body: "" }, { heading: "", body: "" }] };
+    case "table":
+      return { id, type: "table", title: "New Slide", columns: ["", ""], rows: [["", ""]] };
   }
 }
 
@@ -95,29 +103,54 @@ function TextListField({ label, items, onChange, rows }: { label: string; items:
   );
 }
 
-function TitleSubtitleFields({ slide, onChange }: { slide: SlideNode; onChange: (patch: { title?: string; subtitle?: string }) => void }) {
+type SlidePatch = Partial<Pick<SlideNode, "title" | "subtitle" | "label" | "notes" | "takeaway">>;
+
+/** Fields every slide has: section label, headline, and (under the type's own fields) notes and takeaway. */
+function TitleSubtitleFields({ slide, onChange }: { slide: SlideNode; onChange: (patch: SlidePatch) => void }) {
   return (
     <>
-      <div>
-        <label htmlFor="slides-slideeditorpanel-title-locked-course-section" className={labelClass} style={labelStyle}>
-          Title{slide.anchorId && <span className="font-normal" style={{ color: "var(--text-muted)" }}> · 🔒 locked course section</span>}
-        </label>
-        {/* Anchored slides carry the exact course section label — renaming would break the
-            skeleton the export also enforces, so the field is read-only (subtitle stays free). */}
-        <input id="slides-slideeditorpanel-title-locked-course-section"
-          value={slide.title}
-          readOnly={!!slide.anchorId}
-          title={slide.anchorId ? "This heading comes from the course's Sections and can't be changed here." : undefined}
-          onChange={e => { if (!slide.anchorId) onChange({ title: e.target.value }); }}
-          className={`${inputClass} ${slide.anchorId ? "cursor-not-allowed opacity-70" : ""}`}
-          style={inputStyle}
-        />
+      <div className="grid grid-cols-1 sm:grid-cols-[12rem_1fr] gap-2">
+        <div>
+          <label htmlFor="slides-slideeditorpanel-label" className={labelClass} style={labelStyle}>
+            Section label{slide.anchorId && <span className="font-normal" style={{ color: "var(--text-muted)" }}> · 🔒 course section</span>}
+          </label>
+          {/* Anchored slides carry the exact course section name in their label — the export
+              enforces it too, so it's read-only here. The headline is free to edit. */}
+          <input id="slides-slideeditorpanel-label"
+            value={slide.label ?? ""}
+            readOnly={!!slide.anchorId}
+            title={slide.anchorId ? "This label comes from the course's Sections and can't be changed here." : "Small label above the title"}
+            onChange={e => { if (!slide.anchorId) onChange({ label: e.target.value || undefined }); }}
+            className={`${inputClass} ${slide.anchorId ? "cursor-not-allowed opacity-70" : ""}`}
+            style={inputStyle}
+          />
+        </div>
+        <div>
+          <label htmlFor="slides-slideeditorpanel-title" className={labelClass} style={labelStyle}>Headline</label>
+          <input id="slides-slideeditorpanel-title" value={slide.title} onChange={e => onChange({ title: e.target.value })} className={inputClass} style={inputStyle} />
+        </div>
       </div>
+    </>
+  );
+}
+
+/** Takeaway line and speaker notes, shown under each slide type's own fields. */
+function NotesFields({ slide, onChange }: { slide: SlideNode; onChange: (patch: SlidePatch) => void }) {
+  return (
+    <>
+      {slide.type !== "callout" && (
+        <div>
+          <label htmlFor="slides-slideeditorpanel-takeaway" className={labelClass} style={labelStyle}>
+            Takeaway <span className="font-normal" style={{ color: "var(--text-muted)" }}>(optional, one short sentence at the bottom)</span>
+          </label>
+          <input id="slides-slideeditorpanel-takeaway" value={slide.takeaway ?? ""} onChange={e => onChange({ takeaway: e.target.value || undefined })} className={inputClass} style={inputStyle} />
+        </div>
+      )}
       <div>
-        <label htmlFor="slides-slideeditorpanel-subtitle-optional" className={labelClass} style={labelStyle}>
-          Subtitle <span className="font-normal" style={{ color: "var(--text-muted)" }}>(optional)</span>
+        <label htmlFor="slides-slideeditorpanel-notes" className={labelClass} style={labelStyle}>
+          Speaker notes <span className="font-normal" style={{ color: "var(--text-muted)" }}>(not shown on the slide)</span>
         </label>
-        <input id="slides-slideeditorpanel-subtitle-optional" value={slide.subtitle ?? ""} onChange={e => onChange({ subtitle: e.target.value || undefined })} className={inputClass} style={inputStyle} />
+        <textarea id="slides-slideeditorpanel-notes" value={slide.notes ?? ""} onChange={e => onChange({ notes: e.target.value || undefined })} rows={4} className={inputClass} style={inputStyle} />
       </div>
     </>
   );
@@ -192,6 +225,18 @@ function CodeExplainerEditor({ slide, onChange }: { slide: CodeExplainerSlideNod
           value={slide.codeSnippet}
           onChange={e => onChange({ ...slide, codeSnippet: e.target.value })}
           rows={6}
+          className={`${inputClass} font-mono`}
+          style={inputStyle}
+        />
+      </div>
+      <div>
+        <label htmlFor="slides-slideeditorpanel-output" className={labelClass} style={labelStyle}>
+          Output <span className="font-normal" style={{ color: "var(--text-muted)" }}>(optional, what running it shows)</span>
+        </label>
+        <textarea id="slides-slideeditorpanel-output"
+          value={slide.output ?? ""}
+          onChange={e => onChange({ ...slide, output: e.target.value || undefined })}
+          rows={2}
           className={`${inputClass} font-mono`}
           style={inputStyle}
         />
@@ -274,8 +319,102 @@ function StepGridEditor({ slide, onChange }: { slide: StepGridSlideNode; onChang
   );
 }
 
-/** Routes the active slide to its type-specific editor form — mirrors SlideRenderer's exhaustive switch. */
+function CardRowEditor({ slide, onChange }: { slide: CardRowSlide; onChange: (next: CardRowSlide) => void }) {
+  function updateCard(i: number, patch: Partial<CardRowSlide["cards"][number]>) {
+    onChange({ ...slide, cards: slide.cards.map((c, j) => (j === i ? { ...c, ...patch } : c)) });
+  }
+  return (
+    <div className="flex flex-col gap-3">
+      <TitleSubtitleFields slide={slide} onChange={patch => onChange({ ...slide, ...patch })} />
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold" style={labelStyle}>Cards <span className="font-normal" style={{ color: "var(--text-muted)" }}>(2–4 fit in a row)</span></span>
+        <button type="button" onClick={() => onChange({ ...slide, cards: [...slide.cards, { heading: "", body: "" }] })} className="text-[10px] font-semibold text-[var(--accent-text)] hover:underline">+ Add Card</button>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+        {slide.cards.map((card, i) => (
+          <div key={i} className="rounded-lg p-2.5 space-y-1.5" style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)" }}>
+            <div className="flex items-center gap-1.5">
+              <input aria-label={`Card ${i + 1} tag`} value={card.tag ?? ""} onChange={e => updateCard(i, { tag: e.target.value || undefined })} placeholder="Tag (optional)" className={inputClass} style={inputStyle} />
+              <button type="button" onClick={() => onChange({ ...slide, cards: slide.cards.filter((_, j) => j !== i) })} className="shrink-0 text-red-500 text-xs px-1.5 py-1 rounded hover:bg-red-500/10 transition" title="Remove card" aria-label={`Remove card ${i + 1}`}>×</button>
+            </div>
+            <input aria-label={`Card ${i + 1} heading`} value={card.heading} onChange={e => updateCard(i, { heading: e.target.value })} placeholder="Heading" className={inputClass} style={inputStyle} />
+            <textarea aria-label={`Card ${i + 1} text`} value={card.body} onChange={e => updateCard(i, { body: e.target.value })} placeholder="Text" rows={2} className={inputClass} style={inputStyle} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TableEditor({ slide, onChange }: { slide: TableSlide; onChange: (next: TableSlide) => void }) {
+  const cols = slide.columns.length;
+  function setCell(r: number, c: number, value: string) {
+    onChange({ ...slide, rows: slide.rows.map((row, i) => (i === r ? Array.from({ length: cols }, (_, j) => (j === c ? value : row[j] ?? "")) : row)) });
+  }
+  function addColumn() {
+    if (cols >= 4) return;
+    onChange({ ...slide, columns: [...slide.columns, ""], rows: slide.rows.map(r => [...r, ""]) });
+  }
+  function removeColumn(c: number) {
+    if (cols <= 2) return;
+    onChange({ ...slide, columns: slide.columns.filter((_, j) => j !== c), rows: slide.rows.map(r => r.filter((_, j) => j !== c)) });
+  }
+  return (
+    <div className="flex flex-col gap-3">
+      <TitleSubtitleFields slide={slide} onChange={patch => onChange({ ...slide, ...patch })} />
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold" style={labelStyle}>Table <span className="font-normal" style={{ color: "var(--text-muted)" }}>(2–4 columns, up to 5 rows per slide; more rows continue on the next slide)</span></span>
+        <div className="flex gap-3">
+          <button type="button" onClick={addColumn} disabled={cols >= 4} className="text-[10px] font-semibold text-[var(--accent-text)] hover:underline disabled:opacity-40">+ Column</button>
+          <button type="button" onClick={() => onChange({ ...slide, rows: [...slide.rows, Array.from({ length: cols }, () => "")] })} className="text-[10px] font-semibold text-[var(--accent-text)] hover:underline">+ Row</button>
+        </div>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full border-separate" style={{ borderSpacing: "4px" }}>
+          <thead>
+            <tr>
+              {slide.columns.map((h, c) => (
+                <th key={c} className="align-top">
+                  <div className="flex items-center gap-1">
+                    <input aria-label={`Column ${c + 1} heading`} value={h} onChange={e => onChange({ ...slide, columns: slide.columns.map((x, j) => (j === c ? e.target.value : x)) })} placeholder="Heading" className={`${inputClass} font-semibold`} style={inputStyle} />
+                    <button type="button" onClick={() => removeColumn(c)} disabled={cols <= 2} className="shrink-0 text-red-500 text-xs px-1 rounded hover:bg-red-500/10 disabled:opacity-30" title="Remove column" aria-label={`Remove column ${c + 1}`}>×</button>
+                  </div>
+                </th>
+              ))}
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            {slide.rows.map((row, r) => (
+              <tr key={r}>
+                {slide.columns.map((_, c) => (
+                  <td key={c}>
+                    <input aria-label={`Row ${r + 1}, column ${c + 1}`} value={row[c] ?? ""} onChange={e => setCell(r, c, e.target.value)} className={inputClass} style={inputStyle} />
+                  </td>
+                ))}
+                <td>
+                  <button type="button" onClick={() => onChange({ ...slide, rows: slide.rows.filter((_, j) => j !== r) })} className="text-red-500 text-xs px-1.5 py-1 rounded hover:bg-red-500/10" title="Remove row" aria-label={`Remove row ${r + 1}`}>×</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+/** Routes the active slide to its type-specific editor form. */
 function ActiveSlideEditor({ slide, onChange }: { slide: SlideNode; onChange: (next: SlideNode) => void }) {
+  return (
+    <div className="flex flex-col gap-3">
+      <SlideTypeEditor slide={slide} onChange={onChange} />
+      <NotesFields slide={slide} onChange={patch => onChange({ ...slide, ...patch } as SlideNode)} />
+    </div>
+  );
+}
+
+function SlideTypeEditor({ slide, onChange }: { slide: SlideNode; onChange: (next: SlideNode) => void }) {
   switch (slide.type) {
     case "standard":
       return <StandardEditor slide={slide} onChange={onChange} />;
@@ -287,6 +426,10 @@ function ActiveSlideEditor({ slide, onChange }: { slide: SlideNode; onChange: (n
       return <CalloutEditor slide={slide} onChange={onChange} />;
     case "step-grid":
       return <StepGridEditor slide={slide} onChange={onChange} />;
+    case "card-row":
+      return <CardRowEditor slide={slide} onChange={onChange} />;
+    case "table":
+      return <TableEditor slide={slide} onChange={onChange} />;
     default: {
       const _exhaustive: never = slide;
       return _exhaustive;

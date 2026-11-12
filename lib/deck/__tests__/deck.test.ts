@@ -41,8 +41,8 @@ function inCanvas(layout: SlideLayout) {
 }
 
 describe("DeckSchema", () => {
-  it("covers 14 slide types", () => {
-    expect(DECK_SLIDE_TYPES).toHaveLength(14);
+  it("covers 15 slide types", () => {
+    expect(DECK_SLIDE_TYPES).toHaveLength(15);
   });
 
   it("accepts a valid concept slide", () => {

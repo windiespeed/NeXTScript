@@ -145,11 +145,24 @@ export const SAMPLE_DECK: DeckContent = {
       type: "cards",
       title: "What you can pass as a prop",
       cards: [
-        { heading: "Strings and numbers", body: "name=\"Ada\" or age={36}. Numbers need curly braces." },
+        { tag: "Values", heading: "Strings and numbers", body: "name=\"Ada\" or age={36}. Numbers need curly braces." },
         { heading: "Arrays and objects", body: "items={cart} passes the whole list down." },
         { heading: "Functions", body: "onSave={handleSave} lets the child call back up." },
       ],
       notes: "Ask students to guess which of these they will use most. Spoiler: all three, constantly.",
+    },
+    {
+      id: "table",
+      type: "table",
+      title: "Props vs. state",
+      columns: ["", "Props", "State"],
+      rows: [
+        ["Comes from", "The parent component", "The component itself"],
+        ["Can change?", "Not by the child", "Yes, with its setter"],
+        ["Use it for", "Configuring a component", "Things that change over time"],
+      ],
+      takeaway: "Props flow down; state lives where it changes.",
+      notes: "Point at each row and ask: which one would a counter button need?",
     },
     {
       id: "steps",

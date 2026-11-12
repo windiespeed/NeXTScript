@@ -4,7 +4,6 @@ import { useEffect, useRef, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import SlideRenderer from "@/components/slides/SlideRenderer";
 import SlideEditorPanel from "@/components/slides/SlideEditorPanel";
 import { THEMES, getTheme } from "@/lib/themes";
 import { STUDENT_LEVEL_UI_HINTS, type StudentLevel } from "@/lib/studentLevel";
@@ -13,7 +12,7 @@ import type { SavedKeys } from "@/lib/aiModels";
 import type { PresentationAST } from "@/types/slideAst";
 import type { ThemeConfig } from "@/types/theme";
 import SlideCanvas from "@/components/deck/SlideCanvas";
-import { convertAstSlide } from "@/lib/deck/fromAst";
+import { astToDeck, deckSlidesFor } from "@/lib/deck/fromAst";
 import { layoutSlide } from "@/lib/deck/layout/registry";
 import type { Course, CourseModule } from "@/types/course";
 import type { Lesson, LessonInput } from "@/types/lesson";
@@ -22,7 +21,9 @@ import { resolveSlideAnchors, describeAnchorReport } from "@/lib/slideAnchors";
 import { resolveSections } from "@/lib/sections";
 import { buildNotesFromLesson } from "@/lib/lessonSeed";
 import NotesToSlidesGuide from "@/components/notesToSlides/NotesToSlidesGuide";
-import type { HybridIngestRequest, HybridIngestResponse } from "@/types/ingest";
+import OutlineEditor from "@/components/notesToSlides/OutlineEditor";
+import type { Outline } from "@/lib/ingestionPrompt";
+import type { HybridIngestRequest, HybridIngestResponse, OutlineResponse } from "@/types/ingest";
 import { clearDraft } from "@/lib/draftStorage";
 import { useDraftAutosave, useDraftRestore } from "@/hooks/useDraftAutosave";
 
@@ -82,6 +83,7 @@ interface IngestDraft {
   ast: PresentationAST | null;
   activeIndex: number;
   viewMode: "preview" | "edit";
+  outline?: Outline | null;
 }
 
 function IngestPageInner() {
@@ -159,6 +161,9 @@ function IngestPageInner() {
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
+  // Optional planning step: an outline the instructor reviews and edits before the deck is written.
+  const [outline, setOutline] = useState<Outline | null>(null);
+  const [planning, setPlanning] = useState(false);
   const progressTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Result
@@ -210,12 +215,13 @@ function IngestPageInner() {
     setAst(draft.ast);
     setActiveIndex(draft.activeIndex);
     setViewMode(draft.viewMode);
+    setOutline(draft.outline ?? null);
   });
   useDraftAutosave<IngestDraft>(draftKey, {
     selectedCourseId, selectedModuleId, selectedExistingLessonId,
     title, subtitle, topics, deadline, lessonType, sources, studentLevel,
     rawText, targetAudience, slideCount,
-    ast, activeIndex, viewMode,
+    ast, activeIndex, viewMode, outline,
   });
 
   useEffect(() => {
@@ -444,6 +450,42 @@ function IngestPageInner() {
     return saveLessonInfo();
   }
 
+  function ingestPayload(): HybridIngestRequest {
+    return {
+      courseConfig: { courseId: selectedCourseId, anchors: slideAnchors, themeId: courseThemeId },
+      rawNotes: rawText,
+      targetAudience: targetAudience.trim() || undefined,
+      slideCount: slideCount ? Number(slideCount) : undefined,
+      studentLevel,
+      lessonTitle: title.trim() || undefined,
+      lessonSubtitle: subtitle.trim() || undefined,
+      topics: topics.trim() || undefined,
+      sources: sources.trim() || undefined,
+    };
+  }
+
+  /** Plan first: a quick outline to review and edit before the full deck is written. */
+  async function handlePlanOutline() {
+    if (!rawText.trim() || !title.trim() || !selectedCourseId || planning || generating) return;
+    setDoneNotice(null);
+    setPlanning(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/ai/ingest/outline", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(ingestPayload()),
+      });
+      const data = await parseJsonResponse(res, "Planning took too long and timed out. Try again, or generate the slides directly.");
+      if (!res.ok) throw new Error(data.error || "Failed to plan the outline.");
+      setOutline((data as OutlineResponse).outline);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to plan the outline.");
+    } finally {
+      setPlanning(false);
+    }
+  }
+
   async function handleGenerate() {
     if (!rawText.trim() || !title.trim() || !selectedCourseId || generating) return;
     setDoneNotice(null);
@@ -452,16 +494,13 @@ function IngestPageInner() {
     startProgressAnimation();
     try {
       await ensureLesson();
+      const planned = outline?.slides.filter(o => o.title.trim());
       const payload: HybridIngestRequest = {
-        courseConfig: { courseId: selectedCourseId, anchors: slideAnchors, themeId: courseThemeId },
-        rawNotes: rawText,
-        targetAudience: targetAudience.trim() || undefined,
-        slideCount: slideCount ? Number(slideCount) : undefined,
-        studentLevel,
-        lessonTitle: title.trim() || undefined,
-        lessonSubtitle: subtitle.trim() || undefined,
-        topics: topics.trim() || undefined,
-        sources: sources.trim() || undefined,
+        ...ingestPayload(),
+        // A reviewed outline's cover title and tagline win over Lesson Info's.
+        ...(outline?.lessonTitle.trim() ? { lessonTitle: outline.lessonTitle.trim() } : {}),
+        ...(outline?.lessonSubtitle?.trim() ? { lessonSubtitle: outline.lessonSubtitle.trim() } : {}),
+        ...(planned?.length ? { outline: planned } : {}),
       };
       const res = await fetch("/api/ai/ingest", {
         method: "POST",
@@ -473,6 +512,7 @@ function IngestPageInner() {
       const result = data as HybridIngestResponse;
       stopProgressAnimation(100);
       setAst(result.ast);
+      setOutline(null);
       setAnchorNotes(describeAnchorReport(result.anchorReport));
       setActiveIndex(0);
       setViewMode("preview");
@@ -523,6 +563,7 @@ function IngestPageInner() {
     // back on that same key, making the reset look like it never happened.
     clearDraft(draftKey);
     setAst(null);
+    setOutline(null);
     setAnchorNotes([]);
     setActiveIndex(0);
     setError(null);
@@ -1027,10 +1068,32 @@ function IngestPageInner() {
             {error && <p role="alert" className="text-xs text-[var(--danger-text)]">{error}</p>}
             {saveInfoError && <p role="alert" className="text-xs text-[var(--danger-text)]">{saveInfoError}</p>}
 
-            <div className="flex items-center gap-3">
+            {outline && (
+              <div className="rounded-2xl p-4 space-y-3" style={{ background: "var(--bg-card)", border: "1px solid var(--accent)" }}>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className={sectionLabel}>Outline</p>
+                    <p className="text-xs mt-1" style={{ color: "var(--text-secondary)" }}>
+                      Review the plan: change headlines or layouts, add or remove slides, then generate. The deck follows this outline.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setOutline(null)}
+                    className="shrink-0 text-[11px] font-semibold hover:underline"
+                    style={{ color: "var(--text-muted)" }}
+                  >
+                    Discard outline
+                  </button>
+                </div>
+                <OutlineEditor outline={outline} onChange={setOutline} />
+              </div>
+            )}
+
+            <div className="flex flex-wrap items-center gap-3">
               <button
                 onClick={handleGenerate}
-                disabled={generating || !rawText.trim() || !title.trim() || !selectedCourseId}
+                disabled={generating || planning || !rawText.trim() || !title.trim() || !selectedCourseId}
                 title={!selectedCourseId ? "Select a course first" : !title.trim() ? "Add a lesson title first" : undefined}
                 className="shrink-0 rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-xs font-semibold text-[#0a0b13] hover:opacity-90 disabled:opacity-50 transition"
               >
@@ -1039,8 +1102,25 @@ function IngestPageInner() {
                     {SPINNER}
                     Generating slides…
                   </span>
-                ) : "Generate Slides"}
+                ) : outline ? "Generate from Outline" : "Generate Slides"}
               </button>
+
+              {!outline && (
+                <button
+                  onClick={handlePlanOutline}
+                  disabled={planning || generating || !rawText.trim() || !title.trim() || !selectedCourseId}
+                  title={!selectedCourseId ? "Select a course first" : !title.trim() ? "Add a lesson title first" : "Get a one-line-per-slide plan to review and edit before the deck is written"}
+                  className="shrink-0 rounded-full px-4 py-2 text-xs font-semibold transition disabled:opacity-50"
+                  style={{ background: "var(--accent-bg)", color: "var(--accent-text)", border: "1px solid var(--accent)" }}
+                >
+                  {planning ? (
+                    <span className="flex items-center gap-2">
+                      {SPINNER}
+                      Planning…
+                    </span>
+                  ) : "Plan Outline First"}
+                </button>
+              )}
 
               <button
                 onClick={handleSaveDraftInfo}
@@ -1158,22 +1238,38 @@ function IngestPageInner() {
             <SlideEditorPanel ast={ast} activeIndex={activeIndex} onChange={setAst} onActiveIndexChange={setActiveIndex} />
           ) : (
             <>
-              {/* Active slide */}
-              {templateOn && templateInfo?.theme ? (
-                // Drawn the way the template export will draw it (gradients and logos are added on export).
-                <div className="space-y-3">
-                  {convertAstSlide(ast.slides[activeIndex]).map(s => (
-                    <SlideCanvas key={s.id} layout={layoutSlide(s)} theme={templateInfo.theme!} showWarnings={false} label={`Slide ${activeIndex + 1}: ${ast.slides[activeIndex].title}`} className="rounded-xl" />
-                  ))}
-                  <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
-                    Shown in {templateInfo.name ?? "the course template"}&apos;s colors and fonts. Its background art and logos are added when you export.
-                  </p>
-                </div>
-              ) : (
-                <div className="min-h-[420px]" style={{ background: theme.background.page, borderRadius: theme.radius }}>
-                  <SlideRenderer slide={ast.slides[activeIndex]} theme={theme} />
-                </div>
-              )}
+              {/* Active slide, drawn by the same layouts the export uses (one notes slide can become
+                  more than one deck slide when a long list is split). The cover leads slide 1. */}
+              {(() => {
+                const previewTheme = templateOn && templateInfo?.theme ? templateInfo.theme : theme;
+                const slide = ast.slides[activeIndex];
+                const parts = deckSlidesFor(ast, activeIndex);
+                const cover = activeIndex === 0 ? astToDeck({ ...ast, slides: [] }).slides[0] : undefined;
+                return (
+                  <div className="space-y-3">
+                    {cover && (
+                      <div className="space-y-1">
+                        <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>Cover</p>
+                        <SlideCanvas layout={layoutSlide(cover)} theme={previewTheme} showWarnings={false} label="Cover slide" className="rounded-xl" />
+                      </div>
+                    )}
+                    {parts.map(s => (
+                      <SlideCanvas key={s.id} layout={layoutSlide(s)} theme={previewTheme} showWarnings={false} label={`Slide ${activeIndex + 1}: ${slide?.title ?? ""}`} className="rounded-xl" />
+                    ))}
+                    {slide?.notes?.trim() && (
+                      <div className="rounded-xl px-4 py-3 text-xs space-y-1" style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)" }}>
+                        <p className="font-semibold uppercase tracking-widest text-[10px]" style={{ color: "var(--text-muted)" }}>Speaker notes</p>
+                        <p className="whitespace-pre-line" style={{ color: "var(--text-secondary)" }}>{slide.notes}</p>
+                      </div>
+                    )}
+                    {templateOn && templateInfo?.theme && (
+                      <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
+                        Shown in {templateInfo.name ?? "the course template"}&apos;s colors and fonts. Its background art and logos are added when you export.
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* Navigator */}
               <div className="flex items-center justify-between gap-4">

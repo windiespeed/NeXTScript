@@ -12,6 +12,7 @@ import type { ThemeConfig } from "@/types/theme";
 import type { DeckContent } from "../schema";
 import { layoutSlide } from "../layout/registry";
 import type { SlideLayout, TextElement } from "../layout/types";
+import { backdropFor } from "./backdrops";
 import { CODE_FONT, fontFamily, resolvePalette } from "./palette";
 import type { Palette } from "./palette";
 
@@ -46,7 +47,8 @@ function textRuns(el: TextElement, palette: Palette): PptxGenJS.TextProps[] {
 function addLayout(pptx: PptxGenJS, layout: SlideLayout, theme: ThemeConfig) {
   const palette = resolvePalette(theme, layout.dark);
   const slide = pptx.addSlide();
-  slide.background = { color: hex(palette[layout.background]) };
+  const image = backdropFor(theme.backdrop, layout.dark);
+  slide.background = image ? { data: `image/jpeg;base64,${image}` } : { color: hex(palette[layout.background]) };
 
   for (const el of layout.elements) {
     const box = { x: IN(el.x), y: IN(el.y), w: IN(el.w), h: IN(el.h) };

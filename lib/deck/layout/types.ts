@@ -1,7 +1,7 @@
 /**
  * Output of the layout registry: positioned, theme-agnostic elements on a fixed 16:9 canvas.
  *
- * Coordinates are points on a 720×405 canvas — the same space lib/pptxDeck.ts uses, and exactly
+ * Coordinates are points on a 720×405 canvas, exactly
  * PptxGenJS's LAYOUT_16x9 (10in × 5.625in) at 72pt/in. Adapters convert from here:
  *   - pptx: divide by 72 for inches
  *   - HTML preview: percentages of the canvas (x / 720, y / 405), font sizes scaled with width

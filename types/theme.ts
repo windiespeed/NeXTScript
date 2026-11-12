@@ -31,6 +31,9 @@ export interface ThemeConfig {
   border: string;
   /** Tailwind-arbitrary-value-compatible corner radius, e.g. "1.5rem". */
   radius: string;
+  /** Built-in full-slide backdrop images (lib/deck/render/backdrops.ts), drawn under every slide
+   * when the deck isn't on a course template. */
+  backdrop?: "nextstack";
   /**
    * Colors for the dark slide types (title, section, callout, closing), when they come from
    * somewhere other than the theme itself: a course template's cover slides.

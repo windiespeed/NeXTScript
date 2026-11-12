@@ -77,7 +77,7 @@ export interface Lesson {
   progressMode?: "sequential" | "locked" | "free";  // Per-lesson override (falls back to module setting)
   solutionRevealAttempts?: number | null;            // Per-lesson override (falls back to module setting)
 
-  // Gamma-style web presentation pipeline (components/slides/*) — independent of the Google
+  // Notes to Slides deck (types/slideAst.ts, drawn by lib/deck) — independent of the Google
   // Slides deck tracked via SavedProject; a lesson can have either, both, or neither.
   presentationAST?: PresentationAST; // Component-tree structure generated/edited via /ingest
   selectedTheme?: string;            // Active ThemeConfig id (see types/theme.ts) for the AST renderer

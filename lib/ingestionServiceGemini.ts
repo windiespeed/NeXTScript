@@ -3,13 +3,18 @@ import type { PresentationAST } from "@/types/slideAst";
 import { DEFAULT_MODEL, type AiModelId } from "@/lib/aiModels";
 import {
   CURRICULUM_ARCHITECT_SYSTEM_PROMPT,
+  OUTLINE_SYSTEM_PROMPT,
   PRESENTATION_AST_JSON_SCHEMA,
+  buildOutlinePrompt,
   buildUserPrompt,
   extractJson,
   parseAst,
   assertValidAst,
+  moveInstructorNotes,
   normalizeSlideIds,
+  toOutline,
   type IngestionOptions,
+  type Outline,
 } from "@/lib/ingestionPrompt";
 
 /**
@@ -61,5 +66,30 @@ export async function ingestRawContentGemini(
   }
 
   assertValidAst(parsed);
-  return normalizeSlideIds(parsed);
+  return moveInstructorNotes(normalizeSlideIds(parsed));
+}
+
+/** Gemini counterpart to `outlineRawContent` in lib/ingestionService.ts. */
+export async function outlineRawContentGemini(
+  apiKey: string,
+  rawText: string,
+  opts: IngestionOptions & { model?: AiModelId } = {}
+): Promise<Outline> {
+  if (!rawText.trim()) throw new Error("Nothing to plan — the input was empty.");
+  const client = new GoogleGenAI({ apiKey });
+  const interaction = await client.interactions.create({
+    model: opts.model ?? DEFAULT_MODEL.gemini,
+    input: buildOutlinePrompt(rawText, opts),
+    system_instruction: OUTLINE_SYSTEM_PROMPT,
+    response_format: { type: "text", mime_type: "application/json" },
+    generation_config: { max_output_tokens: 8000 },
+  });
+  const text = interaction.output_text;
+  if (!text) throw new Error("The AI did not return an outline. Please try again.");
+  try {
+    return toOutline(parseAst(extractJson(text)));
+  } catch (err) {
+    if (err instanceof Error && err.message.startsWith("The AI")) throw err;
+    throw new Error("The AI's outline could not be read. Please try again.");
+  }
 }

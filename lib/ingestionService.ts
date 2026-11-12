@@ -3,17 +3,22 @@ import type { PresentationAST } from "@/types/slideAst";
 import { DEFAULT_MODEL, getAiModel, type ClaudeModelId } from "@/lib/aiModels";
 import {
   CURRICULUM_ARCHITECT_SYSTEM_PROMPT,
+  OUTLINE_SYSTEM_PROMPT,
+  buildOutlinePrompt,
   buildUserPrompt,
   extractJson,
   parseAst,
   assertValidAst,
+  moveInstructorNotes,
   normalizeSlideIds,
+  toOutline,
   type IngestionOptions,
+  type Outline,
 } from "@/lib/ingestionPrompt";
 
 /**
  * Sends raw, unstructured text (meeting notes, brain-dumps, loose bullet points) to Claude and
- * returns a fully-typed PresentationAST ready for `<SlideRenderer />`.
+ * returns a fully-typed PresentationAST, drawn by the lib/deck layouts (preview and export).
  *
  * Mirrors the calling convention of `fillLesson`/`generateQuizQuestions` in `lib/ai.ts`: the
  * caller's own Anthropic API key is passed in (fetched from `userSettings` at the route level),
@@ -90,5 +95,37 @@ export async function ingestRawContent(
   }
 
   assertValidAst(parsed);
-  return normalizeSlideIds(parsed);
+  return moveInstructorNotes(normalizeSlideIds(parsed));
+}
+
+/**
+ * The quick planning pass: one line per slide, for the instructor to review before the deck is
+ * written. No web tools and low effort, so it comes back in seconds.
+ */
+export async function outlineRawContent(
+  apiKey: string,
+  rawText: string,
+  opts: IngestionOptions & { model?: ClaudeModelId } = {}
+): Promise<Outline> {
+  if (!rawText.trim()) throw new Error("Nothing to plan — the input was empty.");
+  const client = new Anthropic({ apiKey });
+  const modelId: ClaudeModelId = opts.model ?? (DEFAULT_MODEL.anthropic as ClaudeModelId);
+  const message = await client.messages.stream({
+    model: modelId,
+    max_tokens: 8000,
+    thinking: { type: "adaptive" as const },
+    output_config: { effort: "low" as const },
+    system: OUTLINE_SYSTEM_PROMPT,
+    messages: [{ role: "user", content: buildOutlinePrompt(rawText, opts) }],
+  }).finalMessage();
+  const textBlock = [...message.content].reverse().find((block) => block.type === "text");
+  if (!textBlock || textBlock.type !== "text") {
+    throw new Error(`The AI did not return an outline (stopped: ${message.stop_reason}). Please try again.`);
+  }
+  try {
+    return toOutline(parseAst(extractJson(textBlock.text)));
+  } catch (err) {
+    if (err instanceof Error && err.message.startsWith("The AI")) throw err;
+    throw new Error("The AI's outline could not be read. Please try again.");
+  }
 }
