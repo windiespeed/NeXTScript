@@ -31,4 +31,14 @@ export interface ThemeConfig {
   border: string;
   /** Tailwind-arbitrary-value-compatible corner radius, e.g. "1.5rem". */
   radius: string;
+  /**
+   * Colors for the dark slide types (title, section, callout, closing), when they come from
+   * somewhere other than the theme itself: a course template's cover slides.
+   */
+  darkSlides?: {
+    surface: string;
+    panel: string;
+    text: { primary: string; secondary: string; muted: string };
+    accent: { primary: string; secondary: string; tertiary: string };
+  };
 }

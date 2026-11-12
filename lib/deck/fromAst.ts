@@ -21,7 +21,8 @@ function chunks<T>(items: T[], size: number): T[][] {
 
 const cont = (title: string, i: number) => (i === 0 ? title : `${title} (cont.)`);
 
-function convert(slide: SlideNode, id: string): DeckSlide[] {
+/** One Notes to Slides slide as deck slides (more than one when a long list is split). */
+export function convertAstSlide(slide: SlideNode, id: string = slide.id): DeckSlide[] {
   const title = slide.title.trim() || "Untitled";
   const base = { notes: "" };
   switch (slide.type) {
@@ -86,6 +87,6 @@ export function astToDeck(ast: PresentationAST): DeckContent {
   const slides: DeckSlide[] = [
     { id: "title", notes: "", type: "title", title: lessonTitle },
   ];
-  ast.slides.forEach((s, i) => slides.push(...convert(s, s.id || `s${i}`)));
+  ast.slides.forEach((s, i) => slides.push(...convertAstSlide(s, s.id || `s${i}`)));
   return { lessonTitle, slides };
 }

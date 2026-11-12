@@ -88,6 +88,22 @@ export function resolvePalette(theme: ThemeConfig, dark = false): Palette {
     "code.text": CODE_TEXT,
   };
 
+  if (dark && theme.darkSlides) {
+    const d = theme.darkSlides;
+    return readable({
+      surface: d.surface,
+      panel: d.panel,
+      "text.primary": d.text.primary,
+      "text.secondary": d.text.secondary,
+      "text.muted": d.text.muted,
+      "accent.primary": d.accent.primary,
+      "accent.secondary": d.accent.secondary,
+      "accent.tertiary": d.accent.tertiary,
+      "code.bg": CODE_BG,
+      "code.text": CODE_TEXT,
+    });
+  }
+
   if (!dark) {
     return readable({
       surface: theme.background.card,

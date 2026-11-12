@@ -28,6 +28,7 @@
 
 import type { slides_v1 } from "googleapis";
 import type { ColorToken } from "../layout/types";
+import type { ThemeConfig } from "@/types/theme";
 
 type Page = slides_v1.Schema$Page;
 
@@ -500,4 +501,35 @@ export function learnedColor(style: LearnedStyle, token: ColorToken, dark: boole
     case "accent.tertiary": return p.accent3;
     default: return undefined;
   }
+}
+
+/**
+ * A learned style as a ThemeConfig, so the in-browser preview can draw slides the way the Google
+ * Slides export will (minus gradients and logos, which only the export copies).
+ */
+export function themeFromLearned(style: LearnedStyle, name = "Course template"): ThemeConfig {
+  const c = style.content;
+  const v = style.cover;
+  const stack = (font: string | undefined, fallback: string) => (font ? `"${font}", ${fallback}` : fallback);
+  return {
+    id: "course-template",
+    name,
+    category: luminance(c.background) < 0.4 ? "dark" : "light",
+    background: { page: v.background, card: c.background, cardAlt: c.panel },
+    typography: {
+      headingFont: stack(style.headingFont, "Calibri, Carlito, Arial, sans-serif"),
+      bodyFont: stack(style.bodyFont, "Calibri, Carlito, Arial, sans-serif"),
+      headingWeight: 700,
+    },
+    text: { primary: c.title, secondary: c.body, muted: c.muted },
+    accent: { primary: c.accent1, secondary: c.accent2, tertiary: c.accent3 },
+    border: c.panel,
+    radius: "0",
+    darkSlides: {
+      surface: v.background,
+      panel: v.panel,
+      text: { primary: v.title, secondary: v.body, muted: v.muted },
+      accent: { primary: v.accent1, secondary: v.accent2, tertiary: v.accent3 },
+    },
+  };
 }
