@@ -5,6 +5,7 @@ import { ingestRawContent } from "@/lib/ingestionService";
 import { ingestRawContentGemini } from "@/lib/ingestionServiceGemini";
 import { resolveAiModel, getAiModel, type AiProvider, type ClaudeModelId } from "@/lib/aiModels";
 import { loadCourseSkeleton } from "@/lib/courseSkeleton";
+import { resolveProgramContext } from "@/lib/programContext";
 import { applySlideAnchors } from "@/lib/slideAnchors";
 import { hybridIngestSchema, parseBody } from "@/lib/validation";
 import type { HybridIngestResponse } from "@/types/ingest";
@@ -44,6 +45,7 @@ export async function POST(req: Request) {
 
     const opts = {
       targetAudience, slideCount, anchors: skeleton.anchors, studentLevel, lessonTitle, lessonSubtitle, topics, sources,
+      program: resolveProgramContext(skeleton.course, settings),
     };
     const generated = provider === "gemini"
       ? await ingestRawContentGemini(apiKey, rawText, { ...opts, model })

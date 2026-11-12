@@ -58,10 +58,10 @@ const base = {
   ),
   label: text(L.label)
     .optional()
-    .describe('Small label above the title of content slides, naming the part and topic, e.g. "Part 1 · SQL vs NoSQL". Ignored on title, section, callout and closing slides.'),
+    .describe('Small label above the title of content slides, naming the part and topic, e.g. "Part 1 · Main idea". Ignored on title, section, callout and closing slides.'),
   footer: text(L.footer)
     .optional()
-    .describe('Footer line along the bottom, usually the current part, e.g. "Part 1 · From files to MongoDB".'),
+    .describe('Footer line along the bottom, usually the current part, e.g. "Part 1 · Reading closely".'),
 };
 
 const contentTitle = text(L.slideTitle);
@@ -140,7 +140,7 @@ export const CodeSlideSchema = z.object({
     .array(z.string().max(L.code.lineChars))
     .min(1)
     .max(L.code.lines)
-    .describe(`Source code, one array entry per line, at most ${L.code.lineChars} characters each.`),
+    .describe(`Code or other exact text (commands, formulas), one array entry per line, at most ${L.code.lineChars} characters each.`),
   caption: text(L.code.caption).optional(),
   pointOut: z
     .array(text(L.code.point))

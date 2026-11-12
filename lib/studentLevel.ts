@@ -20,5 +20,5 @@ export const STUDENT_LEVEL_GUIDANCE: Record<StudentLevel, string> = {
 export const STUDENT_LEVEL_UI_HINTS: Record<StudentLevel, string> = {
   beginner: "No prior background in this subject — simple language, extra explanation, no assumed knowledge.",
   intermediate: "Some prior exposure to this subject — moderate complexity, references prior knowledge.",
-  advanced: "Strong background in this subject — technical depth, field-specific terminology.",
+  advanced: "Strong background in this subject — depth and nuance, field-specific terminology.",
 };

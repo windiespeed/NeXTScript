@@ -413,11 +413,11 @@ export default function CourseSettingsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label htmlFor="courses-id-settings-industry-used-by-ai" className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Industry {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span>}</label>
-              <input id="courses-id-settings-industry-used-by-ai" type="text" value={editSettings.industry} onChange={e => patchSettings({ industry: e.target.value })} placeholder="e.g. Coding, Healthcare" className={inputClass} style={inputStyle} />
+              <input id="courses-id-settings-industry-used-by-ai" type="text" value={editSettings.industry} onChange={e => patchSettings({ industry: e.target.value })} placeholder="e.g. Education, Healthcare" className={inputClass} style={inputStyle} />
             </div>
             <div>
               <label htmlFor="courses-id-settings-subject-area-used-by-ai" className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Subject Area {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span>}</label>
-              <input id="courses-id-settings-subject-area-used-by-ai" type="text" value={editSettings.subject} onChange={e => patchSettings({ subject: e.target.value })} placeholder="e.g. JavaScript, Nursing 101" className={inputClass} style={inputStyle} />
+              <input id="courses-id-settings-subject-area-used-by-ai" type="text" value={editSettings.subject} onChange={e => patchSettings({ subject: e.target.value })} placeholder="e.g. English Literature, Nursing 101" className={inputClass} style={inputStyle} />
             </div>
           </div>
           <div>
@@ -433,7 +433,7 @@ export default function CourseSettingsPage() {
             <label htmlFor="courses-id-settings-default-sources-used-by-ai" className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Default Sources {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span>}</label>
             <p className="text-xs mb-1.5" style={{ color: "var(--text-muted)" }}>Pre-filled in every new lesson in this course and passed to the AI as reference material. One URL per line.</p>
             <textarea id="courses-id-settings-default-sources-used-by-ai" value={editSettings.defaultSources} onChange={e => patchSettings({ defaultSources: e.target.value })}
-              rows={4} placeholder={"https://www.w3schools.com/\nhttps://developer.mozilla.org/"}
+              rows={4} placeholder={"https://www.khanacademy.org/\nhttps://www.britannica.com/"}
               className={`${inputClass} font-mono`} style={inputStyle} />
           </div>
           <div>

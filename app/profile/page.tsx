@@ -347,7 +347,7 @@ export default function ProfilePage() {
                 type="text"
                 value={industry}
                 onChange={e => setIndustry(e.target.value)}
-                placeholder="e.g. Healthcare, Coding, Business"
+                placeholder="e.g. Healthcare, Education, Business"
                 className={inputCls}
                 style={inputSty}
               />
@@ -358,7 +358,7 @@ export default function ProfilePage() {
                 type="text"
                 value={subject}
                 onChange={e => setSubject(e.target.value)}
-                placeholder="e.g. JavaScript, Nursing 101, Marketing"
+                placeholder="e.g. English Literature, Nursing 101, Marketing"
                 className={inputCls}
                 style={inputSty}
               />

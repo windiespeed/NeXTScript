@@ -194,7 +194,7 @@ function NewLessonInner() {
               type="text"
               value={title}
               onChange={e => setTitle(e.target.value)}
-              placeholder="e.g. Introduction to Variables"
+              placeholder="e.g. Introduction to Persuasive Writing"
               className={inputClass}
               style={inputStyle}
               autoFocus
@@ -207,7 +207,7 @@ function NewLessonInner() {
               type="text"
               value={subtitle}
               onChange={e => setSubtitle(e.target.value)}
-              placeholder="e.g. Understanding data types and variable declaration"
+              placeholder="e.g. Building an argument with claims and evidence"
               className={inputClass}
               style={inputStyle}
             />
@@ -246,7 +246,7 @@ function NewLessonInner() {
               type="text"
               value={topics}
               onChange={e => setTopics(e.target.value)}
-              placeholder="e.g. Variables, Data Types, Type Casting"
+              placeholder="e.g. Claims, Evidence, Counterarguments"
               className={inputClass}
               style={inputStyle}
             />

@@ -8,6 +8,7 @@ import { serverError } from "@/lib/apiErrors";
 import { parsePatch } from "@/lib/validation";
 import { userSettings } from "@/lib/userSettings";
 import { loadCourseSkeleton } from "@/lib/courseSkeleton";
+import { resolveProgramContext } from "@/lib/programContext";
 import { DeckGenerationError, generateDeck } from "@/lib/deck/generate";
 import { resolveAiModel, type ClaudeModelId } from "@/lib/aiModels";
 import type { Lesson } from "@/types/lesson";
@@ -61,7 +62,6 @@ export async function POST(req: Request) {
     const context = [
       skeleton ? `Course: ${skeleton.course.title}` : null,
       lesson?.subtitle ? `Lesson subtitle: ${lesson.subtitle}` : null,
-      lesson?.studentLevel ? `Student level: ${lesson.studentLevel}` : null,
     ]
       .filter(Boolean)
       .join("\n");
@@ -72,6 +72,9 @@ export async function POST(req: Request) {
         notes: input.notes,
         lessonTitle: input.lessonTitle ?? lesson?.title,
         audience: input.audience,
+        program: resolveProgramContext(skeleton?.course, settings),
+        // The lesson's own level, else the course default.
+        studentLevel: lesson?.studentLevel || skeleton?.course.settings?.studentLevel || undefined,
         context: context || undefined,
         // Claude only (the deck prompt and limits are tuned for Claude): the saved preference if it's a Claude model, else the default.
         model: resolveAiModel(settings.preferredAiModel, { anthropic: true, gemini: false }, ["anthropic"]) as ClaudeModelId,

@@ -104,7 +104,7 @@ export default function NewCoursePage() {
               Title <span className="text-[var(--danger-text)]">*</span>
             </label>
             <input id="courses-new-title" type="text" value={title} onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. JavaScript Fundamentals" className={inputClass} style={inputStyle} />
+              placeholder="e.g. English 9, Medical Terminology" className={inputClass} style={inputStyle} />
           </div>
 
           <div>
@@ -154,12 +154,12 @@ export default function NewCoursePage() {
             <div>
               <label htmlFor="courses-new-industry" className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Industry</label>
               <input id="courses-new-industry" type="text" value={settings.industry} onChange={(e) => patchSettings({ industry: e.target.value })}
-                placeholder="e.g. Coding, Healthcare, Business" className={inputClass} style={inputStyle} />
+                placeholder="e.g. Education, Healthcare, Business" className={inputClass} style={inputStyle} />
             </div>
             <div>
               <label htmlFor="courses-new-subject-area" className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Subject Area</label>
               <input id="courses-new-subject-area" type="text" value={settings.subject} onChange={(e) => patchSettings({ subject: e.target.value })}
-                placeholder="e.g. JavaScript, Nursing 101" className={inputClass} style={inputStyle} />
+                placeholder="e.g. English Literature, Nursing 101" className={inputClass} style={inputStyle} />
             </div>
           </div>
 
@@ -179,7 +179,7 @@ export default function NewCoursePage() {
             <label htmlFor="courses-new-default-sources" className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Default Sources</label>
             <p className="text-xs mb-1.5" style={{ color: "var(--text-muted)" }}>Pre-filled in every new lesson in this course. One URL per line.</p>
             <textarea id="courses-new-default-sources" value={settings.defaultSources} onChange={(e) => patchSettings({ defaultSources: e.target.value })}
-              rows={4} placeholder={"https://www.w3schools.com/\nhttps://developer.mozilla.org/"}
+              rows={4} placeholder={"https://www.khanacademy.org/\nhttps://www.britannica.com/"}
               className={`${inputClass} font-mono`} style={inputStyle} />
           </div>
 

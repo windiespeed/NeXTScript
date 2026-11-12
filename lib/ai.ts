@@ -58,7 +58,7 @@ Return ONLY a valid JSON object with these exact keys (no markdown, no explanati
 {
 ${sectionSchemaLines},
   "slides": [
-    { "title": "Slide title", "body": "Slide content — write as plain concise sentences or relevant examples. Do NOT use bullet characters (•, -, *) or any list symbols. Wrap inline code in backticks." }
+    { "title": "Slide title", "body": "Slide content — write as plain concise sentences or relevant examples. Do NOT use bullet characters (•, -, *) or any list symbols. If the subject involves code, wrap inline code in backticks." }
   ]
 }
 
