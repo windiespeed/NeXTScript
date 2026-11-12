@@ -21,6 +21,14 @@ const card = (fill: string): slides_v1.Schema$PageElement => ({
   shape: { shapeType: "ROUND_RECTANGLE", shapeProperties: { shapeBackgroundFill: { solidFill: { color: hex(fill) } } } },
 });
 
+// A full-slide shape with no text: how a pptx-born deck paints its gradient background (the
+// Slides API reports no fill for it, since it can't read gradients).
+const gradient = (id: string): slides_v1.Schema$PageElement => ({
+  objectId: id,
+  size: { width: { magnitude: 9144000, unit: "EMU" }, height: { magnitude: 5143500, unit: "EMU" } },
+  shape: { shapeType: "RECTANGLE" },
+});
+
 // Shaped like a real course deck: Google-default master and one blank layout, with every slide
 // styled directly (brown title and section slides, navy content slides, Calibri text).
 const defaultMaster: slides_v1.Schema$Page = {
@@ -32,12 +40,13 @@ const handStyled: slides_v1.Schema$Presentation = {
   masters: [defaultMaster],
   layouts: [{ objectId: "l", layoutProperties: { name: "DEFAULT", masterObjectId: "m" }, pageElements: [] }],
   slides: [
-    { objectId: "s1", slideProperties: { layoutObjectId: "l", masterObjectId: "m" }, pageProperties: bg("#4D3522"), pageElements: [text([["7 PARTS", "Calibri", 9, "#F0A050", true]]), text([["Databases & Auth", "Calibri", 40, "#FFFFFF", true]]), text([["Data that survives.", "Carlito", 14, "#F3E9DC"]])] },
+    { objectId: "s1", slideProperties: { layoutObjectId: "l", masterObjectId: "m" }, pageProperties: bg("#4D3522"), pageElements: [gradient("g1"), text([["7 PARTS", "Calibri", 9, "#F0A050", true]]), text([["Databases & Auth", "Calibri", 40, "#FFFFFF", true]]), text([["Data that survives.", "Carlito", 14, "#F3E9DC"]])] },
     ...[2, 3, 5].map(i => ({
       objectId: `s${i}`,
       slideProperties: { layoutObjectId: "l", masterObjectId: "m" },
       pageProperties: bg("#262E3E"),
       pageElements: [
+        gradient(`g${i}`),
         text([["PART 1 · SQL VS NOSQL", "Calibri", 8, "#F0A050", true]]),
         text([["Two ways to store data", "Calibri", 22, "#FFFFFF", true]]),
         card("#323C50"),
@@ -61,6 +70,13 @@ describe("learnTemplateStyle", () => {
     expect(s.cover.accent1).toBe("#F0A050");
     expect(s.headingFont).toBe("Calibri");
     expect(s.bodyFont).toBe("Carlito");
+  });
+
+  it("finds each style's backdrop: the slide's full-slide, text-free elements", () => {
+    const s = learnTemplateStyle(handStyled)!;
+    expect(s.coverBackdrop).toMatchObject({ slideId: "s1", keep: ["g1"] });
+    expect(s.contentBackdrop).toMatchObject({ slideId: "s2", keep: ["g2"] });
+    expect(s.contentBackdrop!.drop).not.toContain("g2");
   });
 
   it("leaves templates whose slides set nothing to the master and layouts", () => {
@@ -94,9 +110,23 @@ describe("Google Slides export with a learned style", () => {
     expect(json).not.toContain("themeColor");
   });
 
-  it("draws title and section slides itself instead of the template's plain layouts", () => {
-    const creates = requests.filter(r => r.createSlide).map(r => r.createSlide!);
-    expect(creates.every(c => c.slideLayoutReference?.layoutId === "l")).toBe(true);
+  it("copies the template's backdrop slides so gradients carry over, then drops their other elements", () => {
+    const dups = requests.filter(r => r.duplicateObject).map(r => r.duplicateObject!);
+    expect(dups).toHaveLength(SAMPLE_DECK.slides.length);
+    const dark = SAMPLE_DECK.slides.map(s => ["title", "section", "callout", "closing"].includes(s.type));
+    dups.forEach((d, i) => expect(d.objectId).toBe(dark[i] ? "s1" : "s2"));
+    // Every non-backdrop element of the copy is deleted; the gradient copy is kept.
+    const deleted = new Set(requests.filter(r => r.deleteObject).map(r => r.deleteObject!.objectId));
+    for (const d of dups) {
+      for (const [src, copy] of Object.entries(d.objectIds!)) {
+        if (src === d.objectId) continue;
+        expect(deleted.has(copy), src).toBe(!src.startsWith("g"));
+      }
+    }
+    // Each copy is moved to the end, in deck order (one past, since it counts itself).
+    const moves = requests.filter(r => r.updateSlidesPosition).map(r => r.updateSlidesPosition!.insertionIndex);
+    expect(moves).toEqual(SAMPLE_DECK.slides.map((_, i) => 5 + i + 1));
+    expect(requests.some(r => r.createSlide)).toBe(false);
   });
 
   it("keeps big panels square, since Slides corners grow with the shape", () => {

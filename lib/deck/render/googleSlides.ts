@@ -26,7 +26,7 @@ import { layoutSlide } from "../layout/registry";
 import type { ColorToken, SlideLayout, TextElement } from "../layout/types";
 import { CANVAS_H, CANVAS_W } from "../layout/types";
 import { CODE_BG, CODE_TEXT, fontFamily, resolvePalette } from "./palette";
-import { learnTemplateStyle, learnedColor, type LearnedStyle } from "./templateStyle";
+import { learnTemplateStyle, learnedColor, type Backdrop, type LearnedStyle } from "./templateStyle";
 
 type Request = slides_v1.Schema$Request;
 type OpaqueColor = slides_v1.Schema$OpaqueColor;
@@ -282,19 +282,39 @@ function textRequests(el: TextElement, objectId: string, pageId: string, dark: b
   return reqs;
 }
 
+/**
+ * A copy of a template slide with only its background elements left, moved into place. The Slides
+ * API can't create gradient fills, so copying them is the only way to keep them.
+ */
+function backdropSlide(b: Backdrop, pageId: string, ids: Ids, insertionIndex: number): Request[] {
+  const objectIds: Record<string, string> = { [b.slideId]: pageId };
+  const dropped = b.drop.map(id => (objectIds[id] = ids.next("x")));
+  for (const id of b.keep) objectIds[id] = ids.next("k");
+  return [
+    { duplicateObject: { objectId: b.slideId, objectIds } },
+    ...dropped.map(objectId => ({ deleteObject: { objectId } })),
+    // The copy lands right after its source; insertionIndex counts slides before the move, and
+    // the copy itself is one of them, so it goes one further to land at `insertionIndex`.
+    { updateSlidesPosition: { slideObjectIds: [pageId], insertionIndex: insertionIndex + 1 } },
+  ];
+}
+
 function drawnSlide(layout: SlideLayout, pageId: string, ids: Ids, ctx: Ctx, insertionIndex: number): Request[] {
   const dark = layout.dark;
   const sx = (ctx.template?.pageW ?? CANVAS_W) / CANVAS_W;
   const sy = (ctx.template?.pageH ?? CANVAS_H) / CANVAS_H;
-  const reqs: Request[] = [
-    {
-      createSlide: {
-        objectId: pageId,
-        insertionIndex,
-        slideLayoutReference: ctx.template?.blankLayoutId ? { layoutId: ctx.template.blankLayoutId } : { predefinedLayout: "BLANK" },
-      },
-    },
-  ];
+  const backdrop = dark ? ctx.learned?.coverBackdrop : ctx.learned?.contentBackdrop;
+  const reqs: Request[] = backdrop
+    ? backdropSlide(backdrop, pageId, ids, insertionIndex)
+    : [
+        {
+          createSlide: {
+            objectId: pageId,
+            insertionIndex,
+            slideLayoutReference: ctx.template?.blankLayoutId ? { layoutId: ctx.template.blankLayoutId } : { predefinedLayout: "BLANK" },
+          },
+        },
+      ];
   // Light slides on a template keep the template's own background, unless its look comes from its
   // slides (a learned style), where every slide gets the learned background.
   if (!ctx.template || dark || ctx.learned) {
@@ -434,13 +454,18 @@ export async function exportDeckToGoogleSlides(opts: {
   // Speaker notes: each slide's notes shape only exists once the slide does.
   const after = await slides.presentations.get({
     presentationId: id,
-    fields: "slides(objectId,slideProperties(notesPage(notesProperties(speakerNotesObjectId))))",
+    fields: "slides(objectId,slideProperties(notesPage(notesProperties(speakerNotesObjectId),pageElements(objectId,shape(text(textElements(textRun(content))))))))",
   });
-  const notesShape = new Map((after.data.slides ?? []).map(s => [s.objectId, s.slideProperties?.notesPage?.notesProperties?.speakerNotesObjectId]));
   const noteRequests: Request[] = [];
+  const bySlide = new Map((after.data.slides ?? []).map(s => [s.objectId, s.slideProperties?.notesPage]));
   built.slideIds.forEach((slideId, i) => {
-    const shape = notesShape.get(slideId);
-    if (shape && built.notes[i]) noteRequests.push({ insertText: { objectId: shape, insertionIndex: 0, text: built.notes[i] } });
+    const page = bySlide.get(slideId);
+    const shape = page?.notesProperties?.speakerNotesObjectId;
+    if (!shape) return;
+    // A slide copied from the template (a backdrop) brings the template's notes along.
+    const existing = page?.pageElements?.find(e => e.objectId === shape)?.shape?.text?.textElements?.some(t => t.textRun?.content?.trim());
+    if (existing) noteRequests.push({ deleteText: { objectId: shape, textRange: { type: "ALL" } } });
+    if (built.notes[i]) noteRequests.push({ insertText: { objectId: shape, insertionIndex: 0, text: built.notes[i] } });
   });
   for (let i = 0; i < noteRequests.length; i += BATCH) {
     await slides.presentations.batchUpdate({ presentationId: id, requestBody: { requests: noteRequests.slice(i, i + BATCH) } });

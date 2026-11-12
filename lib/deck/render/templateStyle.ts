@@ -12,6 +12,11 @@
  *   other slide with that background (section dividers). The deck's dark slide types (title,
  *   section, callout, closing) are drawn in it.
  *
+ * Slides API can't read or write gradient fills, and decks often paint their background with a
+ * full-slide gradient shape (or image). So each style also names a "backdrop": a template slide
+ * and its full-slide, text-free elements. The exporter duplicates that slide, keeps only those
+ * elements, and draws on top, so gradients and background art carry over exactly.
+ *
  * Every color is a plain RGB hex, resolved through the master's color scheme where the deck uses
  * theme colors. Pure: takes presentations.get output, no network.
  */
@@ -32,9 +37,20 @@ export interface LearnedPalette {
   panel: string;
 }
 
+/** A template slide whose background elements are reused under new slides. */
+export interface Backdrop {
+  slideId: string;
+  /** Top-level elements to keep: full-slide shapes or images with no text. */
+  keep: string[];
+  /** Every other top-level element, deleted from the copy. */
+  drop: string[];
+}
+
 export interface LearnedStyle {
   content: LearnedPalette;
   cover: LearnedPalette;
+  contentBackdrop?: Backdrop;
+  coverBackdrop?: Backdrop;
   headingFont?: string;
   bodyFont?: string;
 }
@@ -230,6 +246,26 @@ function palette(t: Tally, bg: string, fallback?: LearnedPalette): LearnedPalett
   };
 }
 
+function extent(el: slides_v1.Schema$PageElement): number {
+  const w = (el.size?.width?.magnitude ?? 0) * Math.abs(el.transform?.scaleX ?? 1);
+  const h = (el.size?.height?.magnitude ?? 0) * Math.abs(el.transform?.scaleY ?? 1);
+  return w * h;
+}
+
+/** Full-slide, text-free elements of a slide (background gradients, art), if it has any. */
+export function backdropOf(slide: Page, pageArea: number): Backdrop | undefined {
+  if (!slide.objectId || !pageArea) return undefined;
+  const keep: string[] = [];
+  const drop: string[] = [];
+  for (const el of slide.pageElements ?? []) {
+    if (!el.objectId) continue;
+    const hasText = (el.shape?.text?.textElements ?? []).some(t => t.textRun?.content?.trim());
+    const visual = !!el.image || (!!el.shape && !hasText);
+    (visual && extent(el) >= pageArea * 0.85 ? keep : drop).push(el.objectId);
+  }
+  return keep.length ? { slideId: slide.objectId, keep, drop } : undefined;
+}
+
 /**
  * The style of a template's own slides, or undefined when its slides don't set one (no slide
  * backgrounds or text colors of their own), in which case the master and layouts are the template.
@@ -264,9 +300,15 @@ export function learnTemplateStyle(pres: slides_v1.Schema$Presentation): Learned
 
   const contentPalette = palette(content, contentBg);
   const coverPalette = coverBg ? palette(cover, coverBg, contentPalette) : contentPalette;
+  // Page size in the same unit as element sizes (EMU from presentations.get).
+  const pageArea = (pres.pageSize?.width?.magnitude ?? 0) * (pres.pageSize?.height?.magnitude ?? 0);
+  const firstWith = (bgColor: string) => info.map(i => (i.bg === bgColor ? backdropOf(i.slide, pageArea) : undefined)).find(Boolean);
+  const contentBackdrop = firstWith(contentBg);
   return {
     content: contentPalette,
     cover: coverPalette,
+    contentBackdrop,
+    coverBackdrop: coverBg ? firstWith(coverBg) : contentBackdrop,
     headingFont: top(new Map([...content.titleFont, ...cover.titleFont].map(([k]) => [k, (content.titleFont.get(k) ?? 0) + (cover.titleFont.get(k) ?? 0)]))),
     bodyFont: top(content.bodyFont) ?? top(cover.bodyFont),
   };
