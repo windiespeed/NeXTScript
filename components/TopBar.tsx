@@ -4,7 +4,7 @@ import Image from "next/image";
 import Avatar, { AVATAR_CHANGED_EVENT } from "@/components/Avatar";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useMobileMenu } from "@/context/MobileMenu";
 import { useTheme } from "@/context/Theme";
@@ -40,6 +40,7 @@ function ThemeToggle() {
 export default function TopBar() {
   const { data: session } = useSession();
   const router = useRouter();
+  const pathname = usePathname();
   const { open: menuOpen, toggle } = useMobileMenu();
   const [query, setQuery] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -67,10 +68,18 @@ export default function TopBar() {
     }
   }, [mobileSearchOpen]);
 
+  // Clear the box when leaving the results page (it keeps the typed search while on it).
+  const [lastPath, setLastPath] = useState(pathname);
+  if (pathname !== lastPath) {
+    setLastPath(pathname);
+    if (pathname !== "/search") setQuery("");
+  }
+
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
     const q = query.trim();
-    router.push(q ? `/?q=${encodeURIComponent(q)}` : "/");
+    if (!q) return;
+    router.push(`/search?q=${encodeURIComponent(q)}`);
     setMobileSearchOpen(false);
   }
 
@@ -108,7 +117,7 @@ export default function TopBar() {
               <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
             </svg>
             <input
-              type="text"
+              type="search"
               name="q"
               value={query}
               onChange={e => setQuery(e.target.value)}
@@ -197,7 +206,7 @@ export default function TopBar() {
               </svg>
               <input
                 ref={mobileInputRef}
-                type="text"
+                type="search"
                 name="q"
                 value={query}
                 onChange={e => setQuery(e.target.value)}
