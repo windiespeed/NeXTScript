@@ -26,8 +26,9 @@ import { layoutSlide } from "../layout/registry";
 import type { ColorToken, SlideLayout, TextElement } from "../layout/types";
 import { CANVAS_H, CANVAS_W } from "../layout/types";
 import { CODE_BG, CODE_TEXT, fontFamily, resolvePalette } from "./palette";
-import { DECORATION_IDS } from "../layout/decorations";
-import { learnTemplateStyle, learnedColor, type Backdrop, type Decoration, type LearnedStyle } from "./templateStyle";
+import { DECORATION_IDS, FOOTER_Y } from "../layout/decorations";
+import { GRID } from "../layout/kit";
+import { learnTemplateStyle, learnedColor, type Backdrop, type Decoration, type LearnedFrame, type LearnedStyle } from "./templateStyle";
 
 type Request = slides_v1.Schema$Request;
 type OpaqueColor = slides_v1.Schema$OpaqueColor;
@@ -193,25 +194,51 @@ class Ids {
   }
 }
 
-function transform(pageObjectId: string, x: number, y: number, w: number, h: number, sx: number, sy: number): slides_v1.Schema$PageElementProperties {
+/**
+ * Maps the layout canvas onto the page: page = o + canvas · k. By default the canvas is simply
+ * scaled to the page. With a learned frame, the layout's content box (its margins, from the top of
+ * the header to the footer line) lands on the template's own content box.
+ */
+export interface Frame {
+  ox: number;
+  oy: number;
+  kx: number;
+  ky: number;
+  /** Font scale. */
+  k: number;
+}
+
+export function pageFrame(pageW: number, pageH: number, learned?: LearnedFrame): Frame {
+  if (!learned) {
+    const kx = pageW / CANVAS_W;
+    const ky = pageH / CANVAS_H;
+    return { ox: 0, oy: 0, kx, ky, k: Math.min(kx, ky) };
+  }
+  const kx = (pageW - learned.left * 2) / GRID.contentW;
+  const ky = (learned.footerTop - learned.top) / (FOOTER_Y - GRID.top);
+  return { ox: learned.left - GRID.marginX * kx, oy: learned.top - GRID.top * ky, kx, ky, k: Math.min(kx, ky) };
+}
+
+function transform(pageObjectId: string, x: number, y: number, w: number, h: number, f: Frame, pad = 0): slides_v1.Schema$PageElementProperties {
   return {
     pageObjectId,
-    size: { width: { magnitude: Math.max(1, w * sx), unit: "PT" }, height: { magnitude: Math.max(1, h * sy), unit: "PT" } },
-    transform: { scaleX: 1, scaleY: 1, translateX: x * sx, translateY: y * sy, unit: "PT" },
+    size: { width: { magnitude: Math.max(1, w * f.kx + pad * 2), unit: "PT" }, height: { magnitude: Math.max(1, h * f.ky + pad * 2), unit: "PT" } },
+    transform: { scaleX: 1, scaleY: 1, translateX: f.ox + x * f.kx - pad, translateY: f.oy + y * f.ky - pad, unit: "PT" },
   };
 }
 
-function textRequests(el: TextElement, objectId: string, pageId: string, dark: boolean, ctx: Ctx, sx: number, sy: number, deco?: Decoration): Request[] {
+function textRequests(el: TextElement, objectId: string, pageId: string, dark: boolean, ctx: Ctx, f: Frame, deco?: Decoration): Request[] {
   const paragraphs = el.paragraphs.map(p => (el.uppercase ? p.text.toUpperCase() : p.text));
   const text = paragraphs.join("\n");
   // A template's label or footer keeps the template's own size and color.
-  const fs = deco ? deco.size : el.fontSize * Math.min(sx, sy);
+  const fs = deco ? deco.size : el.fontSize * f.k;
   const reqs: Request[] = [
     {
       createShape: {
         objectId,
         shapeType: "TEXT_BOX",
-        elementProperties: transform(pageId, el.x - TEXTBOX_INSET, el.y - TEXTBOX_INSET, el.w + TEXTBOX_INSET * 2, el.h + TEXTBOX_INSET * 2, sx, sy),
+        // Slides pads text boxes by 7.2pt, so the box grows by that much to put the text on the spot.
+        elementProperties: transform(pageId, el.x, el.y, el.w, el.h, f, TEXTBOX_INSET),
       },
     },
     {
@@ -246,7 +273,7 @@ function textRequests(el: TextElement, objectId: string, pageId: string, dark: b
           alignment: el.align === "left" ? "START" : el.align === "center" ? "CENTER" : "END",
           lineSpacing: Math.round(el.lineHeight * 100),
           spaceAbove: { magnitude: 0, unit: "PT" },
-          spaceBelow: { magnitude: el.paragraphGap * Math.min(sx, sy), unit: "PT" },
+          spaceBelow: { magnitude: el.paragraphGap * f.k, unit: "PT" },
         },
         fields: "alignment,lineSpacing,spaceAbove,spaceBelow",
       },
@@ -303,8 +330,7 @@ function backdropSlide(b: Backdrop, pageId: string, ids: Ids, insertionIndex: nu
 
 function drawnSlide(layout: SlideLayout, pageId: string, ids: Ids, ctx: Ctx, insertionIndex: number): Request[] {
   const dark = layout.dark;
-  const sx = (ctx.template?.pageW ?? CANVAS_W) / CANVAS_W;
-  const sy = (ctx.template?.pageH ?? CANVAS_H) / CANVAS_H;
+  const f = pageFrame(ctx.template?.pageW ?? CANVAS_W, ctx.template?.pageH ?? CANVAS_H, ctx.learned?.frame);
   const backdrop = dark ? ctx.learned?.coverBackdrop : ctx.learned?.contentBackdrop;
   const reqs: Request[] = backdrop
     ? backdropSlide(backdrop, pageId, ids, insertionIndex)
@@ -339,8 +365,8 @@ function drawnSlide(layout: SlideLayout, pageId: string, ids: Ids, ctx: Ctx, ins
         {
           createShape: {
             objectId,
-            shapeType: el.radius > 0 && Math.min(el.w * sx, el.h * sy) <= MAX_ROUNDED ? "ROUND_RECTANGLE" : "RECTANGLE",
-            elementProperties: transform(pageId, el.x, el.y, el.w, el.h, sx, sy),
+            shapeType: el.radius > 0 && Math.min(el.w * f.kx, el.h * f.ky) <= MAX_ROUNDED ? "ROUND_RECTANGLE" : "RECTANGLE",
+            elementProperties: transform(pageId, el.x, el.y, el.w, el.h, f),
           },
         },
         {
@@ -355,7 +381,7 @@ function drawnSlide(layout: SlideLayout, pageId: string, ids: Ids, ctx: Ctx, ins
         },
       );
     } else {
-      reqs.push(...textRequests(el, objectId, pageId, dark, ctx, sx, sy, deco));
+      reqs.push(...textRequests(el, objectId, pageId, dark, ctx, f, deco));
     }
   }
   return reqs;

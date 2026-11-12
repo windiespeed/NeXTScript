@@ -13,6 +13,8 @@ export const DECORATION_IDS = { label: "label", footer: "footer" } as const;
 
 const LABEL_SIZE = 10;
 const FOOTER_SIZE = 9;
+/** Top of the footer line on the canvas. */
+export const FOOTER_Y = GRID.bodyBottom + (CANVAS_H - GRID.bodyBottom - FOOTER_SIZE * 1.3) / 2;
 
 function textEl(id: string, text: string, y: number, size: number, extra: Partial<TextElement>): TextElement {
   return {
@@ -37,8 +39,7 @@ export function decorate(layout: SlideLayout, slide: DeckSlide): SlideLayout {
   }
   const footer = slide.footer?.trim();
   if (footer) {
-    const y = GRID.bodyBottom + (CANVAS_H - GRID.bodyBottom - FOOTER_SIZE * 1.3) / 2;
-    elements.push(textEl(DECORATION_IDS.footer, footer, y, FOOTER_SIZE, {}));
+    elements.push(textEl(DECORATION_IDS.footer, footer, FOOTER_Y, FOOTER_SIZE, {}));
   }
   return { ...layout, elements };
 }

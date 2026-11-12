@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { slides_v1 } from "googleapis";
 import { learnTemplateStyle, luminance } from "@/lib/deck/render/templateStyle";
-import { buildSlidesRequests, inspectTemplate, slidesFont } from "@/lib/deck/render/googleSlides";
+import { buildSlidesRequests, inspectTemplate, pageFrame, slidesFont } from "@/lib/deck/render/googleSlides";
+import { FOOTER_Y } from "@/lib/deck/layout/decorations";
+import { GRID } from "@/lib/deck/layout/kit";
 import { SAMPLE_DECK } from "@/lib/deck/sample";
 import { getTheme } from "@/lib/themes";
 
@@ -13,7 +15,7 @@ const bg = (h: string): slides_v1.Schema$PageProperties => ({ pageBackgroundFill
 const PAGE_H = 5143500;
 /** A text box; `top` is its top edge as a share of the page height. */
 const text = (runs: [string, string, number, string, boolean?][], top = 0.4): slides_v1.Schema$PageElement => ({
-  transform: { scaleX: 1, scaleY: 1, translateX: 0, translateY: top * PAGE_H, unit: "EMU" },
+  transform: { scaleX: 1, scaleY: 1, translateX: 812800, translateY: top * PAGE_H, unit: "EMU" },
   shape: {
     shapeType: "TEXT_BOX",
     text: { textElements: runs.map(([content, font, size, color, bold]) => ({ textRun: { content, style: { fontFamily: font, fontSize: { magnitude: size, unit: "PT" }, foregroundColor: { opaqueColor: hex(color) }, bold: !!bold } } })) },
@@ -120,6 +122,24 @@ describe("learnTemplateStyle", () => {
     expect(s.contentBackdrop!.keep).toEqual(["g2", "logo1"]);
     expect(s.contentBackdrop!.drop).toContain("photo");
     expect(s.coverBackdrop!.keep).toEqual(["g1", "logo0"]);
+  });
+
+  it("learns the template's margins and header and footer positions", () => {
+    const f = learnTemplateStyle(handStyled)!.frame!;
+    expect(f.left).toBeCloseTo(64, 0); // 812800 EMU
+    expect(f.top).toBeCloseTo((0.12 * PAGE_H) / 12700, 0);
+    expect(f.footerTop).toBeCloseTo((0.91 * PAGE_H) / 12700, 0);
+  });
+
+  it("maps the layout's content box onto the learned frame", () => {
+    const frame = { left: 64, top: 64, footerTop: 491 };
+    const f = pageFrame(960, 540, frame);
+    expect(f.ox + GRID.marginX * f.kx).toBeCloseTo(64);
+    expect(f.ox + (GRID.marginX + GRID.contentW) * f.kx).toBeCloseTo(960 - 64);
+    expect(f.oy + GRID.top * f.ky).toBeCloseTo(64);
+    expect(f.oy + FOOTER_Y * f.ky).toBeCloseTo(491);
+    // Without a frame the canvas just scales to the page.
+    expect(pageFrame(960, 540)).toMatchObject({ ox: 0, oy: 0, kx: 960 / 720, ky: 540 / 405 });
   });
 
   it("leaves templates whose slides set nothing to the master and layouts", () => {
