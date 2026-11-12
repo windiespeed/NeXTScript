@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState, Suspense, useMemo } from "react";
 import { useSession, signIn } from "next-auth/react";
-import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -211,10 +210,6 @@ function SortableWidget({ widgetId, span, onCycleSize, children }: {
 // ── Main Dashboard ────────────────────────────────────────────────────────────
 function Dashboard() {
   const { data: session, status } = useSession();
-  const searchParams = useSearchParams();
-  // TODO: the top-bar search sends ?q= here, but the dashboard no longer lists lessons,
-  // so nothing uses it. Decide where search results should show.
-  const searchQuery = searchParams.get("q")?.toLowerCase().trim() ?? "";
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [projects, setProjects] = useState<SavedProject[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
