@@ -409,7 +409,6 @@ export default function CourseSettingsPage() {
         {/* Generation Settings */}
         <div className="rounded-3xl p-6 space-y-4" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
           <p className={sectionHeading}>Generation Settings</p>
-          <p className="text-xs -mt-1" style={{ color: "var(--text-muted)" }}>These override your global profile settings for every lesson in this course.</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label htmlFor="courses-id-settings-industry-used-by-ai" className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Industry {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span>}</label>
