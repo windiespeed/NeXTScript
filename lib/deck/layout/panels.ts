@@ -47,7 +47,15 @@ export function layoutCards(slide: SlideOf<"cards">): SlideLayout {
   const n = slide.cards.length;
   const gap = 16;
   const cardW = split(W, n, gap);
-  const h = Math.min(220, bodyBottom() - top);
+  const innerW = cardW - PAD * 2;
+  const maxH = bodyBottom() - top;
+  const tagH = slide.cards.some(c => c.tag) ? 16 + 8 : 0;
+
+  // Cards hug their content: all the same height, set by the fullest card at the preferred sizes.
+  const headH = (t: string) => b.measure({ paragraphs: [{ text: t, bold: true }], w: innerW, h: 48, font: "heading", maxSize: 17, minSize: 17, lineHeight: 1.15 });
+  const bodyH = (t: string) => b.measure({ paragraphs: [{ text: t }], w: innerW, h: maxH, maxSize: 15, minSize: 15 });
+  const wanted = Math.max(...slide.cards.map(c => PAD + 4 + tagH + headH(c.heading) + 8 + bodyH(c.body) + PAD));
+  const h = Math.min(maxH, Math.max(110, wanted + 4));
 
   slide.cards.forEach((card, i) => {
     const x = x0 + i * (cardW + gap);
@@ -57,7 +65,7 @@ export function layoutCards(slide: SlideOf<"cards">): SlideLayout {
     let hy = top + PAD + 4;
     if (card.tag) {
       // A filled chip: accent background, the card color as text, sized to the tag.
-      const chipW = Math.min(cardW - PAD * 2, Math.ceil(card.tag.length * 9 * 0.62 + 14));
+      const chipW = Math.min(innerW, Math.ceil(card.tag.length * 9 * 0.62 + 14));
       b.rect(`card.${i}.tag.chip`, x + PAD, hy, chipW, 16, accent, 3);
       b.elements.push({
         kind: "text", id: `card.${i}.tag`, x: x + PAD, y: hy, w: chipW, h: 16,
@@ -65,19 +73,19 @@ export function layoutCards(slide: SlideOf<"cards">): SlideLayout {
         color: "panel", align: "center", valign: "middle", uppercase: true, letterSpacing: 0.8,
         paragraphs: [{ text: card.tag, bold: true }],
       });
-      hy += 16 + 8;
     }
+    hy += tagH;
     const head = b.text({
       id: `card.${i}.heading`, what: `Card ${i + 1} heading`,
       paragraphs: [{ text: card.heading, bold: true }],
-      x: x + PAD, y: hy, w: cardW - PAD * 2, h: 48,
+      x: x + PAD, y: hy, w: innerW, h: 48,
       font: "heading", maxSize: 17, minSize: 13, lineHeight: 1.15, color: "text.primary", hug: true,
     });
     const by = hy + head.h + 8;
     b.text({
       id: `card.${i}.body`, what: `Card ${i + 1} text`,
       paragraphs: [{ text: card.body }],
-      x: x + PAD, y: by, w: cardW - PAD * 2, h: top + h - PAD - by,
+      x: x + PAD, y: by, w: innerW, h: top + h - PAD - by,
       maxSize: 15, minSize: 11, warnBelow: 13, color: "text.secondary",
     });
   });

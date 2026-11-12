@@ -39,7 +39,10 @@ export function layoutCode(slide: SlideOf<"code">): SlideLayout {
   const output = slide.output?.length ? slide.output : undefined;
   // Console panel: label line, the output lines, and padding.
   const outputH = output ? Math.ceil(8 + C.labelSize * 1.2 + 6 + output.length * C.outputSize * C.lineHeight + 10) : 0;
-  const panelH = bodyBottom() - top - captionH - (output ? outputH + C.outputGap : 0);
+  const maxPanelH = bodyBottom() - top - captionH - (output ? outputH + C.outputGap : 0);
+  // The panel hugs the code (as a real editor window would), never shorter than a few lines.
+  const wantedH = Math.ceil(8 + C.labelSize * 1.2 + 6 + Math.max(slide.lines.length, 4) * C.maxSize * C.lineHeight + 14);
+  const panelH = Math.min(maxPanelH, wantedH);
 
   b.rect("code.panel", x, top, panelW, panelH, "code.bg", 8);
   const labelH = b.label("code.label", slide.language, x + C.pad, top + 8, panelW - C.pad * 2, "code.label", C.labelSize);
