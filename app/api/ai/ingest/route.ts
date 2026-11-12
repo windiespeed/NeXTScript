@@ -8,6 +8,7 @@ import { resolveAiModel, getAiModel, type AiProvider, type ClaudeModelId } from 
 import { loadCourseSkeleton } from "@/lib/courseSkeleton";
 import { resolveProgramContext } from "@/lib/programContext";
 import { applySlideAnchors } from "@/lib/slideAnchors";
+import { courseAiInputs } from "@/lib/courseAiInputs";
 import { hybridIngestSchema, parseBody, readJson } from "@/lib/validation";
 import type { HybridIngestResponse } from "@/types/ingest";
 
@@ -42,7 +43,9 @@ export async function POST(req: Request) {
     const skeleton = await loadCourseSkeleton(courseId, session.user.email, settings);
     if (!skeleton) return NextResponse.json({ error: "Course not found or you don't have access to it." }, { status: 403 });
 
-    const { targetAudience, slideCount, studentLevel, lessonTitle, lessonSubtitle, topics, sources, outline } = body;
+    const { slideCount, lessonTitle, lessonSubtitle, topics, outline } = body;
+    // Student Level, Sources and the audience (Grade Level) come from Course Settings only.
+    const { studentLevel, sources, targetAudience } = courseAiInputs(skeleton.course);
 
     const opts = {
       targetAudience, slideCount, anchors: skeleton.anchors, studentLevel, lessonTitle, lessonSubtitle, topics, sources, outline,

@@ -11,8 +11,8 @@ const STEPS: { title: string; body: string }[] = [
     body: "The course decides the deck's locked headings and its Google Slides template. Attach an existing lesson to add the deck to it, or leave “Create new lesson” to make one.",
   },
   {
-    title: "Check the skeleton",
-    body: "Each course section marked “Slide heading” becomes a slide heading, in order. Change them under the course's Edit Sections.",
+    title: "Check the slide headings",
+    body: "Each course section marked “Slide heading” becomes a slide heading, in order. Change them in Course Settings.",
   },
   {
     title: "Paste your notes",

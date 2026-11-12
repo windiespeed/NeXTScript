@@ -42,9 +42,6 @@ export default function EditLessonContentPage() {
       if (lessonData?.courseId) {
         setSelectedCourseId(lessonData.courseId);
         const course = courseList.find(c => c.id === lessonData.courseId);
-        if (!lessonData.sources && course?.settings?.defaultSources) {
-          lessonData = { ...lessonData, sources: course.settings.defaultSources };
-        }
         const mods: CourseModule[] = Array.isArray(course?.modules) ? course.modules : [];
         setModules(mods);
         // Find which module this lesson is in

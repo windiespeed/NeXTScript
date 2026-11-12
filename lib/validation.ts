@@ -142,7 +142,7 @@ const optionalText = (max: number) =>
  */
 export const hybridIngestSchema = z.object({
   courseConfig: z.object({
-    courseId: z.string().min(1, "Select a course first — its sections are the deck's skeleton.").max(200),
+    courseId: z.string().min(1, "Select a course first — its sections set the deck's slide headings.").max(200),
     anchors: z.array(z.object({ id: z.string().max(200), label: z.string().max(2_000) })).max(100).optional(),
     themeId: z.string().max(100).nullish(),
   }),

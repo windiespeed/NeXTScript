@@ -8,6 +8,7 @@ import { courseStore } from "@/lib/courseStore";
 import { canAccessCourse } from "@/lib/access";
 import { fillLesson } from "@/lib/ai";
 import { resolveSections } from "@/lib/sections";
+import { courseAiInputs } from "@/lib/courseAiInputs";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -35,7 +36,9 @@ export async function POST(req: Request) {
     const { industry, subject } = resolveProgramContext(course, settings);
     const sections = resolveSections({ course, userSettings: settings });
 
-    const result = await fillLesson(apiKey, lesson as Partial<LessonInput>, { industry, subject, sections });
+    // Student Level and Sources come from Course Settings only, never from the lesson.
+    const { studentLevel, sources } = courseAiInputs(course);
+    const result = await fillLesson(apiKey, { ...lesson, studentLevel, sources } as Partial<LessonInput>, { industry, subject, sections });
     return NextResponse.json(result);
   } catch (err: any) {
     // Surface Anthropic billing/auth errors clearly
