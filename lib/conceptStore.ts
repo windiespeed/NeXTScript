@@ -34,22 +34,6 @@ export const conceptStore = {
     return concept;
   },
 
-  async createMany(inputs: ConceptInput[], teacherId: string, courseId: string): Promise<Concept[]> {
-    const now = new Date().toISOString();
-    const db = getDb();
-    const batch = db.batch();
-    const concepts: Concept[] = inputs.map(input => ({
-      ...input,
-      id: uuidv4(),
-      teacherId,
-      courseId,
-      createdAt: now,
-      updatedAt: now,
-    }));
-    concepts.forEach(c => batch.set(db.collection(COLLECTION).doc(c.id), c));
-    await batch.commit();
-    return concepts;
-  },
 
   async update(id: string, patch: Partial<Concept>): Promise<Concept | null> {
     const ref = getDb().collection(COLLECTION).doc(id);

@@ -349,9 +349,6 @@ export const classroomPushSchema = z.object({
   moduleName: label.nullish(),
 });
 
-/** POST /api/exercises/seed and /api/concepts/seed. */
-export const seedSchema = z.object({ courseId: idStr.nullish(), classId: idStr.nullish() });
-
 const apiKey = z.string().trim().min(1, "Invalid key.").max(500, "Invalid key.");
 
 /** PUT /api/user/settings. Only the keys sent are saved; null clears a text field to "". */

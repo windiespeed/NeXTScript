@@ -27,7 +27,7 @@ export interface Exercise {
   solution: string;
   lessonId?: string;
   courseId?: string;
-  isSeeded?: boolean;
+  isSeeded?: boolean;     // legacy: set on the retired JavaScript starter exercises
   createdAt: string;
   updatedAt: string;
 }

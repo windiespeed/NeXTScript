@@ -83,15 +83,8 @@ export default function CourseExercisesPage() {
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [concepts, setConcepts] = useState<Concept[]>([]);
   const [loading, setLoading] = useState(true);
-  const [seeding, setSeeding] = useState(false);
   const [filterType, setFilterType] = useState<"all" | ExerciseType>("all");
   const [filterConcept, setFilterConcept] = useState<string>("all");
-
-  async function loadExercises() {
-    const res = await fetch(`/api/exercises?courseId=${courseId}`);
-    const data = await res.json();
-    setExercises(Array.isArray(data) ? data : []);
-  }
 
   useEffect(() => {
     Promise.all([
@@ -105,18 +98,6 @@ export default function CourseExercisesPage() {
       setLoading(false);
     });
   }, [courseId]);
-
-  async function handleSeed() {
-    setSeeding(true);
-    const res = await fetch("/api/exercises/seed", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ courseId }),
-    });
-    const data = await res.json();
-    if (data.seeded > 0) await loadExercises();
-    setSeeding(false);
-  }
 
   async function handleDelete(id: string) {
     if (!confirm("Delete this exercise?")) return;
@@ -163,16 +144,6 @@ export default function CourseExercisesPage() {
           )}
         </div>
         <div className="flex gap-2 flex-wrap">
-          {totalCount === 0 && !loading && (
-            <button
-              onClick={handleSeed}
-              disabled={seeding}
-              className="rounded-full px-4 py-2 text-sm font-semibold transition hover:opacity-90 disabled:opacity-50"
-              style={{ background: "rgba(99,102,241,0.15)", color: "var(--accent-purple)", border: "1px solid rgba(99,102,241,0.35)" }}
-            >
-              {seeding ? "Seeding…" : "Seed Starter Exercises"}
-            </button>
-          )}
           <Link
             href={`/courses/${courseId}/exercises/new`}
             className="rounded-full px-4 py-2 text-sm font-semibold transition hover:opacity-90"
@@ -232,16 +203,15 @@ export default function CourseExercisesPage() {
         <div className="text-center py-20 rounded-3xl" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
           <p className="text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>No exercises yet</p>
           <p className="text-xs mb-5" style={{ color: "var(--text-muted)" }}>
-            Seed the 65 starter JavaScript exercises or create your own for this course.
+            Create the first exercise for this course.
           </p>
-          <button
-            onClick={handleSeed}
-            disabled={seeding}
-            className="rounded-full px-5 py-2 text-sm font-semibold transition hover:opacity-90 disabled:opacity-50"
+          <Link
+            href={`/courses/${courseId}/exercises/new`}
+            className="inline-block rounded-full px-5 py-2 text-sm font-semibold transition hover:opacity-90"
             style={{ background: "#0cc0df", color: "#0a0b13" }}
           >
-            {seeding ? "Seeding…" : "Seed Starter Exercises"}
-          </button>
+            + New Exercise
+          </Link>
         </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-16 rounded-3xl" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
