@@ -135,3 +135,34 @@ button, a, [role="button"] {
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
+
+/* ── NeXT Central look ─────────────────────────────────────────────
+   Navy/teal brand gradient, smaller corners, flatter cards with a hairline edge.
+   Colors are approximated from NeXT Central; swap in its exact values once known. */
+:root {
+  --brand-navy: #1b3a5c;
+  --brand-teal: #1fa3b9;
+  --brand-gradient: linear-gradient(90deg, var(--brand-navy) 0%, #1d6f8c 55%, var(--brand-teal) 100%);
+  --shadow-card: 0 0 0 1px rgba(15, 20, 60, 0.07), 0 1px 3px rgba(13, 21, 48, 0.05);
+  --shadow-float: 0 0 0 1px rgba(15, 20, 60, 0.08), 0 6px 20px rgba(13, 21, 48, 0.10);
+}
+.dark {
+  --shadow-card: 0 0 0 1px rgba(255, 255, 255, 0.07);
+  --shadow-float: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+@theme {
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.625rem;
+  --radius-2xl: 0.625rem;
+  --radius-3xl: 0.75rem;
+}
+/* Pill-shaped buttons, links and inputs become softly rounded rectangles (circles like avatars stay round). */
+a.rounded-full, button.rounded-full, input.rounded-full, select.rounded-full, textarea.rounded-full {
+  border-radius: 0.5rem;
+}
+.nav-active {
+  background: var(--brand-gradient);
+  color: #ffffff;
+  font-weight: 600;
+}

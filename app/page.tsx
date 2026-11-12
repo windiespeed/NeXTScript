@@ -535,34 +535,39 @@ function Dashboard() {
   return (
     <div className="space-y-6">
 
-      {/* ── Welcome row ──────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between gap-4">
-        {/* Left: icon + greeting */}
-        <div className="flex items-center gap-3 rounded-full px-5 py-4" style={{ background: "var(--bg-sidebar)", boxShadow: "var(--shadow-card)" }}>
-          <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style={{ background: "rgba(255, 180, 50, 0.15)" }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="5"/>
-              <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
-              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-              <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
-              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-            </svg>
-          </div>
-          <div>
-            <p className="text-xs font-medium" style={{ color: "var(--text-muted)" }}>Welcome back!</p>
-            <h1 className="text-xl font-bold leading-tight" style={{ color: "var(--text-primary)" }}>{firstName}</h1>
-          </div>
+      {/* ── Header banner + stat cards (NeXT Central style) ─────────────────── */}
+      <div className="rounded-xl px-6 py-5 flex flex-wrap items-center justify-between gap-4" style={{ background: "var(--brand-gradient)" }}>
+        <div>
+          <h1 className="text-xl font-bold text-white">NeXTScript</h1>
+          <p className="text-sm text-white/85">Welcome back, {firstName} · {dayName}, {today.toLocaleDateString(undefined, { month: "long", day: "numeric" })}</p>
         </div>
-        {/* Right: date badge */}
-        <div className="hidden sm:flex items-center gap-3 rounded-full px-5 py-4" style={{ background: "var(--bg-sidebar)", boxShadow: "var(--shadow-card)" }}>
-          <div className="w-11 h-11 rounded-full flex items-center justify-center font-bold text-xl" style={{ background: "var(--accent-purple-bg)", color: "var(--accent-purple)" }}>
-            {today.getDate()}
-          </div>
-          <div>
-            <p className="text-sm font-bold leading-tight" style={{ color: "var(--text-primary)" }}>{dayName},</p>
-            <p className="text-xs" style={{ color: "var(--text-muted)" }}>{today.toLocaleDateString(undefined, { month: "long", year: "numeric" })}</p>
-          </div>
+        <div className="flex flex-wrap gap-2">
+          {[
+            { label: "Courses", href: "/courses" },
+            { label: "Notes to Slides", href: "/ingest" },
+            { label: "Schedule", href: "/schedule" },
+          ].map(b => (
+            <Link key={b.href} href={b.href} className="rounded-lg px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/25" style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.35)" }}>
+              {b.label}
+            </Link>
+          ))}
         </div>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
+        {[
+          { label: "Courses", value: courses.length, sub: "yours + shared", color: "var(--text-primary)" },
+          { label: "Lessons", value: lessons.length, sub: "total", color: "var(--accent-text)" },
+          { label: "Generated", value: doneCount, sub: "ready to export", color: "var(--success-text)" },
+          { label: "Drafts", value: draftCount, sub: "not generated yet", color: "var(--warning-text)" },
+          { label: "Due soon", value: upcoming.length, sub: "upcoming deadlines", color: "var(--danger-text)" },
+        ].map(c => (
+          <div key={c.label} className="rounded-xl px-4 py-4 text-center" style={{ background: "var(--bg-card)", boxShadow: "var(--shadow-card)" }}>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--text-secondary)" }}>{c.label}</p>
+            <p className="mt-1 text-3xl font-bold" style={{ color: c.color }}>{loading ? "–" : c.value}</p>
+            <p className="mt-1 text-xs" style={{ color: "var(--text-muted)" }}>{c.sub}</p>
+          </div>
+        ))}
       </div>
 
       {/* ── Widget row ───────────────────────────────────────────────────────── */}
