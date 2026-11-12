@@ -7,6 +7,7 @@ import { canAccessLesson } from "@/lib/access";
 import { serverError } from "@/lib/apiErrors";
 import { parsePatch } from "@/lib/validation";
 import { userSettings } from "@/lib/userSettings";
+import { courseAiInputs } from "@/lib/courseAiInputs";
 import { loadCourseSkeleton } from "@/lib/courseSkeleton";
 import { resolveProgramContext } from "@/lib/programContext";
 import { DeckGenerationError, generateDeck } from "@/lib/deck/generate";
@@ -73,8 +74,8 @@ export async function POST(req: Request) {
         lessonTitle: input.lessonTitle ?? lesson?.title,
         audience: input.audience,
         program: resolveProgramContext(skeleton?.course, settings),
-        // The lesson's own level, else the course default.
-        studentLevel: lesson?.studentLevel || skeleton?.course.settings?.studentLevel || undefined,
+        // Student Level comes from Course Settings only.
+        studentLevel: courseAiInputs(skeleton?.course).studentLevel,
         context: context || undefined,
         // Claude only (the deck prompt and limits are tuned for Claude): the saved preference if it's a Claude model, else the default.
         model: resolveAiModel(settings.preferredAiModel, { anthropic: true, gemini: false }, ["anthropic"]) as ClaudeModelId,

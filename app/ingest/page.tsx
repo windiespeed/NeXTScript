@@ -6,7 +6,6 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import SlideEditorPanel from "@/components/slides/SlideEditorPanel";
 import { THEMES, getTheme } from "@/lib/themes";
-import { STUDENT_LEVEL_UI_HINTS, type StudentLevel } from "@/lib/studentLevel";
 import AiModelNote from "@/components/AiModelNote";
 import type { SavedKeys } from "@/lib/aiModels";
 import type { PresentationAST } from "@/types/slideAst";
@@ -57,8 +56,7 @@ const EMPTY_LESSON_DEFAULTS: LessonInput = {
   title: "", subtitle: "", topics: "", deadline: "", tag: "", notes: "",
   overview: "", learningTargets: "", vocabulary: "", warmUp: "", slideContent: "",
   guidedLab: "", selfPaced: "", submissionChecklist: "", checkpoint: "",
-  industryBestPractices: "", devJournalPrompt: "", rubric: "", sources: "",
-  studentLevel: "beginner", sections: {},
+  industryBestPractices: "", devJournalPrompt: "", rubric: "", sources: "", sections: {},
 };
 
 type LessonType = NonNullable<LessonInput["lessonType"]>;
@@ -75,8 +73,6 @@ interface IngestDraft {
   topics: string;
   deadline: string;
   lessonType: LessonType;
-  sources: string;
-  studentLevel: StudentLevel;
   rawText: string;
   targetAudience: string;
   slideCount: string;
@@ -120,8 +116,6 @@ function IngestPageInner() {
   const [topics, setTopics] = useState("");
   const [deadline, setDeadline] = useState("");
   const [lessonType, setLessonType] = useState<LessonType>("lesson");
-  const [sources, setSources] = useState("");
-  const [studentLevel, setStudentLevel] = useState<StudentLevel>("beginner");
   const [userSectionSettings, setUserSectionSettings] = useState<{ sectionLabels?: Record<string, string>; sections?: SectionDef[] }>({});
 
   // The Skeleton: every active section (course-level, falling back to user/global defaults) is a
@@ -213,8 +207,6 @@ function IngestPageInner() {
     setTopics(draft.topics);
     setDeadline(draft.deadline);
     setLessonType(draft.lessonType);
-    setSources(draft.sources);
-    setStudentLevel(draft.studentLevel);
     setRawText(draft.rawText);
     setTargetAudience(draft.targetAudience);
     setSlideCount(draft.slideCount);
@@ -232,7 +224,7 @@ function IngestPageInner() {
   }, [tiedToLesson]);
   useDraftAutosave<IngestDraft>(draftKey, {
     selectedCourseId, selectedModuleId, selectedExistingLessonId,
-    title, subtitle, topics, deadline, lessonType, sources, studentLevel,
+    title, subtitle, topics, deadline, lessonType,
     rawText, targetAudience, slideCount,
     ast, activeIndex, viewMode, outline,
   });
@@ -255,7 +247,6 @@ function IngestPageInner() {
     const course = courses.find(c => c.id === selectedCourseId);
     setModules(Array.isArray(course?.modules) ? course!.modules : []);
     setSelectedModuleId("");
-    setSources(course?.settings?.defaultSources ?? "");
   }, [selectedCourseId, courses]);
 
   // Deep-link: ?lessonId= arrives from an existing lesson's own hub page — pre-fill
@@ -275,8 +266,6 @@ function IngestPageInner() {
       setTopics(lesson.topics ?? "");
       setDeadline(lesson.deadline ?? "");
       setLessonType((lesson.lessonType as LessonType) ?? "lesson");
-      if (lesson.sources) setSources(lesson.sources);
-      setStudentLevel(lesson.studentLevel ?? "beginner");
       // Already know which lesson this is — let Save Draft/Export use it immediately
       // instead of waiting on ensureLesson() to resolve it again via existingLessonId.
       setLessonId(lesson.id);
@@ -319,8 +308,6 @@ function IngestPageInner() {
     setTopics(lesson.topics ?? "");
     setDeadline(lesson.deadline ?? "");
     setLessonType((lesson.lessonType as LessonType) ?? "lesson");
-    if (lesson.sources) setSources(lesson.sources);
-    setStudentLevel(lesson.studentLevel ?? "beginner");
     setLessonId(lesson.id);
     if (lesson.slideNotes) setRawText(lesson.slideNotes);
     // Reset first, then repopulate — otherwise switching from a lesson with a saved
@@ -408,8 +395,6 @@ function IngestPageInner() {
       topics: topics.trim(),
       deadline,
       lessonType,
-      sources,
-      studentLevel,
       courseId: selectedCourseId,
       slideNotes: rawText,
     };
@@ -469,11 +454,9 @@ function IngestPageInner() {
       rawNotes: rawText,
       targetAudience: targetAudience.trim() || undefined,
       slideCount: slideCount ? Number(slideCount) : undefined,
-      studentLevel,
       lessonTitle: title.trim() || undefined,
       lessonSubtitle: subtitle.trim() || undefined,
       topics: topics.trim() || undefined,
-      sources: sources.trim() || undefined,
     };
   }
 
@@ -564,8 +547,6 @@ function IngestPageInner() {
     setTopics("");
     setDeadline("");
     setLessonType("lesson");
-    setSources("");
-    setStudentLevel("beginner");
   }
 
   function handleStartOver() {
@@ -602,7 +583,6 @@ function IngestPageInner() {
     setLockedFromQuery(false);
     setSeedStatus("");
     handleClearLessonInfo();
-    setSources("");
     setRawText("");
     setTargetAudience("");
     setSlideCount("");
@@ -892,52 +872,6 @@ function IngestPageInner() {
               </div>
             </div>
 
-            <div>
-              <label htmlFor="ingest-sources-used-by-ai" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
-                Sources {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span>}
-              </label>
-              <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>
-                One URL per line. Saved with the lesson as reference material for other AI-fill features.
-                {sources
-                  ? " Pre-filled from your default sources — add, remove, or edit as needed for this lesson."
-                  : " No sources set — add URLs or configure defaults in your Profile settings."}
-              </p>
-              <textarea id="ingest-sources-used-by-ai"
-                value={sources}
-                onChange={e => setSources(e.target.value)}
-                rows={4}
-                placeholder={"https://www.khanacademy.org/\nhttps://www.britannica.com/"}
-                className={`${inputClass} font-mono`}
-                style={inputStyle}
-              />
-            </div>
-
-            {hasAiKey && (
-              <fieldset>
-                <legend className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
-                  Student Level <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span>
-                </legend>
-                <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>
-                  Adjusts the tone and complexity of AI-generated content to match your students&apos; experience.
-                </p>
-                <div className="flex gap-3">
-                  {(["beginner", "intermediate", "advanced"] as const).map(level => (
-                    <label key={level} className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="studentLevel"
-                        value={level}
-                        checked={studentLevel === level}
-                        onChange={() => setStudentLevel(level)}
-                        className="accent-[#0cc0df]"
-                      />
-                      <span className="text-xs capitalize" style={{ color: "var(--text-primary)" }}>{level}</span>
-                    </label>
-                  ))}
-                </div>
-                <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>{STUDENT_LEVEL_UI_HINTS[studentLevel]}</p>
-              </fieldset>
-            )}
           </div>
 
           {/* ── Generate: the Skeleton (locked course anchors) and the Content (freeform notes)

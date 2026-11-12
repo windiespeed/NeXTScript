@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { Lesson, LessonInput } from "@/types/lesson";
-import { STUDENT_LEVEL_UI_HINTS } from "@/lib/studentLevel";
 import { DEFAULT_SECTIONS, type SectionDef } from "@/types/section";
 import { resolveSections, getSectionContent } from "@/lib/sections";
 
@@ -218,7 +217,7 @@ export default function LessonForm({ initial = {}, onSubmit, autoSave, onCancel,
       <div className={cardClass} style={cardStyle}>
         <div className="flex items-center justify-between">
           <p className={sectionLabel}>Lesson Info</p>
-          <SectionClearBtn onClick={() => clearSection(["title","subtitle","topics","deadline","lessonType","sources","studentLevel"])} />
+          <SectionClearBtn onClick={() => clearSection(["title","subtitle","topics","deadline","lessonType"])} />
         </div>
 
         <div>
@@ -296,52 +295,6 @@ export default function LessonForm({ initial = {}, onSubmit, autoSave, onCancel,
           </div>
         </div>
 
-        <div>
-          <label htmlFor="lessonform-sources-used-by-ai" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Sources {hasAiKey && <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span>}</label>
-          <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>
-            One URL per line. These are passed to the AI as reference material when generating lesson content.
-            {form.sources
-              ? isEditing
-                ? " These are the sources saved with this lesson — edit as needed."
-                : " The URLs below are pre-filled from this course's sources — add, remove, or edit as needed for this lesson."
-              : " No sources set — add URLs or set default sources in this course's settings."}
-          </p>
-          <textarea id="lessonform-sources-used-by-ai"
-            value={form.sources}
-            onChange={(e) => set("sources", e.target.value)}
-            rows={4}
-            placeholder={"https://www.khanacademy.org/\nhttps://www.britannica.com/"}
-            className={`${inputClass} font-mono`}
-            style={inputStyle}
-          />
-        </div>
-
-        {hasAiKey && (
-          <div>
-            <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Student Level <span className="font-normal text-[10px]" style={{ color: "var(--accent-text)" }}>· used by AI</span></label>
-            <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>
-              Adjusts the tone and complexity of AI-generated content to match your students&apos; experience.
-            </p>
-            <div className="flex gap-3">
-              {(["beginner", "intermediate", "advanced"] as const).map((level) => (
-                <label key={level} className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="studentLevel"
-                    value={level}
-                    checked={(form.studentLevel ?? "beginner") === level}
-                    onChange={() => set("studentLevel", level)}
-                    className="accent-[#0cc0df]"
-                  />
-                  <span className="text-xs capitalize" style={{ color: "var(--text-primary)" }}>{level}</span>
-                </label>
-              ))}
-            </div>
-            <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
-              {STUDENT_LEVEL_UI_HINTS[form.studentLevel ?? "beginner"]}
-            </p>
-          </div>
-        )}
       </div>
 
       {/* ── AI Fill ──────────────────────────────────────────────────── */}

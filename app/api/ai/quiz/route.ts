@@ -8,6 +8,7 @@ import { courseStore } from "@/lib/courseStore";
 import { canAccessCourse } from "@/lib/access";
 import { generateQuizQuestions } from "@/lib/ai";
 import { resolveSections } from "@/lib/sections";
+import { courseAiInputs } from "@/lib/courseAiInputs";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -35,7 +36,9 @@ export async function POST(req: Request) {
     const sa = Math.min(50, Math.max(0, saCount ?? 2));
     if (mc + sa === 0)
       return NextResponse.json({ error: "Please set at least 1 question." }, { status: 400 });
-    const questions = await generateQuizQuestions(settings.anthropicKey, lesson as Partial<LessonInput>, { industry, subject, sections }, mc, sa);
+    // Student Level comes from Course Settings only, never from the lessons.
+    const { studentLevel } = courseAiInputs(course);
+    const questions = await generateQuizQuestions(settings.anthropicKey, { ...lesson, studentLevel } as Partial<LessonInput>, { industry, subject, sections }, mc, sa);
 
     if (questions.length === 0)
       return NextResponse.json({ error: "AI failed to generate questions. Try adding more topic detail." }, { status: 500 });

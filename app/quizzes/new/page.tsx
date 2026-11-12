@@ -214,7 +214,6 @@ function NewQuizPageInner() {
       slideContent: targetLessons.map(l => l.slideNotes || l.slideContent).filter(Boolean).join("\n\n"),
       guidedLab: targetLessons.map(l => getSectionContent(l, "guidedLab")).filter(Boolean).join("\n\n"),
       industryBestPractices: targetLessons.map(l => getSectionContent(l, "industryBestPractices")).filter(Boolean).join("\n\n"),
-      studentLevel: targetLessons[0]?.studentLevel,
     };
   }
 

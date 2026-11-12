@@ -1,7 +1,7 @@
 /**
  * Single source of truth for the "Student Level" concept used across every AI generation
  * flow (lib/ai.ts's fillLesson/generateQuizQuestions, lib/ingestionService.ts's
- * ingestRawContent) and everywhere it's shown in the UI (LessonForm, Notes to Slides page).
+ * ingestRawContent) and everywhere it's shown in the UI (Course Settings, the only place it's set).
  *
  * Deliberately subject-neutral — this app generates curriculum for any subject, not just
  * programming, so nothing here assumes a coding context.
