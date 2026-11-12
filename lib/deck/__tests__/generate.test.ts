@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type Anthropic from "@anthropic-ai/sdk";
 import { DeckSchema } from "@/lib/deck/schema";
 import { SAMPLE_DECK } from "@/lib/deck/sample";
-import { DeckGenerationError, buildUserMessage, describeIssues, generateDeck } from "@/lib/deck/generate";
+import { DeckGenerationError, buildUserMessage, deckSystemPrompt, describeIssues, extractJson, generateDeck } from "@/lib/deck/generate";
 import { toStructuredOutputSchema } from "@/lib/deck/wireSchema";
 
 function walk(node: unknown, visit: (n: Record<string, unknown>) => void) {
@@ -59,9 +59,12 @@ describe("generateDeck", () => {
     expect(r.attempts).toBe(1);
     expect(r.deck.slides).toHaveLength(SAMPLE_DECK.slides.length);
     expect(r.model).toBe("claude-sonnet-5-5");
-    const params = calls[0] as unknown as { output_config: { effort: string; format: { type: string } }; max_tokens: number };
-    expect(params.output_config.format.type).toBe("json_schema");
+    const params = calls[0] as unknown as { output_config: { effort: string; format?: unknown }; system: string };
+    // No structured-output grammar: the API rejects the deck schema's grammar as too large.
+    expect(params.output_config.format).toBeUndefined();
     expect(params.output_config.effort).toBe("high");
+    expect(params.system).toBe(deckSystemPrompt());
+    expect(params.system).toContain('"const":"exit-ticket"');
   });
 
   it("asks once for a fix when a limit is broken, naming the slide", async () => {
@@ -75,6 +78,13 @@ describe("generateDeck", () => {
     const repair = calls[1].messages.at(-1)!.content as string;
     expect(repair).toContain(`slide "${concept.id}" (concept), bullets.0`);
     expect(calls[1].messages).toHaveLength(3);
+  });
+
+  it("reads JSON wrapped in a code fence", async () => {
+    const { client } = fakeClient([text("```json\n" + JSON.stringify(SAMPLE_DECK) + "\n```")]);
+    const r = await generateDeck("k", { notes: "n" }, client);
+    expect(r.attempts).toBe(1);
+    expect(extractJson("no json")).toBe("no json");
   });
 
   it("gives up after one repair", async () => {

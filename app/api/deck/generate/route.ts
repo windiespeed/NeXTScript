@@ -72,7 +72,7 @@ export async function POST(req: Request) {
         lessonTitle: input.lessonTitle ?? lesson?.title,
         audience: input.audience,
         context: context || undefined,
-        // Claude only (structured outputs): the saved preference if it's a Claude model, else the default.
+        // Claude only (the deck prompt and limits are tuned for Claude): the saved preference if it's a Claude model, else the default.
         model: resolveAiModel(settings.preferredAiModel, { anthropic: true, gemini: false }, ["anthropic"]) as ClaudeModelId,
       });
     } catch (err) {
