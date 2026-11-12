@@ -92,6 +92,8 @@ export interface SlideLayout {
   background: ColorToken;
   /** True for dark slide types; adapters may swap the palette. */
   dark: boolean;
+  /** True for the deck's title slide, which may sit on a template's own title-slide art. */
+  cover?: boolean;
   /** Paint order: first element is drawn first (bottom). */
   elements: LayoutElement[];
   warnings: OverflowWarning[];

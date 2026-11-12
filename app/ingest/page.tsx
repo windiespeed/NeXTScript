@@ -1175,11 +1175,11 @@ function IngestPageInner() {
                     {cover && (
                       <div className="space-y-1">
                         <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>Cover</p>
-                        <SlideCanvas layout={layoutSlide(cover)} theme={previewTheme} showWarnings={false} label="Cover slide" className="rounded-xl" />
+                        <SlideCanvas layout={layoutSlide(cover, previewTheme.titleTextRight ? { title: { textRight: previewTheme.titleTextRight } } : {})} theme={previewTheme} showWarnings={false} label="Cover slide" className="rounded-xl" />
                       </div>
                     )}
                     {parts.map(s => (
-                      <SlideCanvas key={s.id} layout={layoutSlide(s)} theme={previewTheme} showWarnings={false} label={`Slide ${activeIndex + 1}: ${slide?.title ?? ""}`} className="rounded-xl" />
+                      <SlideCanvas key={s.id} layout={layoutSlide(s, previewTheme.titleTextRight ? { title: { textRight: previewTheme.titleTextRight } } : {})} theme={previewTheme} showWarnings={false} label={`Slide ${activeIndex + 1}: ${slide?.title ?? ""}`} className="rounded-xl" />
                     ))}
                     {slide?.notes?.trim() && (
                       <div className="rounded-xl px-4 py-3 text-xs space-y-1" style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)" }}>
@@ -1190,7 +1190,7 @@ function IngestPageInner() {
                     {templateOn && templateInfo?.theme && (
                       <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
                         Shown in {templateInfo.name ?? "the course template"}&apos;s colors, fonts{templateInfo.theme.backdropCss ? " and backgrounds" : ""}.{" "}
-                        {templateInfo.theme.backdropCss ? "Its logos are added when you export." : "Its background art and logos are added when you export."}
+                        {templateInfo.theme.backdropCss ? "Logos that come from its layouts are added when you export." : "Its background art and logos are added when you export."}
                       </p>
                     )}
                   </div>

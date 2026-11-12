@@ -38,7 +38,7 @@ export default function SlideCanvas({ layout, theme, showWarnings = true, label,
   const palette = resolvePalette(theme, layout.dark);
   const backdrop = backdropFor(theme.backdrop, layout.dark);
   // A course template's own gradients (as CSS) win over the built-in backdrop images.
-  const templateArt = layout.dark ? theme.backdropCss?.dark : theme.backdropCss?.content;
+  const templateArt = layout.cover && theme.backdropCss?.title ? theme.backdropCss.title : layout.dark ? theme.backdropCss?.dark : theme.backdropCss?.content;
   const flagged = new Map<string, WarningSeverity>();
   if (showWarnings) {
     for (const w of layout.warnings) {
@@ -78,12 +78,23 @@ export default function SlideCanvas({ layout, theme, showWarnings = true, label,
         containerType: "inline-size",
         // Longhand properties only: mixing the "background" shorthand with backgroundSize makes
         // React drop the image on re-render (and warn), so the backdrop vanished from the preview.
-        backgroundColor: palette[layout.background],
+        backgroundColor: templateArt?.color ?? palette[layout.background],
         backgroundImage: templateArt ? templateArt.image : backdrop ? `url(data:image/jpeg;base64,${backdrop})` : undefined,
         backgroundSize: "cover",
         backgroundPosition: "center",
       }}
     >
+      {/* The template's own pictures (logos, a cover seal), under the slide's text. */}
+      {templateArt?.art?.map((a, i) => (
+        // eslint-disable-next-line @next/next/no-img-element -- a data: URL, nothing to optimize
+        <img
+          key={i}
+          src={a.src}
+          alt=""
+          aria-hidden
+          style={{ position: "absolute", left: `${a.x * 100}%`, top: `${a.y * 100}%`, width: `${a.w * 100}%`, height: `${a.h * 100}%`, objectFit: "fill" }}
+        />
+      ))}
       {layout.elements.map(el => {
         const severity = flagged.get(el.id);
         const box: CSSProperties = {

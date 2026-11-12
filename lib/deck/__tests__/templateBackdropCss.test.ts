@@ -62,8 +62,24 @@ describe("pptxBackdropCss", () => {
     zip.file("ppt/_rels/presentation.xml.rels", `<Relationships><Relationship Id="rId8" Target="slides/slide1.xml"/><Relationship Id="rId9" Target="slides/slide2.xml"/></Relationships>`);
     zip.file("ppt/slides/slide1.xml", slide("", shape(radial(`<a:fillToRect l="0%" t="0%" r="100%" b="100%"/>`))));
     zip.file("ppt/slides/slide2.xml", slide("", shape(radial(`<a:fillToRect l="100%" t="100%" r="0%" b="0%"/>`))));
-    const found = await pptxBackdropCss(await zip.generateAsync({ type: "uint8array" }), [0, 1]);
-    expect(found.get(0)?.image).toMatch(/at 100% 100%/); // slide2.xml comes first
-    expect(found.get(1)?.image).toMatch(/at 0% 0%/);
+    const found = await pptxBackdropCss(await zip.generateAsync({ type: "uint8array" }), [{ index: 0 }, { index: 1 }]);
+    expect(found[0]?.image).toMatch(/at 100% 100%/); // slide2.xml comes first
+    expect(found[1]?.image).toMatch(/at 0% 0%/);
+  });
+});
+
+describe("pptxBackdropCss pictures", () => {
+  it("returns only the pictures the backdrop keeps, as data URLs", async () => {
+    const pic = (rid: string, x: number) =>
+      `<p:pic><p:nvPicPr><p:cNvPr id="3" name="p"/></p:nvPicPr><p:blipFill><a:blip r:embed="${rid}"/></p:blipFill><p:spPr><a:xfrm><a:off x="${x}" y="0"/><a:ext cx="${W / 4}" cy="${H / 4}"/></a:xfrm></p:spPr></p:pic>`;
+    const zip = new JSZip();
+    zip.file("ppt/presentation.xml", `<p:presentation><p:sldIdLst><p:sldId id="256" r:id="rId1"/></p:sldIdLst><p:sldSz cx="${W}" cy="${H}"/></p:presentation>`);
+    zip.file("ppt/_rels/presentation.xml.rels", `<Relationships><Relationship Id="rId1" Target="slides/slide1.xml"/></Relationships>`);
+    zip.file("ppt/slides/slide1.xml", slide("", shape(radial(`<a:fillToRect l="0%" t="0%" r="100%" b="100%"/>`)), pic("rIdA", W / 2), pic("rIdB", 0)));
+    zip.file("ppt/slides/_rels/slide1.xml.rels", `<Relationships><Relationship Id="rIdA" Target="../media/seal.png"/><Relationship Id="rIdB" Target="../media/photo.png"/></Relationships>`);
+    zip.file("ppt/media/seal.png", "seal");
+    zip.file("ppt/media/photo.png", "photo");
+    const [css] = await pptxBackdropCss(await zip.generateAsync({ type: "uint8array" }), [{ index: 0, art: [{ x: 0.5, y: 0, w: 0.25, h: 0.25 }] }]);
+    expect(css?.art).toEqual([{ src: `data:image/png;base64,${Buffer.from("seal").toString("base64")}`, x: 0.5, y: 0, w: 0.25, h: 0.25 }]);
   });
 });

@@ -16,7 +16,30 @@ import JSZip from "jszip";
 export interface BackdropCss {
   image: string;
   color?: string;
+  /** Pictures the backdrop keeps (logos, a cover's seal), positioned as shares of the slide. */
+  art?: BackdropArt[];
 }
+
+export interface BackdropArt {
+  /** data: URL of the picture. */
+  src: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/** Where a picture should be, as shares of the slide (from templateStyle's ArtBox). */
+export interface ArtTarget {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/** Pictures larger than this aren't sent to the browser; the export still has them. */
+const MAX_ART_BYTES = 1_500_000;
+const MIME: Record<string, string> = { png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif", svg: "image/svg+xml", webp: "image/webp" };
 
 const attr = (xml: string, name: string) => new RegExp(`\\b${name}="([^"]*)"`).exec(xml)?.[1];
 
@@ -107,11 +130,31 @@ export function slideBackdropCss(slideXml: string, slideW: number, slideH: numbe
   return { image: layers.join(", "), color: solid ? cssColor(solid) : undefined };
 }
 
+/** Top-level pictures of a slide with their box (EMU) and image relationship id. */
+function topLevelPictures(slideXml: string): { x: number; y: number; w: number; h: number; rid: string }[] {
+  const tree = /<p:spTree>([\s\S]*)<\/p:spTree>/.exec(slideXml)?.[1] ?? "";
+  const out: { x: number; y: number; w: number; h: number; rid: string }[] = [];
+  for (const m of tree.matchAll(/<p:(sp|grpSp|pic|graphicFrame|cxnSp)\b[\s\S]*?<\/p:\1>/g)) {
+    if (m[1] !== "pic") continue;
+    const off = /<a:off x="(-?\d+)" y="(-?\d+)"\/>/.exec(m[0]);
+    const ext = /<a:ext cx="(\d+)" cy="(\d+)"\/>/.exec(m[0]);
+    const rid = /<a:blip\b[^>]*r:embed="([^"]+)"/.exec(m[0])?.[1];
+    if (off && ext && rid) out.push({ x: +off[1], y: +off[2], w: +ext[1], h: +ext[2], rid });
+  }
+  return out;
+}
+
+/** One backdrop to read: a slide (0-based, in presentation order) and the pictures it keeps. */
+export interface BackdropRequest {
+  index: number;
+  art?: ArtTarget[];
+}
+
 /**
- * Backdrop CSS for the given slides of a .pptx (0-based, in presentation order). Slides with no
- * readable background art are left out.
+ * Backdrop CSS for each request, in order (undefined where a slide has no readable background
+ * art). Pictures are matched to `art` by position, so only the ones the export keeps are drawn.
  */
-export async function pptxBackdropCss(pptx: ArrayBuffer | Uint8Array, slideIndexes: number[]): Promise<Map<number, BackdropCss>> {
+export async function pptxBackdropCss(pptx: ArrayBuffer | Uint8Array, requests: BackdropRequest[]): Promise<(BackdropCss | undefined)[]> {
   const zip = await JSZip.loadAsync(pptx);
   const pres = (await zip.file("ppt/presentation.xml")?.async("string")) ?? "";
   const rels = (await zip.file("ppt/_rels/presentation.xml.rels")?.async("string")) ?? "";
@@ -121,14 +164,42 @@ export async function pptxBackdropCss(pptx: ArrayBuffer | Uint8Array, slideIndex
   const targets = new Map([...rels.matchAll(/<Relationship\b[^>]*>/g)].map(m => [attr(m[0], "Id"), attr(m[0], "Target")]));
   const order = [...pres.matchAll(/<p:sldId\b[^>]*>/g)].map(m => targets.get(attr(m[0], "r:id")));
 
-  const out = new Map<number, BackdropCss>();
+  const out: (BackdropCss | undefined)[] = requests.map(() => undefined);
   if (!slideW || !slideH) return out;
-  for (const i of new Set(slideIndexes)) {
-    const target = order[i];
+  for (const [i, req] of requests.entries()) {
+    const target = order[req.index];
     if (!target) continue;
-    const xml = await zip.file(`ppt/${target.replace(/^\/?(ppt\/)?/, "")}`)?.async("string");
-    const css = xml ? slideBackdropCss(xml, slideW, slideH) : undefined;
-    if (css) out.set(i, css);
+    const path = `ppt/${target.replace(/^\/?(ppt\/)?/, "")}`;
+    const xml = await zip.file(path)?.async("string");
+    if (!xml) continue;
+    const css = slideBackdropCss(xml, slideW, slideH);
+    const art = req.art?.length ? await pictures(zip, path, xml, slideW, slideH, req.art) : [];
+    if (css || art.length) out[i] = { image: css?.image ?? "none", ...(css?.color ? { color: css.color } : {}), ...(art.length ? { art } : {}) };
+  }
+  return out;
+}
+
+async function pictures(zip: JSZip, slidePath: string, xml: string, slideW: number, slideH: number, wanted: ArtTarget[]): Promise<BackdropArt[]> {
+  const dir = slidePath.slice(0, slidePath.lastIndexOf("/"));
+  const relsXml = (await zip.file(`${dir}/_rels/${slidePath.slice(dir.length + 1)}.rels`)?.async("string")) ?? "";
+  const media = new Map([...relsXml.matchAll(/<Relationship\b[^>]*>/g)].map(m => [attr(m[0], "Id"), attr(m[0], "Target")]));
+  const near = (a: number, b: number) => Math.abs(a - b) < 0.015;
+  const out: BackdropArt[] = [];
+  for (const p of topLevelPictures(xml)) {
+    const box = { x: p.x / slideW, y: p.y / slideH, w: p.w / slideW, h: p.h / slideH };
+    if (!wanted.some(t => near(t.x, box.x) && near(t.y, box.y) && near(t.w, box.w) && near(t.h, box.h))) continue;
+    const rel = media.get(p.rid);
+    if (!rel) continue;
+    // Targets are relative to the slide's folder, e.g. "../media/image2.png".
+    const parts = `${dir}/${rel}`.split("/");
+    const resolved: string[] = [];
+    for (const part of parts) part === ".." ? resolved.pop() : resolved.push(part);
+    const file = zip.file(resolved.join("/"));
+    const mime = MIME[(resolved.at(-1) ?? "").split(".").pop()?.toLowerCase() ?? ""];
+    if (!file || !mime) continue;
+    const bytes = await file.async("base64");
+    if (bytes.length * 0.75 > MAX_ART_BYTES) continue;
+    out.push({ src: `data:${mime};base64,${bytes}`, ...box });
   }
   return out;
 }

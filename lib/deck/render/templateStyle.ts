@@ -28,6 +28,7 @@
 
 import type { slides_v1 } from "googleapis";
 import type { ColorToken } from "../layout/types";
+import { CANVAS_W } from "../layout/types";
 import type { ThemeConfig } from "@/types/theme";
 
 type Page = slides_v1.Schema$Page;
@@ -50,6 +51,21 @@ export interface Backdrop {
   keep: string[];
   /** Every other top-level element, deleted from the copy. */
   drop: string[];
+  /**
+   * Where the kept pieces that don't fill the slide (logos, a cover's seal) sit, as shares of the
+   * page (0–1). New text is kept clear of the large ones, and the preview draws them.
+   */
+  art?: ArtBox[];
+}
+
+/** A kept picture or shape's box as shares of the page width and height. */
+export interface ArtBox {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  /** True for a picture. */
+  image: boolean;
 }
 
 /** How a template draws a repeated small text line (a label or footer). */
@@ -83,6 +99,11 @@ export interface LearnedStyle {
   cover: LearnedPalette;
   contentBackdrop?: Backdrop;
   coverBackdrop?: Backdrop;
+  /**
+   * The first slide's backdrop with its own pictures too (a seal or emblem on the title slide),
+   * used for the deck's title slide only. Absent when the first slide has no extra pictures.
+   */
+  titleBackdrop?: Backdrop;
   headingFont?: string;
   bodyFont?: string;
 }
@@ -420,17 +441,44 @@ export function chromeKeys(slides: Page[], pageW: number, pageH: number): Set<st
   return new Set([...counts].filter(([, n]) => n >= min).map(([k]) => k));
 }
 
-/** A slide's background pieces (full-slide gradients, art) and chrome (logos), if it has any. */
-export function backdropOf(slide: Page, pageArea: number, chrome: Set<string> = new Set()): Backdrop | undefined {
+/**
+ * A slide's background pieces (full-slide gradients, art) and chrome (logos), if it has any. With
+ * `allImages`, every picture without text is kept too (a title slide's seal or emblem).
+ */
+export function backdropOf(
+  slide: Page,
+  pageArea: number,
+  chrome: Set<string> = new Set(),
+  page?: { w: number; h: number; allImages?: boolean },
+): Backdrop | undefined {
   if (!slide.objectId || !pageArea) return undefined;
   const keep: string[] = [];
   const drop: string[] = [];
+  const art: ArtBox[] = [];
   for (const el of slide.pageElements ?? []) {
     if (!el.objectId) continue;
-    const kept = isVisual(el) && (extent(el) >= pageArea * 0.85 || chrome.has(placeKey(el)));
+    const full = extent(el) >= pageArea * 0.85;
+    const kept = isVisual(el) && (full || chrome.has(placeKey(el)) || (!!page?.allImages && !!el.image));
     (kept ? keep : drop).push(el.objectId);
+    if (kept && !full && page?.w && page.h) {
+      const w = (el.size?.width?.magnitude ?? 0) * Math.abs(el.transform?.scaleX ?? 1);
+      const h = (el.size?.height?.magnitude ?? 0) * Math.abs(el.transform?.scaleY ?? 1);
+      art.push({ x: (el.transform?.translateX ?? 0) / page.w, y: (el.transform?.translateY ?? 0) / page.h, w: w / page.w, h: h / page.h, image: !!el.image });
+    }
   }
-  return keep.length ? { slideId: slide.objectId, keep, drop } : undefined;
+  if (!keep.length) return undefined;
+  return art.length ? { slideId: slide.objectId, keep, drop, art } : { slideId: slide.objectId, keep, drop };
+}
+
+/**
+ * Where text on a slide must end so it doesn't run into large art on the right (a cover's seal),
+ * as a share of the page width, or undefined when nothing is in the way. Small logos in the
+ * corners don't count.
+ */
+export function textRightOf(art: ArtBox[] | undefined): number | undefined {
+  const blocking = (art ?? []).filter(a => a.x > 0.35 && a.w * a.h > 0.04 && a.y < 0.75 && a.y + a.h > 0.2);
+  if (!blocking.length) return undefined;
+  return Math.min(...blocking.map(a => a.x)) - 0.03;
 }
 
 /**
@@ -469,13 +517,23 @@ export function learnTemplateStyle(pres: slides_v1.Schema$Presentation): Learned
   const contentPalette = palette(content, contentBg);
   const coverPalette = coverBg ? palette(cover, coverBg, contentPalette) : contentPalette;
   // Page size in the same unit as element sizes (EMU from presentations.get).
-  const pageArea = (pres.pageSize?.width?.magnitude ?? 0) * (pres.pageSize?.height?.magnitude ?? 0);
+  const pageW = pres.pageSize?.width?.magnitude ?? 0;
+  const pageArea = pageW * (pres.pageSize?.height?.magnitude ?? 0);
   const sameBg = (bgColor: string) => info.filter(i => i.bg === bgColor).map(i => i.slide);
   const firstWith = (bgColor: string) => {
-    const chrome = chromeKeys(sameBg(bgColor), pres.pageSize?.width?.magnitude ?? 0, pageH);
-    return info.map(i => (i.bg === bgColor ? backdropOf(i.slide, pageArea, chrome) : undefined)).find(Boolean);
+    const chrome = chromeKeys(sameBg(bgColor), pageW, pageH);
+    return info.map(i => (i.bg === bgColor ? backdropOf(i.slide, pageArea, chrome, { w: pageW, h: pageH }) : undefined)).find(Boolean);
   };
   const contentBackdrop = firstWith(contentBg);
+  const coverBackdrop = coverBg ? firstWith(coverBg) : contentBackdrop;
+  // The title slide also keeps the first slide's own pictures, when it has more than the cover style.
+  const first = info[0];
+  const titleCandidate = backdropOf(first.slide, pageArea, chromeKeys(sameBg(first.bg), pageW, pageH), { w: pageW, h: pageH, allImages: true });
+  const titleBackdrop =
+    titleCandidate && titleCandidate.keep.length > (coverBackdrop?.slideId === first.slide.objectId ? (coverBackdrop?.keep.length ?? 0) : 0) &&
+    (titleCandidate.art ?? []).some(a => a.image)
+      ? titleCandidate
+      : undefined;
 
   const contentSlides = info.filter(i => i.bg === contentBg);
   const labels = contentSlides.map(i => decorationsOf(linesOf(i.slide, i.scheme, pageH)).label).filter((r): r is Run => !!r);
@@ -488,7 +546,8 @@ export function learnTemplateStyle(pres: slides_v1.Schema$Presentation): Learned
     content: contentPalette,
     cover: coverPalette,
     contentBackdrop,
-    coverBackdrop: coverBg ? firstWith(coverBg) : contentBackdrop,
+    coverBackdrop,
+    ...(titleBackdrop ? { titleBackdrop } : {}),
     headingFont: top(new Map([...content.titleFont, ...cover.titleFont].map(([k]) => [k, (content.titleFont.get(k) ?? 0) + (cover.titleFont.get(k) ?? 0)]))),
     bodyFont: top(content.bodyFont) ?? top(cover.bodyFont),
   };
@@ -517,6 +576,7 @@ export function learnedColor(style: LearnedStyle, token: ColorToken, dark: boole
 export function themeFromLearned(style: LearnedStyle, name = "Course template"): ThemeConfig {
   const c = style.content;
   const v = style.cover;
+  const titleRight = textRightOf(style.titleBackdrop?.art);
   const stack = (font: string | undefined, fallback: string) => (font ? `"${font}", ${fallback}` : fallback);
   return {
     id: "course-template",
@@ -533,6 +593,7 @@ export function themeFromLearned(style: LearnedStyle, name = "Course template"):
     border: c.panel,
     radius: "0",
     exactColors: true,
+    ...(titleRight !== undefined ? { titleTextRight: titleRight * CANVAS_W } : {}),
     darkSlides: {
       surface: v.background,
       panel: v.panel,

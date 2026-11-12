@@ -5,7 +5,7 @@ import { serverError } from "@/lib/apiErrors";
 import { courseStore } from "@/lib/courseStore";
 import { canAccessCourse } from "@/lib/access";
 import { presentationIdFromUrl } from "@/lib/deck/render/googleSlides";
-import { learnTemplateStyle, themeFromLearned, type LearnedStyle } from "@/lib/deck/render/templateStyle";
+import { learnTemplateStyle, themeFromLearned, type Backdrop, type LearnedStyle } from "@/lib/deck/render/templateStyle";
 import { pptxBackdropCss } from "@/lib/deck/render/templateBackdropCss";
 import type { ThemeConfig } from "@/types/theme";
 
@@ -70,19 +70,23 @@ async function backdropCss(
   slideIds: string[],
   learned: LearnedStyle,
 ): Promise<ThemeConfig["backdropCss"] | undefined> {
-  const contentIndex = learned.contentBackdrop ? slideIds.indexOf(learned.contentBackdrop.slideId) : -1;
-  const coverIndex = learned.coverBackdrop ? slideIds.indexOf(learned.coverBackdrop.slideId) : -1;
-  if (contentIndex < 0 && coverIndex < 0) return undefined;
+  const index = (b?: Backdrop) => (b ? slideIds.indexOf(b.slideId) : -1);
+  const pictures = (b?: Backdrop) => (b?.art ?? []).filter(a => a.image);
+  const wanted = { content: learned.contentBackdrop, dark: learned.coverBackdrop, title: learned.titleBackdrop };
+  const keys = (Object.keys(wanted) as (keyof typeof wanted)[]).filter(k => index(wanted[k]) >= 0);
+  if (!keys.length) return undefined;
   try {
     const drive = google.drive({ version: "v3", auth: client });
     const res = await drive.files.export(
       { fileId: presentationId, mimeType: "application/vnd.openxmlformats-officedocument.presentationml.presentation" },
       { responseType: "arraybuffer" },
     );
-    const found = await pptxBackdropCss(res.data as ArrayBuffer, [contentIndex, coverIndex].filter(i => i >= 0));
-    const content = found.get(contentIndex);
-    const dark = found.get(coverIndex);
-    return content || dark ? { content, dark } : undefined;
+    const found = await pptxBackdropCss(res.data as ArrayBuffer, keys.map(k => ({ index: index(wanted[k]), art: pictures(wanted[k]) })));
+    const css: NonNullable<ThemeConfig["backdropCss"]> = {};
+    keys.forEach((k, i) => {
+      if (found[i]) css[k] = found[i];
+    });
+    return Object.keys(css).length ? css : undefined;
   } catch {
     return undefined;
   }
