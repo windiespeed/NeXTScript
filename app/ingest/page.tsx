@@ -190,6 +190,7 @@ function IngestPageInner() {
   const [exportError, setExportError] = useState<string | null>(null);
   // Shown on the fresh form after an export or a Save Draft: what was saved and where. Export
   // includes the deck's link, since the new tab it opens can be popup-blocked.
+  const [restoredDraft, setRestoredDraft] = useState(false);
   const [doneNotice, setDoneNotice] = useState<{ title: string; message: string; url?: string; lessonId?: string } | null>(null);
 
   // Keyed by whichever lesson this generation is (or will be) attached to — once ensureLesson()
@@ -199,6 +200,11 @@ function IngestPageInner() {
   // fetch) has landed — otherwise those async .then() callbacks resolve after restore and
   // silently overwrite the just-restored fields with server defaults.
   useDraftRestore<IngestDraft>(settingsLoaded && (!lessonIdParam || existingLessonId) ? draftKey : null, (draft) => {
+    // Unfinished work comes back after a refresh or navigation, but say so (with a way out) so
+    // a restored form isn't mistaken for the last deck failing to clear.
+    if (draftKey === "ingest:new" && (draft.title?.trim() || draft.rawText?.trim() || draft.selectedCourseId || draft.ast)) {
+      setRestoredDraft(true);
+    }
     setSelectedCourseId(draft.selectedCourseId);
     setSelectedModuleId(draft.selectedModuleId);
     setSelectedExistingLessonId(draft.selectedExistingLessonId);
@@ -217,6 +223,13 @@ function IngestPageInner() {
     setViewMode(draft.viewMode);
     setOutline(draft.outline ?? null);
   });
+  // Once this form is tied to a lesson, its draft lives under that lesson's key. Drop the copy
+  // left under "ingest:new", or the next visit to a blank Notes to Slides restores this deck's
+  // course, title and notes as if they were a new, unfinished one.
+  const tiedToLesson = !!(existingLessonId || lessonId);
+  useEffect(() => {
+    if (tiedToLesson) clearDraft("ingest:new");
+  }, [tiedToLesson]);
   useDraftAutosave<IngestDraft>(draftKey, {
     selectedCourseId, selectedModuleId, selectedExistingLessonId,
     title, subtitle, topics, deadline, lessonType, sources, studentLevel,
@@ -594,6 +607,7 @@ function IngestPageInner() {
     setTargetAudience("");
     setSlideCount("");
     setSaveInfoError(null);
+    setRestoredDraft(false);
     // Drop ?lessonId= so a refresh doesn't re-attach the lesson just exported.
     if (lessonIdParam) router.replace("/ingest");
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -682,6 +696,22 @@ function IngestPageInner() {
           Paste rough notes or a brain-dump and get an instantly-rendered, presentation-ready slide deck.
         </p>
       </div>
+
+      {restoredDraft && !doneNotice && (
+        <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-2xl px-4 py-3" style={{ background: "var(--accent-bg)", border: "1px solid var(--border)" }}>
+          <p className="text-sm" style={{ color: "var(--text-primary)" }}>
+            We brought back the unfinished deck you were working on in this browser.
+          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <button type="button" onClick={() => { resetForNextDeck(); setRestoredDraft(false); }} className="text-sm font-semibold hover:underline min-h-6 px-1" style={{ color: "var(--accent-text)" }}>
+              Start fresh
+            </button>
+            <button type="button" onClick={() => setRestoredDraft(false)} className="text-xs font-semibold min-h-6 px-1" style={{ color: "var(--text-muted)" }} aria-label="Keep working and dismiss message">
+              Keep working
+            </button>
+          </div>
+        </div>
+      )}
 
       {doneNotice && !ast && (
         <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-2xl px-4 py-3" style={{ background: "var(--accent-bg)", border: "1px solid var(--border)" }}>
