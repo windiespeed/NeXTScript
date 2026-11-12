@@ -6,7 +6,7 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import SlideRenderer from "@/components/slides/SlideRenderer";
 import SlideEditorPanel from "@/components/slides/SlideEditorPanel";
-import { getTheme } from "@/lib/themes";
+import { THEMES, getTheme } from "@/lib/themes";
 import { STUDENT_LEVEL_UI_HINTS, type StudentLevel } from "@/lib/studentLevel";
 import AiModelNote from "@/components/AiModelNote";
 import type { SavedKeys } from "@/lib/aiModels";
@@ -1088,6 +1088,30 @@ function IngestPageInner() {
               <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
                 For {ast.targetAudience} · {ast.slides.length} slide{ast.slides.length !== 1 ? "s" : ""}
               </p>
+              {/* The look can be changed after generating: the course template, or any built-in look. */}
+              <label htmlFor="ingest-deck-look" className="mt-2 flex items-center gap-2 text-xs" style={{ color: "var(--text-secondary)" }}>
+                Look
+                <select
+                  id="ingest-deck-look"
+                  className="rounded-lg px-2 py-1 text-xs"
+                  style={{ background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
+                  value={templateOn ? "course-template" : theme.id}
+                  onChange={e => {
+                    const v = e.target.value;
+                    if (v === "course-template") {
+                      setUseCourseTemplate(true);
+                    } else {
+                      setUseCourseTemplate(false);
+                      setAst({ ...ast, themeId: v });
+                    }
+                  }}
+                >
+                  {courseTemplateUrl && <option value="course-template">Course template{templateInfo?.name ? `: ${templateInfo.name}` : ""}</option>}
+                  {THEMES.map(t => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+              </label>
             </div>
             <div className="flex items-center gap-2 flex-wrap justify-end">
               <button

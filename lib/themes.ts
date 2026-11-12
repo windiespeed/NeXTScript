@@ -2,6 +2,25 @@ import type { ThemeConfig } from "@/types/theme";
 
 export const THEMES: ThemeConfig[] = [
   {
+    // The program's own look, from the NeXTStack course decks: navy content slides, brown title and
+    // section slides, warm orange accents, Calibri. The default when a course has no Slides template.
+    id: "nextstack",
+    name: "NeXTStack",
+    category: "dark",
+    background: { page: "#4D3522", card: "#262E3E", cardAlt: "#1D2026" },
+    typography: { headingFont: "Calibri, Carlito, 'Segoe UI', Arial, sans-serif", bodyFont: "Calibri, Carlito, 'Segoe UI', Arial, sans-serif", headingWeight: 700 },
+    text: { primary: "#E8EAED", secondary: "#E8EAED", muted: "#A4A8B0" },
+    accent: { primary: "#F2A365", secondary: "#F2777A", tertiary: "#6EA8FE" },
+    border: "#2C3038",
+    radius: "0.25rem",
+    darkSlides: {
+      surface: "#4D3522",
+      panel: "#3A2819",
+      text: { primary: "#E8EAED", secondary: "#E8EAED", muted: "#B2ABA6" },
+      accent: { primary: "#F2A365", secondary: "#F2777A", tertiary: "#6EA8FE" },
+    },
+  },
+  {
     id: "pearl",
     name: "Pearl",
     category: "light",
@@ -47,7 +66,7 @@ export const THEMES: ThemeConfig[] = [
   },
 ];
 
-export const DEFAULT_THEME_ID = "pearl";
+export const DEFAULT_THEME_ID = "nextstack";
 
 export function getTheme(id: string | undefined): ThemeConfig {
   return THEMES.find(t => t.id === id) ?? THEMES.find(t => t.id === DEFAULT_THEME_ID)!;

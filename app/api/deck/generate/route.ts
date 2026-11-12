@@ -11,6 +11,7 @@ import { loadCourseSkeleton } from "@/lib/courseSkeleton";
 import { DeckGenerationError, generateDeck } from "@/lib/deck/generate";
 import { resolveAiModel, type ClaudeModelId } from "@/lib/aiModels";
 import type { Lesson } from "@/types/lesson";
+import { DEFAULT_THEME_ID } from "@/lib/themes";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -86,7 +87,7 @@ export async function POST(req: Request) {
       await store.update(lesson.id, {
         deck: {
           content: result.deck,
-          themeId: input.themeId ?? lesson.deck?.themeId ?? skeleton?.themeId ?? "pearl",
+          themeId: input.themeId ?? lesson.deck?.themeId ?? skeleton?.themeId ?? DEFAULT_THEME_ID,
           status: "draft",
           updatedAt: new Date().toISOString(),
           renders: lesson.deck?.renders ?? [],
