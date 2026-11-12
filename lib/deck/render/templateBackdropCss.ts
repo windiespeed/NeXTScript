@@ -193,7 +193,10 @@ async function pictures(zip: JSZip, slidePath: string, xml: string, slideW: numb
     // Targets are relative to the slide's folder, e.g. "../media/image2.png".
     const parts = `${dir}/${rel}`.split("/");
     const resolved: string[] = [];
-    for (const part of parts) part === ".." ? resolved.pop() : resolved.push(part);
+    for (const part of parts) {
+      if (part === "..") resolved.pop();
+      else resolved.push(part);
+    }
     const file = zip.file(resolved.join("/"));
     const mime = MIME[(resolved.at(-1) ?? "").split(".").pop()?.toLowerCase() ?? ""];
     if (!file || !mime) continue;
