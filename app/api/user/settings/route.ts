@@ -21,7 +21,6 @@ export async function GET() {
       preferredAiModel: s.preferredAiModel ?? "auto",
       maskedGeminiKey: s.geminiKey ? `${s.geminiKey.slice(0, 12)}…${s.geminiKey.slice(-4)}` : null,
       avatarUrl: s.avatarUrl ?? null,
-      defaultSources: s.defaultSources ?? "",
       folders: s.folders ?? [],
       lessonOrder: s.lessonOrder ?? [],
       industry: s.industry ?? "",
@@ -46,7 +45,6 @@ export async function PUT(req: Request) {
     const update: Partial<UserSettings> = {};
     if (body.anthropicKey !== undefined) update.anthropicKey = body.anthropicKey;
     if (body.geminiKey !== undefined) update.geminiKey = body.geminiKey;
-    if (body.defaultSources !== undefined) update.defaultSources = body.defaultSources ?? "";
     if (body.folders !== undefined) update.folders = body.folders ?? [];
     if (body.lessonOrder !== undefined) update.lessonOrder = body.lessonOrder ?? [];
     if (body.industry !== undefined) update.industry = body.industry ?? "";

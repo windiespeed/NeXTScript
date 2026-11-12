@@ -47,8 +47,6 @@ export default function ProfilePage() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [removingAvatar, setRemovingAvatar] = useState(false);
 
-  const [defaultSources, setDefaultSources] = useState("");
-  const [savingSources, setSavingSources] = useState(false);
 
   const [industry, setIndustry] = useState("");
   const [subject, setSubject] = useState("");
@@ -73,16 +71,10 @@ export default function ProfilePage() {
   const [error, setError] = useState("");
   const [dataLoaded, setDataLoaded] = useState(false);
 
-  // Two independent forms, two independent drafts — sharing one key would mean saving
-  // either form wipes the other's still-unsaved edits. keyInput (the raw pasted API key)
+  // Only the curriculum form keeps a draft. keyInput (the raw pasted API key)
   // and the avatar File are deliberately never persisted: a secret credential and a
   // non-serializable Blob don't belong in localStorage.
-  const sourcesDraftKey = "profile:sources";
   const curriculumDraftKey = "profile:curriculum";
-  useDraftRestore<{ defaultSources: string }>(dataLoaded ? sourcesDraftKey : null, (draft) => {
-    setDefaultSources(draft.defaultSources);
-  });
-  useDraftAutosave(sourcesDraftKey, { defaultSources }, dataLoaded);
   useDraftRestore<{ industry: string; subject: string; sections: SectionDef[] }>(dataLoaded ? curriculumDraftKey : null, (draft) => {
     setIndustry(draft.industry);
     setSubject(draft.subject);
@@ -100,7 +92,6 @@ export default function ProfilePage() {
         setMaskedGeminiKey(data.maskedGeminiKey);
         setPreferredAiModel(data.preferredAiModel ?? "auto");
         setAvatarUrl(data.avatarUrl ?? null);
-        setDefaultSources(data.defaultSources ?? "");
         setIndustry(data.industry ?? "");
         setSubject(data.subject ?? "");
         setSections(resolveSections({ userSettings: { sectionLabels: data.sectionLabels, sections: data.sections } }));
@@ -147,20 +138,6 @@ export default function ProfilePage() {
     setAvatarUrl(null);
     window.dispatchEvent(new CustomEvent(AVATAR_CHANGED_EVENT, { detail: null }));
     flash("Profile photo removed.");
-  }
-
-  async function handleSaveSources(e: React.FormEvent) {
-    e.preventDefault();
-    setSavingSources(true);
-    flash("");
-    const res = await fetch("/api/user/settings", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ defaultSources }),
-    });
-    setSavingSources(false);
-    if (res.ok) { clearDraft(sourcesDraftKey); flash("Default sources saved."); }
-    else { const d = await res.json(); flash(d.error || "Failed to save.", true); }
   }
 
   async function handleSaveCurriculum(e: React.FormEvent) {
@@ -352,33 +329,6 @@ export default function ProfilePage() {
             {dark ? "☀ Light mode" : "☾ Dark mode"}
           </button>
         </div>
-      </div>
-
-      {/* Default sources */}
-      <div className="rounded-3xl p-6 space-y-4" style={cardSty}>
-        <div>
-          <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>Default Sources</h2>
-          <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
-            These URLs are pre-filled in the Sources field on every new lesson. Add one URL per line.
-          </p>
-        </div>
-        <form onSubmit={handleSaveSources} className="space-y-3">
-          <textarea aria-label="Default sources"
-            value={defaultSources}
-            onChange={(e) => setDefaultSources(e.target.value)}
-            rows={5}
-            placeholder={"https://www.w3schools.com/\nhttps://developer.mozilla.org/\nhttps://www.w3.org/"}
-            className={`${inputCls} font-mono`}
-            style={inputSty}
-          />
-          <button
-            type="submit"
-            disabled={savingSources}
-            className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-[#0a0b13] shadow hover:opacity-90 disabled:opacity-50 transition"
-          >
-            {savingSources ? "Saving…" : "Save Sources"}
-          </button>
-        </form>
       </div>
 
       {/* Curriculum settings */}

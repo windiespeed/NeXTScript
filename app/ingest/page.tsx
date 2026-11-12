@@ -120,7 +120,6 @@ function IngestPageInner() {
   const [lessonType, setLessonType] = useState<LessonType>("lesson");
   const [sources, setSources] = useState("");
   const [studentLevel, setStudentLevel] = useState<StudentLevel>("beginner");
-  const [userDefaultSources, setUserDefaultSources] = useState("");
   const [userSectionSettings, setUserSectionSettings] = useState<{ sectionLabels?: Record<string, string>; sections?: SectionDef[] }>({});
 
   // The Skeleton: every active section (course-level, falling back to user/global defaults) is a
@@ -227,8 +226,6 @@ function IngestPageInner() {
       setHasAiKey(!!(settings.hasKey || settings.hasGeminiKey));
       setSavedKeys({ anthropic: !!settings.hasKey, gemini: !!settings.hasGeminiKey });
       setPreferredAiModel(settings.preferredAiModel ?? "auto");
-      setUserDefaultSources(settings.defaultSources ?? "");
-      setSources(settings.defaultSources ?? "");
       setUserSectionSettings({ sectionLabels: settings.sectionLabels, sections: settings.sections });
       setCourses(Array.isArray(coursesData) ? coursesData : []);
     }).catch(() => {}).finally(() => setSettingsLoaded(true));
@@ -239,8 +236,8 @@ function IngestPageInner() {
     const course = courses.find(c => c.id === selectedCourseId);
     setModules(Array.isArray(course?.modules) ? course!.modules : []);
     setSelectedModuleId("");
-    setSources(course?.settings?.defaultSources || userDefaultSources);
-  }, [selectedCourseId, courses, userDefaultSources]);
+    setSources(course?.settings?.defaultSources ?? "");
+  }, [selectedCourseId, courses]);
 
   // Deep-link: ?lessonId= arrives from an existing lesson's own hub page — pre-fill
   // everything from that lesson and lock the attachment so it can't be picked away by accident.
@@ -551,7 +548,7 @@ function IngestPageInner() {
     setLockedFromQuery(false);
     setSeedStatus("");
     handleClearLessonInfo();
-    setSources(userDefaultSources);
+    setSources("");
     setRawText("");
     setTargetAudience("");
     setSlideCount("");

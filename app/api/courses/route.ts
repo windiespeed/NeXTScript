@@ -4,6 +4,7 @@ import { courseStore } from "@/lib/courseStore";
 import type { CourseInput } from "@/types/course";
 import { courseCreateSchema, readBody } from "@/lib/validation";
 import { serverError } from "@/lib/apiErrors";
+import { carryOverUserSources } from "@/lib/sourcesCarryOver";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,12 @@ export async function GET(req: Request) {
     const unassigned = searchParams.get("unassigned") === "true";
 
     let courses = await courseStore.getAll(session.user.email);
+    // One-time move of the old Profile-wide AI sources into the user's own courses.
+    try {
+      courses = await carryOverUserSources(session.user.email, courses);
+    } catch (err) {
+      console.error("[courses] sources carry-over failed", err);
+    }
     if (moduleId) courses = courses.filter(c => c.moduleId === moduleId);
     else if (unassigned) courses = courses.filter(c => !c.moduleId);
 

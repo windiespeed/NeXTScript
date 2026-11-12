@@ -398,8 +398,8 @@ export default function LessonForm({ initial = {}, onSubmit, onSaveDraft, autoSa
             {form.sources
               ? isEditing
                 ? " These are the sources saved with this lesson — edit as needed."
-                : " The URLs below are pre-filled from your default sources — add, remove, or edit as needed for this lesson."
-              : " No sources set — add URLs or configure defaults in your Profile settings."}
+                : " The URLs below are pre-filled from this course's sources — add, remove, or edit as needed for this lesson."
+              : " No sources set — add URLs or set default sources in this course's settings."}
           </p>
           <textarea id="lessonform-sources-used-by-ai"
             value={form.sources}

@@ -14,6 +14,7 @@ export interface UserSettings {
   /** Profile → Advanced: "auto" or an AI model id (see lib/aiModels.ts). Absent = "auto". */
   preferredAiModel?: string;
   avatarUrl?: string;
+  /** @deprecated AI sources live in course settings now; lib/sourcesCarryOver.ts moves old values there. */
   defaultSources?: string;
   folders?: string[];
   lessonOrder?: string[];
