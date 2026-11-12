@@ -123,6 +123,9 @@ function IngestPageInner() {
   // locked slide anchor, in order. Display copy only — the server re-resolves and enforces it.
   const slideAnchors = resolveSlideAnchors(selectedCourse, userSectionSettings);
   const courseThemeId = getTheme(selectedCourse?.settings?.defaultThemeId).id;
+  // The course's Google Slides template. Export draws onto it unless the instructor unchecks it.
+  const courseTemplateUrl = selectedCourse?.settings?.defaultTemplateUrl?.trim() || "";
+  const [useCourseTemplate, setUseCourseTemplate] = useState(true);
 
   // Raw content
   const [rawText, setRawText] = useState("");
@@ -590,6 +593,7 @@ function IngestPageInner() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ast, lessonId: lessonId ?? undefined, courseId: selectedCourseId || undefined,
+          useTemplate: useCourseTemplate,
         }),
       });
       const data = await parseJsonResponse(res, "Creating the deck took too long and timed out. Try again in a moment.");
@@ -894,9 +898,33 @@ function IngestPageInner() {
                     No sections are marked as slide headings, so the AI will structure the deck from your notes alone.
                   </p>
                 )}
-                {selectedCourse && (
-                  <p className="text-[11px] pt-1" style={{ color: "var(--text-muted)" }}>Theme: {getTheme(courseThemeId).name}</p>
-                )}
+                {selectedCourse && (courseTemplateUrl ? (
+                  <label htmlFor="ingest-use-course-template" className="flex items-start gap-2 pt-1 text-xs cursor-pointer" style={{ color: "var(--text-secondary)" }}>
+                    <input
+                      id="ingest-use-course-template"
+                      type="checkbox"
+                      className="mt-0.5"
+                      checked={useCourseTemplate}
+                      onChange={e => setUseCourseTemplate(e.target.checked)}
+                    />
+                    <span>
+                      Use course template{" "}
+                      <a href={courseTemplateUrl} target="_blank" rel="noopener noreferrer" className="underline" style={{ color: "var(--accent-text)" }}>
+                        (open)
+                      </a>
+                      <span className="block text-[11px]" style={{ color: "var(--text-muted)" }}>
+                        {useCourseTemplate
+                          ? "Export copies this course's Google Slides template and matches its look."
+                          : `Export uses the built-in ${getTheme(courseThemeId).name} look instead.`}
+                      </span>
+                    </span>
+                  </label>
+                ) : (
+                  <p className="text-[11px] pt-1" style={{ color: "var(--text-muted)" }}>
+                    No Slides template on this course, so export uses the built-in {getTheme(courseThemeId).name} look.{" "}
+                    <Link href={`/courses/${selectedCourse.id}/settings`} className="underline" style={{ color: "var(--accent-text)" }}>Add one in Course Settings</Link>
+                  </p>
+                ))}
               </div>
 
               {/* Content */}

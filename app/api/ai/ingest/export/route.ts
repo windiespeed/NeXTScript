@@ -10,7 +10,9 @@ import { uploadPptxToDrive, moveFileToFolder, autoDeckName } from "@/lib/google"
 import { buildPptxFromAst } from "@/lib/pptxDeck";
 import { ensureLessonFolderId, ensureCourseFolderId } from "@/lib/lessonFolders";
 import { assertValidAst } from "@/lib/ingestionPrompt";
-import { DEFAULT_THEME_ID, THEMES } from "@/lib/themes";
+import { DEFAULT_THEME_ID, THEMES, getTheme } from "@/lib/themes";
+import { astToDeck } from "@/lib/deck/fromAst";
+import { exportDeckToGoogleSlides, presentationIdFromUrl } from "@/lib/deck/render/googleSlides";
 import type { PresentationAST } from "@/types/slideAst";
 import type { SavedProject } from "@/types/project";
 import type { Lesson } from "@/types/lesson";
@@ -69,8 +71,29 @@ export async function POST(req: Request) {
     // The deck's own theme wins (it's what the preview showed), then the course default.
     const themeId = THEMES.some(t => t.id === ast.themeId) ? ast.themeId! : skeleton?.themeId ?? DEFAULT_THEME_ID;
     const finalAst: PresentationAST = { ...ast, themeId };
-    const buffer = await buildPptxFromAst(finalAst, themeId);
-    const { id: deckId, webViewLink } = await uploadPptxToDrive(buffer, autoDeckName(lesson?.title, lesson?.subtitle), accessToken);
+    const name = autoDeckName(lesson?.title, lesson?.subtitle);
+    // With a course Slides template (and the box left checked), draw the deck onto a copy of it,
+    // learning the template's look; otherwise build the .pptx in the deck's theme as before.
+    const templateId = body.useTemplate !== false ? presentationIdFromUrl(course?.settings?.defaultTemplateUrl) : undefined;
+    let deckId: string;
+    let webViewLink: string;
+    if (templateId) {
+      try {
+        ({ id: deckId, url: webViewLink } = await exportDeckToGoogleSlides({ deck: astToDeck(finalAst), theme: getTheme(themeId), name, accessToken, templateId }));
+      } catch (err) {
+        const status = (err as { code?: number }).code;
+        if (status === 403 || status === 404) {
+          return NextResponse.json(
+            { error: "Couldn't open this course's Slides template. Check that you can open it in Google Drive, or uncheck \"Use course template\"." },
+            { status: 400 },
+          );
+        }
+        throw err;
+      }
+    } else {
+      const buffer = await buildPptxFromAst(finalAst, themeId);
+      ({ id: deckId, webViewLink } = await uploadPptxToDrive(buffer, name, accessToken));
+    }
 
     // File the deck the same place the classic lesson generator would — nested in the lesson's
     // Drive folder (itself nested in the course's folder) — instead of leaving it at Drive's root.
@@ -93,7 +116,7 @@ export async function POST(req: Request) {
 
     const projectInput: Omit<SavedProject, "id" | "createdAt" | "userId"> = {
       type: "deck",
-      title: autoDeckName(lesson?.title, lesson?.subtitle),
+      title: name,
       subtitle: ast.targetAudience,
       url,
       presentationAST: finalAst,
