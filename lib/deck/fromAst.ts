@@ -13,10 +13,17 @@ import type { DeckContent, DeckSlide } from "./schema";
 
 const clean = (items: (string | undefined)[] | undefined) => (items ?? []).map(s => s?.trim() ?? "").filter(Boolean);
 
-function chunks<T>(items: T[], size: number): T[][] {
+/**
+ * Splits a list across slides of at most `size` items (`slack` more are allowed before splitting,
+ * since list layouts shrink text to fit; grids have no room to spare), and evens the parts out so no slide is left with a lone item.
+ */
+function chunks<T>(items: T[], size: number, slack = 1): T[][] {
+  if (items.length <= size + slack) return [items];
+  const parts = Math.ceil(items.length / size);
+  const per = Math.ceil(items.length / parts);
   const out: T[][] = [];
-  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
-  return out.length ? out : [[]];
+  for (let i = 0; i < items.length; i += per) out.push(items.slice(i, i + per));
+  return out;
 }
 
 const cont = (title: string, i: number) => (i === 0 ? title : `${title} (cont.)`);
@@ -72,7 +79,7 @@ export function convertAstSlide(slide: SlideNode, id: string = slide.id): DeckSl
       }];
     case "step-grid": {
       const steps = [...slide.steps].sort((a, b) => a.stepNumber - b.stepNumber).map(s => ({ title: s.title.trim() || `Step ${s.stepNumber}`, detail: s.description.trim() || "—" }));
-      const parts = chunks(steps, LIMITS.steps.steps);
+      const parts = chunks(steps, LIMITS.steps.steps, 0);
       return parts.map((part, i) =>
         part.length >= 2
           ? { ...base, id: i ? `${id}-${i}` : id, type: "steps" as const, title: cont(title, i), steps: part }

@@ -28,10 +28,16 @@ describe("astToDeck", () => {
 
   it("maps each slide type onto a deck type, splitting long lists", () => {
     expect(deck.slides.map(s => s.type)).toEqual(["title", "concept", "concept", "compare", "code", "callout", "steps", "callout"]);
-    expect(deck.slides[1]).toMatchObject({ lead: "Why we repeat code.", bullets: ["for", "while", "do-while", "for...of", "forEach"] });
-    expect(deck.slides[2]).toMatchObject({ bullets: ["recursion", "map"] });
+    // Seven points split evenly (4 + 3), not 5 + 2.
+    expect(deck.slides[1]).toMatchObject({ lead: "Why we repeat code.", bullets: ["for", "while", "do-while", "for...of"] });
+    expect(deck.slides[2]).toMatchObject({ bullets: ["forEach", "recursion", "map"] });
     expect(deck.slides[4]).toMatchObject({ lines: ["for (let i = 1; i <= 5; i++) {", "  console.log(i);", "}"], pointOut: ["Start", "Condition", "Update"] });
     expect(deck.slides[6]).toMatchObject({ steps: [{ title: "Start" }, { title: "Check" }] });
+  });
+
+  it("keeps six points on one slide rather than leaving one alone", () => {
+    const six = astToDeck({ ...ast, slides: [{ id: "x", type: "standard", title: "Targets", paragraphs: [], bulletPoints: ["a", "b", "c", "d", "e", "f"] }] });
+    expect(six.slides).toHaveLength(2);
   });
 
   it("lays out without errors", () => {
