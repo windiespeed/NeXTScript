@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import ClassicSlidesBanner from "@/components/notesToSlides/ClassicSlidesBanner";
 import type { Lesson } from "@/types/lesson";
 import type { Course } from "@/types/course";
 import type { SavedProject } from "@/types/project";
@@ -20,7 +19,7 @@ function fmt(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
-function SlideCard({
+function LessonCard({
   lesson,
   courses,
   deckCount,
@@ -125,10 +124,10 @@ function SlideCard({
             View Lesson
           </Link>
           <Link
-            href={`/slides/${lesson.id}`}
+            href={`/ingest?lessonId=${lesson.id}`}
             className="rounded-full bg-[#0cc0df] px-3 py-1 text-xs font-semibold text-[#0a0b13] hover:opacity-90 transition"
           >
-            Edit
+            Slides
           </Link>
         </div>
       </div>
@@ -136,7 +135,7 @@ function SlideCard({
   );
 }
 
-export default function SlidesPage() {
+export default function LessonsPage() {
   useSession({ required: true });
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
@@ -244,20 +243,18 @@ export default function SlidesPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: "var(--text-muted)" }}>Content</p>
-          <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>Classic Slides</h1>
+          <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>Lessons</h1>
           <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>
-            Create and edit slide content for your lessons.
+            Every lesson, grouped by course. Build a lesson&apos;s slides in Notes to Slides.
           </p>
         </div>
         <Link
-          href="/slides/new"
+          href="/ingest"
           className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-bold text-[#0a0b13] hover:opacity-90 transition shadow"
         >
           + New Slides
         </Link>
       </div>
-
-      <ClassicSlidesBanner />
 
       {/* Filter pills */}
       {!loading && (
@@ -318,10 +315,10 @@ export default function SlidesPage() {
         <p className="text-sm text-[var(--accent-text)]">Loading…</p>
       ) : totalFiltered === 0 ? (
         <div className="text-center py-20 rounded-3xl" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
-          <p className="text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>No slides yet</p>
-          <p className="text-xs mb-5" style={{ color: "var(--text-muted)" }}>Create a slide deck to get started.</p>
+          <p className="text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>No lessons yet</p>
+          <p className="text-xs mb-5" style={{ color: "var(--text-muted)" }}>Create a slide deck in Notes to Slides to get started.</p>
           <Link
-            href="/slides/new"
+            href="/ingest"
             className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-[#0a0b13] hover:opacity-90 transition"
           >
             Create your first slides
@@ -343,7 +340,7 @@ export default function SlidesPage() {
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {sectionLessons.map(lesson => (
-                  <SlideCard
+                  <LessonCard
                     key={lesson.id}
                     lesson={lesson}
                     courses={courses}

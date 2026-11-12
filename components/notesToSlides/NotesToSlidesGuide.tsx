@@ -8,7 +8,7 @@ const STORAGE_KEY = "notes-to-slides-guide-open";
 const STEPS: { title: string; body: string }[] = [
   {
     title: "Pick the course (and lesson)",
-    body: "The course decides the deck's locked headings and theme. Attach an existing lesson to add the deck to it, or leave “Create new lesson” to make one.",
+    body: "The course decides the deck's locked headings and its Google Slides template. Attach an existing lesson to add the deck to it, or leave “Create new lesson” to make one.",
   },
   {
     title: "Check the skeleton",
@@ -16,7 +16,7 @@ const STEPS: { title: string; body: string }[] = [
   },
   {
     title: "Paste your notes",
-    body: "Outlines, bullets or a brain-dump. You don't need to match the section names; the AI sorts each point under the right heading. Lessons with classic content can use “Start from this lesson's content” to fill this in for you.",
+    body: "Outlines, bullets or a brain-dump. You don't need to match the section names; the AI sorts each point under the right heading. Lessons made in the old Classic Slides can use “Start from this lesson's content” to fill this in for you.",
   },
   {
     title: "Generate, then review",
@@ -24,15 +24,15 @@ const STEPS: { title: string; body: string }[] = [
   },
   {
     title: "Export to Drive",
-    body: "Export saves the deck into the lesson's Drive folder, lists it under the lesson's Documents, and clears the form for your next deck.",
+    body: "Export builds the deck on the course template, saves it into the lesson's Drive folder, lists it under the lesson's Documents, and clears the form for your next deck.",
   },
   {
     title: "Push to Google Classroom",
-    body: "Same as before: push the lesson from the course page. The newest deck for the lesson, classic or Notes to Slides, is the one attached.",
+    body: "Same as before: push the lesson from the course page. The lesson's newest deck is the one attached.",
   },
 ];
 
-/** Collapsible how-to for Notes to Slides, including what changes for Classic Slides users.
+/** Collapsible how-to for Notes to Slides, including where Classic Slides users' work went.
  * Open by default on a first visit; the open/closed choice is remembered per browser. */
 export default function NotesToSlidesGuide() {
   // Native <details>: keyboard and screen-reader support for free. The remembered choice is
@@ -83,15 +83,14 @@ export default function NotesToSlidesGuide() {
         </ol>
 
         <div className="rounded-2xl p-4 space-y-2" style={{ background: "var(--accent-purple-bg)" }}>
-          <p className="text-xs font-semibold" style={{ color: "var(--accent-purple)" }}>Coming from Classic Slides?</p>
+          <p className="text-xs font-semibold" style={{ color: "var(--accent-purple)" }}>Used Classic Slides before?</p>
           <ul className="text-xs space-y-1 list-disc pl-4" style={{ color: "var(--text-secondary)" }}>
-            <li>Your existing decks, lessons and Drive files are untouched, and Classic Slides still works.</li>
-            <li>To move a lesson over, open it here (or use “Notes to Slides →” on the lesson page), then click “Start from this lesson&apos;s content”. Its Slide Content and section text are loaded as notes, ready to generate.</li>
-            <li>Lesson content (overview, activities, rubric) is still edited with Edit Content on the lesson page, and still feeds the Overview Doc and quizzes.</li>
-            <li>Notes to Slides decks don&apos;t use the course Google Slides template yet. Keep using Classic for a lesson if its template matters for now.</li>
+            <li>Classic Slides has been retired. Your existing decks, lessons and Drive files are untouched, and old decks still open and push to Classroom.</li>
+            <li>To rebuild a lesson&apos;s deck, open it here (or use “Edit Slides” on the lesson page), then click “Start from this lesson&apos;s content”. Its old Slide Content and section text are loaded as notes, ready to generate.</li>
+            <li>Lesson sections (overview, activities, rubric) are still edited with Edit Content on the lesson page, and still feed the Overview Doc and quizzes.</li>
           </ul>
-          <Link href="/slides" className="inline-block text-[10px] font-semibold hover:underline" style={{ color: "var(--accent-purple)" }}>
-            Open Classic Slides →
+          <Link href="/lessons" className="inline-block text-[10px] font-semibold hover:underline" style={{ color: "var(--accent-purple)" }}>
+            See all lessons →
           </Link>
         </div>
       </div>

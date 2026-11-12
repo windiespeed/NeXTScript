@@ -10,7 +10,7 @@ function extractFolderId(url?: string): string | undefined {
 
 /**
  * Returns the course's Drive folder ID, creating and sharing one with every course member
- * (mirrors app/api/generate/[id]/route.ts's inline logic) if it doesn't have one yet.
+ * if it doesn't have one yet.
  */
 export async function ensureCourseFolderId(course: Course, accessToken: string, actingEmail: string): Promise<string> {
   if (course.driveFolderId) return course.driveFolderId;

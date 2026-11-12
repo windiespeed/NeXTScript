@@ -133,6 +133,7 @@ export async function POST(req: Request) {
     if (lesson) {
       const now = new Date().toISOString();
       await store.update(lesson.id, {
+        status: "done",
         deck: {
           content: deck,
           themeId,

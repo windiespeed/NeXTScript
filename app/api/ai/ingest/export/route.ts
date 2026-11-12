@@ -128,8 +128,9 @@ export async function POST(req: Request) {
 
     // The lesson keeps the finalized hybrid deck and its theme as its source of truth, so the
     // web view and the exported file stay in step and a later re-export starts from the same JSON.
+    // status "done" is what the dashboard and lesson lists count as generated.
     if (lessonId) {
-      await store.update(lessonId, { presentationAST: finalAst, selectedTheme: themeId, presentationStatus: "exported" });
+      await store.update(lessonId, { presentationAST: finalAst, selectedTheme: themeId, presentationStatus: "exported", status: "done" });
     }
 
     return NextResponse.json({ url, ast: finalAst });

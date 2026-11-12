@@ -120,12 +120,6 @@ export default function LessonHubPage() {
   const [assigningCourse, setAssigningCourse] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Generate state
-  const [genSlides, setGenSlides] = useState(true);
-  const [genQuiz, setGenQuiz] = useState(false);
-  const [generating, setGenerating] = useState(false);
-  const [generateError, setGenerateError] = useState("");
-
   const [hasAiKey, setHasAiKey] = useState(false);
 
   // Add resource state
@@ -207,11 +201,6 @@ export default function LessonHubPage() {
       setHasAiKey(settings.hasKey ?? false);
       setLesson(lessonData);
       setProjects(Array.isArray(projectData) ? projectData : []);
-      // Set quiz checkbox on if drafts exist for this lesson
-      const hasDraft = (Array.isArray(projectData) ? projectData : []).some(
-        (p: SavedProject) => p.type === "form" && p.status === "draft" && (p.lessonId === id || p.lessonIds?.includes(id))
-      );
-      if (hasDraft) setGenQuiz(true);
 
       if (lessonData?.courseId) {
         fetch(`/api/courses/${lessonData.courseId}`).then(r => r.json()).then(c => {
@@ -249,35 +238,6 @@ export default function LessonHubPage() {
       alert("Failed to save changes.");
     } finally {
       setSavingMeta(false);
-    }
-  }
-
-  async function handleGenerate() {
-    const files: string[] = [];
-    if (genSlides) files.push("slides");
-    if (genQuiz && quizDrafts.length > 0) files.push("quiz");
-    if (files.length === 0) { setGenerateError("Select at least one item to generate."); return; }
-
-    setGenerating(true);
-    setGenerateError("");
-    try {
-      const res = await fetch(`/api/generate/${id}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ files, destination: "drive" }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        const msg = typeof data.error === "string" ? data.error : data.message ?? "Generation failed.";
-        throw new Error(msg);
-      }
-      setLesson(prev => prev ? { ...prev, ...data } : prev);
-      // Refresh projects to pick up newly created deck/quiz
-      fetch("/api/projects").then(r => r.json()).then(d => setProjects(Array.isArray(d) ? d : []));
-    } catch (err: any) {
-      setGenerateError(typeof err.message === "string" ? err.message : "Generation failed.");
-    } finally {
-      setGenerating(false);
     }
   }
 
@@ -402,7 +362,7 @@ export default function LessonHubPage() {
   if (!lesson) return <p className="text-sm text-[var(--danger-text)] mt-10">Lesson not found.</p>;
 
   const currentModule = courseModules.find(m => m.lessonIds.includes(id));
-  const backHref = lesson.courseId ? `/courses/${lesson.courseId}` : "/slides";
+  const backHref = lesson.courseId ? `/courses/${lesson.courseId}` : "/lessons";
 
   // A lesson can now have several decks (every Generate/Export click adds a new, distinctly
   // named one instead of silently replacing the last) — already sorted newest-first by
@@ -415,8 +375,6 @@ export default function LessonHubPage() {
   const quizDrafts = quizProjects.filter(p => p.status === "draft");
   const quizGenerated = quizProjects.filter(p => p.status === "generated" || (!p.status && p.url));
   const isMultiLesson = (p: typeof projects[0]) => Array.isArray(p.lessonIds) && p.lessonIds.length > 1;
-  const multiLessonQuizDrafts = quizDrafts.filter(isMultiLesson);
-  const multiLessonQuizGenerated = quizGenerated.filter(isMultiLesson);
   const typeColors = TYPE_COLORS[lesson.lessonType ?? "lesson"];
   const overviewSources = [...quizDrafts, ...quizGenerated];
 
@@ -470,7 +428,7 @@ export default function LessonHubPage() {
       {/* Back + header */}
       <div>
         <button onClick={() => router.push(backHref)} className="text-sm text-[var(--accent-text)] hover:underline mb-3 block">
-          ← {lesson.courseId ? "Back to Course" : "Back to Classic Slides"}
+          ← {lesson.courseId ? "Back to Course" : "Back to Lessons"}
         </button>
 
         <div className="flex items-start justify-between gap-4">
@@ -535,10 +493,9 @@ export default function LessonHubPage() {
             {lesson.topics && <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>{lesson.topics}</p>}
           </div>
           <div className="flex flex-wrap justify-end gap-2 shrink-0">
-            {/* The lesson's section text and classic Slide Content are edited on the classic
-                page, which still feeds the Overview Doc, quizzes and Classic slide decks. */}
+            {/* Section text for quizzes and the Overview Doc; slides are edited in Notes to Slides. */}
             <Link
-              href={`/slides/${id}`}
+              href={`/lessons/${id}/edit`}
               className="rounded-full px-3 py-1.5 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)]"
               style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
             >
@@ -689,16 +646,14 @@ export default function LessonHubPage() {
               // Deck titles now come from the lesson's own Title/Subtitle (see autoDeckName in
               // lib/google.ts), so multiple decks for the same lesson can share an identical
               // title — the generation date here is what still tells them apart.
-              sublabel={`${d.presentationAST ? "Notes to Slides" : "Classic pipeline"} · ${new Date(d.createdAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`}
+              sublabel={`${d.presentationAST ? "Notes to Slides" : "Classic Slides (retired)"} · ${new Date(d.createdAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`}
               badge="Generated" badgeColor="#2dd4a0"
               url={d.url}
-              // Notes to Slides decks aren't understood by the classic /slides editor (it only
-              // reads lesson.slideContent) — route those to the Notes to Slides page instead,
-              // same destination as the Draft row's "Edit Draft" button. Note this opens the
-              // lesson's *current* draft, not necessarily this exact deck's own historical
-              // snapshot, if the draft has since been regenerated.
-              editHref={d.presentationAST ? `/ingest?lessonId=${id}` : `/slides/${id}`}
-              editLabel={d.presentationAST ? "Edit Slides" : "Edit (Classic)"}
+              // Every deck is edited in Notes to Slides. This opens the lesson's *current* draft,
+              // not necessarily this deck's own snapshot; an old Classic deck's lesson can be
+              // loaded there with "Start from this lesson's content".
+              editHref={`/ingest?lessonId=${id}`}
+              editLabel="Edit Slides"
               onDelete={() => handleDeleteProject(d.id, d.title)}
               onRename={newTitle => handleRenameProject(d.id, newTitle)} />
           ))}
@@ -753,90 +708,34 @@ export default function LessonHubPage() {
                   <div className={cardClass} style={cardStyle}>
                     <p className={sectionLabel}>Generate</p>
                     <p className="text-xs -mt-1" style={{ color: "var(--text-muted)" }}>
-                      Select what to generate and send to Google Drive.
+                      Build this lesson&apos;s slides in Notes to Slides. Exported decks use the course template and are saved to this lesson&apos;s Drive folder.
                     </p>
-                    {/* span=2: pills + buttons inline on sm+; span=1: always stacked */}
-                    <div className={`flex flex-col gap-2 ${hubSizes["generate"] >= 2 ? "sm:flex-row sm:flex-wrap sm:items-center" : ""}`}>
-                      <div className={`flex flex-wrap gap-2 ${hubSizes["generate"] >= 2 ? "justify-center sm:justify-start sm:flex-1" : "justify-center"}`}>
-                        {([
-                          { key: "slides", label: "Classic Slide Deck", state: genSlides, set: setGenSlides, disabled: false },
-                          {
-                            key: "quiz",
-                            label: quizDrafts.length > 0
-                              ? `Quiz (${quizDrafts.length} draft${quizDrafts.length !== 1 ? "s" : ""})`
-                              : "Quiz (no draft)",
-                            state: genQuiz, set: setGenQuiz, disabled: quizDrafts.length === 0,
-                          },
-                        ] as const).map(({ key, label, state, set, disabled }) => (
-                          <button
-                            key={key}
-                            onClick={() => !disabled && set(!state)}
-                            disabled={disabled}
-                            title={disabled ? "Create a quiz draft for this lesson first" : undefined}
-                            className="rounded-full px-3 py-1.5 text-xs font-semibold transition disabled:opacity-40 disabled:cursor-not-allowed"
-                            style={state && !disabled
-                              ? { background: "#0cc0df", color: "#0a0b13" }
-                              : { background: "var(--bg-card-hover)", border: "1px solid var(--border)", color: "var(--text-secondary)" }
-                            }
-                          >
-                            {label}
-                          </button>
-                        ))}
-                        {quizDrafts.length === 0 && (
-                          <Link
-                            href={`/quizzes/new?lessonId=${id}`}
-                            className="self-center text-[10px] font-semibold hover:underline"
-                            style={{ color: "var(--accent-text)" }}
-                          >
-                            Create a quiz draft →
-                          </Link>
-                        )}
-                      </div>
-                      <div className={`flex flex-col gap-2 ${hubSizes["generate"] >= 2 ? "sm:flex-row sm:shrink-0" : ""}`}>
-                        <button
-                          onClick={handleGenerate}
-                          disabled={generating || (!genSlides && !genQuiz)}
-                          className="w-full sm:w-auto rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-6 py-2.5 text-sm font-bold text-[#0a0b13] hover:opacity-90 disabled:opacity-50 transition shadow"
-                        >
-                          {generating ? (
-                            <span className="flex items-center justify-center gap-2">
-                              <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
-                              Generating…
-                            </span>
-                          ) : "Generate to Drive"}
-                        </button>
-                        <Link
-                          href={`/ingest?lessonId=${id}`}
+                    <div className={`flex flex-col gap-2 ${hubSizes["generate"] >= 2 ? "sm:flex-row sm:flex-wrap" : ""}`}>
+                      <Link
+                        href={`/ingest?lessonId=${id}`}
+                        className="w-full sm:w-auto text-center rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-6 py-2.5 text-sm font-bold text-[#0a0b13] hover:opacity-90 transition shadow"
+                      >
+                        {decks.length > 0 || hasSlideDraft ? "Edit Slides →" : "Create Slides →"}
+                      </Link>
+                      <Link
+                        href={quizDrafts.length > 0 ? `/quizzes/${quizDrafts[0].id}` : `/quizzes/new?lessonId=${id}`}
+                        className="w-full sm:w-auto text-center rounded-full px-5 py-2.5 text-sm font-semibold transition hover:opacity-80"
+                        style={{ background: "rgba(12,192,223,0.12)", border: "1px solid rgba(12,192,223,0.35)", color: "var(--accent-text)" }}
+                      >
+                        {quizDrafts.length > 0 ? "Finish Quiz Draft →" : "Create a Quiz →"}
+                      </Link>
+                      {lesson.folderUrl && (
+                        <a
+                          href={lesson.folderUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
                           className="w-full sm:w-auto text-center rounded-full px-5 py-2.5 text-sm font-semibold transition hover:opacity-80"
-                          style={{ background: "rgba(12,192,223,0.12)", border: "1px solid rgba(12,192,223,0.35)", color: "var(--accent-text)" }}
+                          style={{ background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.35)", color: "var(--accent-purple)" }}
                         >
-                          Notes to Slides →
-                        </Link>
-                        {lesson.folderUrl && (
-                          <a
-                            href={lesson.folderUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="w-full sm:w-auto text-center rounded-full px-5 py-2.5 text-sm font-semibold transition hover:opacity-80"
-                            style={{ background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.35)", color: "var(--accent-purple)" }}
-                          >
-                            Open Drive Folder ↗
-                          </a>
-                        )}
-                      </div>
+                          Open Drive Folder ↗
+                        </a>
+                      )}
                     </div>
-                    {generateError && <p role="alert" className="text-xs text-[var(--danger-text)]">{generateError}</p>}
-                    {!generateError && lesson.status === "error" && lesson.errorMessage && (
-                      <p className="text-xs text-[var(--danger-text)]">Last generation failed: {lesson.errorMessage}</p>
-                    )}
-                    {(multiLessonQuizDrafts.length > 0 || multiLessonQuizGenerated.length > 0) && (
-                      <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>
-                        Quiz only generates single-lesson drafts here.{" "}
-                        <Link href="/quizzes" className="hover:underline" style={{ color: "var(--accent-text)" }}>
-                          View multi-lesson quizzes →
-                        </Link>
-                      </p>
-                    )}
                   </div>
                 )}
                 {wid === "resources" && (

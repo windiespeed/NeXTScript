@@ -93,7 +93,7 @@ function IngestPageInner() {
   const [hasAiKey, setHasAiKey] = useState(false);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
 
-  // Assignment (mirrors app/slides/new/page.tsx)
+  // Assignment (course + module the lesson belongs to)
   const [courses, setCourses] = useState<Course[]>([]);
   const [selectedCourseId, setSelectedCourseId] = useState("");
   const [modules, setModules] = useState<CourseModule[]>([]);
@@ -316,7 +316,7 @@ function IngestPageInner() {
     ? buildNotesFromLesson(attachedLesson, resolveSections({ course: selectedCourse, userSettings: userSectionSettings }))
     : "";
 
-  /** Bridge from Classic Slides: loads the lesson's Slide Content and slide-heading sections
+  /** Bridge from retired Classic Slides: loads the lesson's Slide Content and slide-heading sections
    * into the notes box. Appends below anything already typed so nothing is lost. */
   function handleSeedFromLesson() {
     if (!seedNotes) return;
@@ -639,8 +639,6 @@ function IngestPageInner() {
         <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>Notes to Slides</h1>
         <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>
           Paste rough notes or a brain-dump and get an instantly-rendered, presentation-ready slide deck.
-          {" "}Looking for the old editor?{" "}
-          <Link href="/slides" className="font-semibold hover:underline" style={{ color: "var(--accent-text)" }}>Classic Slides</Link>
         </p>
       </div>
 
@@ -732,7 +730,7 @@ function IngestPageInner() {
             )}
           </div>
 
-          {/* ── Lesson Info (mirrors LessonForm's "Lesson Info" card on /slides/new) ── */}
+          {/* ── Lesson Info (mirrors LessonForm's "Lesson Info" card) ── */}
           <div className={cardClass} style={cardStyle}>
             <div className="flex items-center justify-between">
               <p className={sectionLabel}>Lesson Info</p>
@@ -970,7 +968,7 @@ function IngestPageInner() {
                 </div>
                 {seedNotes && (
                   <p className="text-[11px] mb-1" style={{ color: "var(--text-muted)" }}>
-                    This lesson has Classic Slides content. Load its Slide Content and section text here as a starting point, then generate.
+                    This lesson has saved content (from Classic Slides or Edit Content). Load it here as a starting point, then generate.
                   </p>
                 )}
                 <p role="status" aria-live="polite" className="text-[11px]" style={{ color: "var(--success-text)" }}>{seedStatus}</p>

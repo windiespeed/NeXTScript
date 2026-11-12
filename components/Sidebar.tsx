@@ -80,8 +80,7 @@ const DEFAULT_NAV: NavItem[] = [
   { label: "Dashboard", href: "/",          icon: Icons.dashboard },
   { label: "Courses",   href: "/courses",   icon: Icons.courses   },
   { label: "Notes to Slides", href: "/ingest", icon: Icons.ingest },
-  // Classic generator, kept while instructors move over (see ClassicSlidesBanner).
-  { label: "Classic Slides", href: "/slides", icon: Icons.slides },
+  { label: "Lessons",   href: "/lessons",   icon: Icons.slides    },
   { label: "Quizzes",   href: "/quizzes",   icon: Icons.quizzes   },
   { label: "Schedule",  href: "/schedule",  icon: Icons.schedule  },
   { label: "Resources", href: "/resources", icon: Icons.resources },

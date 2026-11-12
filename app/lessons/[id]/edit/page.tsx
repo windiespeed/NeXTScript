@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import LessonForm from "@/components/LessonForm";
-import ClassicSlidesBanner from "@/components/notesToSlides/ClassicSlidesBanner";
 import type { Lesson, LessonInput } from "@/types/lesson";
 import type { Course, CourseModule } from "@/types/course";
 
@@ -14,7 +14,7 @@ const cardClass = "rounded-3xl p-5 space-y-4";
 const cardStyle = { background: "var(--bg-card)", border: "1px solid var(--border)" };
 const sectionLabel = "text-xs font-semibold uppercase tracking-widest text-[var(--accent-text)]";
 
-export default function EditSlidesPage() {
+export default function EditLessonContentPage() {
   useSession({ required: true });
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
@@ -122,7 +122,7 @@ export default function EditSlidesPage() {
     setSavingAssignment(false);
   }
 
-  const backHref = lesson?.courseId ? `/lessons/${id}` : "/slides";
+  const backHref = `/lessons/${id}`;
 
   async function putLesson(data: LessonInput) {
     const res = await fetch(`/api/lessons/${id}`, {
@@ -159,24 +159,23 @@ export default function EditSlidesPage() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <button onClick={() => router.push(backHref)} className="text-sm text-[var(--accent-text)] hover:underline mb-2 block">
-            ← {lesson.courseId ? "Back to Lesson" : "Back to Classic Slides"}
+            ← Back to Lesson
           </button>
           <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>Edit Lesson Content</h1>
           <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>
-            These fields feed the Overview Doc, quizzes and Classic slide decks. Generate from the lesson hub.
+            These sections feed AI quiz drafts and the Overview Doc. Build slides in{" "}
+            <Link href={`/ingest?lessonId=${id}`} className="font-semibold hover:underline" style={{ color: "var(--accent-text)" }}>Notes to Slides</Link>.
           </p>
         </div>
       </div>
-
-      <ClassicSlidesBanner lessonId={id} />
 
       {/* ── Assignment ── */}
       <div className={cardClass} style={cardStyle}>
         <p className={sectionLabel}>Assignment</p>
 
         <div>
-          <label htmlFor="slides-id-course" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Course</label>
-          <select id="slides-id-course"
+          <label htmlFor="lesson-edit-course" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Course</label>
+          <select id="lesson-edit-course"
             value={selectedCourseId}
             onChange={e => setSelectedCourseId(e.target.value)}
             className={inputClass}
@@ -189,10 +188,10 @@ export default function EditSlidesPage() {
 
         {selectedCourseId && modules.length > 0 && (
           <div>
-            <label htmlFor="slides-id-module-optional" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
+            <label htmlFor="lesson-edit-module" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
               Module <span className="font-normal" style={{ color: "var(--text-muted)" }}>(optional)</span>
             </label>
-            <select id="slides-id-module-optional"
+            <select id="lesson-edit-module"
               value={selectedModuleId}
               onChange={e => setSelectedModuleId(e.target.value)}
               className={inputClass}

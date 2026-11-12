@@ -1,17 +1,16 @@
 /**
- * Google API helpers — mirrors the bundle generation logic from the Apps Script.
+ * Google API helpers: Drive folders and files, the Overview Doc, quiz Forms and Classroom.
+ * Slide decks come from Notes to Slides (lib/deck/render/*), not from here.
  *
  * Requires a user OAuth access token (stored on the session after sign-in).
- * A Slides template URL can be optionally provided in the Generate modal;
- * if omitted a fresh blank presentation is created instead.
  */
 
 import { google } from "googleapis";
-import type { slides_v1 } from "googleapis";
 import { Readable } from "stream";
 import type { Lesson } from "@/types/lesson";
 import { DEFAULT_SECTIONS, type SectionDef } from "@/types/section";
 import { getSectionContent } from "@/lib/sections";
+import { parseClassicSlideBlocks } from "@/lib/lessonSeed";
 import type { SavedProject } from "@/types/project";
 import type { SlideNode } from "@/types/slideAst";
 
@@ -191,290 +190,16 @@ export async function uploadPptxToDrive(
 
 // ─── Slides ─────────────────────────────────────────────────────────────────
 
-/**
- * Generate a short unique object ID that satisfies the Slides API constraints:
- * - 5–50 characters, must start with a letter or underscore.
- * Uses a module-level counter so IDs within one request are always distinct.
- */
-let _idSeq = 0;
-function uid(prefix: string): string {
-  return `${prefix}_${Date.now().toString(36)}_${(++_idSeq).toString(36)}`;
-}
-
-/** Replace all text in a shape. Only deletes first if the shape already has content. */
-function replaceText(objectId: string, text: string, hasExistingContent: boolean): any[] {
-  const reqs: any[] = [];
-  if (hasExistingContent) {
-    reqs.push({ deleteText: { objectId, textRange: { type: "ALL" } } });
-  }
-  reqs.push({ insertText: { objectId, insertionIndex: 0, text } });
-  return reqs;
-}
-
-/**
- * Parse text for backtick-marked code segments.
- * Wrap any code example in backticks in your lesson content — e.g. `code here` —
- * and it will be rendered in blue in the generated slides.
- * Returns the plain text (backticks removed) and the index ranges to color blue.
- */
-function parseCodeSegments(text: string): {
-  plain: string;
-  codeRanges: { startIndex: number; endIndex: number }[];
-} {
-  let plain = "";
-  const codeRanges: { startIndex: number; endIndex: number }[] = [];
-  let i = 0;
-
-  while (i < text.length) {
-    if (text[i] === "`") {
-      const closeIdx = text.indexOf("`", i + 1);
-      if (closeIdx !== -1) {
-        const start = plain.length;
-        plain += text.substring(i + 1, closeIdx);
-        if (plain.length > start) {
-          codeRanges.push({ startIndex: start, endIndex: plain.length });
-        }
-        i = closeIdx + 1;
-      } else {
-        plain += text[i++];
-      }
-    } else {
-      plain += text[i++];
-    }
-  }
-
-  return { plain, codeRanges };
-}
-
-/** Blue used for code examples (matches the doc output requirement). */
-const CODE_BLUE = { red: 0.067, green: 0.435, blue: 0.855 };
-const TEXT_BLACK = { red: 0, green: 0, blue: 0 };
-
 /** Strip leading bullet characters from every line. */
 export function stripBullets(text: string): string {
   return text.replace(/^[•\-\*]\s*/gm, "").trim();
 }
 
-/**
- * Build one slide's worth of API requests.
- * Uses TITLE_AND_BODY layout so the template's placeholder styling is preserved.
- * Bullet formatting is suppressed via deleteParagraphBullets after text insertion
- * (the AI is instructed not to produce bullet characters, but the BODY placeholder
- * can apply list style by default — this removes it).
- * Body text wrapped in backticks is rendered in blue (code examples).
- * All other body text is rendered in black.
- */
-function slideRequests(title: string, body: string | undefined): any[] {
-  const sId = uid("s");
-  const tId = uid("t");
-  const bId = uid("b");
-  const { plain: bodyPlain, codeRanges } = parseCodeSegments(stripBullets(body ?? ""));
-
-  const requests: any[] = [
-    {
-      createSlide: {
-        objectId: sId,
-        slideLayoutReference: { predefinedLayout: "TITLE_AND_BODY" },
-        placeholderIdMappings: [
-          { layoutPlaceholder: { type: "TITLE" }, objectId: tId },
-          { layoutPlaceholder: { type: "BODY" }, objectId: bId },
-        ],
-      },
-    },
-    { insertText: { objectId: tId, insertionIndex: 0, text: title } },
-  ];
-
-  if (bodyPlain.length > 0) {
-    requests.push(
-      { insertText: { objectId: bId, insertionIndex: 0, text: bodyPlain } },
-      // Remove bullet/list formatting the layout may apply automatically
-      { deleteParagraphBullets: { objectId: bId, textRange: { type: "ALL" } } },
-      // Default all body text to black
-      {
-        updateTextStyle: {
-          objectId: bId,
-          textRange: { type: "ALL" },
-          style: { foregroundColor: { opaqueColor: { rgbColor: TEXT_BLACK } } },
-          fields: "foregroundColor",
-        },
-      },
-    );
-
-    // Color each backtick-marked segment blue
-    for (const { startIndex, endIndex } of codeRanges) {
-      requests.push({
-        updateTextStyle: {
-          objectId: bId,
-          textRange: { type: "FIXED_RANGE", startIndex, endIndex },
-          style: { foregroundColor: { opaqueColor: { rgbColor: CODE_BLUE } } },
-          fields: "foregroundColor",
-        },
-      });
-    }
-  }
-
-  return requests;
-}
-
-/** Resolve rubric field, falling back to legacy taChecklist for old Firestore documents. */
-function getRubric(lesson: Lesson): string {
-  return lesson.rubric ?? (lesson as any).taChecklist ?? "";
-}
-
-/** getSectionContent() plus the rubric/taChecklist legacy fallback getRubric() already handles. */
-function sectionSlideContent(lesson: Lesson, sectionId: string): string {
-  return sectionId === "rubric" ? getRubric(lesson) : getSectionContent(lesson, sectionId);
-}
-
-export async function buildSlideDeck(lesson: Lesson, accessToken: string, templateId?: string, sections: SectionDef[] = DEFAULT_SECTIONS): Promise<string> {
-  _idSeq = 0; // reset counter for each deck build
-  const drive  = google.drive({ version: "v3", auth: getAuthClient(accessToken) });
-  const slides = google.slides({ version: "v1", auth: getAuthClient(accessToken) });
-
-  // 1. Copy template if provided, otherwise create a fresh blank presentation
-  let deckId: string;
-  if (templateId) {
-    const copy = await drive.files.copy({
-      fileId: templateId,
-      requestBody: { name: `Deck: ${lesson.title} — ${lesson.subtitle}` },
-      fields: "id",
-    });
-    deckId = copy.data.id!;
-  } else {
-    const created = await slides.presentations.create({
-      requestBody: { title: `Deck: ${lesson.title} — ${lesson.subtitle}` },
-    });
-    deckId = created.data.presentationId!;
-  }
-
-  // 2. Fetch the presentation to read existing title-slide shape IDs
-  const pres = await slides.presentations.get({ presentationId: deckId });
-  const titleSlide = (pres.data.slides || [])[0];
-
-  // ── Title slide replacements ────────────────────────────────────────────
-  const titleRequests: any[] = [];
-
-  if (titleSlide) {
-    for (const el of titleSlide.pageElements || []) {
-      const placeholderType = el.shape?.placeholder?.type as string | undefined;
-      const text = el.shape?.text?.textElements
-        ?.map((t: any) => t.textRun?.content || "")
-        .join("")
-        .toLowerCase() ?? "";
-
-      const hasContent = text.length > 0;
-      if (placeholderType === "CENTERED_TITLE" || placeholderType === "TITLE") {
-        titleRequests.push(...replaceText(el.objectId!, lesson.title, hasContent));
-      } else if (placeholderType === "SUBTITLE") {
-        titleRequests.push(...replaceText(el.objectId!, lesson.subtitle, hasContent));
-      } else if (text.includes("goal:")) {
-        titleRequests.push(...replaceText(el.objectId!, `Goal: ${getSectionContent(lesson, "lessonOverview").replace(/\n+/g, " ")}`, hasContent));
-      } else if (text.includes("reminder:")) {
-        titleRequests.push(...replaceText(el.objectId!, `Reminder: ${getSectionContent(lesson, "submissionChecklist").replace(/\n+/g, " · ")}`, hasContent));
-      }
-    }
-  }
-
-  // ── Section slides — matches Google Doc template order ──────────────────
-  const beforeSlideSections = sections.filter(s => (s.position ?? "after-slides") === "before-slides");
-  const afterSlideSections = sections.filter(s => (s.position ?? "after-slides") === "after-slides");
-
-  const contentRequests: any[] = [];
-  for (const s of beforeSlideSections) {
-    const content = sectionSlideContent(lesson, s.id);
-    if (s.skipIfEmpty && !content) continue;
-    contentRequests.push(...slideRequests(s.label.toUpperCase(), content));
-  }
-
-  // ── Custom slide content blocks (--- = slide break, first line = title) ─
-  const slideSep = /\n---\n/;
-  const slideBlocks = slideSep.test(lesson.slideContent)
-    ? lesson.slideContent.split(slideSep)
-    : lesson.slideContent.split(/\n\s*\n/);
-  for (const block of slideBlocks) {
-    const lines = block.trim().split("\n");
-    if (lines.length < 2) continue;
-    contentRequests.push(...slideRequests(lines[0].trim(), lines.slice(1).join("\n").trim()));
-  }
-
-  // ── Post-content section slides ─────────────────────────────────────────
-  for (const s of afterSlideSections) {
-    const content = sectionSlideContent(lesson, s.id);
-    if (s.skipIfEmpty && !content) continue;
-    contentRequests.push(...slideRequests(s.label.toUpperCase(), content));
-  }
-
-  // ── Success slide ───────────────────────────────────────────────────────
-  const successSlideId = uid("ss");
-  const successTextId  = uid("st");
-  contentRequests.push(
-    {
-      createSlide: {
-        objectId: successSlideId,
-        slideLayoutReference: resolveBlankLayoutRef(pres.data.layouts, !!templateId),
-      },
-    },
-    {
-      createShape: {
-        objectId: successTextId,
-        shapeType: "TEXT_BOX",
-        elementProperties: {
-          pageObjectId: successSlideId,
-          size: { width: { magnitude: 720, unit: "PT" }, height: { magnitude: 100, unit: "PT" } },
-          transform: { scaleX: 1, scaleY: 1, translateX: 0, translateY: 150, unit: "PT" },
-        },
-      },
-    },
-    { insertText: { objectId: successTextId, insertionIndex: 0, text: "LESSON COMPLETE!" } },
-    {
-      updateTextStyle: {
-        objectId: successTextId,
-        textRange: { type: "ALL" },
-        style: { bold: true, fontSize: { magnitude: 40, unit: "PT" } },
-        fields: "bold,fontSize",
-      },
-    },
-  );
-
-  // ── Batch updates ────────────────────────────────────────────────────────
-  if (titleRequests.length > 0) {
-    await slides.presentations.batchUpdate({ presentationId: deckId, requestBody: { requests: titleRequests } });
-  }
-  await slides.presentations.batchUpdate({ presentationId: deckId, requestBody: { requests: contentRequests } });
-
-  return deckId;
-}
-
-/** Resolves a layout reference guaranteed to actually exist on this presentation, instead of
- * assuming `predefinedLayout: "BLANK"` is always defined — a custom Slides Template's master
- * may not tag any layout with that predefined type at all, which Slides rejects outright
- * ("The predefined layout (BLANK) is not present in the current master"). A fresh,
- * template-less presentation always uses Google's default theme, which does define it, so
- * this only needs to search when a template was actually copied. Prefers the layout with the
- * fewest page elements (ideally zero) — guaranteed present since it's read from the
- * presentation's own data, and least likely to leak inherited placeholder shapes/text. */
-function resolveBlankLayoutRef(
-  layouts: slides_v1.Schema$Page[] | undefined,
-  usedTemplate: boolean
-): slides_v1.Schema$LayoutReference {
-  if (!usedTemplate) return { predefinedLayout: "BLANK" };
-  const candidates = (layouts ?? []).filter(l => !!l.objectId);
-  if (candidates.length === 0) return { predefinedLayout: "BLANK" }; // nothing to pick from — best effort
-  const best = [...candidates].sort((a, b) => (a.pageElements?.length ?? 0) - (b.pageElements?.length ?? 0))[0];
-  return { layoutId: best.objectId };
-}
-
 // ─── Docs (Assessment/Assignment Sheet) ──────────────────────────────────────
 
-/** Splits a classic-pipeline slideContent string into {title, body} blocks — shared by the
- * classic Slide Deck builder's own slide loop and the Overview Doc's per-deck summaries. */
-function parseSlideContentBlocks(raw: string): { title: string; body: string }[] {
-  const sep = /\n---\n/;
-  const blocks = sep.test(raw) ? raw.split(sep) : raw.split(/\n\n+/);
-  return blocks.map(block => {
-    const lines = block.trim().split("\n");
-    return { title: lines[0] ?? "", body: lines.slice(1).join("\n").trim() };
-  }).filter(s => s.title);
+/** getSectionContent() plus the legacy taChecklist fallback for the rubric on old lessons. */
+function sectionDocContent(lesson: Lesson, sectionId: string): string {
+  return sectionId === "rubric" ? lesson.rubric ?? (lesson as any).taChecklist ?? "" : getSectionContent(lesson, sectionId);
 }
 
 /** Flattens one AST slide node (any of the 5 layout types, see types/slideAst.ts) into plain
@@ -539,11 +264,11 @@ export async function buildOverviewDoc(
     ...(lesson.subtitle ? [lesson.subtitle] : []),
     ...(lesson.deadline ? [`Deadline: ${lesson.deadline}`] : []),
     "",
-    ...overviewSections.flatMap(s => [s.label.toUpperCase(), sectionSlideContent(lesson, s.id) ?? "", ""]),
+    ...overviewSections.flatMap(s => [s.label.toUpperCase(), sectionDocContent(lesson, s.id) ?? "", ""]),
     ...selectedDecks.flatMap(deck => {
       const deckSlides = deck.presentationAST
         ? deck.presentationAST.slides.map(flattenAstSlide)
-        : parseSlideContentBlocks(deck.slideContent ?? "");
+        : parseClassicSlideBlocks(deck.slideContent ?? "");
       return [
         deck.title.toUpperCase(),
         "",
@@ -651,51 +376,6 @@ export async function buildQuiz(lesson: Lesson, accessToken: string, folderId?: 
   return formId;
 }
 
-// ─── Selective / download bundle generators ──────────────────────────────────
-// Overview Doc is deliberately not part of this bundle — it now requires picking which decks/
-// quizzes it summarizes (see buildOverviewDoc above), which doesn't fit a one-click bundle
-// action. It has its own dedicated generation path instead (app/lessons/[id]/page.tsx).
-
-type FileChoice = "slides" | "quiz";
-
-export async function generateBundleSelective(
-  lesson: Lesson,
-  files: FileChoice[],
-  accessToken: string,
-  templateId?: string,
-  sections: SectionDef[] = DEFAULT_SECTIONS,
-  parentFolderId?: string
-): Promise<{ folderUrl: string; folderId: string; deckId?: string; formId?: string }> {
-  const folder = await createFolder(
-    `${lesson.title}: ${lesson.subtitle}`,
-    accessToken,
-    parentFolderId
-  );
-  const folderId = folder.id!;
-
-  let deckId: string | undefined;
-  let formId: string | undefined;
-
-  await Promise.all([
-    files.includes("slides") ? buildSlideDeck(lesson, accessToken, templateId, sections).then(id => { deckId = id; }) : null,
-    files.includes("quiz")   ? buildQuiz(lesson, accessToken).then(id => { formId = id; })                          : null,
-  ]);
-
-  const fileIds = [deckId, formId].filter(Boolean) as string[];
-  await Promise.all(fileIds.map(id => moveFileToFolder(id, folderId, accessToken)));
-
-  return { folderUrl: folder.webViewLink!, folderId, deckId, formId };
-}
-
-async function exportFileAsPdf(fileId: string, accessToken: string): Promise<Buffer> {
-  const drive = google.drive({ version: "v3", auth: getAuthClient(accessToken) });
-  const res = await drive.files.export(
-    { fileId, mimeType: "application/pdf" },
-    { responseType: "arraybuffer" }
-  );
-  return Buffer.from(res.data as ArrayBuffer);
-}
-
 export async function deleteFile(fileId: string, accessToken: string): Promise<void> {
   const drive = google.drive({ version: "v3", auth: getAuthClient(accessToken) });
   await drive.files.delete({ fileId });
@@ -715,27 +395,6 @@ export function autoDeckName(lessonTitle?: string, lessonSubtitle?: string): str
   if (lessonTitle) return lessonSubtitle ? `${lessonTitle} — ${lessonSubtitle}` : lessonTitle;
   const stamp = new Date().toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
   return `Slide Deck — ${stamp}`;
-}
-
-export async function generateBundleAsDownload(
-  lesson: Lesson,
-  files: Extract<FileChoice, "slides">[],
-  accessToken: string,
-  templateId?: string,
-  sections: SectionDef[] = DEFAULT_SECTIONS
-): Promise<{ filename: string; data: string }[]> {
-  if (!files.includes("slides")) return [];
-
-  const fileId = await buildSlideDeck(lesson, accessToken, templateId, sections);
-  let pdfBuffer: Buffer;
-  try {
-    pdfBuffer = await exportFileAsPdf(fileId, accessToken);
-  } finally {
-    await deleteFile(fileId, accessToken).catch(() => {});
-  }
-
-  const safeTitle = lesson.title.replace(/[^a-z0-9]/gi, "_").slice(0, 40);
-  return [{ filename: `${safeTitle}_Slides.pdf`, data: pdfBuffer.toString("base64") }];
 }
 
 // ─── Google Classroom ───────────────────────────────���──────────────────────

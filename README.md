@@ -4,14 +4,12 @@ A Next.js web app that replaces the Google Apps Script curriculum builder. Creat
 
 ## What It Does
 
-| Apps Script | This App |
-|---|---|
-| Read rows from Google Sheets | Lesson editor UI in the browser |
-| Parse sections from a master Doc | Enter sections directly in the form |
-| Build Slides deck from template | Same — uses your Slides template |
-| Create a Docs poster | Same |
-| Create a Forms quiz from TA Keywords | Same |
-| Organize everything in a Drive folder | Same |
+- **Courses and lessons:** plan courses in modules, with lessons and their section text.
+- **Notes to Slides** (`/ingest`): paste lesson notes, and AI builds a slide deck around the course's locked section headings. Decks are previewed and edited in the browser, then exported onto the course's Google Slides template (or a built-in theme) and saved to the lesson's Drive folder.
+- **Quizzes and docs:** AI quiz drafts become Google Forms; the Overview Doc summarizes chosen decks and quizzes.
+- **Google Classroom:** push a lesson (its newest deck, docs and quizzes) to a linked Classroom course.
+
+The older "Classic Slides" generator (template placeholders filled from a lesson's Slide Content) has been retired. Its decks and lesson data are kept, and a lesson's old Slide Content can be loaded into Notes to Slides with "Start from this lesson's content".
 
 ## Quick Start
 
@@ -69,53 +67,35 @@ Then open `/api/auth/signin` on the preview, enter the secret under "Preview tes
 
 1. **Sign in with Google** (top right) — grants Drive/Slides/Docs/Forms access
 2. Click **+ New Lesson** and fill in the sections
-3. Back on the dashboard, click **Generate** on any lesson card
-4. A Drive folder is created with:
-   - `Deck: <title>` — Slides presentation
-   - `POSTER & ASSIGNMENT: <title>` — Docs poster
-   - `QUIZ: <title>` — Forms quiz
+3. Open **Notes to Slides**, pick the course and lesson, paste notes and click **Generate**
+4. Review and edit the deck, then **Export**. It lands in the lesson's Drive folder and is listed on the lesson page
+5. From the course page, push the lesson to Google Classroom
 
 ## Project Structure
 
 ```
 app/
-  page.tsx                  # Dashboard (lesson grid)
+  page.tsx                  # Dashboard
+  courses/                  # Courses, modules, Classroom push
   lessons/
-    new/page.tsx            # New lesson form
-    [id]/page.tsx           # Edit lesson + Generate button
-  api/
-    auth/[...nextauth]/     # NextAuth Google OAuth
-    lessons/                # CRUD API
-    generate/[id]/          # Triggers Google bundle generation
+    page.tsx                # All lessons, grouped by course
+    new/page.tsx            # New lesson
+    [id]/page.tsx           # Lesson hub: decks, docs, quizzes, resources
+    [id]/edit/page.tsx      # Lesson section text (feeds quizzes and the Overview Doc)
+  ingest/page.tsx           # Notes to Slides
+  quizzes/                  # Quiz drafts and Google Forms
+  api/                      # Route handlers (lessons, courses, ai, deck, classroom, ...)
 
 components/
-  Nav.tsx                   # Top navigation + sign in/out
-  LessonCard.tsx            # Dashboard card
-  LessonForm.tsx            # Full lesson editor
+  LessonForm.tsx            # Lesson info + section editor
+  notesToSlides/            # Notes to Slides guide
 
 lib/
   auth.ts                   # NextAuth config (Google scopes)
-  google.ts                 # Slides / Docs / Forms / Drive helpers
-  store.ts                  # JSON file store (swap for DB later)
+  google.ts                 # Drive / Docs / Forms / Classroom helpers
+  deck/                     # Deck schema, layouts, and pptx / Google Slides renderers
+  store.ts                  # Firestore lesson store
 
 types/
   lesson.ts                 # Lesson type definition
-
-data/
-  lessons.json              # Auto-created on first save (gitignored in prod)
 ```
-
-## Lesson Sections
-
-These map 1:1 to the sections in your original master Doc:
-
-| Section | Used In |
-|---|---|
-| Lesson Overview | Title slide goal, Poster, Overview slide |
-| Learning Targets | Slides |
-| Guided Lab | Slides |
-| Self-Paced | Slides |
-| Submission Checklist | Title slide reminder, Poster, Slides |
-| Slide Content | Content slides (blank line = new slide, first line = title) |
-| Dev Journal Prompt | Slides |
-| TA Keywords | Quiz questions (up to 10 keywords → 10 MC questions) |

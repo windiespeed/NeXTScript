@@ -13,14 +13,12 @@ interface CurriculumContext {
 
 interface AiFillResult {
   sections: Record<string, string>;
-  slides: { title: string; body: string }[];
 }
 
 export async function fillLesson(
   apiKey: string,
   lesson: Partial<LessonInput>,
   ctx: CurriculumContext = {},
-  slideCount = 10
 ): Promise<AiFillResult> {
   const client = new Anthropic({ apiKey });
 
@@ -56,13 +54,8 @@ Generate each of the following sections. Tailor ALL content to the student level
 
 Return ONLY a valid JSON object with these exact keys (no markdown, no explanation):
 {
-${sectionSchemaLines},
-  "slides": [
-    { "title": "Slide title", "body": "Slide content — write as plain concise sentences or relevant examples. Do NOT use bullet characters (•, -, *) or any list symbols. If the subject involves code, wrap inline code in backticks." }
-  ]
-}
-
-For "slides": generate exactly ${slideCount} slides that cover the lesson's main concepts in a logical teaching sequence. Each slide should have a concise title and a body with 3-5 plain-text sentences or a brief example. Do NOT use bullet characters (•, -, *) or list symbols anywhere in slide bodies. The first slide should be an intro/agenda slide.`;
+${sectionSchemaLines}
+}`;
 
   const message = await client.messages.create({
     model: "claude-haiku-4-5-20251001",
@@ -92,17 +85,15 @@ For "slides": generate exactly ${slideCount} slides that cover the lesson's main
     }
   }
 
-  const { slides, ...sectionValues } = parsed;
   // Only keep keys that match a known section id — discards anything the model hallucinated.
   const knownIds = new Set(sections.map(s => s.id));
   const resultSections: Record<string, string> = {};
-  for (const [key, value] of Object.entries(sectionValues)) {
+  for (const [key, value] of Object.entries(parsed)) {
     if (knownIds.has(key) && typeof value === "string") resultSections[key] = value;
   }
 
   return {
     sections: resultSections,
-    slides: Array.isArray(slides) ? (slides as { title: string; body: string }[]) : [],
   };
 }
 
