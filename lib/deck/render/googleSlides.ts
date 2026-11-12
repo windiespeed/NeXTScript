@@ -9,6 +9,9 @@
  * - Colors are the template's theme colors (DARK1, LIGHT2, ACCENT1…), not fixed hex values, so a
  *   template's palette carries through. Code panels stay dark for legibility.
  * - Fonts are read from the template's master title and body placeholders where it sets them.
+ * - Most hand-built decks style each slide directly and leave the master at Google's defaults.
+ *   For those, the look is learned from the slides themselves (templateStyle.ts): backgrounds,
+ *   fonts, and text, accent and panel colors, and every slide is drawn in that style.
  *
  * Without a template the same adapter draws with the NeXTScript theme's own colors and fonts.
  * The request building is pure (no network) so it can be tested; `exportDeckToGoogleSlides`
@@ -23,7 +26,7 @@ import { layoutSlide } from "../layout/registry";
 import type { ColorToken, SlideLayout, TextElement } from "../layout/types";
 import { CANVAS_H, CANVAS_W } from "../layout/types";
 import { CODE_BG, CODE_TEXT, fontFamily, resolvePalette } from "./palette";
-import { firstFont } from "./pptx";
+import { learnTemplateStyle, learnedColor, type LearnedStyle } from "./templateStyle";
 
 type Request = slides_v1.Schema$Request;
 type OpaqueColor = slides_v1.Schema$OpaqueColor;
@@ -130,6 +133,8 @@ const THEME_DARK: Record<ColorToken, string> = {
 interface Ctx {
   theme: ThemeConfig;
   template?: TemplateInfo;
+  /** The template's look as read from its slides, when they set one (see templateStyle.ts). */
+  learned?: LearnedStyle;
 }
 
 function color(token: ColorToken, dark: boolean, ctx: Ctx): OpaqueColor {
@@ -137,15 +142,39 @@ function color(token: ColorToken, dark: boolean, ctx: Ctx): OpaqueColor {
   if (token === "code.text") return rgb(CODE_TEXT);
   // The code panel is always dark, so its label can't follow the template's accent color.
   if (token === "code.label") return rgb(resolvePalette(ctx.theme, dark)["code.label"]);
+  const learned = ctx.learned && learnedColor(ctx.learned, token, dark);
+  if (learned) return rgb(learned);
   if (ctx.template) return { themeColor: (dark ? THEME_DARK : THEME_LIGHT)[token] };
   return rgb(resolvePalette(ctx.theme, dark)[token]);
 }
 
+/**
+ * Fonts Google Slides can render. Anything else (Segoe UI, system-ui) silently falls back to
+ * Times New Roman there, so a theme's font stack is walked until one of these turns up.
+ */
+const SLIDES_FONTS = new Set(
+  ["Arial", "Calibri", "Cambria", "Comic Sans MS", "Courier New", "Georgia", "Impact", "Times New Roman", "Trebuchet MS", "Verdana",
+    "Inter", "Lato", "Montserrat", "Open Sans", "Poppins", "Raleway", "Roboto", "Roboto Mono", "Source Sans Pro", "Fraunces",
+    "Playfair Display", "Merriweather", "Nunito", "Oswald", "PT Sans", "Work Sans", "DM Sans", "Space Grotesk", "Lora"].map(f => f.toLowerCase()),
+);
+
+export function slidesFont(stack: string): string {
+  const fonts = stack.split(",").map(f => f.trim().replace(/^['"]|['"]$/g, ""));
+  return fonts.find(f => SLIDES_FONTS.has(f.toLowerCase())) ?? (/serif/i.test(stack) && !/sans-serif/i.test(stack) ? "Georgia" : "Arial");
+}
+
 function font(el: TextElement, ctx: Ctx): string {
   if (el.font === "code") return "Roboto Mono";
+  const learned = el.font === "heading" ? ctx.learned?.headingFont : ctx.learned?.bodyFont;
   const fromTemplate = el.font === "heading" ? ctx.template?.headingFont : ctx.template?.bodyFont;
-  return fromTemplate ?? firstFont(fontFamily(ctx.theme, el.font));
+  return learned ?? fromTemplate ?? slidesFont(fontFamily(ctx.theme, el.font));
 }
+
+/**
+ * Slides can't set a corner radius: a ROUND_RECTANGLE's corners scale with the shape, so a big
+ * panel turns into a bubble. Only small shapes (badges, stripes) keep rounded corners.
+ */
+const MAX_ROUNDED = 28;
 
 // ─── Requests ────────────────────────────────────────────────────────────────
 
@@ -266,8 +295,9 @@ function drawnSlide(layout: SlideLayout, pageId: string, ids: Ids, ctx: Ctx, ins
       },
     },
   ];
-  // Light slides on a template keep the template's own background; everything else is filled.
-  if (!ctx.template || dark) {
+  // Light slides on a template keep the template's own background, unless its look comes from its
+  // slides (a learned style), where every slide gets the learned background.
+  if (!ctx.template || dark || ctx.learned) {
     reqs.push({
       updatePageProperties: {
         objectId: pageId,
@@ -283,7 +313,7 @@ function drawnSlide(layout: SlideLayout, pageId: string, ids: Ids, ctx: Ctx, ins
         {
           createShape: {
             objectId,
-            shapeType: el.radius > 0 ? "ROUND_RECTANGLE" : "RECTANGLE",
+            shapeType: el.radius > 0 && Math.min(el.w * sx, el.h * sy) <= MAX_ROUNDED ? "ROUND_RECTANGLE" : "RECTANGLE",
             elementProperties: transform(pageId, el.x, el.y, el.w, el.h, sx, sy),
           },
         },
@@ -338,7 +368,9 @@ export function buildSlidesRequests(deck: DeckContent, ctx: Ctx, idPrefix = "nx"
   deck.slides.forEach((slide, i) => {
     const pageId = ids.next("p");
     const index = offset + i;
-    const placeholder = slide.type === "title" ? ctx.template?.titleLayout : slide.type === "section" ? ctx.template?.sectionLayout : undefined;
+    // A template styled slide by slide has plain layouts; its title and section look is learned.
+    const layouts = ctx.learned ? undefined : ctx.template;
+    const placeholder = slide.type === "title" ? layouts?.titleLayout : slide.type === "section" ? layouts?.sectionLayout : undefined;
     if (placeholder && (slide.type === "title" || slide.type === "section")) {
       requests.push(...placeholderSlide(slide, placeholder, pageId, ids, index));
     } else {
@@ -388,7 +420,8 @@ export async function exportDeckToGoogleSlides(opts: {
 
   const pres = await slides.presentations.get({ presentationId: id });
   const template = opts.templateId ? inspectTemplate(pres.data) : undefined;
-  const built = buildSlidesRequests(opts.deck, { theme: opts.theme, template });
+  const learned = opts.templateId ? learnTemplateStyle(pres.data) : undefined;
+  const built = buildSlidesRequests(opts.deck, { theme: opts.theme, template, learned });
   // A new presentation starts with one empty title slide; remove it once the deck is in.
   if (!template) {
     for (const s of pres.data.slides ?? []) if (s.objectId) built.requests.push({ deleteObject: { objectId: s.objectId } });
