@@ -363,7 +363,7 @@ function TableEditor({ slide, onChange }: { slide: TableSlide; onChange: (next: 
     <div className="flex flex-col gap-3">
       <TitleSubtitleFields slide={slide} onChange={patch => onChange({ ...slide, ...patch })} />
       <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold" style={labelStyle}>Table <span className="font-normal" style={{ color: "var(--text-muted)" }}>(2–4 columns, up to 6 rows per slide)</span></span>
+        <span className="text-xs font-semibold" style={labelStyle}>Table <span className="font-normal" style={{ color: "var(--text-muted)" }}>(2–4 columns, up to 5 rows per slide; more rows continue on the next slide)</span></span>
         <div className="flex gap-3">
           <button type="button" onClick={addColumn} disabled={cols >= 4} className="text-[10px] font-semibold text-[var(--accent-text)] hover:underline disabled:opacity-40">+ Column</button>
           <button type="button" onClick={() => onChange({ ...slide, rows: [...slide.rows, Array.from({ length: cols }, () => "")] })} className="text-[10px] font-semibold text-[var(--accent-text)] hover:underline">+ Row</button>

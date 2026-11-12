@@ -85,7 +85,7 @@ export const CALLOUT_STYLE: Record<SlideOf<"callout">["variant"], { label: strin
   "instructor-note": { label: "Instructor note", accent: "accent.tertiary" },
 };
 
-/** Callout: one centered statement, with a variant label and optional supporting line. */
+/** Callout: one centered statement, with a kicker (the course section label, else the variant name) and optional supporting line. */
 export function layoutCallout(slide: SlideOf<"callout">): SlideLayout {
   const b = new SlideBuilder(slide.id, slide.notes, true);
   const style = CALLOUT_STYLE[slide.variant];
@@ -104,7 +104,7 @@ export function layoutCallout(slide: SlideOf<"callout">): SlideLayout {
     kind: "text", id: "label", x, y, w, h: Math.ceil(12 * 1.2),
     font: "body", fontSize: 12, lineHeight: 1.2, paragraphGap: 0,
     color: style.accent, align: "center", valign: "top", uppercase: true, letterSpacing: 1.5,
-    paragraphs: [{ text: style.label, bold: true }],
+    paragraphs: [{ text: slide.label?.trim() || style.label, bold: true }],
   });
   y += Math.ceil(12 * 1.2) + 16;
   const heading = b.text({
