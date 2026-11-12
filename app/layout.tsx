@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
-import { Geist } from "next/font/google";
+import { Lexend } from "next/font/google";
 import "./globals.css";
 import Providers from "./providers";
 import TopBar from "@/components/TopBar";
 import { MobileMenuProvider } from "@/context/MobileMenu";
 import { ThemeProvider } from "@/context/Theme";
 
-const geist = Geist({ subsets: ["latin"] });
+// MOCKUP: a geometric sans close to the NeXT Central font (swap for their exact font once known).
+const geist = Lexend({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   // Each section's layout.tsx sets its own title, e.g. "Courses · NeXTScript" (WCAG 2.4.2).
@@ -26,13 +27,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <MobileMenuProvider>
             <a href="#main-content" className="skip-link">Skip to content</a>
             <TopBar />
-            {/* MOCKUP: offset for top bar (64px) + menu bar on desktop (48px). Page content sits in a white container. */}
-            <div className="pt-[76px] lg:pt-[112px] min-h-screen px-3 pb-3 sm:px-4 lg:px-6">
-              <div className="mx-auto max-w-6xl rounded-3xl min-h-[calc(100dvh-88px)] lg:min-h-[calc(100dvh-124px)]" style={{ background: "var(--bg-sidebar)", boxShadow: "var(--shadow-card)" }}>
-                <main id="main-content" tabIndex={-1} className="px-4 py-6 sm:px-6 sm:py-8 lg:px-10 focus:outline-none">
-                  {children}
-                </main>
-              </div>
+            {/* MOCKUP: offset for top bar (64px) + menu bar on desktop (48px), plus a gap before the content */}
+            <div className="pt-16 lg:pt-[120px] min-h-screen">
+              <main id="main-content" tabIndex={-1} className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-10 focus:outline-none">
+                {children}
+              </main>
             </div>
           </MobileMenuProvider>
           </ThemeProvider>

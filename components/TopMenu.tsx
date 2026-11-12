@@ -49,14 +49,14 @@ export default function TopMenu() {
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
   const pill = (active: boolean) =>
     `flex items-center gap-2 whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-medium transition ${
-      active ? "bg-[#0cc0df] text-[#0a0b13] shadow-sm" : "hover:bg-[var(--bg-card-hover)]"
+      active ? "nav-active" : "hover:bg-[var(--bg-card-hover)]"
     }`;
   const pillStyle = (active: boolean) => (active ? {} : { color: "var(--text-secondary)" });
 
   return (
     <>
-    <nav aria-label="Main" className="hidden lg:block" style={{ background: "var(--bg-body)" }}>
-      <div className="mx-auto flex h-12 max-w-6xl items-center gap-1">
+    <nav aria-label="Main" className="hidden lg:block" style={{ background: "var(--bg-sidebar)", borderTop: "1px solid var(--border)" }}>
+      <div className="mx-auto flex h-12 max-w-6xl items-center gap-1 px-4 sm:px-6 lg:px-10">
         <div className="flex flex-1 items-center gap-1">
           {NAV.map(item => {
             const active = isActive(item.href);
@@ -64,7 +64,7 @@ export default function TopMenu() {
               return (
                 <div key={item.href} ref={wrapRef} className="relative flex items-center">
                   <Link href={item.href} className={`${pill(active)} pr-2`} style={pillStyle(active)}>
-                    <span style={{ color: active ? "#0a0b13" : "var(--text-muted)" }}>{item.icon}</span>
+                    <span style={{ color: active ? "#ffffff" : "var(--text-muted)" }}>{item.icon}</span>
                     {item.label}
                   </Link>
                   <button
@@ -106,7 +106,7 @@ export default function TopMenu() {
             }
             return (
               <Link key={item.href} href={item.href} className={pill(active)} style={pillStyle(active)} aria-current={active ? "page" : undefined}>
-                <span style={{ color: active ? "#0a0b13" : "var(--text-muted)" }}>{item.icon}</span>
+                <span style={{ color: active ? "#ffffff" : "var(--text-muted)" }}>{item.icon}</span>
                 {item.label}
               </Link>
             );
@@ -128,7 +128,7 @@ export default function TopMenu() {
             const active = isActive(item.href);
             return (
               <Link key={item.href} href={item.href} className={`${pill(active)} w-full py-2`} style={pillStyle(active)} aria-current={active ? "page" : undefined}>
-                <span style={{ color: active ? "#0a0b13" : "var(--text-muted)" }}>{item.icon}</span>
+                <span style={{ color: active ? "#ffffff" : "var(--text-muted)" }}>{item.icon}</span>
                 {item.label}
               </Link>
             );
