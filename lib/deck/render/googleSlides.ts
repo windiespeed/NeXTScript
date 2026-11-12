@@ -329,17 +329,24 @@ function backdropSlide(b: Backdrop, pageId: string, ids: Ids, insertionIndex: nu
 }
 
 /**
- * A content slide's header title goes where the template's titles sit (the frame maps the label and
- * margins, but the gap from label to title differs from template to template).
+ * The frame for a content slide's header title and everything below it. The page frame maps the
+ * label line, margins and footer, but the gap from label to title differs from template to
+ * template, so the title goes where the template's titles sit and the body below it shifts with
+ * it, ending where it did before.
  */
-export function titleFrame(el: TextElement, dark: boolean, f: Frame, learned?: LearnedFrame): Frame {
-  if (dark || el.id !== "title" || el.y !== HEADER_TITLE_Y || learned?.titleTop === undefined) return f;
-  return { ...f, oy: learned.titleTop - el.y * f.ky };
+export function bodyFrame(layout: SlideLayout, f: Frame, learned?: LearnedFrame): Frame {
+  if (layout.dark || learned?.titleTop === undefined) return f;
+  if (!layout.elements.some(e => e.kind === "text" && e.id === "title" && e.y === HEADER_TITLE_Y)) return f;
+  const bottom = f.oy + GRID.bodyBottom * f.ky;
+  const ky = (bottom - learned.titleTop) / (GRID.bodyBottom - HEADER_TITLE_Y);
+  if (ky <= 0) return f;
+  return { ...f, oy: learned.titleTop - HEADER_TITLE_Y * ky, ky };
 }
 
 function drawnSlide(layout: SlideLayout, pageId: string, ids: Ids, ctx: Ctx, insertionIndex: number): Request[] {
   const dark = layout.dark;
-  const f = pageFrame(ctx.template?.pageW ?? CANVAS_W, ctx.template?.pageH ?? CANVAS_H, ctx.learned?.frame);
+  const page = pageFrame(ctx.template?.pageW ?? CANVAS_W, ctx.template?.pageH ?? CANVAS_H, ctx.learned?.frame);
+  const body = bodyFrame(layout, page, ctx.learned?.frame);
   const backdrop = dark ? ctx.learned?.coverBackdrop : ctx.learned?.contentBackdrop;
   const reqs: Request[] = backdrop
     ? backdropSlide(backdrop, pageId, ids, insertionIndex)
@@ -369,6 +376,8 @@ function drawnSlide(layout: SlideLayout, pageId: string, ids: Ids, ctx: Ctx, ins
     const deco = decoKind ? ctx.learned?.[decoKind] : undefined;
     if (decoKind && ctx.learned && !deco) continue;
     const objectId = ids.next(el.kind === "rect" ? "r" : "t");
+    // Header label and footer stay on the template's lines; the title and body use the body frame.
+    const f = el.y >= HEADER_TITLE_Y && !decoKind ? body : page;
     if (el.kind === "rect") {
       reqs.push(
         {
@@ -390,7 +399,7 @@ function drawnSlide(layout: SlideLayout, pageId: string, ids: Ids, ctx: Ctx, ins
         },
       );
     } else {
-      reqs.push(...textRequests(el, objectId, pageId, dark, ctx, titleFrame(el, dark, f, ctx.learned?.frame), deco));
+      reqs.push(...textRequests(el, objectId, pageId, dark, ctx, f, deco));
     }
   }
   return reqs;

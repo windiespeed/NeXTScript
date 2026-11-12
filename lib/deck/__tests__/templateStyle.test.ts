@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { slides_v1 } from "googleapis";
 import { learnTemplateStyle, luminance } from "@/lib/deck/render/templateStyle";
-import { buildSlidesRequests, inspectTemplate, pageFrame, slidesFont, titleFrame } from "@/lib/deck/render/googleSlides";
+import { buildSlidesRequests, inspectTemplate, pageFrame, slidesFont, bodyFrame } from "@/lib/deck/render/googleSlides";
 import { layoutSlide } from "@/lib/deck/layout/registry";
 import type { TextElement } from "@/lib/deck/layout/types";
 import { FOOTER_Y } from "@/lib/deck/layout/decorations";
@@ -134,21 +134,20 @@ describe("learnTemplateStyle", () => {
     expect(f.titleTop).toBeCloseTo((0.16 * PAGE_H) / 12700, 0);
   });
 
-  it("puts content-slide titles where the template's titles sit, and leaves other text alone", () => {
+  it("puts content-slide titles where the template's titles sit and shifts the body with them", () => {
     const frame = learnTemplateStyle(handStyled)!.frame!;
     const f = pageFrame(720, 405, frame);
     const concept = SAMPLE_DECK.slides.find(s => s.type === "concept")!;
     const layout = layoutSlide({ ...concept, label: "Part 1 · Loops" });
     const title = layout.elements.find(e => e.id === "title") as TextElement;
-    const tf = titleFrame(title, layout.dark, f, frame);
-    expect(tf.oy + title.y * tf.ky).toBeCloseTo(frame.titleTop!);
-    // The label stays on the learned header line.
-    const label = layout.elements.find(e => e.id === "label") as TextElement;
-    expect(titleFrame(label, layout.dark, f, frame)).toBe(f);
-    expect(f.oy + label.y * f.ky).toBeCloseTo(frame.top);
-    // Cover slides and templates without a learned title spot keep the plain frame.
-    expect(titleFrame(title, true, f, frame)).toBe(f);
-    expect(titleFrame(title, false, f, { ...frame, titleTop: undefined })).toBe(f);
+    const b = bodyFrame(layout, f, frame);
+    expect(b.oy + title.y * b.ky).toBeCloseTo(frame.titleTop!);
+    // The body still ends where it did, and text keeps its size.
+    expect(b.oy + GRID.bodyBottom * b.ky).toBeCloseTo(f.oy + GRID.bodyBottom * f.ky);
+    expect(b.k).toBe(f.k);
+    // Cover slides and templates without a learned title spot keep the page frame.
+    expect(bodyFrame({ ...layout, dark: true }, f, frame)).toBe(f);
+    expect(bodyFrame(layout, f, { ...frame, titleTop: undefined })).toBe(f);
   });
 
   it("maps the layout's content box onto the learned frame", () => {
