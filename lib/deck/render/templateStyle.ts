@@ -17,6 +17,10 @@
  * and its full-slide, text-free elements. The exporter duplicates that slide, keeps only those
  * elements, and draws on top, so gradients and background art carry over exactly.
  *
+ * It also notices the small text a deck repeats on its slides: a label above the title ("PART 1 ·
+ * SQL VS NOSQL") and a footer line. The generator writes that text; the template decides whether it
+ * appears and in what color and size.
+ *
  * Every color is a plain RGB hex, resolved through the master's color scheme where the deck uses
  * theme colors. Pure: takes presentations.get output, no network.
  */
@@ -46,7 +50,19 @@ export interface Backdrop {
   drop: string[];
 }
 
+/** How a template draws a repeated small text line (a label or footer). */
+export interface Decoration {
+  color: string;
+  /** Font size in pt. */
+  size: number;
+  bold: boolean;
+}
+
 export interface LearnedStyle {
+  /** Present only when the template's content slides have a label above the title. */
+  label?: Decoration;
+  /** Present only when the template's slides have a footer line. */
+  footer?: Decoration;
   content: LearnedPalette;
   cover: LearnedPalette;
   contentBackdrop?: Backdrop;
@@ -197,8 +213,14 @@ interface Tally {
 
 const newTally = (): Tally => ({ titleFont: new Map(), titleColor: new Map(), bodyFont: new Map(), bodyColor: new Map(), accents: new Map(), panels: new Map() });
 
-function tallySlide(slide: Page, bg: string, scheme: Scheme, t: Tally) {
-  const runs = (slide.pageElements ?? []).flatMap(e => runsOf(e, scheme));
+function tallySlide(slide: Page, bg: string, scheme: Scheme, t: Tally, pageH: number) {
+  // Labels and footers are learned on their own, so they don't count toward the body text.
+  const deco = decorationsOf(linesOf(slide, scheme, pageH));
+  const skip = new Set([deco.label?.text, deco.footer?.text].filter(Boolean));
+  const allRuns = (slide.pageElements ?? []).flatMap(e => runsOf(e, scheme));
+  const runs = (slide.pageElements ?? [])
+    .filter(e => !skip.has(runsOf(e, scheme).map(r => r.text).join(" ")))
+    .flatMap(e => runsOf(e, scheme));
   const sized = runs.filter(r => r.size);
   const titleSize = Math.max(0, ...sized.map(r => r.size!));
   for (const r of runs) {
@@ -212,7 +234,7 @@ function tallySlide(slide: Page, bg: string, scheme: Scheme, t: Tally) {
     }
   }
   // Accents: colored, saturated text that stands out from the background (labels, kickers).
-  for (const r of runs) {
+  for (const r of allRuns) {
     if (!r.color || MONO.test(r.font ?? "") || saturation(r.color) < 0.3 || contrast(r.color, bg) < 2) continue;
     add(t.accents, r.color, 1);
   }
@@ -250,6 +272,50 @@ function extent(el: slides_v1.Schema$PageElement): number {
   const w = (el.size?.width?.magnitude ?? 0) * Math.abs(el.transform?.scaleX ?? 1);
   const h = (el.size?.height?.magnitude ?? 0) * Math.abs(el.transform?.scaleY ?? 1);
   return w * h;
+}
+
+const TOP_BAND = 0.2;
+const BOTTOM_BAND = 0.82;
+
+interface Line {
+  y: number;
+  run: Run;
+}
+
+/** Top-level text boxes of a slide with their top edge (as a share of page height) and first run. */
+function linesOf(slide: Page, scheme: Scheme, pageH: number): Line[] {
+  const out: Line[] = [];
+  for (const el of slide.pageElements ?? []) {
+    const run = el.shape ? runsOf(el, scheme)[0] : undefined;
+    if (!run || !pageH) continue;
+    out.push({ y: (el.transform?.translateY ?? 0) / pageH, run: { ...run, text: runsOf(el, scheme).map(r => r.text).join(" ") } });
+  }
+  return out;
+}
+
+/** Small label lines above the title, and footer lines, on one slide. */
+function decorationsOf(lines: Line[]): { label?: Run; footer?: Run } {
+  const titleSize = Math.max(0, ...lines.map(l => l.run.size ?? 0));
+  const title = lines.find(l => l.run.size === titleSize);
+  const small = (l: Line, max: number) => !!l.run.size && l.run.size < titleSize && l.run.size <= 16 && l.run.text.length <= max;
+  const label = title && lines.find(l => l !== title && l.y < TOP_BAND && l.y < title.y && small(l, 60));
+  const footer = lines.find(l => l.y >= BOTTOM_BAND && small(l, 100));
+  return { label: label?.run, footer: footer?.run };
+}
+
+/** The common style of a decoration seen on at least a few slides, or undefined. */
+function decoration(seen: Run[], slideCount: number): Decoration | undefined {
+  if (seen.length < Math.max(2, Math.ceil(slideCount * 0.3))) return undefined;
+  const colors = new Map<string, number>();
+  const sizes = new Map<number, number>();
+  for (const r of seen) {
+    add(colors, r.color, 1);
+    add(sizes, r.size, 1);
+  }
+  const color = top(colors);
+  const size = top(sizes);
+  if (!color || !size) return undefined;
+  return { color, size, bold: seen.filter(r => r.bold).length * 2 > seen.length };
 }
 
 /** Full-slide, text-free elements of a slide (background gradients, art), if it has any. */
@@ -294,9 +360,10 @@ export function learnTemplateStyle(pres: slides_v1.Schema$Presentation): Learned
   const contentBg = top(counts)!;
   const coverBg = info[0].bg !== contentBg ? info[0].bg : undefined;
 
+  const pageH = pres.pageSize?.height?.magnitude ?? 0;
   const content = newTally();
   const cover = newTally();
-  for (const i of info) tallySlide(i.slide, i.bg, i.scheme, coverBg && i.bg === coverBg ? cover : content);
+  for (const i of info) tallySlide(i.slide, i.bg, i.scheme, coverBg && i.bg === coverBg ? cover : content, pageH);
 
   const contentPalette = palette(content, contentBg);
   const coverPalette = coverBg ? palette(cover, coverBg, contentPalette) : contentPalette;
@@ -304,7 +371,13 @@ export function learnTemplateStyle(pres: slides_v1.Schema$Presentation): Learned
   const pageArea = (pres.pageSize?.width?.magnitude ?? 0) * (pres.pageSize?.height?.magnitude ?? 0);
   const firstWith = (bgColor: string) => info.map(i => (i.bg === bgColor ? backdropOf(i.slide, pageArea) : undefined)).find(Boolean);
   const contentBackdrop = firstWith(contentBg);
+
+  const contentSlides = info.filter(i => i.bg === contentBg);
+  const labels = contentSlides.map(i => decorationsOf(linesOf(i.slide, i.scheme, pageH)).label).filter((r): r is Run => !!r);
+  const footers = info.map(i => decorationsOf(linesOf(i.slide, i.scheme, pageH)).footer).filter((r): r is Run => !!r);
   return {
+    label: decoration(labels, contentSlides.length),
+    footer: decoration(footers, info.length),
     content: contentPalette,
     cover: coverPalette,
     contentBackdrop,

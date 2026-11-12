@@ -10,7 +10,10 @@ const hex = (h: string): slides_v1.Schema$OpaqueColor => {
   return { rgbColor: { red: ((n >> 16) & 255) / 255, green: ((n >> 8) & 255) / 255, blue: (n & 255) / 255 } };
 };
 const bg = (h: string): slides_v1.Schema$PageProperties => ({ pageBackgroundFill: { solidFill: { color: hex(h) } } });
-const text = (runs: [string, string, number, string, boolean?][]): slides_v1.Schema$PageElement => ({
+const PAGE_H = 5143500;
+/** A text box; `top` is its top edge as a share of the page height. */
+const text = (runs: [string, string, number, string, boolean?][], top = 0.4): slides_v1.Schema$PageElement => ({
+  transform: { scaleX: 1, scaleY: 1, translateX: 0, translateY: top * PAGE_H, unit: "EMU" },
   shape: {
     shapeType: "TEXT_BOX",
     text: { textElements: runs.map(([content, font, size, color, bold]) => ({ textRun: { content, style: { fontFamily: font, fontSize: { magnitude: size, unit: "PT" }, foregroundColor: { opaqueColor: hex(color) }, bold: !!bold } } })) },
@@ -47,11 +50,12 @@ const handStyled: slides_v1.Schema$Presentation = {
       pageProperties: bg("#262E3E"),
       pageElements: [
         gradient(`g${i}`),
-        text([["PART 1 · SQL VS NOSQL", "Calibri", 8, "#F0A050", true]]),
-        text([["Two ways to store data", "Calibri", 22, "#FFFFFF", true]]),
+        text([["PART 1 · SQL VS NOSQL", "Calibri", 8, "#F0A050", true]], 0.12),
+        text([["Two ways to store data", "Calibri", 22, "#FFFFFF", true]], 0.16),
         card("#323C50"),
         text([["Relational (SQL)", "Calibri", 12, "#6FA8FF", true], ["Tables with fixed columns, like a strict spreadsheet.", "Carlito", 11, "#D7DCE5"]]),
         text([["const x = 1", "Courier New", 10, "#A6E22E"]]),
+        text([["Part 1 · From files", "Calibri", 8, "#9AA0A8"]], 0.91),
       ],
     })),
     { objectId: "s4", slideProperties: { layoutObjectId: "l", masterObjectId: "m" }, pageProperties: bg("#4D3522"), pageElements: [text([["PART 1", "Calibri", 9, "#F0A050", true]]), text([["From files to MongoDB", "Calibri", 32, "#FFFFFF", true]])] },
@@ -77,6 +81,22 @@ describe("learnTemplateStyle", () => {
     expect(s.coverBackdrop).toMatchObject({ slideId: "s1", keep: ["g1"] });
     expect(s.contentBackdrop).toMatchObject({ slideId: "s2", keep: ["g2"] });
     expect(s.contentBackdrop!.drop).not.toContain("g2");
+  });
+
+  it("learns the label above the title and the footer line, with their color and size", () => {
+    const s = learnTemplateStyle(handStyled)!;
+    expect(s.label).toEqual({ color: "#F0A050", size: 8, bold: true });
+    expect(s.footer).toEqual({ color: "#9AA0A8", size: 8, bold: false });
+  });
+
+  it("has no label or footer when the template's slides don't", () => {
+    const plain = {
+      ...handStyled,
+      slides: handStyled.slides!.map(sl => ({ ...sl, pageElements: sl.pageElements!.filter(e => !/PART 1 ·|Part 1 ·/.test(e.shape?.text?.textElements?.[0]?.textRun?.content ?? "")) })),
+    };
+    const s = learnTemplateStyle(plain)!;
+    expect(s.label).toBeUndefined();
+    expect(s.footer).toBeUndefined();
   });
 
   it("leaves templates whose slides set nothing to the master and layouts", () => {
@@ -127,6 +147,16 @@ describe("Google Slides export with a learned style", () => {
     const moves = requests.filter(r => r.updateSlidesPosition).map(r => r.updateSlidesPosition!.insertionIndex);
     expect(moves).toEqual(SAMPLE_DECK.slides.map((_, i) => 5 + i + 1));
     expect(requests.some(r => r.createSlide)).toBe(false);
+  });
+
+  it("draws the generator's labels and footers in the template's color and size, or leaves them out", () => {
+    const deck = { ...SAMPLE_DECK, slides: SAMPLE_DECK.slides.map(sl => ({ ...sl, label: "Part 1 · Loops", footer: "Part 1 · Repeating code" })) };
+    const drawn = JSON.stringify(buildSlidesRequests(deck, { theme: getTheme("pearl"), template, learned }).requests);
+    expect(drawn).toContain("PART 1 · LOOPS");
+    expect(drawn).toContain("Part 1 · Repeating code");
+    const without = JSON.stringify(buildSlidesRequests(deck, { theme: getTheme("pearl"), template, learned: { ...learned, label: undefined, footer: undefined } }).requests);
+    expect(without).not.toContain("PART 1 · LOOPS");
+    expect(without).not.toContain("Repeating code");
   });
 
   it("keeps big panels square, since Slides corners grow with the shape", () => {

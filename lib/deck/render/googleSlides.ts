@@ -26,7 +26,8 @@ import { layoutSlide } from "../layout/registry";
 import type { ColorToken, SlideLayout, TextElement } from "../layout/types";
 import { CANVAS_H, CANVAS_W } from "../layout/types";
 import { CODE_BG, CODE_TEXT, fontFamily, resolvePalette } from "./palette";
-import { learnTemplateStyle, learnedColor, type Backdrop, type LearnedStyle } from "./templateStyle";
+import { DECORATION_IDS } from "../layout/decorations";
+import { learnTemplateStyle, learnedColor, type Backdrop, type Decoration, type LearnedStyle } from "./templateStyle";
 
 type Request = slides_v1.Schema$Request;
 type OpaqueColor = slides_v1.Schema$OpaqueColor;
@@ -200,10 +201,11 @@ function transform(pageObjectId: string, x: number, y: number, w: number, h: num
   };
 }
 
-function textRequests(el: TextElement, objectId: string, pageId: string, dark: boolean, ctx: Ctx, sx: number, sy: number): Request[] {
+function textRequests(el: TextElement, objectId: string, pageId: string, dark: boolean, ctx: Ctx, sx: number, sy: number, deco?: Decoration): Request[] {
   const paragraphs = el.paragraphs.map(p => (el.uppercase ? p.text.toUpperCase() : p.text));
   const text = paragraphs.join("\n");
-  const fs = el.fontSize * Math.min(sx, sy);
+  // A template's label or footer keeps the template's own size and color.
+  const fs = deco ? deco.size : el.fontSize * Math.min(sx, sy);
   const reqs: Request[] = [
     {
       createShape: {
@@ -230,8 +232,8 @@ function textRequests(el: TextElement, objectId: string, pageId: string, dark: b
         style: {
           fontFamily: font(el, ctx),
           fontSize: { magnitude: Math.round(fs * 2) / 2, unit: "PT" },
-          foregroundColor: { opaqueColor: color(el.color, dark, ctx) },
-          bold: el.font === "heading",
+          foregroundColor: { opaqueColor: deco ? rgb(deco.color) : color(el.color, dark, ctx) },
+          bold: deco ? deco.bold : el.font === "heading",
         },
         fields: "fontFamily,fontSize,foregroundColor,bold",
       },
@@ -258,7 +260,7 @@ function textRequests(el: TextElement, objectId: string, pageId: string, dark: b
     if (end > start) {
       const style: slides_v1.Schema$TextStyle = {};
       const fields: string[] = [];
-      if (p.bold) {
+      if (p.bold && !deco) {
         style.bold = true;
         fields.push("bold");
       }
@@ -266,7 +268,7 @@ function textRequests(el: TextElement, objectId: string, pageId: string, dark: b
         style.italic = true;
         fields.push("italic");
       }
-      if (p.color) {
+      if (p.color && !deco) {
         style.foregroundColor = { opaqueColor: color(p.color, dark, ctx) };
         fields.push("foregroundColor");
       }
@@ -327,6 +329,10 @@ function drawnSlide(layout: SlideLayout, pageId: string, ids: Ids, ctx: Ctx, ins
     });
   }
   for (const el of layout.elements) {
+    // With a learned template, labels and footers appear only if the template has them.
+    const decoKind = el.kind === "text" && (el.id === DECORATION_IDS.label ? "label" : el.id === DECORATION_IDS.footer ? "footer" : undefined);
+    const deco = decoKind ? ctx.learned?.[decoKind] : undefined;
+    if (decoKind && ctx.learned && !deco) continue;
     const objectId = ids.next(el.kind === "rect" ? "r" : "t");
     if (el.kind === "rect") {
       reqs.push(
@@ -349,7 +355,7 @@ function drawnSlide(layout: SlideLayout, pageId: string, ids: Ids, ctx: Ctx, ins
         },
       );
     } else {
-      reqs.push(...textRequests(el, objectId, pageId, dark, ctx, sx, sy));
+      reqs.push(...textRequests(el, objectId, pageId, dark, ctx, sx, sy, deco));
     }
   }
   return reqs;

@@ -12,6 +12,7 @@ import { layoutConcept } from "./concept";
 import { layoutAgenda, layoutExitTicket, layoutObjectives } from "./lists";
 import { layoutCards, layoutCompare, layoutLab, layoutPitfalls, layoutSteps } from "./panels";
 import { layoutCallout, layoutClosing, layoutSection, layoutTitle } from "./statement";
+import { decorate } from "./decorations";
 import type { SlideLayout } from "./types";
 
 export type LayoutFn<T extends DeckSlideType> = (slide: SlideOf<T>) => SlideLayout;
@@ -49,7 +50,7 @@ export class UnsupportedSlideTypeError extends Error {
 export function layoutSlide(slide: DeckSlide): SlideLayout {
   const fn = LAYOUTS[slide.type] as LayoutFn<typeof slide.type> | undefined;
   if (!fn) throw new UnsupportedSlideTypeError(slide.type);
-  return fn(slide as never);
+  return decorate(fn(slide as never), slide);
 }
 
 /** Lays out every slide. Slides without a layout yet are returned in `unsupported` rather than thrown. */
