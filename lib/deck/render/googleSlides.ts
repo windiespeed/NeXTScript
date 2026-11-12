@@ -27,7 +27,7 @@ import type { ColorToken, SlideLayout, TextElement } from "../layout/types";
 import { CANVAS_H, CANVAS_W } from "../layout/types";
 import { CODE_BG, CODE_TEXT, fontFamily, resolvePalette } from "./palette";
 import { DECORATION_IDS, FOOTER_Y } from "../layout/decorations";
-import { GRID } from "../layout/kit";
+import { GRID, HEADER_TITLE_Y } from "../layout/kit";
 import { learnTemplateStyle, learnedColor, type Backdrop, type Decoration, type LearnedFrame, type LearnedStyle } from "./templateStyle";
 
 type Request = slides_v1.Schema$Request;
@@ -328,6 +328,15 @@ function backdropSlide(b: Backdrop, pageId: string, ids: Ids, insertionIndex: nu
   ];
 }
 
+/**
+ * A content slide's header title goes where the template's titles sit (the frame maps the label and
+ * margins, but the gap from label to title differs from template to template).
+ */
+export function titleFrame(el: TextElement, dark: boolean, f: Frame, learned?: LearnedFrame): Frame {
+  if (dark || el.id !== "title" || el.y !== HEADER_TITLE_Y || learned?.titleTop === undefined) return f;
+  return { ...f, oy: learned.titleTop - el.y * f.ky };
+}
+
 function drawnSlide(layout: SlideLayout, pageId: string, ids: Ids, ctx: Ctx, insertionIndex: number): Request[] {
   const dark = layout.dark;
   const f = pageFrame(ctx.template?.pageW ?? CANVAS_W, ctx.template?.pageH ?? CANVAS_H, ctx.learned?.frame);
@@ -381,7 +390,7 @@ function drawnSlide(layout: SlideLayout, pageId: string, ids: Ids, ctx: Ctx, ins
         },
       );
     } else {
-      reqs.push(...textRequests(el, objectId, pageId, dark, ctx, f, deco));
+      reqs.push(...textRequests(el, objectId, pageId, dark, ctx, titleFrame(el, dark, f, ctx.learned?.frame), deco));
     }
   }
   return reqs;

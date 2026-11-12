@@ -68,6 +68,8 @@ export interface LearnedFrame {
   top: number;
   /** Top of the footer line, or where it would be. */
   footerTop: number;
+  /** Top of the content-slide title, when the template's slides agree on it. */
+  titleTop?: number;
 }
 
 export interface LearnedStyle {
@@ -342,6 +344,7 @@ export function learnFrame(slides: Page[], scheme: (s: Page) => Scheme, pageW: n
   const lefts: number[] = [];
   const tops: number[] = [];
   const footers: number[] = [];
+  const titles: number[] = [];
   for (const slide of slides) {
     const lines = linesOf(slide, scheme(slide), pageH);
     if (!lines.length) continue;
@@ -351,6 +354,7 @@ export function learnFrame(slides: Page[], scheme: (s: Page) => Scheme, pageW: n
     if (d.label) tops.push(d.label.y * ptH);
     else if (d.title) tops.push(d.title.y * ptH - 0.035 * ptH);
     if (d.footer) footers.push(d.footer.y * ptH);
+    if (d.title) titles.push(d.title.y * ptH);
   }
   const W = pageW / EMU_PER_PT;
   const H = pageH / EMU_PER_PT;
@@ -360,7 +364,10 @@ export function learnFrame(slides: Page[], scheme: (s: Page) => Scheme, pageW: n
   // Sanity: margins inside the page's outer quarter, and a header in the top fifth.
   if (left < 0 || left > W * 0.25 || top < 0 || top > H * 0.2) return undefined;
   const footerTop = median(footers) ?? H * 0.94;
-  return { left, top, footerTop };
+  // The title's own spot, kept only when it sits below the header top and in the top third.
+  const title = median(titles);
+  const titleTop = title !== undefined && title >= top && title <= H / 3 ? title : undefined;
+  return { left, top, footerTop, ...(titleTop !== undefined ? { titleTop } : {}) };
 }
 
 /** The common style of a decoration seen on at least a few slides, or undefined. */

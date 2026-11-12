@@ -25,6 +25,9 @@ export const HEADER = {
   bodyGap: 18,
 } as const;
 
+/** Where the standard header puts a content slide's title on the canvas. */
+export const HEADER_TITLE_Y = GRID.top + HEADER.accentBar.h + HEADER.titleGap;
+
 export interface TextSpec {
   id: string;
   /** What the warning calls this element, e.g. "Bullet list". */

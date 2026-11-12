@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { slides_v1 } from "googleapis";
 import { learnTemplateStyle, luminance } from "@/lib/deck/render/templateStyle";
-import { buildSlidesRequests, inspectTemplate, pageFrame, slidesFont } from "@/lib/deck/render/googleSlides";
+import { buildSlidesRequests, inspectTemplate, pageFrame, slidesFont, titleFrame } from "@/lib/deck/render/googleSlides";
+import { layoutSlide } from "@/lib/deck/layout/registry";
+import type { TextElement } from "@/lib/deck/layout/types";
 import { FOOTER_Y } from "@/lib/deck/layout/decorations";
 import { GRID } from "@/lib/deck/layout/kit";
 import { SAMPLE_DECK } from "@/lib/deck/sample";
@@ -129,6 +131,24 @@ describe("learnTemplateStyle", () => {
     expect(f.left).toBeCloseTo(64, 0); // 812800 EMU
     expect(f.top).toBeCloseTo((0.12 * PAGE_H) / 12700, 0);
     expect(f.footerTop).toBeCloseTo((0.91 * PAGE_H) / 12700, 0);
+    expect(f.titleTop).toBeCloseTo((0.16 * PAGE_H) / 12700, 0);
+  });
+
+  it("puts content-slide titles where the template's titles sit, and leaves other text alone", () => {
+    const frame = learnTemplateStyle(handStyled)!.frame!;
+    const f = pageFrame(720, 405, frame);
+    const concept = SAMPLE_DECK.slides.find(s => s.type === "concept")!;
+    const layout = layoutSlide({ ...concept, label: "Part 1 · Loops" });
+    const title = layout.elements.find(e => e.id === "title") as TextElement;
+    const tf = titleFrame(title, layout.dark, f, frame);
+    expect(tf.oy + title.y * tf.ky).toBeCloseTo(frame.titleTop!);
+    // The label stays on the learned header line.
+    const label = layout.elements.find(e => e.id === "label") as TextElement;
+    expect(titleFrame(label, layout.dark, f, frame)).toBe(f);
+    expect(f.oy + label.y * f.ky).toBeCloseTo(frame.top);
+    // Cover slides and templates without a learned title spot keep the plain frame.
+    expect(titleFrame(title, true, f, frame)).toBe(f);
+    expect(titleFrame(title, false, f, { ...frame, titleTop: undefined })).toBe(f);
   });
 
   it("maps the layout's content box onto the learned frame", () => {
