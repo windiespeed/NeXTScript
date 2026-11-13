@@ -77,8 +77,8 @@ export interface Lesson {
   progressMode?: "sequential" | "locked" | "free";  // Per-lesson override (falls back to module setting)
   solutionRevealAttempts?: number | null;            // Per-lesson override (falls back to module setting)
 
-  // Notes to Slides deck (types/slideAst.ts, drawn by lib/deck) — independent of the Google
-  // Slides deck tracked via SavedProject; a lesson can have either, both, or neither.
+  // LEGACY single Notes to Slides deck. Lessons now keep any number of decks as SavedProject
+  // records (lib/lessonDecks.ts); these fields are only read once, to migrate them there.
   presentationAST?: PresentationAST; // Component-tree structure generated/edited via /ingest
   selectedTheme?: string;            // Active ThemeConfig id (see types/theme.ts) for the AST renderer
   deck?: LessonDeck;                 // New-format deck content and its exports (lib/deck)
@@ -87,6 +87,9 @@ export interface Lesson {
   presentationStatus?: "draft" | "exported";
   /** The raw notes last used in Notes to Slides, so a saved draft reopens with them. */
   slideNotes?: string;
+  /** Set once this lesson's old single deck (presentationAST above) has been moved into its own
+   * deck record (lib/lessonDecks.ts). From then on the lesson's decks live only in "projects". */
+  decksMigrated?: boolean;
 
   // Dynamic content sections (see types/section.ts), keyed by SectionDef.id. Supersedes the
   // fixed fields above (overview, learningTargets, vocabulary, ...) once a lesson has been

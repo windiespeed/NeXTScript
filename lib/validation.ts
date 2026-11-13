@@ -172,6 +172,17 @@ export const ingestExportSchema = z.object({
   courseId: z.string().max(200).nullish(),
   /** Draw the deck onto the course's Google Slides template, when it has one. Default true. */
   useTemplate: z.boolean().optional(),
+  /** The lesson deck being exported (re-export updates it in place). Absent = a new deck. */
+  deckId: z.string().max(200).nullish(),
+  /** The notes the deck came from, kept on the deck so reopening it brings them back. */
+  slideNotes: z.string().max(200_000).nullish(),
+});
+
+/** POST /api/lessons/[id]/decks: save a deck's working copy as a draft (new deck without deckId). */
+export const lessonDeckSaveSchema = z.object({
+  deckId: z.string().max(200).nullish(),
+  ast: z.unknown(),
+  slideNotes: z.string().max(200_000).nullish(),
 });
 
 // ---------------------------------------------------------------------------------------------

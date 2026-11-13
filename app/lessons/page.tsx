@@ -347,7 +347,7 @@ export default function LessonsPage() {
                     key={lesson.id}
                     lesson={lesson}
                     courses={courses}
-                    deckCount={projects.filter(p => p.type === "deck" && p.lessonId === lesson.id).length}
+                    deckCount={projects.filter(p => p.type === "deck" && p.lessonId === lesson.id && !p.earlierVersion).length}
                     assigningOpen={assigningLessonId === lesson.id}
                     onToggleAssign={id => setAssigningLessonId(prev => prev === id ? null : id)}
                     onAssign={handleAssignLesson}

@@ -196,11 +196,17 @@ export default function LessonHubPage() {
       fetch("/api/projects").then(r => r.json()),
       fetch("/api/courses").then(r => r.json()),
       fetch("/api/user/settings").then(r => r.json()),
-    ]).then(([lessonData, projectData, coursesData, settings]) => {
+      // This lesson's decks (drafts included), from the route that also moves an older lesson's
+      // single deck into the several-decks model, so they win over the copies in /api/projects.
+      fetch(`/api/lessons/${id}/decks`).then(r => r.ok ? r.json() : null).catch(() => null),
+    ]).then(([lessonData, projectData, coursesData, settings, deckData]) => {
       setAllCourses(Array.isArray(coursesData) ? coursesData : []);
       setHasAiKey(settings.hasKey ?? false);
       setLesson(lessonData);
-      setProjects(Array.isArray(projectData) ? projectData : []);
+      const all: SavedProject[] = Array.isArray(projectData) ? projectData : [];
+      setProjects(Array.isArray(deckData)
+        ? [...(deckData as SavedProject[]), ...all.filter(p => !(p.type === "deck" && (p.lessonId === id || p.lessonIds?.includes(id))))]
+        : all);
 
       if (lessonData?.courseId) {
         fetch(`/api/courses/${lessonData.courseId}`).then(r => r.json()).then(c => {
@@ -346,31 +352,17 @@ export default function LessonHubPage() {
     return true;
   }
 
-  // The unexported Notes to Slides draft lives on the lesson itself (lesson.presentationAST),
-  // not as a SavedProject — so it can't go through handleDeleteProject/DELETE /api/projects.
-  async function handleDeleteSlideDraft() {
-    if (!confirm("Delete this Notes to Slides draft? This cannot be undone.")) return;
-    const res = await fetch(`/api/lessons/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ presentationAST: null, presentationStatus: null }),
-    });
-    if (res.ok) setLesson(prev => prev ? { ...prev, presentationAST: undefined, presentationStatus: undefined } : prev);
-  }
-
   if (loading) return <p className="text-sm text-[var(--accent-text)] mt-10">Loading…</p>;
   if (!lesson) return <p className="text-sm text-[var(--danger-text)] mt-10">Lesson not found.</p>;
 
   const currentModule = courseModules.find(m => m.lessonIds.includes(id));
   const backHref = lesson.courseId ? `/courses/${lesson.courseId}` : "/courses";
 
-  // A lesson can now have several decks (every Generate/Export click adds a new, distinctly
-  // named one instead of silently replacing the last) — already sorted newest-first by
-  // projectStore.getAll. The unexported draft (if any) is independent of how many exist.
-  const decks = projects.filter(p => p.type === "deck" && (p.lessonId === id || p.lessonIds?.includes(id)));
-  // Export also saves the final deck onto the lesson (presentationStatus "exported"), so only an
-  // AST that was saved/edited after the last export counts as an unexported draft.
-  const hasSlideDraft = !!lesson.presentationAST && lesson.presentationStatus !== "exported";
+  // A lesson can have several decks, each opened in Notes to Slides on its own (lib/lessonDecks.ts).
+  // Older exports of a lesson's former single deck are kept, but listed apart as earlier versions.
+  const allDecks = projects.filter(p => p.type === "deck" && (p.lessonId === id || p.lessonIds?.includes(id)));
+  const decks = allDecks.filter(d => !d.earlierVersion);
+  const earlierDecks = allDecks.filter(d => d.earlierVersion);
   const quizProjects = projects.filter(p => p.type === "form" && p.isQuiz && (p.lessonId === id || p.lessonIds?.includes(id)));
   const quizDrafts = quizProjects.filter(p => p.status === "draft");
   const quizGenerated = quizProjects.filter(p => p.status === "generated" || (!p.status && p.url));
@@ -642,32 +634,59 @@ export default function LessonHubPage() {
           </div>
         </div>
         <div className="space-y-2">
-          {decks.map(d => (
-            <DocRow key={d.id} icon={RESOURCE_ICON.slides} color="var(--accent-purple)"
-              label={d.title}
-              // Deck titles now come from the lesson's own Title/Subtitle (see autoDeckName in
-              // lib/google.ts), so multiple decks for the same lesson can share an identical
-              // title — the generation date here is what still tells them apart.
-              sublabel={`${d.presentationAST ? "Notes to Slides" : "Classic Slides (retired)"} · ${new Date(d.createdAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`}
-              badge="Generated" badgeColor="#2dd4a0"
-              url={d.url}
-              // Every deck is edited in Notes to Slides. This opens the lesson's *current* draft,
-              // not necessarily this deck's own snapshot; an old Classic deck's lesson can be
-              // loaded there with "Start from this lesson's content".
-              editHref={`/ingest?lessonId=${id}`}
-              editLabel="Edit Slides"
-              onDelete={() => handleDeleteProject(d.id, d.title)}
-              onRename={newTitle => handleRenameProject(d.id, newTitle)} />
-          ))}
-          {hasSlideDraft && (
-            <DocRow icon={RESOURCE_ICON.slides} color="#ff8c4a" label="Slide Deck"
-              sublabel={`${lesson.presentationAST!.slides.length} slide${lesson.presentationAST!.slides.length !== 1 ? "s" : ""} · Notes to Slides draft, not yet exported`}
-              badge="Draft" badgeColor="#ff8c4a"
-              editHref={`/ingest?lessonId=${id}`} editLabel="Edit Draft →"
-              onDelete={handleDeleteSlideDraft} />
+          {decks.map(d => {
+            const isDraft = d.status === "draft" || !d.url;
+            const when = new Date(d.updatedAt ?? d.createdAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+            const count = d.presentationAST?.slides.length;
+            const parts = [
+              count != null ? `${count} slide${count !== 1 ? "s" : ""}` : "Classic Slides (retired)",
+              isDraft ? "draft, not exported yet" : d.hasUnexportedEdits ? "edited since export" : null,
+              when,
+            ].filter(Boolean);
+            return (
+              <DocRow key={d.id} icon={RESOURCE_ICON.slides} color={isDraft ? "#ff8c4a" : "var(--accent-purple)"}
+                label={d.title}
+                sublabel={parts.join(" · ")}
+                badge={isDraft ? "Draft" : d.hasUnexportedEdits ? "Edited" : "Exported"}
+                badgeColor={isDraft || d.hasUnexportedEdits ? "#ff8c4a" : "#2dd4a0"}
+                url={isDraft ? undefined : d.url}
+                // Opens this deck itself. A Classic deck has no slides to open, so it starts a new
+                // deck, where "Start from this lesson's content" can load the old content.
+                editHref={d.presentationAST ? `/ingest?lessonId=${id}&deckId=${d.id}` : `/ingest?lessonId=${id}`}
+                editLabel={d.presentationAST ? (isDraft ? "Edit Draft" : "Edit Slides") : "New Deck"}
+                onDelete={() => handleDeleteProject(d.id, d.title)}
+                onRename={newTitle => handleRenameProject(d.id, newTitle)} />
+            );
+          })}
+          {decks.length > 0 && (
+            <div className="flex justify-end">
+              <Link href={`/ingest?lessonId=${id}`} className="text-[11px] font-semibold hover:underline" style={{ color: "var(--accent-text)" }}>
+                + Start a new deck
+              </Link>
+            </div>
           )}
-          {decks.length === 0 && !hasSlideDraft && (
+          {decks.length === 0 && (
             <DocRow icon={RESOURCE_ICON.slides} color="var(--text-muted)" label="Slide Deck" badge="Not generated" badgeColor="var(--text-muted)" editHref={`/ingest?lessonId=${id}`} editLabel="Create Slides →" />
+          )}
+          {earlierDecks.length > 0 && (
+            <details className="rounded-2xl px-3 py-2" style={{ border: "1px dashed var(--border)" }}>
+              <summary className="text-[11px] font-semibold cursor-pointer" style={{ color: "var(--text-muted)" }}>
+                Earlier versions ({earlierDecks.length}) · older exports, not posted to Classroom
+              </summary>
+              <div className="space-y-2 mt-2">
+                {earlierDecks.map(d => (
+                  <DocRow key={d.id} icon={RESOURCE_ICON.slides} color="var(--text-muted)"
+                    label={d.title}
+                    sublabel={new Date(d.createdAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                    badge="Earlier" badgeColor="var(--text-muted)"
+                    url={d.url}
+                    editHref={d.presentationAST ? `/ingest?lessonId=${id}&deckId=${d.id}` : undefined}
+                    editLabel="Open"
+                    onDelete={() => handleDeleteProject(d.id, d.title)}
+                    onRename={newTitle => handleRenameProject(d.id, newTitle)} />
+                ))}
+              </div>
+            </details>
           )}
           {lesson.overviewUrl ? (
             <DocRow icon={RESOURCE_ICON.doc} color="#0cc0df" label="Overview Doc" badge="Generated" badgeColor="#2dd4a0" url={lesson.overviewUrl}
@@ -694,7 +713,7 @@ export default function LessonHubPage() {
               onDelete={() => handleDeleteProject(q.id, q.title)}
               onRename={newTitle => handleRenameProject(q.id, newTitle)} />
           ))}
-          {decks.length === 0 && !hasSlideDraft && quizProjects.length === 0 && !lesson.overviewUrl && (
+          {decks.length === 0 && quizProjects.length === 0 && !lesson.overviewUrl && (
             <p className="text-xs text-center py-4" style={{ color: "var(--text-muted)" }}>No documents generated yet — use the Generate panel below.</p>
           )}
         </div>
@@ -717,7 +736,7 @@ export default function LessonHubPage() {
                         href={`/ingest?lessonId=${id}`}
                         className="w-full sm:w-auto text-center rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-6 py-2.5 text-sm font-bold text-[#0a0b13] hover:opacity-90 transition shadow"
                       >
-                        {decks.length > 0 || hasSlideDraft ? "Edit Slides →" : "Create Slides →"}
+                        {decks.length > 0 ? "Open or Add Slides →" : "Create Slides →"}
                       </Link>
                       <Link
                         href={quizDrafts.length > 0 ? `/quizzes/${quizDrafts[0].id}` : `/quizzes/new?lessonId=${id}`}

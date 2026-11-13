@@ -17,6 +17,7 @@ import { buildDeckPptx } from "@/lib/deck/render/pptx";
 import type { PresentationAST } from "@/types/slideAst";
 import type { SavedProject } from "@/types/project";
 import type { Lesson } from "@/types/lesson";
+import { listLessonDecks, uniqueDeckName } from "@/lib/lessonDecks";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -118,26 +119,43 @@ export async function POST(req: Request) {
     }
 
     const url = webViewLink;
+    const now = new Date().toISOString();
 
-    const projectInput: Omit<SavedProject, "id" | "createdAt" | "userId"> = {
-      type: "deck",
-      title: name,
+    // A lesson can have several decks. Exporting the deck that's open updates that deck (its new
+    // file replaces the old link; the old file stays in Drive); otherwise this is a new deck.
+    const lessonDecks = lesson ? await listLessonDecks(lesson) : [];
+    const openDeck = body.deckId ? lessonDecks.find(d => d.id === body.deckId) : undefined;
+    const deckFields: Partial<SavedProject> = {
       subtitle: ast.targetAudience,
       url,
+      status: "generated",
       presentationAST: finalAst,
-      ...(lessonId ? { lessonId } : {}),
-      ...(courseId ? { courseId } : {}),
+      ...(body.slideNotes != null ? { slideNotes: body.slideNotes } : {}),
+      hasUnexportedEdits: false,
+      earlierVersion: false,
+      updatedAt: now,
     };
-    await projectStore.create(projectInput, session.user.email);
-
-    // The lesson keeps the finalized hybrid deck and its theme as its source of truth, so the
-    // web view and the exported file stay in step and a later re-export starts from the same JSON.
-    // status "done" is what the dashboard and lesson lists count as generated.
-    if (lessonId) {
-      await store.update(lessonId, { presentationAST: finalAst, selectedTheme: themeId, presentationStatus: "exported", status: "done" });
+    let deck: SavedProject | null;
+    if (openDeck) {
+      deck = await projectStore.update(openDeck.id, deckFields);
+    } else {
+      deck = await projectStore.create(
+        {
+          type: "deck",
+          title: lesson ? uniqueDeckName(name, lessonDecks) : name,
+          ...deckFields,
+          url,
+          ...(lessonId ? { lessonId } : {}),
+          ...(courseId ? { courseId } : {}),
+        },
+        session.user.email,
+      );
     }
 
-    return NextResponse.json({ url, ast: finalAst });
+    // status "done" is what the dashboard and lesson lists count as generated.
+    if (lessonId) await store.update(lessonId, { status: "done", selectedTheme: themeId });
+
+    return NextResponse.json({ url, ast: finalAst, deckId: deck?.id });
   } catch (err) {
     return serverError(err, "notes to slides export");
   }

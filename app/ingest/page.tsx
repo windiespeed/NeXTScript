@@ -15,6 +15,7 @@ import { astToDeck, deckSlidesFor } from "@/lib/deck/fromAst";
 import { layoutOptionsForTheme, layoutSlide } from "@/lib/deck/layout/registry";
 import type { Course, CourseModule } from "@/types/course";
 import type { Lesson, LessonInput } from "@/types/lesson";
+import type { SavedProject } from "@/types/project";
 import { resolveSlideAnchors, describeAnchorReport } from "@/lib/slideAnchors";
 import { resolveSections } from "@/lib/sections";
 import { buildNotesFromLesson } from "@/lib/lessonSeed";
@@ -85,6 +86,8 @@ function IngestPageInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const lessonIdParam = searchParams.get("lessonId") ?? "";
+  // ?deckId= (from a deck's row on the lesson page) opens that deck of the lesson.
+  const deckIdParam = searchParams.get("deckId") ?? "";
 
   const [hasAiKey, setHasAiKey] = useState(false);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
@@ -159,6 +162,13 @@ function IngestPageInner() {
   // Result
   const [lessonId, setLessonId] = useState<string | null>(null);
   const [ast, setAst] = useState<PresentationAST | null>(null);
+  // A lesson can have several decks. deckId is the saved deck open here (null = a new deck, saved
+  // as a new one on its first Save Draft or Export); lessonDecks lists the attached lesson's decks.
+  const [deckId, setDeckId] = useState<string | null>(null);
+  const [lessonDecks, setLessonDecks] = useState<SavedProject[]>([]);
+  // The slides as last saved or opened, to warn before leaving unsaved changes.
+  const savedAstRef = useRef<string>("");
+  const openDeck = lessonDecks.find(d => d.id === deckId) ?? null;
   const [activeIndex, setActiveIndex] = useState(0);
   const [viewMode, setViewMode] = useState<"preview" | "edit">("preview");
   // No theme picker (removed on purpose) — the deck carries the theme it was generated with
@@ -185,7 +195,8 @@ function IngestPageInner() {
 
   // Keyed by whichever lesson this generation is (or will be) attached to — once ensureLesson()
   // resolves a real id, the draft moves under that id so it stays tied to the right lesson.
-  const draftKey = `ingest:${existingLessonId || lessonId || lessonIdParam || "new"}`;
+  // A saved deck gets its own key, so each of a lesson's decks keeps its own unsaved edits.
+  const draftKey = `ingest:${existingLessonId || lessonId || lessonIdParam || "new"}${deckId ? `:${deckId}` : ""}`;
   // Restore only after the initial settings/courses fetch (and, if deep-linked, the lesson
   // fetch) has landed — otherwise those async .then() callbacks resolve after restore and
   // silently overwrite the just-restored fields with server defaults.
@@ -264,13 +275,75 @@ function IngestPageInner() {
       // instead of waiting on ensureLesson() to resolve it again via existingLessonId.
       setLessonId(lesson.id);
       if (lesson.slideNotes) setRawText(lesson.slideNotes);
-      if (lesson.presentationAST) {
-        setAst(lesson.presentationAST);
-        setActiveIndex(0);
-        setViewMode("preview");
-      }
+      // The lesson's decks: open the one asked for, else show the list on the form.
+      loadLessonDecks(lesson.id).then(decks => {
+        const wanted = deckIdParam ? decks.find(d => d.id === deckIdParam) : undefined;
+        if (wanted) openSavedDeck(wanted, lesson.id);
+      });
     }).catch(() => {});
-  }, [lessonIdParam]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lessonIdParam, deckIdParam]);
+
+  /** Fetches the lesson's decks (this also moves an older lesson's single deck into the list). */
+  async function loadLessonDecks(id: string): Promise<SavedProject[]> {
+    try {
+      const res = await fetch(`/api/lessons/${id}/decks`);
+      const data = res.ok ? await res.json() : [];
+      const decks: SavedProject[] = Array.isArray(data) ? data : [];
+      setLessonDecks(decks);
+      return decks;
+    } catch {
+      setLessonDecks([]);
+      return [];
+    }
+  }
+
+  /** Opens one of the lesson's saved decks: its slides, and the notes it was made from. */
+  function openSavedDeck(deck: SavedProject, forLessonId: string) {
+    if (!deck.presentationAST) return;
+    // The saved deck wins over any copy this browser kept from an earlier visit.
+    clearDraft(`ingest:${forLessonId}:${deck.id}`);
+    setDoneNotice(null);
+    setDeckId(deck.id);
+    setAst(deck.presentationAST);
+    savedAstRef.current = JSON.stringify(deck.presentationAST);
+    if (deck.slideNotes) setRawText(deck.slideNotes);
+    setOutline(null);
+    setAnchorNotes([]);
+    setActiveIndex(0);
+    setViewMode("preview");
+  }
+
+  /** Leaves the open deck (it stays saved as it is) for the form, to make another deck. */
+  function handleNewDeck() {
+    if (ast && JSON.stringify(ast) !== savedAstRef.current
+      && !confirm(deckId ? "This deck has changes you haven't saved. Start a new deck anyway?" : "This deck isn't saved yet. Start a new deck and discard it?")) return;
+    clearDraft(draftKey);
+    setDeckId(null);
+    setAst(null);
+    savedAstRef.current = "";
+    setOutline(null);
+    setAnchorNotes([]);
+    setActiveIndex(0);
+    setError(null);
+    setExportError(null);
+    setSaveError(null);
+    setViewMode("preview");
+    if (deckIdParam) router.replace(`/ingest?lessonId=${lessonIdParam}`);
+    const id = lessonId || existingLessonId;
+    if (id) {
+      // Keep the form on this lesson (a lesson made on this page shows in the picker too).
+      setExistingLessonId(id);
+      setSelectedExistingLessonId(id);
+      loadLessonDecks(id);
+      if (selectedCourseId && !lockedFromQuery) {
+        fetch(`/api/lessons?courseId=${selectedCourseId}`).then(r => r.json()).then(data => {
+          if (Array.isArray(data)) setCourseLessons(data);
+        }).catch(() => {});
+      }
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
 
   // Populate the "attach to existing lesson" picker with this course's lessons
   useEffect(() => {
@@ -288,6 +361,8 @@ function IngestPageInner() {
       setExistingLessonId(null);
       setAttachedLesson(null);
       setLessonId(null);
+      setDeckId(null);
+      setLessonDecks([]);
       setAst(null);
       setActiveIndex(0);
       setViewMode("preview");
@@ -304,11 +379,14 @@ function IngestPageInner() {
     setLessonType((lesson.lessonType as LessonType) ?? "lesson");
     setLessonId(lesson.id);
     if (lesson.slideNotes) setRawText(lesson.slideNotes);
-    // Reset first, then repopulate — otherwise switching from a lesson with a saved
-    // draft to one without would leave the previous lesson's deck lingering in state.
+    // Picking a lesson doesn't open a deck: its decks are listed on the form to open one, and
+    // the form itself makes a new one. Clear any deck left from the previous lesson.
     setActiveIndex(0);
     setViewMode("preview");
-    setAst(lesson.presentationAST ?? null);
+    setDeckId(null);
+    setAst(null);
+    setLessonDecks([]);
+    loadLessonDecks(lesson.id);
   }
 
   // Classic content on the attached lesson, as Notes to Slides notes ("" when there's none).
@@ -337,6 +415,8 @@ function IngestPageInner() {
     // lessonId at it) — clear that out too, or a detached page would still silently
     // Save Draft/Export onto the lesson just detached from.
     setLessonId(null);
+    setDeckId(null);
+    setLessonDecks([]);
     setAst(null);
     setActiveIndex(0);
     setViewMode("preview");
@@ -500,6 +580,9 @@ function IngestPageInner() {
       if (!res.ok) throw new Error(data.error || "Failed to generate slides.");
       const result = data as HybridIngestResponse;
       stopProgressAnimation(100);
+      // Generating from the form always makes a new deck; the lesson's other decks are untouched.
+      setDeckId(null);
+      savedAstRef.current = "";
       setAst(result.ast);
       setOutline(null);
       setAnchorNotes(describeAnchorReport(result.anchorReport));
@@ -550,6 +633,9 @@ function IngestPageInner() {
     // back on that same key, making the reset look like it never happened.
     clearDraft(draftKey);
     setAst(null);
+    setDeckId(null);
+    setLessonDecks([]);
+    savedAstRef.current = "";
     setOutline(null);
     setAnchorNotes([]);
     setActiveIndex(0);
@@ -590,19 +676,19 @@ function IngestPageInner() {
     setSaving(true);
     setSaveError(null);
     try {
-      const res = await fetch(`/api/lessons/${lessonId}`, {
-        method: "PUT",
+      // Saves this deck (a new deck becomes one of the lesson's decks on its first save).
+      const res = await fetch(`/api/lessons/${lessonId}/decks`, {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          presentationAST: ast,
-          selectedTheme: ast.themeId ?? courseThemeId,
-          presentationStatus: "draft",
-          slideNotes: rawText,
-        }),
+        body: JSON.stringify({ deckId, ast, slideNotes: rawText }),
       });
       const data = await parseJsonResponse(res, "Saving took too long and timed out. Try again in a moment.");
       if (!res.ok) throw new Error(data.error || "Failed to save to the lesson.");
       clearDraft(draftKey);
+      const saved = data as SavedProject;
+      savedAstRef.current = JSON.stringify(ast);
+      setDeckId(saved.id);
+      setLessonDecks(prev => [saved, ...prev.filter(d => d.id !== saved.id)]);
       setSavedJustNow(true);
       setTimeout(() => setSavedJustNow(false), 2500);
       return true;
@@ -641,6 +727,9 @@ function IngestPageInner() {
         body: JSON.stringify({
           ast, lessonId: lessonId ?? undefined, courseId: selectedCourseId || undefined,
           useTemplate: useCourseTemplate,
+          // Re-exporting an open deck updates it; otherwise the export is a new deck.
+          deckId: deckId ?? undefined,
+          slideNotes: rawText,
         }),
       });
       const data = await parseJsonResponse(res, "Creating the deck took too long and timed out. Try again in a moment.");
@@ -772,6 +861,53 @@ function IngestPageInner() {
               </div>
             )}
           </div>
+
+          {/* ── The attached lesson's decks: open one, or use the form below for a new one ── */}
+          {(existingLessonId || lessonId) && lessonDecks.length > 0 && (
+            <div className={cardClass} style={cardStyle}>
+              <div>
+                <p className={sectionLabel}>This lesson&apos;s decks ({lessonDecks.filter(d => !d.earlierVersion).length})</p>
+                <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
+                  Open a deck to keep working on it, or fill in the form below to start a new deck. A new deck is added to the lesson, and its other decks stay as they are.
+                </p>
+              </div>
+              <ul className="space-y-2">
+                {lessonDecks.filter(d => !d.earlierVersion).map(d => {
+                  const isDraft = d.status === "draft" || !d.url;
+                  const count = d.presentationAST?.slides.length;
+                  const when = new Date(d.updatedAt ?? d.createdAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+                  return (
+                    <li key={d.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl px-3 py-2" style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)" }}>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold truncate" style={{ color: "var(--text-primary)" }}>{d.title}</p>
+                        <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
+                          {count != null ? `${count} slide${count !== 1 ? "s" : ""} · ` : "Classic Slides (retired) · "}
+                          {isDraft ? "Draft" : d.hasUnexportedEdits ? "Edited since export" : "Exported"} · {when}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        {!isDraft && (
+                          <a href={d.url} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold hover:underline" style={{ color: "var(--accent-text)" }}>
+                            View file ↗
+                          </a>
+                        )}
+                        {d.presentationAST && (
+                          <button
+                            type="button"
+                            onClick={() => openSavedDeck(d, (existingLessonId || lessonId)!)}
+                            className="rounded-full px-3 py-1 text-xs font-semibold transition hover:opacity-90"
+                            style={{ background: "var(--accent-bg)", color: "var(--accent-text)", border: "1px solid var(--accent)" }}
+                          >
+                            Open deck
+                          </button>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
 
           {/* ── Lesson Info (mirrors LessonForm's "Lesson Info" card) ── */}
           <div className={cardClass} style={cardStyle}>
@@ -1085,6 +1221,13 @@ function IngestPageInner() {
               <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
                 For {ast.targetAudience} · {ast.slides.length} slide{ast.slides.length !== 1 ? "s" : ""}
               </p>
+              <p className="text-xs mt-0.5" style={{ color: "var(--text-secondary)" }}>
+                {openDeck
+                  ? <>Deck: <span className="font-semibold">{openDeck.title}</span>{openDeck.status === "draft" || !openDeck.url ? " (draft)" : " (exporting again updates this deck)"}</>
+                  : lessonDecks.some(d => !d.earlierVersion)
+                    ? "New deck. Saving or exporting adds it to the lesson's decks."
+                    : "New deck"}
+              </p>
               {/* The look can be changed after generating: the course template, or any built-in look. */}
               <label htmlFor="ingest-deck-look" className="mt-2 flex items-center gap-2 text-xs" style={{ color: "var(--text-secondary)" }}>
                 Look
@@ -1139,11 +1282,12 @@ function IngestPageInner() {
                 {viewMode === "edit" ? "Done Editing" : "Edit Slides"}
               </button>
               <button
-                onClick={handleStartOver}
+                onClick={handleNewDeck}
+                title="Back to the form to make another deck for this lesson. Saved decks stay as they are."
                 className="rounded-full px-3 py-1.5 text-xs font-semibold transition"
                 style={{ background: "var(--bg-card-hover)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}
               >
-                ← Start Over
+                + Start a New Deck
               </button>
             </div>
           </div>
