@@ -95,7 +95,17 @@ export default function LessonHubPage() {
   const [publishMsg, setPublishMsg] = useState<{ text: string; ok: boolean } | null>(null);
   const [savingRelease, setSavingRelease] = useState(false);
 
+  // The course's lessons, for Previous / Next navigation.
+  const [courseLessons, setCourseLessons] = useState<Pick<Lesson, "id" | "title">[]>([]);
+
   useEffect(() => {
+    // Moving to another lesson (Previous / Next) reuses this page, so clear per-lesson UI state.
+    setLoading(true);
+    setPublishMsg(null);
+    setEditMenuOpen(false);
+    setPublishMenuOpen(false);
+    setAddingLink(false);
+    setAddingBlankDoc(false);
     Promise.all([
       fetch(`/api/lessons/${id}`).then(r => r.ok ? r.json() : null),
       fetch("/api/projects").then(r => r.json()),
@@ -110,12 +120,24 @@ export default function LessonHubPage() {
       if (lessonData?.courseId) {
         fetch(`/api/courses/${lessonData.courseId}`).then(r => r.json()).then(c => {
           setCourse(c);
-          if (Array.isArray(c?.modules)) setCourseModules(c.modules);
+          setCourseModules(Array.isArray(c?.modules) ? c.modules : []);
         }).catch(() => {});
+      } else {
+        setCourse(null);
+        setCourseModules([]);
       }
       setLoading(false);
     });
   }, [id]);
+
+  const lessonCourseId = lesson?.courseId;
+  useEffect(() => {
+    if (!lessonCourseId) { setCourseLessons([]); return; }
+    fetch(`/api/lessons?courseId=${lessonCourseId}`)
+      .then(r => r.ok ? r.json() : [])
+      .then(data => setCourseLessons(Array.isArray(data) ? data.map((l: Lesson) => ({ id: l.id, title: l.title })) : []))
+      .catch(() => setCourseLessons([]));
+  }, [lessonCourseId]);
 
   function startEditMeta() {
     if (!lesson) return;
@@ -394,11 +416,41 @@ export default function LessonHubPage() {
     ? { label: quizProjects.length > 1 ? `${quizProjects.length} quizzes` : "Created", color: "var(--success-text)" }
     : quizDrafts.length > 0 ? { label: "Draft", color: "var(--warning-text)" } : { label: "Not started", color: "var(--text-muted)" };
 
+  // Same order as the course page: each module's lessons in module order, then the unassigned
+  // lessons (in the order the course page saved for them, if any), so Next walks across modules.
+  const lessonOrder = (() => {
+    if (!lesson.courseId || courseLessons.length === 0) return [];
+    const byId = new Map(courseLessons.map(l => [l.id, l]));
+    const inModules = courseModules.flatMap(m => m.lessonIds.filter(lid => byId.has(lid)).map(lid => ({ ...byId.get(lid)!, moduleTitle: m.title })));
+    const assigned = new Set(inModules.map(l => l.id));
+    let savedOrder: string[] = [];
+    try { savedOrder = JSON.parse(localStorage.getItem(`sort-unassigned-${lesson.courseId}`) ?? "[]"); } catch {}
+    const unassigned = courseLessons.filter(l => !assigned.has(l.id));
+    const rank = (lid: string) => { const i = savedOrder.indexOf(lid); return i === -1 ? Number.MAX_SAFE_INTEGER : i; };
+    const unassignedSorted = unassigned
+      .map((l, i) => ({ l, i }))
+      .sort((a, b) => rank(a.l.id) - rank(b.l.id) || a.i - b.i)
+      .map(({ l }) => ({ ...l, moduleTitle: courseModules.length ? "Unassigned" : undefined as string | undefined }));
+    return [...inModules, ...unassignedSorted];
+  })();
+  const orderIndex = lessonOrder.findIndex(l => l.id === id);
+  const prevLesson = orderIndex > 0 ? lessonOrder[orderIndex - 1] : null;
+  const nextLesson = orderIndex >= 0 && orderIndex < lessonOrder.length - 1 ? lessonOrder[orderIndex + 1] : null;
+
   return (
     <div className="space-y-5">
-      <button onClick={() => router.push(backHref)} className="text-sm text-[var(--accent-text)] hover:underline block">
-        ← {lesson.courseId ? "Back to Course" : "Back to Courses"}
-      </button>
+      <div className="flex items-center justify-between gap-3">
+        <button onClick={() => router.push(backHref)} className="text-sm text-[var(--accent-text)] hover:underline">
+          ← {lesson.courseId ? "Back to Course" : "Back to Courses"}
+        </button>
+        {orderIndex >= 0 && lessonOrder.length > 1 && (
+          <div className="flex items-center gap-1.5 text-xs" style={{ color: "var(--text-muted)" }}>
+            <StepLink lesson={prevLesson} dir="prev" />
+            <span className="px-1 tabular-nums">Lesson {orderIndex + 1} of {lessonOrder.length}</span>
+            <StepLink lesson={nextLesson} dir="next" />
+          </div>
+        )}
+      </div>
 
       {/* ── Header: where it lives, title + status, actions ─────────────── */}
       <div className="rounded-3xl p-4 sm:p-5" style={cardStyle}>
@@ -885,6 +937,14 @@ export default function LessonHubPage() {
           </div>
         </div>
       </div>
+
+      {/* ── Previous / Next lesson in this course ──────────────────────── */}
+      {orderIndex >= 0 && lessonOrder.length > 1 && (
+        <nav aria-label="Lesson navigation" className="grid grid-cols-2 gap-3 sm:gap-5">
+          {prevLesson ? <PagerCard lesson={prevLesson} dir="prev" /> : <div />}
+          {nextLesson ? <PagerCard lesson={nextLesson} dir="next" /> : <div />}
+        </nav>
+      )}
     </div>
   );
 }
@@ -903,6 +963,48 @@ const primaryBtn = "inline-flex items-center rounded-lg px-3.5 py-1.5 text-xs fo
 const primaryBtnStyle = { background: "var(--brand-gradient)" };
 const secondaryBtn = "inline-flex items-center rounded-lg px-3.5 py-1.5 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)] whitespace-nowrap";
 const secondaryBtnStyle = { border: "1px solid var(--border)", color: "var(--text-secondary)" };
+
+type PagerLesson = { id: string; title: string; moduleTitle?: string };
+
+function StepLink({ lesson, dir }: { lesson: PagerLesson | null; dir: "prev" | "next" }) {
+  const label = dir === "prev" ? "Previous lesson" : "Next lesson";
+  const icon = (
+    <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      {dir === "prev" ? <polyline points="15 18 9 12 15 6" /> : <polyline points="9 18 15 12 9 6" />}
+    </svg>
+  );
+  const cls = "flex items-center justify-center w-7 h-7 rounded-lg transition";
+  const style = { border: "1px solid var(--border)", background: "var(--bg-card)" };
+  if (!lesson) return <span aria-hidden className={`${cls} opacity-40`} style={{ ...style, color: "var(--text-muted)" }}>{icon}</span>;
+  return (
+    <Link href={`/lessons/${lesson.id}`} aria-label={`${label}: ${lesson.title}`} title={`${label}: ${lesson.title}`} className={`${cls} hover:bg-[var(--bg-card-hover)]`} style={{ ...style, color: "var(--text-secondary)" }}>
+      {icon}
+    </Link>
+  );
+}
+
+function PagerCard({ lesson, dir }: { lesson: PagerLesson; dir: "prev" | "next" }) {
+  const next = dir === "next";
+  return (
+    <Link
+      href={`/lessons/${lesson.id}`}
+      className={`group flex items-center gap-3 rounded-3xl px-4 py-3.5 transition hover:border-[var(--brand-teal)] min-w-0 ${next ? "flex-row-reverse text-right" : ""}`}
+      style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}
+    >
+      <span className="flex items-center justify-center w-8 h-8 rounded-lg shrink-0 transition group-hover:text-white group-hover:[background:var(--brand-gradient)]" style={{ background: "var(--bg-card-hover)", color: "var(--accent-text)" }}>
+        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          {next ? <polyline points="9 18 15 12 9 6" /> : <polyline points="15 18 9 12 15 6" />}
+        </svg>
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>
+          {next ? "Next lesson" : "Previous lesson"}{lesson.moduleTitle ? <span className="hidden sm:inline"> · {lesson.moduleTitle}</span> : null}
+        </span>
+        <span className="block text-sm font-semibold truncate" style={{ color: "var(--text-primary)" }}>{lesson.title}</span>
+      </span>
+    </Link>
+  );
+}
 
 function Badge({ label, color, bg, capitalize }: { label: string; color: string; bg?: string; capitalize?: boolean }) {
   return (
