@@ -24,6 +24,7 @@ import type { ThemeConfig } from "@/types/theme";
 import type { DeckContent, DeckSlide, SlideOf } from "../schema";
 import { layoutSlide, type LayoutOptions } from "../layout/registry";
 import { coverTexts, fitCoverSize, type TemplateCover } from "../layout/templateCover";
+import { plainSlide, type PlainLine } from "../plain";
 import type { ColorToken, SlideLayout, TextElement } from "../layout/types";
 import { CANVAS_H, CANVAS_W } from "../layout/types";
 import { CODE_BG, CODE_TEXT, fontFamily, resolvePalette } from "./palette";
@@ -535,6 +536,83 @@ export function buildSlidesRequests(deck: DeckContent, ctx: Ctx, idPrefix = "nx"
   return { requests, slideIds, notes };
 }
 
+// ─── Plain (no theme) ────────────────────────────────────────────────────────
+
+/**
+ * Requests for the "Plain (no theme)" look: every slide on Google's own Title, Section header or
+ * Title and body layout, text in the layout's placeholders, and no colors, fonts or backgrounds,
+ * so a Google Slides theme applied afterwards restyles everything. Code lines get a monospace
+ * font, the only style set.
+ */
+export function buildPlainSlides(deck: DeckContent, idPrefix = "pl"): BuiltRequests {
+  const ids = new Ids(idPrefix);
+  const requests: Request[] = [];
+  const slideIds: string[] = [];
+  deck.slides.forEach((slide, i) => {
+    const p = plainSlide(slide);
+    const pageId = ids.next("p");
+    // Google's own layouts. Their placeholders are filled once the slides exist (plainText), since
+    // which placeholders a layout has varies by theme.
+    const layout = p.kind === "title" ? "TITLE" : p.kind === "section" ? (p.subtitle ? "SECTION_TITLE_AND_DESCRIPTION" : "SECTION_HEADER") : "TITLE_AND_BODY";
+    requests.push({ createSlide: { objectId: pageId, insertionIndex: i, slideLayoutReference: { predefinedLayout: layout } } });
+    slideIds.push(pageId);
+  });
+  return { requests, slideIds, notes: deck.slides.map(s => s.notes) };
+}
+
+/** The placeholders a new slide got from its layout, by type. */
+export function placeholdersOf(page: slides_v1.Schema$Page | undefined): { title?: string; body?: string } {
+  const els = page?.pageElements ?? [];
+  const find = (...types: string[]) => els.find(e => types.includes(e.shape?.placeholder?.type ?? ""))?.objectId ?? undefined;
+  return { title: find("CENTERED_TITLE", "TITLE"), body: find("SUBTITLE", "BODY") };
+}
+
+/** Text for the plain slides, into the placeholders their layouts gave them. */
+export function plainText(deck: DeckContent, placeholders: { title?: string; body?: string }[]): Request[] {
+  const requests: Request[] = [];
+  deck.slides.forEach((slide, i) => {
+    const p = plainSlide(slide);
+    const { title, body } = placeholders[i] ?? {};
+    const lines: PlainLine[] = p.kind === "content" ? p.lines : p.subtitle ? [{ text: p.subtitle, level: 0, heading: true }] : [];
+    // No title placeholder (an unusual theme): the title leads the body instead of being lost.
+    if (title) requests.push({ insertText: { objectId: title, insertionIndex: 0, text: p.title } });
+    else lines.unshift({ text: p.title, level: 0, heading: true });
+    if (!body) return;
+    if (!lines.length) {
+      requests.push({ deleteObject: { objectId: body } });
+      return;
+    }
+    // A leading tab nests a bullet one level; createParagraphBullets turns tabs into nesting.
+    const text = lines.map(l => (l.level ? "\t" : "") + l.text).join("\n");
+    requests.push({ insertText: { objectId: body, insertionIndex: 0, text } });
+    let start = 0;
+    const ranges = lines.map(l => {
+      const end = start + (l.level ? 1 : 0) + l.text.length;
+      const r = { line: l, start, end };
+      start = end + 1;
+      return r;
+    });
+    // Code lines first, while their offsets are exact (bullets remove the tabs).
+    for (const r of ranges.filter(r => r.line.code && r.end > r.start)) {
+      requests.push({ updateTextStyle: { objectId: body, textRange: { type: "FIXED_RANGE", startIndex: r.start, endIndex: r.end }, style: { fontFamily: "Roboto Mono" }, fields: "fontFamily" } });
+    }
+    // Bullets on content slides; the layout decides whether its body already has them, so
+    // headings and code are made bullet-free explicitly. Last range first, so earlier offsets hold.
+    if (p.kind === "content") {
+      for (const r of [...ranges].reverse()) {
+        if (r.end <= r.start) continue;
+        const textRange = { type: "FIXED_RANGE", startIndex: r.start, endIndex: r.end };
+        requests.push(
+          r.line.code || r.line.heading
+            ? { deleteParagraphBullets: { objectId: body, textRange } }
+            : { createParagraphBullets: { objectId: body, textRange, bulletPreset: "BULLET_DISC_CIRCLE_SQUARE" } },
+        );
+      }
+    }
+  });
+  return requests;
+}
+
 // ─── Export ──────────────────────────────────────────────────────────────────
 
 function authClient(accessToken: string) {
@@ -587,7 +665,8 @@ async function fillPresentation(
   const pres = await slides.presentations.get({ presentationId: id });
   const template = opts.templateId ? inspectTemplate(pres.data) : undefined;
   const learned = opts.templateId ? learnTemplateStyle(pres.data) : undefined;
-  const built = buildSlidesRequests(opts.deck, { theme: opts.theme, template, learned });
+  const plain = !template && !!opts.theme.plain;
+  const built = plain ? buildPlainSlides(opts.deck) : buildSlidesRequests(opts.deck, { theme: opts.theme, template, learned });
   // A new presentation starts with one empty title slide; remove it once the deck is in.
   if (!template) {
     for (const s of pres.data.slides ?? []) if (s.objectId) built.requests.push({ deleteObject: { objectId: s.objectId } });
@@ -595,6 +674,16 @@ async function fillPresentation(
 
   for (let i = 0; i < built.requests.length; i += BATCH) {
     await slides.presentations.batchUpdate({ presentationId: id, requestBody: { requests: built.requests.slice(i, i + BATCH) } });
+  }
+
+  if (plain) {
+    // Fill the placeholders Google's layouts created.
+    const made = await slides.presentations.get({ presentationId: id, fields: "slides(objectId,pageElements(objectId,shape(placeholder(type))))" });
+    const byId = new Map((made.data.slides ?? []).map(sl => [sl.objectId, sl]));
+    const text = plainText(opts.deck, built.slideIds.map(sid => placeholdersOf(byId.get(sid))));
+    for (let i = 0; i < text.length; i += BATCH) {
+      await slides.presentations.batchUpdate({ presentationId: id, requestBody: { requests: text.slice(i, i + BATCH) } });
+    }
   }
 
   // Speaker notes: each slide's notes shape only exists once the slide does.

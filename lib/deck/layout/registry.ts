@@ -15,6 +15,7 @@ import { layoutCallout, layoutClosing, layoutSection, layoutTitle, type TitleOpt
 import { decorate, takeawayReserve } from "./decorations";
 import { withReservedBottom } from "./kit";
 import { layoutTemplateCover, type TemplateCover } from "./templateCover";
+import { layoutPlain } from "../plain";
 import type { SlideLayout } from "./types";
 
 export type LayoutFn<T extends DeckSlideType> = (slide: SlideOf<T>) => SlideLayout;
@@ -51,7 +52,8 @@ export class UnsupportedSlideTypeError extends Error {
 }
 
 /** Layout options a theme asks for: a course template's title-slide design. */
-export function layoutOptionsForTheme(theme: { titleTextRight?: number; templateCover?: TemplateCover }): LayoutOptions {
+export function layoutOptionsForTheme(theme: { titleTextRight?: number; templateCover?: TemplateCover; plain?: boolean }): LayoutOptions {
+  if (theme.plain) return { plain: true };
   if (!theme.titleTextRight && !theme.templateCover) return {};
   return { title: { ...(theme.titleTextRight ? { textRight: theme.titleTextRight } : {}), ...(theme.templateCover ? { template: theme.templateCover } : {}) } };
 }
@@ -59,9 +61,12 @@ export function layoutOptionsForTheme(theme: { titleTextRight?: number; template
 /** Per-deck layout options; `title` applies to the title slide. */
 export interface LayoutOptions {
   title?: TitleOptions;
+  /** The "Plain (no theme)" look: title and text only. */
+  plain?: boolean;
 }
 
 export function layoutSlide(slide: DeckSlide, opts: LayoutOptions = {}): SlideLayout {
+  if (opts.plain) return layoutPlain(slide);
   if (slide.type === "title" && opts.title?.template) return layoutTemplateCover(slide, opts.title.template);
   if (slide.type === "title" && opts.title?.textRight) {
     return withReservedBottom(takeawayReserve(slide), () => decorate(layoutTitle(slide, opts.title), slide));

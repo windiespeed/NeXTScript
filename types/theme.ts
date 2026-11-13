@@ -48,6 +48,11 @@ export interface ThemeConfig {
   };
   /** Where title-slide text must end, in canvas pt, to stay clear of the template's cover art. */
   titleTextRight?: number;
+  /**
+   * No theme: slides are plain titles and text on Google Slides' own layouts, so a Slides theme
+   * applied afterwards restyles everything (lib/deck/plain.ts).
+   */
+  plain?: boolean;
   /** A course template's own cover text design, which the title slide follows. */
   templateCover?: TemplateCover;
   /**

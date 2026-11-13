@@ -1124,7 +1124,7 @@ function IngestPageInner() {
                     {SPINNER}
                     Creating deck…
                   </span>
-                ) : courseTemplateUrl && useCourseTemplate ? "Export to Google Slides" : "Export to PowerPoint"}
+                ) : (courseTemplateUrl && useCourseTemplate) || (!templateOn && theme.plain) ? "Export to Google Slides" : "Export to PowerPoint"}
               </button>
               <button
                 onClick={handleSaveDraftAndClear}

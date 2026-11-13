@@ -23,6 +23,20 @@ export const THEMES: ThemeConfig[] = [
     },
   },
   {
+    // No styling at all: exports to Google Slides on Google's own layouts with no colors, fonts or
+    // backgrounds, so any Google Slides theme applied afterwards restyles the whole deck.
+    id: "plain",
+    name: "Plain (no theme)",
+    category: "light",
+    background: { page: "#ffffff", card: "#ffffff", cardAlt: "#f1f3f4" },
+    typography: { headingFont: "Arial, sans-serif", bodyFont: "Arial, sans-serif", headingWeight: 400 },
+    text: { primary: "#000000", secondary: "#202124", muted: "#5f6368" },
+    accent: { primary: "#202124", secondary: "#5f6368", tertiary: "#5f6368" },
+    border: "#dadce0",
+    radius: "0",
+    plain: true,
+  },
+  {
     id: "pearl",
     name: "Pearl",
     category: "light",
