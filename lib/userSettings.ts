@@ -14,14 +14,17 @@ export interface UserSettings {
   /** Profile → Advanced: "auto" or an AI model id (see lib/aiModels.ts). Absent = "auto". */
   preferredAiModel?: string;
   avatarUrl?: string;
-  /** @deprecated AI sources live in course settings now; lib/sourcesCarryOver.ts moves old values there. */
+  /** @deprecated AI sources live in course settings now; lib/profileCarryOver.ts moves old values there. */
   defaultSources?: string;
   folders?: string[];
   lessonOrder?: string[];
+  /** @deprecated Industry, Subject Area and sections are course settings now; lib/profileCarryOver.ts moves old values there. */
   industry?: string;
+  /** @deprecated see `industry`. */
   subject?: string;
-  /** @deprecated superseded by `sections` below — kept as a synthesis input, never migrated. */
+  /** @deprecated see `industry`. */
   sectionLabels?: Partial<SectionLabels>;
+  /** @deprecated see `industry`. */
   sections?: SectionDef[];
 }
 

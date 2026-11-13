@@ -37,10 +37,10 @@ describe("subject-neutral AI prompts", () => {
     expect(buildUserPrompt("notes", {})).not.toContain("Program:");
   });
 
-  it("prefers the course's industry and subject over the profile's", () => {
-    const course = { settings: { industry: "Healthcare", subject: "" } } as unknown as Course;
-    expect(resolveProgramContext(course, { industry: "Business", subject: "Marketing" })).toEqual({ industry: "Healthcare", subject: "Marketing" });
-    expect(resolveProgramContext(undefined, {})).toEqual({ industry: "", subject: "" });
+  it("takes industry and subject from the course only", () => {
+    const course = { settings: { industry: " Healthcare ", subject: "" } } as unknown as Course;
+    expect(resolveProgramContext(course)).toEqual({ industry: "Healthcare", subject: "" });
+    expect(resolveProgramContext(undefined)).toEqual({ industry: "", subject: "" });
     expect(describeProgram({ industry: "", subject: "" })).toBeNull();
   });
 });

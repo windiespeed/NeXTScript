@@ -59,7 +59,7 @@ export async function POST(req: Request) {
       if (found && (await canAccessLesson(found, email))) lesson = found;
     }
     const courseId = input.courseId ?? lesson?.courseId;
-    const skeleton = courseId ? await loadCourseSkeleton(courseId, email, settings) : null;
+    const skeleton = courseId ? await loadCourseSkeleton(courseId, email) : null;
     const context = [
       skeleton ? `Course: ${skeleton.course.title}` : null,
       lesson?.subtitle ? `Lesson subtitle: ${lesson.subtitle}` : null,
@@ -73,7 +73,7 @@ export async function POST(req: Request) {
         notes: input.notes,
         lessonTitle: input.lessonTitle ?? lesson?.title,
         audience: input.audience,
-        program: resolveProgramContext(skeleton?.course, settings),
+        program: resolveProgramContext(skeleton?.course),
         // Student Level comes from Course Settings only.
         studentLevel: courseAiInputs(skeleton?.course).studentLevel,
         context: context || undefined,

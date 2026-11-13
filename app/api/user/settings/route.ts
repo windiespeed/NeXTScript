@@ -23,10 +23,6 @@ export async function GET() {
       avatarUrl: s.avatarUrl ?? null,
       folders: s.folders ?? [],
       lessonOrder: s.lessonOrder ?? [],
-      industry: s.industry ?? "",
-      subject: s.subject ?? "",
-      sectionLabels: s.sectionLabels ?? {},
-      sections: s.sections ?? [],
     });
   } catch (err) {
     return serverError(err);
@@ -47,10 +43,6 @@ export async function PUT(req: Request) {
     if (body.geminiKey !== undefined) update.geminiKey = body.geminiKey;
     if (body.folders !== undefined) update.folders = body.folders ?? [];
     if (body.lessonOrder !== undefined) update.lessonOrder = body.lessonOrder ?? [];
-    if (body.industry !== undefined) update.industry = body.industry ?? "";
-    if (body.subject !== undefined) update.subject = body.subject ?? "";
-    if (body.sectionLabels !== undefined) update.sectionLabels = body.sectionLabels ?? {};
-    if (body.sections !== undefined) update.sections = body.sections ?? [];
     if (body.preferredAiModel !== undefined) update.preferredAiModel = body.preferredAiModel ?? "auto";
 
     await userSettings.save(session.user.email, update);

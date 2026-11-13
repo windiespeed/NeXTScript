@@ -105,8 +105,9 @@ describe("create and small write schemas", () => {
 
 describe("user settings patch", () => {
   it("only returns the keys that were sent", () => {
-    const r = parsePatch(userSettingsPatchSchema, { industry: "Coding", junk: 1 });
-    expect(r.ok && r.data).toEqual({ industry: "Coding" });
+    // Industry, Subject Area and sections are course settings now, so they're dropped here too.
+    const r = parsePatch(userSettingsPatchSchema, { folders: ["A"], industry: "Coding", sections: [], junk: 1 });
+    expect(r.ok && r.data).toEqual({ folders: ["A"] });
   });
   it("rejects blank or oversized API keys", () => {
     expect(parsePatch(userSettingsPatchSchema, { anthropicKey: "   " }).ok).toBe(false);

@@ -32,9 +32,9 @@ export async function POST(req: Request) {
     const rawCourse = lesson.courseId ? await courseStore.getById(lesson.courseId) : undefined;
     const course = rawCourse && canAccessCourse(rawCourse, session.user.email) ? rawCourse : undefined;
 
-    // Merge: defaults → user profile → course settings (course wins)
-    const { industry, subject } = resolveProgramContext(course, settings);
-    const sections = resolveSections({ course, userSettings: settings });
+    // Industry, Subject Area and sections come from the course only
+    const { industry, subject } = resolveProgramContext(course);
+    const sections = resolveSections({ course });
 
     // Student Level and Sources come from Course Settings only, never from the lesson.
     const { studentLevel, sources } = courseAiInputs(course);

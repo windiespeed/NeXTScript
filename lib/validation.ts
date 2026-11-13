@@ -366,10 +366,6 @@ export const userSettingsPatchSchema = z
     geminiKey: apiKey,
     folders: z.array(label).max(500).nullable(),
     lessonOrder: ids(5_000).nullable(),
-    industry: label.nullable(),
-    subject: label.nullable(),
-    sectionLabels: sectionLabels.nullable(),
-    sections: sectionList.nullable(),
     // Profile → Advanced. "auto" (or null) = the default model for whichever key is saved.
     preferredAiModel: z.enum(["auto", ...AI_MODELS.map(m => m.id)] as [string, ...string[]]).nullable(),
   })

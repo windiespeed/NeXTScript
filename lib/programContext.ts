@@ -1,5 +1,4 @@
 import type { Course } from "@/types/course";
-import type { UserSettings } from "@/lib/userSettings";
 
 /** What the course teaches, as the AI prompts describe it. Empty strings when unset. */
 export interface ProgramContext {
@@ -8,14 +7,14 @@ export interface ProgramContext {
 }
 
 /**
- * The course's Industry and Subject Area, falling back to the user's Profile values (course wins).
- * Every AI generator uses this so a deck, a lesson and a quiz for the same course are framed the
+ * The course's Industry and Subject Area. These are course settings only (the old Profile values
+ * were copied into each owned course by lib/profileCarryOver.ts). Every AI generator uses this so a deck, a lesson and a quiz for the same course are framed the
  * same way, whatever the subject.
  */
-export function resolveProgramContext(course: Course | undefined | null, settings: Pick<UserSettings, "industry" | "subject">): ProgramContext {
+export function resolveProgramContext(course: Course | undefined | null): ProgramContext {
   return {
-    industry: (course?.settings?.industry || settings.industry || "").trim(),
-    subject: (course?.settings?.subject || settings.subject || "").trim(),
+    industry: (course?.settings?.industry || "").trim(),
+    subject: (course?.settings?.subject || "").trim(),
   };
 }
 

@@ -2,13 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useSession, signOut } from "next-auth/react";
-import { DEFAULT_SECTIONS, type SectionDef } from "@/types/section";
-import { resolveSections } from "@/lib/sections";
-import SectionsEditor from "@/components/SectionsEditor";
 import Avatar, { AVATAR_CHANGED_EVENT } from "@/components/Avatar";
 import { useTheme } from "@/context/Theme";
-import { clearDraft } from "@/lib/draftStorage";
-import { useDraftAutosave, useDraftRestore } from "@/hooks/useDraftAutosave";
 import { AI_MODELS, DEFAULT_MODEL, getAiModel, resolveAiModel, type AiProvider } from "@/lib/aiModels";
 
 function resizeToBase64(file: File): Promise<string> {
@@ -48,10 +43,6 @@ export default function ProfilePage() {
   const [removingAvatar, setRemovingAvatar] = useState(false);
 
 
-  const [industry, setIndustry] = useState("");
-  const [subject, setSubject] = useState("");
-  const [sections, setSections] = useState<SectionDef[]>(DEFAULT_SECTIONS);
-  const [savingCurriculum, setSavingCurriculum] = useState(false);
 
   const [hasKey, setHasKey] = useState(false);
   const [maskedKey, setMaskedKey] = useState<string | null>(null);
@@ -69,18 +60,6 @@ export default function ProfilePage() {
 
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const [dataLoaded, setDataLoaded] = useState(false);
-
-  // Only the curriculum form keeps a draft. keyInput (the raw pasted API key)
-  // and the avatar File are deliberately never persisted: a secret credential and a
-  // non-serializable Blob don't belong in localStorage.
-  const curriculumDraftKey = "profile:curriculum";
-  useDraftRestore<{ industry: string; subject: string; sections: SectionDef[] }>(dataLoaded ? curriculumDraftKey : null, (draft) => {
-    setIndustry(draft.industry);
-    setSubject(draft.subject);
-    setSections(draft.sections);
-  });
-  useDraftAutosave(curriculumDraftKey, { industry, subject, sections }, dataLoaded);
 
   useEffect(() => {
     fetch("/api/user/settings")
@@ -92,11 +71,7 @@ export default function ProfilePage() {
         setMaskedGeminiKey(data.maskedGeminiKey);
         setPreferredAiModel(data.preferredAiModel ?? "auto");
         setAvatarUrl(data.avatarUrl ?? null);
-        setIndustry(data.industry ?? "");
-        setSubject(data.subject ?? "");
-        setSections(resolveSections({ userSettings: { sectionLabels: data.sectionLabels, sections: data.sections } }));
-      })
-      .finally(() => setDataLoaded(true));
+      });
   }, []);
 
   function flash(msg: string, isError = false) {
@@ -138,20 +113,6 @@ export default function ProfilePage() {
     setAvatarUrl(null);
     window.dispatchEvent(new CustomEvent(AVATAR_CHANGED_EVENT, { detail: null }));
     flash("Profile photo removed.");
-  }
-
-  async function handleSaveCurriculum(e: React.FormEvent) {
-    e.preventDefault();
-    setSavingCurriculum(true);
-    flash("");
-    const res = await fetch("/api/user/settings", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ industry, subject, sections }),
-    });
-    setSavingCurriculum(false);
-    if (res.ok) { clearDraft(curriculumDraftKey); flash("Curriculum settings saved."); }
-    else { const d = await res.json(); flash(d.error || "Failed to save.", true); }
   }
 
   async function handleSaveKey(e: React.FormEvent) {
@@ -246,7 +207,7 @@ export default function ProfilePage() {
       <div className="mb-6">
         <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: "var(--text-muted)" }}>Account</p>
         <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>Profile</h1>
-        <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>Manage your account and curriculum preferences.</p>
+        <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>Manage your account, appearance and AI keys. Industry, subject area and sections are set per course in Course Settings.</p>
       </div>
 
       {/* User info card */}
@@ -329,55 +290,6 @@ export default function ProfilePage() {
             {dark ? "☀ Light mode" : "☾ Dark mode"}
           </button>
         </div>
-      </div>
-
-      {/* Curriculum settings */}
-      <div className="rounded-3xl p-6 space-y-5" style={cardSty}>
-        <div>
-          <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>Curriculum Settings</h2>
-          <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
-            Customize your industry, subject area, and section labels. These are used by AI Fill and appear throughout your lessons and generated files.
-          </p>
-        </div>
-        <form onSubmit={handleSaveCurriculum} className="space-y-5">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="profile-industry" className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Industry</label>
-              <input id="profile-industry"
-                type="text"
-                value={industry}
-                onChange={e => setIndustry(e.target.value)}
-                placeholder="e.g. Healthcare, Education, Business"
-                className={inputCls}
-                style={inputSty}
-              />
-            </div>
-            <div>
-              <label htmlFor="profile-subject-area" className="block text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Subject Area</label>
-              <input id="profile-subject-area"
-                type="text"
-                value={subject}
-                onChange={e => setSubject(e.target.value)}
-                placeholder="e.g. English Literature, Nursing 101, Marketing"
-                className={inputCls}
-                style={inputSty}
-              />
-            </div>
-          </div>
-
-          <div>
-            <p className="text-sm font-semibold mb-3" style={{ color: "var(--text-primary)" }}>Sections</p>
-            <SectionsEditor scope="user" value={sections} onChange={setSections} />
-          </div>
-
-          <button
-            type="submit"
-            disabled={savingCurriculum}
-            className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-sm font-semibold text-[#0a0b13] shadow hover:opacity-90 disabled:opacity-50 transition"
-          >
-            {savingCurriculum ? "Saving…" : "Save Curriculum Settings"}
-          </button>
-        </form>
       </div>
 
       {/* Anthropic API key */}

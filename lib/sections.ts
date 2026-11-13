@@ -14,26 +14,20 @@ type LessonContentSource = { sections?: Record<string, string> };
 
 interface ResolveSectionsOpts {
   course?: { settings?: { sectionLabels?: Partial<SectionLabels>; sections?: SectionDef[] } } | null;
-  userSettings?: { sectionLabels?: Partial<SectionLabels>; sections?: SectionDef[] } | null;
 }
 
 /**
- * Resolves the active, ordered section list, in precedence: explicit course-level sections
- * > explicit user-level sections > synthesized defaults (DEFAULT_SECTIONS with labels
- * overridden via the pre-existing defaults -> user -> course label merge). This synthesis
- * path is what lets documents that have never touched `sections` keep behaving exactly as
- * before, with zero Firestore migration.
+ * Resolves the active, ordered section list: the course's own sections, else the built-in
+ * defaults (DEFAULT_SECTIONS, with any legacy course `sectionLabels` applied). Sections are a
+ * course setting only; the old Profile-wide sections were copied into each owned course by
+ * lib/profileCarryOver.ts.
  */
 export function resolveSections(opts: ResolveSectionsOpts = {}): SectionDef[] {
   if (opts.course?.settings?.sections && opts.course.settings.sections.length > 0) {
     return opts.course.settings.sections;
   }
-  if (opts.userSettings?.sections && opts.userSettings.sections.length > 0) {
-    return opts.userSettings.sections;
-  }
   const labels: SectionLabels = {
     ...DEFAULT_SECTION_LABELS,
-    ...opts.userSettings?.sectionLabels,
     ...opts.course?.settings?.sectionLabels,
   };
   return DEFAULT_SECTIONS.map(section =>
