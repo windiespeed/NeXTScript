@@ -45,7 +45,7 @@ export async function POST(req: Request) {
     // Fetch all projects once to find slides URLs (owner's account authored them, regardless of who is pushing)
     const allProjects = await projectStore.getAll(course.userId);
 
-    const results: { lessonId: string; ok: boolean; error?: string }[] = [];
+    const results: { lessonId: string; ok: boolean; error?: string; skipped?: string[] }[] = [];
 
     for (const lessonId of lessonIds) {
       try {
@@ -60,7 +60,7 @@ export async function POST(req: Request) {
 
         const description = lesson.overview || lesson.subtitle || undefined;
 
-        await pushLessonToClassroom({
+        const { skipped } = await pushLessonToClassroom({
           classroomId,
           title: lesson.title,
           description,
@@ -72,7 +72,7 @@ export async function POST(req: Request) {
           accessToken,
         });
 
-        results.push({ lessonId, ok: true });
+        results.push({ lessonId, ok: true, ...(skipped.length ? { skipped } : {}) });
       } catch (e: any) {
         results.push({ lessonId, ok: false, error: e.message });
       }
