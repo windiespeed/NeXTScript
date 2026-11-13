@@ -5,6 +5,7 @@
  */
 
 import type { SlideOf } from "../schema";
+import type { TemplateCover } from "./templateCover";
 import { GRID, SlideBuilder, bullets } from "./kit";
 import type { ColorToken, SlideLayout } from "./types";
 import { CANVAS_H, CANVAS_W } from "./types";
@@ -18,6 +19,8 @@ const DEFAULT_TEXT_W = TEXT_W;
 export interface TitleOptions {
   /** Where the text must end, in canvas pt, to stay clear of art on the right (a template's seal). */
   textRight?: number;
+  /** A course template's own cover design; when set, the title slide follows it instead. */
+  template?: TemplateCover;
 }
 
 /** Title slide: kicker, big title, subtitle, with an accent stripe down the left of the block. */

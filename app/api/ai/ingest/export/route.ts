@@ -79,7 +79,10 @@ export async function POST(req: Request) {
     const templateId = body.useTemplate !== false ? presentationIdFromUrl(course?.settings?.defaultTemplateUrl) : undefined;
     let deckId: string;
     let webViewLink: string;
-    if (templateId) {
+    if (!templateId && getTheme(themeId).plain) {
+      // Plain (no theme): Google Slides on Google's own layouts, ready for any Slides theme.
+      ({ id: deckId, url: webViewLink } = await exportDeckToGoogleSlides({ deck: astToDeck(finalAst), theme: getTheme(themeId), name, accessToken }));
+    } else if (templateId) {
       try {
         ({ id: deckId, url: webViewLink } = await exportDeckToGoogleSlides({ deck: astToDeck(finalAst), theme: getTheme(themeId), name, accessToken, templateId }));
       } catch (err) {
