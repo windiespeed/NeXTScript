@@ -207,7 +207,7 @@ export default function ProfilePage() {
       <div className="mb-6">
         <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: "var(--text-muted)" }}>Account</p>
         <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>Profile</h1>
-        <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>Manage your account and curriculum preferences.</p>
+        <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>Manage your account, appearance and AI keys. Industry, subject area and sections are set per course in Course Settings.</p>
       </div>
 
       {/* User info card */}
