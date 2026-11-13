@@ -7,23 +7,6 @@ import Link from "next/link";
 import type { Lesson, LessonResource } from "@/types/lesson";
 import type { SavedProject } from "@/types/project";
 import type { Course, CourseModule } from "@/types/course";
-import {
-  DndContext,
-  closestCenter,
-  PointerSensor,
-  KeyboardSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  useSortable,
-  rectSortingStrategy,
-  arrayMove,
-  sortableKeyboardCoordinates,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import Dialog from "@/components/ui/Dialog";
 
 const cardClass = "rounded-3xl p-5 space-y-4";
@@ -56,56 +39,6 @@ const RESOURCE_COLOR: Record<LessonResource["type"], string> = {
   form: "#ff8c4a", link: "var(--text-secondary)", pdf: "#ef4444",
   image: "#ff8c4a", other: "var(--text-muted)",
 };
-
-type HubWidgetId = "generate" | "resources";
-const DEFAULT_HUB_ORDER: HubWidgetId[] = ["generate", "resources"];
-const DEFAULT_HUB_SIZES: Record<HubWidgetId, 1 | 2> = { generate: 1, resources: 1 };
-
-function SortableHubWidget({ widgetId, span, onCycleSize, children }: {
-  widgetId: HubWidgetId;
-  span: 1 | 2;
-  onCycleSize: () => void;
-  children: React.ReactNode;
-}) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: widgetId });
-  return (
-    <div
-      ref={setNodeRef}
-      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1, zIndex: isDragging ? 10 : undefined }}
-      className={`relative group/widget ${span === 2 ? "md:col-span-2" : "md:col-span-1"}`}
-    >
-      <div className="absolute bottom-3 right-3 z-20 opacity-0 group-hover/widget:opacity-100 group-focus-within/widget:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity flex items-center gap-1">
-        <div
-          {...listeners}
-          {...attributes}
-          title="Drag to reorder"
-          aria-label="Reorder widget"
-          className="flex items-center justify-center rounded-full p-1.5 cursor-grab active:cursor-grabbing"
-          style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)", color: "var(--text-secondary)" }}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
-            <circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/>
-            <circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/>
-            <circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/>
-          </svg>
-        </div>
-        <button
-          onClick={onCycleSize}
-          title={`Resize (${span}/2 columns)`}
-          aria-label={`Resize widget, currently ${span} of 2 columns`}
-          className="flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-semibold"
-          style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)", color: "var(--text-secondary)" }}
-        >
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
-          </svg>
-          {span}/2
-        </button>
-      </div>
-      {children}
-    </div>
-  );
-}
 
 export default function LessonHubPage() {
   useSession({ required: true });
@@ -155,40 +88,12 @@ export default function LessonHubPage() {
   const [generatingOverview, setGeneratingOverview] = useState(false);
   const [overviewError, setOverviewError] = useState("");
 
-  // Widget order + sizes
-  const [hubOrder, setHubOrder] = useState<HubWidgetId[]>(DEFAULT_HUB_ORDER);
-  const [hubSizes, setHubSizes] = useState<Record<HubWidgetId, 1 | 2>>(DEFAULT_HUB_SIZES);
-  const hubSensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-  );
-
-  useEffect(() => {
-    try {
-      const o = localStorage.getItem(`hub-widget-order-${id}`);
-      if (o) setHubOrder(JSON.parse(o));
-      const s = localStorage.getItem(`hub-widget-sizes-${id}`);
-      if (s) setHubSizes(JSON.parse(s));
-    } catch {}
-  }, [id]);
-
-  function cycleHubSize(wid: HubWidgetId) {
-    setHubSizes(prev => {
-      const next = { ...prev, [wid]: prev[wid] === 1 ? 2 : 1 } as Record<HubWidgetId, 1 | 2>;
-      localStorage.setItem(`hub-widget-sizes-${id}`, JSON.stringify(next));
-      return next;
-    });
-  }
-
-  function handleHubDragEnd(event: DragEndEvent) {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    setHubOrder(prev => {
-      const next = arrayMove(prev, prev.indexOf(active.id as HubWidgetId), prev.indexOf(over.id as HubWidgetId));
-      localStorage.setItem(`hub-widget-order-${id}`, JSON.stringify(next));
-      return next;
-    });
-  }
+  // Header actions
+  const [editMenuOpen, setEditMenuOpen] = useState(false);
+  const [publishMenuOpen, setPublishMenuOpen] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [publishMsg, setPublishMsg] = useState<{ text: string; ok: boolean } | null>(null);
+  const [savingRelease, setSavingRelease] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -358,6 +263,58 @@ export default function LessonHubPage() {
     if (res.ok) setLesson(prev => prev ? { ...prev, presentationAST: undefined, presentationStatus: undefined } : prev);
   }
 
+  // Publish to Google Classroom: same route and messages as the course page's Publish button.
+  async function handlePublish() {
+    setPublishMenuOpen(false);
+    if (!lesson?.courseId || !course?.googleClassroomId) {
+      setPublishMsg({ text: lesson?.courseId ? "Link a Google Classroom in Course Settings first." : "Add this lesson to a course with a linked Google Classroom first.", ok: false });
+      return;
+    }
+    setPublishing(true);
+    setPublishMsg(null);
+    try {
+      const moduleName = courseModules.find(m => m.lessonIds.includes(id))?.title;
+      const res = await fetch("/api/classroom/push", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lessonIds: [id], courseId: lesson.courseId, moduleName }),
+      });
+      const data = await res.json();
+      const result = Array.isArray(data.results) ? data.results.find((r: { lessonId: string }) => r.lessonId === id) : undefined;
+      if (!res.ok || (result && !result.ok)) throw new Error(result?.error || data.error || "Publish failed.");
+      await setLessonFlags({ publishedToClassroom: true });
+      const skipped: string[] = result?.skipped ?? [];
+      setPublishMsg(skipped.length
+        ? { text: `Posted to Classroom as a draft without its ${skipped.join(" and ")} (not found in your Google Drive, or you don't have access).`, ok: false }
+        : { text: "Posted to Classroom as a draft.", ok: true });
+    } catch (e: any) {
+      setPublishMsg({ text: e.message || "Publish failed.", ok: false });
+    } finally {
+      setPublishing(false);
+    }
+  }
+
+  async function setLessonFlags(patch: Partial<Pick<Lesson, "released" | "publishedToClassroom">>) {
+    const before = lesson;
+    setLesson(prev => prev ? { ...prev, ...patch } : prev);
+    const res = await fetch(`/api/lessons/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    });
+    if (!res.ok) {
+      setLesson(before);
+      alert("Couldn't save that change. Try again.");
+    }
+  }
+
+  async function toggleReleased() {
+    if (!lesson) return;
+    setSavingRelease(true);
+    await setLessonFlags({ released: !lesson.released });
+    setSavingRelease(false);
+  }
+
   if (loading) return <p className="text-sm text-[var(--accent-text)] mt-10">Loading…</p>;
   if (!lesson) return <p className="text-sm text-[var(--danger-text)] mt-10">Lesson not found.</p>;
 
@@ -423,33 +380,42 @@ export default function LessonHubPage() {
     }
   }
 
+  const fmtDate = (iso?: string) => iso ? new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "";
+  const fmtDateTime = (iso: string) => new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  // A date-only deadline ("2026-11-20") is parsed as local midnight so it doesn't shift a day.
+  const dueLabel = lesson.deadline ? fmtDate(/^\d{4}-\d{2}-\d{2}$/.test(lesson.deadline) ? `${lesson.deadline}T00:00:00` : lesson.deadline) : "";
+  const statusBadge = STATUS_BADGE[lesson.status] ?? STATUS_BADGE.draft;
+  const canPublish = !!lesson.courseId && !!course?.googleClassroomId;
+  const hasSlides = decks.length > 0 || hasSlideDraft;
+  const slidesStatus = decks.length > 0
+    ? { label: decks.length > 1 ? `${decks.length} decks` : "Exported", color: "var(--success-text)" }
+    : hasSlideDraft ? { label: "Draft", color: "var(--warning-text)" } : { label: "Not started", color: "var(--text-muted)" };
+  const quizStatus = quizGenerated.length > 0
+    ? { label: quizProjects.length > 1 ? `${quizProjects.length} quizzes` : "Created", color: "var(--success-text)" }
+    : quizDrafts.length > 0 ? { label: "Draft", color: "var(--warning-text)" } : { label: "Not started", color: "var(--text-muted)" };
+
   return (
     <div className="space-y-5">
-      {/* Back + header */}
-      <div>
-        <button onClick={() => router.push(backHref)} className="text-sm text-[var(--accent-text)] hover:underline mb-3 block">
-          ← {lesson.courseId ? "Back to Course" : "Back to Courses"}
-        </button>
+      <button onClick={() => router.push(backHref)} className="text-sm text-[var(--accent-text)] hover:underline block">
+        ← {lesson.courseId ? "Back to Course" : "Back to Courses"}
+      </button>
 
-        <div className="flex items-start justify-between gap-4">
+      {/* ── Header: where it lives, title + status, actions ─────────────── */}
+      <div className="rounded-3xl p-4 sm:p-5" style={cardStyle}>
+        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
           <div className="flex-1 min-w-0">
-            <div className="flex flex-wrap items-center gap-2 mb-1">
+            <div className="flex flex-wrap items-center gap-2 mb-2">
               {/* Course assignment badge / dropdown */}
               <div className="relative">
                 <button
                   onClick={() => setAssigningCourse(v => !v)}
-                  className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-lg transition hover:opacity-80"
+                  className="inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-lg transition hover:opacity-80"
                   style={course
                     ? { background: "var(--accent-purple-bg)", color: "var(--accent-purple)" }
                     : { background: "var(--bg-card-hover)", color: "var(--text-muted)", border: "1px dashed var(--border)" }
                   }
                 >
-                  {course ? (
-                    <>
-                      <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-                      {course.title}
-                    </>
-                  ) : "Unassigned"}
+                  {course ? course.title : "No course"}
                   <svg xmlns="http://www.w3.org/2000/svg" className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
                 </button>
                 {assigningCourse && (
@@ -478,38 +444,121 @@ export default function LessonHubPage() {
                 )}
               </div>
               {currentModule && (
-                <span className="text-xs font-semibold px-2 py-0.5 rounded-lg" style={{ background: "var(--accent-purple-bg)", color: "var(--accent-purple)" }}>
-                  {currentModule.title}
-                </span>
-              )}
-              {lesson.lessonType && (
-                <span className="text-xs font-semibold px-2 py-0.5 rounded-lg capitalize" style={{ background: typeColors.bg, color: typeColors.text }}>
-                  {lesson.lessonType}
-                </span>
+                <>
+                  <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>/</span>
+                  <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>{currentModule.title}</span>
+                </>
               )}
             </div>
             <h1 className="text-2xl font-bold leading-snug" style={{ color: "var(--text-primary)" }}>{lesson.title}</h1>
             {lesson.subtitle && <p className="text-sm mt-0.5" style={{ color: "var(--text-secondary)" }}>{lesson.subtitle}</p>}
-            {lesson.topics && <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>{lesson.topics}</p>}
+            <div className="flex flex-wrap items-center gap-1.5 mt-3">
+              <Badge label={statusBadge.label} color={statusBadge.color} />
+              {lesson.lessonType && <Badge label={lesson.lessonType} color={typeColors.text} bg={typeColors.bg} capitalize />}
+              {lesson.released && <Badge label="Released in NeXTBox" color="var(--success-text)" bg="rgba(45,212,160,0.12)" />}
+              {lesson.publishedToClassroom && <Badge label="Published to Classroom" color="var(--accent-text)" bg="rgba(12,192,223,0.10)" />}
+            </div>
           </div>
-          <div className="flex flex-wrap justify-end gap-2 shrink-0">
-            {/* Section text for quizzes and the Overview Doc; slides are edited in Notes to Slides. */}
-            <Link
-              href={`/lessons/${id}/edit`}
-              className="rounded-full px-3 py-1.5 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)]"
-              style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
-            >
-              Edit Content
-            </Link>
+
+          {/* Actions */}
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 shrink-0">
+            {/* Publish to Google Classroom: split button, chevron holds the manual mark options */}
+            <div className="relative">
+              <div className="flex items-stretch rounded-lg overflow-hidden" style={lesson.publishedToClassroom
+                ? { border: "1px solid rgba(12,192,223,0.35)", background: "rgba(12,192,223,0.10)" }
+                : { background: "var(--brand-gradient)" }}>
+                <button
+                  onClick={handlePublish}
+                  disabled={publishing}
+                  title={canPublish ? "Publish to Google Classroom (posts a draft)" : lesson.courseId ? "Link a classroom in Course Settings first" : "Add this lesson to a course first"}
+                  className="px-3 sm:px-4 py-2 text-xs font-semibold transition hover:opacity-90 disabled:opacity-60"
+                  style={{ color: lesson.publishedToClassroom ? "var(--accent-text)" : "#ffffff" }}
+                >
+                  {publishing ? "Publishing…" : lesson.publishedToClassroom ? "Published ✓" : "Publish"}
+                </button>
+                <div className="w-px self-stretch" style={{ background: lesson.publishedToClassroom ? "rgba(12,192,223,0.35)" : "rgba(255,255,255,0.35)" }} />
+                <button
+                  onClick={() => setPublishMenuOpen(v => !v)}
+                  aria-label="More publish options"
+                  className="px-2 py-2 transition hover:opacity-80"
+                  style={{ color: lesson.publishedToClassroom ? "var(--accent-text)" : "#ffffff" }}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+              </div>
+              {publishMenuOpen && (
+                <>
+                <div className="fixed inset-0 z-20" onClick={() => setPublishMenuOpen(false)} />
+                <div className="absolute right-0 top-full mt-1 z-30 rounded-2xl overflow-hidden min-w-[190px]" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)" }}>
+                  {lesson.publishedToClassroom && (
+                    <MenuItem onClick={handlePublish}>Publish again</MenuItem>
+                  )}
+                  <MenuItem onClick={() => { setPublishMenuOpen(false); setLessonFlags({ publishedToClassroom: !lesson.publishedToClassroom }); }}>
+                    {lesson.publishedToClassroom ? "Mark as unpublished" : "Mark as published"}
+                  </MenuItem>
+                </div>
+                </>
+              )}
+            </div>
+
+            {/* NeXTBox release toggle: green like the course page's Released badge */}
             <button
-              onClick={startEditMeta}
-              className="rounded-full px-3 py-1.5 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)]"
-              style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+              onClick={toggleReleased}
+              disabled={savingRelease}
+              title={lesson.released ? "Released to NeXTBox. Click to unrelease." : "Release this lesson to NeXTBox"}
+              className="group/rel rounded-lg px-3 sm:px-3.5 py-2 text-xs font-semibold transition hover:opacity-90 disabled:opacity-60"
+              style={{ background: "rgba(45,212,160,0.12)", border: "1px solid rgba(45,212,160,0.35)", color: "var(--success-text)" }}
             >
-              Edit Info
+              {lesson.released ? (
+                <>
+                  <span className="group-hover/rel:hidden">Released ✓</span>
+                  <span className="hidden group-hover/rel:inline text-[var(--danger-text)]">Unrelease</span>
+                </>
+              ) : "NeXTBox Release"}
             </button>
+
+            {/* Edit menu */}
+            <div className="relative">
+              <button
+                onClick={() => setEditMenuOpen(v => !v)}
+                className="inline-flex items-center gap-1.5 rounded-lg px-3 sm:px-3.5 py-2 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)]"
+                style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+                aria-label="Edit"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 sm:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                <span className="hidden sm:inline">Edit</span>
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              {editMenuOpen && (
+                <>
+                <div className="fixed inset-0 z-20" onClick={() => setEditMenuOpen(false)} />
+                <div className="absolute right-0 top-full mt-1 z-30 rounded-2xl overflow-hidden min-w-[190px]" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)" }}>
+                  <MenuItem onClick={() => { setEditMenuOpen(false); startEditMeta(); }}>
+                    Lesson info
+                    <span className="block text-[10px] font-normal" style={{ color: "var(--text-muted)" }}>Title, topics, due date, type</span>
+                  </MenuItem>
+                  {/* Section text for quizzes and the Overview Doc; slides are edited in Notes to Slides. */}
+                  <MenuItem onClick={() => { setEditMenuOpen(false); router.push(`/lessons/${id}/edit`); }}>
+                    Lesson content
+                    <span className="block text-[10px] font-normal" style={{ color: "var(--text-muted)" }}>Section text used for quizzes + Overview Doc</span>
+                  </MenuItem>
+                </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
+
+        {publishMsg && (
+          <div role="status" className="mt-4 rounded-2xl px-4 py-2.5 text-xs font-medium flex items-start justify-between gap-3" style={{
+            background: publishMsg.ok ? "rgba(12,192,223,0.08)" : "rgba(239,68,68,0.08)",
+            border: `1px solid ${publishMsg.ok ? "rgba(12,192,223,0.25)" : "rgba(239,68,68,0.25)"}`,
+            color: publishMsg.ok ? "var(--accent-text)" : "var(--danger-text)",
+          }}>
+            <span>{publishMsg.text}</span>
+            <button onClick={() => setPublishMsg(null)} aria-label="Dismiss" className="shrink-0 opacity-70 hover:opacity-100">✕</button>
+          </div>
+        )}
       </div>
 
       {/* ── Edit Metadata Modal ──────────────────────────────────────────── */}
@@ -624,264 +673,300 @@ export default function LessonHubPage() {
         </Dialog>
       )}
 
-      {/* ── Documents ───────────────────────────────────────────────────── */}
-      <div className={cardClass} style={cardStyle}>
-        <div className="flex items-center justify-between">
-          <p className={sectionLabel}>Documents</p>
-          <div className="flex items-center gap-3">
-            {lesson.folderUrl && (
-              <a href={lesson.folderUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] font-semibold hover:underline" style={{ color: "var(--accent-text)" }}>
-                Open in Drive ↗
-              </a>
-            )}
-            {lesson.courseId && (
-              <Link href={`/courses/${lesson.courseId}`} className="text-[10px] font-semibold hover:underline" style={{ color: "var(--accent-text)" }}>
-                Course Quizzes →
-              </Link>
-            )}
-          </div>
-        </div>
-        <div className="space-y-2">
-          {decks.map(d => (
-            <DocRow key={d.id} icon={RESOURCE_ICON.slides} color="var(--accent-purple)"
-              label={d.title}
-              // Deck titles now come from the lesson's own Title/Subtitle (see autoDeckName in
-              // lib/google.ts), so multiple decks for the same lesson can share an identical
-              // title — the generation date here is what still tells them apart.
-              sublabel={`${d.presentationAST ? "Notes to Slides" : "Classic Slides (retired)"} · ${new Date(d.createdAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`}
-              badge="Generated" badgeColor="#2dd4a0"
-              url={d.url}
-              // Every deck is edited in Notes to Slides. This opens the lesson's *current* draft,
-              // not necessarily this deck's own snapshot; an old Classic deck's lesson can be
-              // loaded there with "Start from this lesson's content".
-              editHref={`/ingest?lessonId=${id}`}
-              editLabel="Edit Slides"
-              onDelete={() => handleDeleteProject(d.id, d.title)}
-              onRename={newTitle => handleRenameProject(d.id, newTitle)} />
-          ))}
-          {hasSlideDraft && (
-            <DocRow icon={RESOURCE_ICON.slides} color="#ff8c4a" label="Slide Deck"
-              sublabel={`${lesson.presentationAST!.slides.length} slide${lesson.presentationAST!.slides.length !== 1 ? "s" : ""} · Notes to Slides draft, not yet exported`}
-              badge="Draft" badgeColor="#ff8c4a"
-              editHref={`/ingest?lessonId=${id}`} editLabel="Edit Draft →"
-              onDelete={handleDeleteSlideDraft} />
-          )}
-          {decks.length === 0 && !hasSlideDraft && (
-            <DocRow icon={RESOURCE_ICON.slides} color="var(--text-muted)" label="Slide Deck" badge="Not generated" badgeColor="var(--text-muted)" editHref={`/ingest?lessonId=${id}`} editLabel="Create Slides →" />
-          )}
-          {lesson.overviewUrl ? (
-            <DocRow icon={RESOURCE_ICON.doc} color="#0cc0df" label="Overview Doc" badge="Generated" badgeColor="#2dd4a0" url={lesson.overviewUrl}
-              onAction={openOverviewModal} actionLabel="Regenerate" />
-          ) : (
-            <DocRow icon={RESOURCE_ICON.doc} color="var(--text-muted)" label="Overview Doc" badge="Not generated" badgeColor="var(--text-muted)"
-              onAction={openOverviewModal} actionLabel="Generate" />
-          )}
-          {quizDrafts.map(q => (
-            <DocRow key={q.id} icon={RESOURCE_ICON.form} color="#ff8c4a"
-              label={q.title}
-              sublabel={isMultiLesson(q) ? `Covers ${q.lessonIds!.length} lessons` : "This lesson only"}
-              badge="Quiz Draft" badgeColor="#ff8c4a"
-              editHref={`/quizzes/${q.id}`} editLabel={isMultiLesson(q) ? "Edit & Generate" : "Edit Quiz"}
-              onDelete={() => handleDeleteProject(q.id, q.title)}
-              onRename={newTitle => handleRenameProject(q.id, newTitle)} />
-          ))}
-          {quizGenerated.map(q => (
-            <DocRow key={q.id} icon={RESOURCE_ICON.form} color="#ff8c4a"
-              label={q.title}
-              sublabel={isMultiLesson(q) ? `Covers ${q.lessonIds!.length} lessons` : "This lesson only"}
-              badge="Quiz" badgeColor="#2dd4a0"
-              url={q.url} editHref={`/quizzes/${q.id}`} editLabel="Edit Quiz"
-              onDelete={() => handleDeleteProject(q.id, q.title)}
-              onRename={newTitle => handleRenameProject(q.id, newTitle)} />
-          ))}
-          {decks.length === 0 && !hasSlideDraft && quizProjects.length === 0 && !lesson.overviewUrl && (
-            <p className="text-xs text-center py-4" style={{ color: "var(--text-muted)" }}>No documents generated yet — use the Generate panel below.</p>
-          )}
-        </div>
-      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-5 items-start">
+        {/* ── Left: Materials + notes ─────────────────────────────────────── */}
+        <div className="space-y-5 min-w-0">
+          <div className={cardClass} style={cardStyle}>
+            <div className="flex items-center justify-between">
+              <p className={sectionLabel}>Materials</p>
+              {lesson.folderUrl && (
+                <a href={lesson.folderUrl} target="_blank" rel="noopener noreferrer" className="text-[11px] font-semibold hover:underline" style={{ color: "var(--accent-text)" }}>
+                  Open in Drive ↗
+                </a>
+              )}
+            </div>
 
-      {/* ── Generate + Resources widgets ─────────────────────────────────── */}
-      <DndContext sensors={hubSensors} collisionDetection={closestCenter} onDragEnd={handleHubDragEnd}>
-        <SortableContext items={hubOrder} strategy={rectSortingStrategy}>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
-            {hubOrder.map(wid => (
-              <SortableHubWidget key={wid} widgetId={wid} span={hubSizes[wid]} onCycleSize={() => cycleHubSize(wid)}>
-                {wid === "generate" && (
-                  <div className={cardClass} style={cardStyle}>
-                    <p className={sectionLabel}>Generate</p>
-                    <p className="text-xs -mt-1" style={{ color: "var(--text-muted)" }}>
-                      Build this lesson&apos;s slides in Notes to Slides. Exported decks use the course template and are saved to this lesson&apos;s Drive folder.
-                    </p>
-                    <div className={`flex flex-col gap-2 ${hubSizes["generate"] >= 2 ? "sm:flex-row sm:flex-wrap" : ""}`}>
-                      <Link
-                        href={`/ingest?lessonId=${id}`}
-                        className="w-full sm:w-auto text-center rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-6 py-2.5 text-sm font-bold text-[#0a0b13] hover:opacity-90 transition shadow"
-                      >
-                        {decks.length > 0 || hasSlideDraft ? "Edit Slides →" : "Create Slides →"}
-                      </Link>
-                      <Link
-                        href={quizDrafts.length > 0 ? `/quizzes/${quizDrafts[0].id}` : `/quizzes/new?lessonId=${id}`}
-                        className="w-full sm:w-auto text-center rounded-full px-5 py-2.5 text-sm font-semibold transition hover:opacity-80"
-                        style={{ background: "rgba(12,192,223,0.12)", border: "1px solid rgba(12,192,223,0.35)", color: "var(--accent-text)" }}
-                      >
-                        {quizDrafts.length > 0 ? "Finish Quiz Draft →" : "Create a Quiz →"}
-                      </Link>
-                      {lesson.folderUrl && (
-                        <a
-                          href={lesson.folderUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="w-full sm:w-auto text-center rounded-full px-5 py-2.5 text-sm font-semibold transition hover:opacity-80"
-                          style={{ background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.35)", color: "var(--accent-purple)" }}
-                        >
-                          Open Drive Folder ↗
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                )}
-                {wid === "resources" && (
-      <div className={cardClass} style={cardStyle}>
-        <div className="flex items-center justify-between">
-          <p className={sectionLabel}>Resources</p>
-          <div className="relative">
-            <button
-              onClick={() => setAddResourceOpen(v => !v)}
-              className="rounded-full px-3 py-1 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)]"
-              style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
-            >
-              + Add
-            </button>
-            {addResourceOpen && (
-              <>
-              <div className="fixed inset-0 z-20" onClick={() => setAddResourceOpen(false)} />
-              <div
-                className="absolute right-0 top-full mt-1 z-30 rounded-2xl overflow-hidden min-w-[160px] max-w-[calc(100vw-2rem)]"
-                style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)" }}
+            <div className="divide-y" style={{ borderColor: "var(--border)" }}>
+              {/* Slides */}
+              <MaterialRow
+                icon={RESOURCE_ICON.slides} iconColor="var(--accent-purple)" title="Slides"
+                status={slidesStatus}
+                hint={hasSlides ? undefined : "Build this lesson's deck in Notes to Slides. Exports use the course template."}
+                action={
+                  <Link href={`/ingest?lessonId=${id}`} className={primaryBtn} style={primaryBtnStyle}>
+                    {hasSlides ? "Edit Slides" : "Create Slides"}
+                  </Link>
+                }
               >
+                {hasSlideDraft && (
+                  <DocRow icon={RESOURCE_ICON.slides} color="#ff8c4a" label="Unexported draft"
+                    sublabel={`${lesson.presentationAST!.slides.length} slide${lesson.presentationAST!.slides.length !== 1 ? "s" : ""} · saved in Notes to Slides, not exported yet`}
+                    onDelete={handleDeleteSlideDraft} />
+                )}
+                {decks.map(d => (
+                  <DocRow key={d.id} icon={RESOURCE_ICON.slides} color="var(--accent-purple)"
+                    label={d.title}
+                    // Decks can share a title (it comes from the lesson), so the date tells them apart.
+                    sublabel={`${d.presentationAST ? "Notes to Slides" : "Classic Slides (retired)"} · ${fmtDateTime(d.createdAt)}`}
+                    url={d.url}
+                    onDelete={() => handleDeleteProject(d.id, d.title)}
+                    onRename={newTitle => handleRenameProject(d.id, newTitle)} />
+                ))}
+              </MaterialRow>
+
+              {/* Overview Doc */}
+              <MaterialRow
+                icon={RESOURCE_ICON.doc} iconColor="#0cc0df" title="Overview Doc"
+                status={lesson.overviewUrl ? { label: "Generated", color: "var(--success-text)" } : { label: "Not generated", color: "var(--text-muted)" }}
+                hint={lesson.overviewUrl ? undefined : "A student-facing summary built from this lesson's decks and quizzes."}
+                action={
+                  <div className="flex items-center gap-3">
+                    {lesson.overviewUrl && (
+                      <a href={lesson.overviewUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold hover:underline" style={{ color: "var(--accent-text)" }}>Open ↗</a>
+                    )}
+                    <button onClick={openOverviewModal} className={lesson.overviewUrl ? secondaryBtn : primaryBtn} style={lesson.overviewUrl ? secondaryBtnStyle : primaryBtnStyle}>
+                      {lesson.overviewUrl ? "Regenerate" : "Generate"}
+                    </button>
+                  </div>
+                }
+              />
+
+              {/* Quiz */}
+              <MaterialRow
+                icon={RESOURCE_ICON.form} iconColor="#ff8c4a" title="Quiz"
+                status={quizStatus}
+                hint={quizProjects.length ? undefined : "Generate a Google Forms quiz from this lesson's content."}
+                action={
+                  <Link
+                    href={quizDrafts.length > 0 ? `/quizzes/${quizDrafts[0].id}` : `/quizzes/new?lessonId=${id}`}
+                    className={quizProjects.length && !quizDrafts.length ? secondaryBtn : primaryBtn}
+                    style={quizProjects.length && !quizDrafts.length ? secondaryBtnStyle : primaryBtnStyle}
+                  >
+                    {quizDrafts.length > 0 ? "Finish Quiz" : quizProjects.length ? "+ New Quiz" : "Create Quiz"}
+                  </Link>
+                }
+              >
+                {[...quizDrafts, ...quizGenerated].map(q => (
+                  <DocRow key={q.id} icon={RESOURCE_ICON.form} color="#ff8c4a"
+                    label={q.title}
+                    sublabel={`${q.status === "draft" ? "Draft · " : ""}${isMultiLesson(q) ? `Covers ${q.lessonIds!.length} lessons` : "This lesson only"}`}
+                    url={q.status === "draft" ? undefined : q.url}
+                    editHref={`/quizzes/${q.id}`} editLabel={q.status === "draft" && isMultiLesson(q) ? "Edit & Generate" : "Edit"}
+                    onDelete={() => handleDeleteProject(q.id, q.title)}
+                    onRename={newTitle => handleRenameProject(q.id, newTitle)} />
+                ))}
+              </MaterialRow>
+            </div>
+          </div>
+
+          {lesson.notes && (
+            <div className={cardClass} style={cardStyle}>
+              <p className={sectionLabel}>Instructor Notes</p>
+              <p className="text-xs whitespace-pre-wrap" style={{ color: "var(--text-secondary)" }}>{lesson.notes}</p>
+            </div>
+          )}
+        </div>
+
+        {/* ── Right: details + resources ──────────────────────────────────── */}
+        <div className="space-y-5 min-w-0">
+          <div className={cardClass} style={cardStyle}>
+            <p className={sectionLabel}>Details</p>
+            <dl className="space-y-2.5 text-xs">
+              <DetailRow label="Module" value={currentModule?.title ?? (lesson.courseId ? "Not in a module" : "—")} />
+              <DetailRow label="Due" value={dueLabel || "No due date"} muted={!dueLabel} />
+              {lesson.topics && <DetailRow label="Topics" value={lesson.topics} />}
+              <DetailRow label="Classroom" value={!lesson.courseId ? "No course" : course?.googleClassroomId ? (lesson.publishedToClassroom ? "Published" : "Not published") : "No class linked"} muted={!lesson.publishedToClassroom} />
+              <DetailRow label="Modified" value={fmtDate(lesson.updatedAt)} />
+              <DetailRow label="Created" value={fmtDate(lesson.createdAt)} />
+            </dl>
+          </div>
+
+          <div className={cardClass} style={cardStyle}>
+            <div className="flex items-center justify-between">
+              <p className={sectionLabel}>Resources</p>
+              <div className="relative">
                 <button
-                  onClick={() => { setAddingBlankDoc(true); setAddingLink(false); setAddResourceOpen(false); }}
-                  className="w-full text-left px-4 py-2.5 text-xs hover:bg-[var(--bg-card-hover)] transition"
-                  style={{ color: "var(--text-primary)" }}
+                  onClick={() => setAddResourceOpen(v => !v)}
+                  className="rounded-full px-3 py-1 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)]"
+                  style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
                 >
-                  Create Google Doc
+                  + Add
                 </button>
-                <button
-                  onClick={() => { setAddingLink(true); setAddingBlankDoc(false); setAddResourceOpen(false); }}
-                  className="w-full text-left px-4 py-2.5 text-xs hover:bg-[var(--bg-card-hover)] transition"
-                  style={{ color: "var(--text-primary)" }}
-                >
-                  Add Link
-                </button>
+                {addResourceOpen && (
+                  <>
+                  <div className="fixed inset-0 z-20" onClick={() => setAddResourceOpen(false)} />
+                  <div
+                    className="absolute right-0 top-full mt-1 z-30 rounded-2xl overflow-hidden min-w-[160px] max-w-[calc(100vw-2rem)]"
+                    style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)" }}
+                  >
+                    <MenuItem onClick={() => { setAddingBlankDoc(true); setAddingLink(false); setAddResourceOpen(false); }}>Create Google Doc</MenuItem>
+                    <MenuItem onClick={() => { setAddingLink(true); setAddingBlankDoc(false); setAddResourceOpen(false); }}>Add Link</MenuItem>
+                  </div>
+                  </>
+                )}
               </div>
-              </>
+            </div>
+
+            {/* Create blank doc form */}
+            {addingBlankDoc && (
+              <div className="rounded-2xl p-4 space-y-3" style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)" }}>
+                <p className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>Create blank Google document</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label htmlFor="lessons-id-name" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Name</label>
+                    <input id="lessons-id-name" value={blankDocName} onChange={e => setBlankDocName(e.target.value)} placeholder="Document name" className={inputClass} style={{ background: "var(--bg-card)", color: "var(--text-primary)", border: "1px solid var(--border)" }} />
+                  </div>
+                  <div>
+                    <label htmlFor="lessons-id-type-2" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Type</label>
+                    <select id="lessons-id-type-2" value={blankDocType} onChange={e => setBlankDocType(e.target.value as "doc" | "sheet" | "slides")} className={inputClass} style={{ background: "var(--bg-card)", color: "var(--text-primary)", border: "1px solid var(--border)" }}>
+                      <option value="doc">Google Doc</option>
+                      <option value="sheet">Google Sheet</option>
+                      <option value="slides">Google Slides</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => setAddingBlankDoc(false)} className="rounded-full px-3 py-1.5 text-xs font-semibold transition" style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}>Cancel</button>
+                  <button onClick={handleCreateBlankDoc} disabled={savingBlankDoc || !blankDocName.trim()} className="rounded-full bg-[#0cc0df] px-4 py-1.5 text-xs font-semibold text-[#0a0b13] hover:opacity-90 disabled:opacity-50 transition">
+                    {savingBlankDoc ? "Creating…" : "Create in Drive"}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Add link form */}
+            {addingLink && (
+              <div className="rounded-2xl p-4 space-y-3" style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)" }}>
+                <p className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>Attach a link</p>
+                <div className="space-y-2">
+                  <input aria-label="Link label" value={linkLabel} onChange={e => setLinkLabel(e.target.value)} placeholder="Label (e.g. Module 1 Textbook)" className={inputClass} style={{ background: "var(--bg-card)", color: "var(--text-primary)", border: "1px solid var(--border)" }} />
+                  <input aria-label="Link URL" value={linkUrl} onChange={e => setLinkUrl(e.target.value)} placeholder="https://…" className={inputClass} style={{ background: "var(--bg-card)", color: "var(--text-primary)", border: "1px solid var(--border)" }} />
+                  <select aria-label="Link type" value={linkType} onChange={e => setLinkType(e.target.value as LessonResource["type"])} className={inputClass} style={{ background: "var(--bg-card)", color: "var(--text-primary)", border: "1px solid var(--border)" }}>
+                    <option value="link">Link</option>
+                    <option value="pdf">PDF</option>
+                    <option value="image">Image</option>
+                    <option value="doc">Google Doc</option>
+                    <option value="sheet">Google Sheet</option>
+                    <option value="slides">Google Slides</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => setAddingLink(false)} className="rounded-full px-3 py-1.5 text-xs font-semibold transition" style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}>Cancel</button>
+                  <button onClick={handleAddLink} disabled={savingLink || !linkLabel.trim() || !linkUrl.trim()} className="rounded-full bg-[#0cc0df] px-4 py-1.5 text-xs font-semibold text-[#0a0b13] hover:opacity-90 disabled:opacity-50 transition">
+                    {savingLink ? "Saving…" : "Attach"}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Resource list */}
+            {(lesson.resources ?? []).length === 0 && !addingLink && !addingBlankDoc ? (
+              <p className="text-xs text-center py-4" style={{ color: "var(--text-muted)" }}>
+                No resources attached yet. Create a blank doc or add a link.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {(lesson.resources ?? []).map(r => (
+                  <div key={r.id} className="flex items-center gap-3 rounded-2xl px-3 py-2.5" style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)" }}>
+                    <span style={{ color: RESOURCE_COLOR[r.type] }}>{RESOURCE_ICON[r.type]}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold truncate" style={{ color: "var(--text-primary)" }}>{r.label}</p>
+                      <p className="text-[10px] truncate" style={{ color: "var(--text-muted)" }}>{r.url}</p>
+                    </div>
+                    <a href={r.url} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold shrink-0 hover:underline" style={{ color: "var(--accent-text)" }}>Open ↗</a>
+                    <button aria-label={`Remove ${r.label}`} onClick={() => handleDeleteResource(r.id)} className="p-1 rounded-full shrink-0 hover:text-[var(--danger-text)] transition" style={{ color: "var(--text-muted)" }}>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         </div>
-
-        {/* Create blank doc form */}
-        {addingBlankDoc && (
-          <div className="rounded-2xl p-4 space-y-3" style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)" }}>
-            <p className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>Create blank Google document</p>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label htmlFor="lessons-id-name" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Name</label>
-                <input id="lessons-id-name" value={blankDocName} onChange={e => setBlankDocName(e.target.value)} placeholder="Document name" className={inputClass} style={{ background: "var(--bg-card)", color: "var(--text-primary)", border: "1px solid var(--border)" }} />
-              </div>
-              <div>
-                <label htmlFor="lessons-id-type-2" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Type</label>
-                <select id="lessons-id-type-2" value={blankDocType} onChange={e => setBlankDocType(e.target.value as "doc" | "sheet" | "slides")} className={inputClass} style={{ background: "var(--bg-card)", color: "var(--text-primary)", border: "1px solid var(--border)" }}>
-                  <option value="doc">Google Doc</option>
-                  <option value="sheet">Google Sheet</option>
-                  <option value="slides">Google Slides</option>
-                </select>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <button onClick={() => setAddingBlankDoc(false)} className="rounded-full px-3 py-1.5 text-xs font-semibold transition" style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}>Cancel</button>
-              <button onClick={handleCreateBlankDoc} disabled={savingBlankDoc || !blankDocName.trim()} className="rounded-full bg-[#0cc0df] px-4 py-1.5 text-xs font-semibold text-[#0a0b13] hover:opacity-90 disabled:opacity-50 transition">
-                {savingBlankDoc ? "Creating…" : "Create in Drive"}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Add link form */}
-        {addingLink && (
-          <div className="rounded-2xl p-4 space-y-3" style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)" }}>
-            <p className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>Attach a link</p>
-            <div className="space-y-2">
-              <input aria-label="Link label" value={linkLabel} onChange={e => setLinkLabel(e.target.value)} placeholder="Label (e.g. Module 1 Textbook)" className={inputClass} style={{ background: "var(--bg-card)", color: "var(--text-primary)", border: "1px solid var(--border)" }} />
-              <input aria-label="Link URL" value={linkUrl} onChange={e => setLinkUrl(e.target.value)} placeholder="https://…" className={inputClass} style={{ background: "var(--bg-card)", color: "var(--text-primary)", border: "1px solid var(--border)" }} />
-              <select aria-label="Link type" value={linkType} onChange={e => setLinkType(e.target.value as LessonResource["type"])} className={inputClass} style={{ background: "var(--bg-card)", color: "var(--text-primary)", border: "1px solid var(--border)" }}>
-                <option value="link">Link</option>
-                <option value="pdf">PDF</option>
-                <option value="image">Image</option>
-                <option value="doc">Google Doc</option>
-                <option value="sheet">Google Sheet</option>
-                <option value="slides">Google Slides</option>
-                <option value="other">Other</option>
-              </select>
-            </div>
-            <div className="flex gap-2">
-              <button onClick={() => setAddingLink(false)} className="rounded-full px-3 py-1.5 text-xs font-semibold transition" style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}>Cancel</button>
-              <button onClick={handleAddLink} disabled={savingLink || !linkLabel.trim() || !linkUrl.trim()} className="rounded-full bg-[#0cc0df] px-4 py-1.5 text-xs font-semibold text-[#0a0b13] hover:opacity-90 disabled:opacity-50 transition">
-                {savingLink ? "Saving…" : "Attach"}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Resource list */}
-        {(lesson.resources ?? []).length === 0 && !addingLink && !addingBlankDoc ? (
-          <p className="text-xs text-center py-4" style={{ color: "var(--text-muted)" }}>
-            No resources attached yet. Create a blank doc or add a link.
-          </p>
-        ) : (
-          <div className="space-y-2">
-            {(lesson.resources ?? []).map(r => (
-              <div key={r.id} className="flex items-center gap-3 rounded-2xl px-3 py-2.5" style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)" }}>
-                <span style={{ color: RESOURCE_COLOR[r.type] }}>{RESOURCE_ICON[r.type]}</span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold truncate" style={{ color: "var(--text-primary)" }}>{r.label}</p>
-                  <p className="text-[10px] truncate" style={{ color: "var(--text-muted)" }}>{r.url}</p>
-                </div>
-                <a href={r.url} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold shrink-0 hover:underline" style={{ color: "var(--accent-text)" }}>Open ↗</a>
-                <button aria-label={`Remove ${r.label}`} onClick={() => handleDeleteResource(r.id)} className="p-1 rounded-full shrink-0 hover:text-[var(--danger-text)] transition" style={{ color: "var(--text-muted)" }}>
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
-                )}
-              </SortableHubWidget>
-            ))}
-          </div>
-        </SortableContext>
-      </DndContext>
-
-      {/* ── Notes ────────────────────────────────────────────────────────── */}
-      {lesson.notes && (
-        <div className={cardClass} style={cardStyle}>
-          <p className={sectionLabel}>Instructor Notes</p>
-          <p className="text-xs whitespace-pre-wrap" style={{ color: "var(--text-secondary)" }}>{lesson.notes}</p>
-        </div>
-      )}
     </div>
   );
 }
 
-// ── Helper component ──────────────────────────────────────────────────────────
+// ── Helper components ─────────────────────────────────────────────────────────
+
+const STATUS_BADGE: Record<string, { label: string; color: string }> = {
+  draft:        { label: "Draft",        color: "var(--text-muted)" },
+  generating:   { label: "Generating",   color: "var(--warning-text)" },
+  regenerating: { label: "Regenerating", color: "var(--warning-text)" },
+  done:         { label: "Done",         color: "var(--brand-navy)" },
+  error:        { label: "Error",        color: "var(--danger-text)" },
+};
+
+const primaryBtn = "inline-flex items-center rounded-lg px-3.5 py-1.5 text-xs font-semibold text-white transition hover:opacity-90 whitespace-nowrap";
+const primaryBtnStyle = { background: "var(--brand-gradient)" };
+const secondaryBtn = "inline-flex items-center rounded-lg px-3.5 py-1.5 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)] whitespace-nowrap";
+const secondaryBtnStyle = { border: "1px solid var(--border)", color: "var(--text-secondary)" };
+
+function Badge({ label, color, bg, capitalize }: { label: string; color: string; bg?: string; capitalize?: boolean }) {
+  return (
+    <span
+      className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-md ${capitalize ? "capitalize" : ""}`}
+      style={{ color, background: bg ?? "var(--bg-card-hover)", border: bg ? undefined : "1px solid var(--border)" }}
+    >
+      {label}
+    </span>
+  );
+}
+
+function MenuItem({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button onClick={onClick} className="w-full text-left px-4 py-2.5 text-xs font-semibold hover:bg-[var(--bg-card-hover)] transition" style={{ color: "var(--text-primary)" }}>
+      {children}
+    </button>
+  );
+}
+
+function DetailRow({ label, value, muted }: { label: string; value: string; muted?: boolean }) {
+  return (
+    <div className="flex items-start justify-between gap-3">
+      <dt className="text-[10px] font-semibold uppercase tracking-wider pt-0.5 shrink-0" style={{ color: "var(--text-muted)" }}>{label}</dt>
+      <dd className="text-right font-medium min-w-0 break-words" style={{ color: muted ? "var(--text-muted)" : "var(--text-primary)" }}>{value}</dd>
+    </div>
+  );
+}
+
+function MaterialRow({ icon, iconColor, title, status, hint, action, children }: {
+  icon: React.ReactNode;
+  iconColor: string;
+  title: string;
+  status: { label: string; color: string };
+  hint?: string;
+  action: React.ReactNode;
+  children?: React.ReactNode;
+}) {
+  const items = Array.isArray(children) ? children.flat().filter(Boolean) : children ? [children] : [];
+  return (
+    <div className="py-4 first:pt-1 last:pb-1" style={{ borderColor: "var(--border)" }}>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <span className="flex items-center justify-center w-8 h-8 rounded-lg shrink-0" style={{ background: "var(--bg-card-hover)", color: iconColor }}>{icon}</span>
+        <div className="flex-1 min-w-[110px]">
+          <div className="flex flex-wrap items-baseline gap-x-2">
+            <p className="text-sm font-semibold whitespace-nowrap" style={{ color: "var(--text-primary)" }}>{title}</p>
+            <span className="text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap" style={{ color: status.color }}>{status.label}</span>
+          </div>
+          {hint && <p className="hidden sm:block text-[11px]" style={{ color: "var(--text-muted)" }}>{hint}</p>}
+        </div>
+        <div className="shrink-0">{action}</div>
+      </div>
+      {items.length > 0 && <div className="mt-3 space-y-1.5 sm:pl-11">{children}</div>}
+    </div>
+  );
+}
 
 function DocRow({ icon, color, label, sublabel, badge, badgeColor, url, editHref, editLabel, onAction, actionLabel, onDelete, onRename }: {
   icon: React.ReactNode;
   color: string;
   label: string;
   sublabel?: string;
-  badge: string;
-  badgeColor: string;
+  badge?: string;
+  badgeColor?: string;
   url?: string;
   editHref?: string;
   editLabel?: string;
@@ -940,9 +1025,11 @@ function DocRow({ icon, color, label, sublabel, badge, badgeColor, url, editHref
         )}
         {sublabel && <p className="text-[10px] truncate" style={{ color: "var(--text-muted)" }}>{sublabel}</p>}
       </div>
-      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0" style={{ background: badgeColor + "20", color: badgeColor }}>
-        {badge}
-      </span>
+      {badge && badgeColor && (
+        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0" style={{ background: badgeColor + "20", color: badgeColor }}>
+          {badge}
+        </span>
+      )}
       {onAction && (
         <button
           type="button"
