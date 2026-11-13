@@ -401,7 +401,7 @@ export default function LessonHubPage() {
       </button>
 
       {/* ── Header: where it lives, title + status, actions ─────────────── */}
-      <div className="rounded-3xl p-5" style={cardStyle}>
+      <div className="rounded-3xl p-4 sm:p-5" style={cardStyle}>
         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
           <div className="flex-1 min-w-0">
             <div className="flex flex-wrap items-center gap-2 mb-2">
@@ -461,7 +461,7 @@ export default function LessonHubPage() {
           </div>
 
           {/* Actions */}
-          <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 shrink-0">
             {/* Publish to Google Classroom: split button, chevron holds the manual mark options */}
             <div className="relative">
               <div className="flex items-stretch rounded-lg overflow-hidden" style={lesson.publishedToClassroom
@@ -471,7 +471,7 @@ export default function LessonHubPage() {
                   onClick={handlePublish}
                   disabled={publishing}
                   title={canPublish ? "Publish to Google Classroom (posts a draft)" : lesson.courseId ? "Link a classroom in Course Settings first" : "Add this lesson to a course first"}
-                  className="px-4 py-2 text-xs font-semibold transition hover:opacity-90 disabled:opacity-60"
+                  className="px-3 sm:px-4 py-2 text-xs font-semibold transition hover:opacity-90 disabled:opacity-60"
                   style={{ color: lesson.publishedToClassroom ? "var(--accent-text)" : "#ffffff" }}
                 >
                   {publishing ? "Publishing…" : lesson.publishedToClassroom ? "Published ✓" : "Publish"}
@@ -506,7 +506,7 @@ export default function LessonHubPage() {
               onClick={toggleReleased}
               disabled={savingRelease}
               title={lesson.released ? "Released to NeXTBox. Click to unrelease." : "Release this lesson to NeXTBox"}
-              className="group/rel rounded-lg px-3.5 py-2 text-xs font-semibold transition hover:opacity-90 disabled:opacity-60"
+              className="group/rel rounded-lg px-3 sm:px-3.5 py-2 text-xs font-semibold transition hover:opacity-90 disabled:opacity-60"
               style={{ background: "rgba(45,212,160,0.12)", border: "1px solid rgba(45,212,160,0.35)", color: "var(--success-text)" }}
             >
               {lesson.released ? (
@@ -521,7 +521,7 @@ export default function LessonHubPage() {
             <div className="relative">
               <button
                 onClick={() => setEditMenuOpen(v => !v)}
-                className="inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)]"
+                className="inline-flex items-center gap-1.5 rounded-lg px-3 sm:px-3.5 py-2 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)]"
                 style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
               >
                 Edit
@@ -944,12 +944,12 @@ function MaterialRow({ icon, iconColor, title, status, hint, action, children }:
     <div className="py-4 first:pt-1 last:pb-1" style={{ borderColor: "var(--border)" }}>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <span className="flex items-center justify-center w-8 h-8 rounded-lg shrink-0" style={{ background: "var(--bg-card-hover)", color: iconColor }}>{icon}</span>
-        <div className="flex-1 min-w-[140px]">
-          <div className="flex items-center gap-2">
-            <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{title}</p>
-            <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: status.color }}>{status.label}</span>
+        <div className="flex-1 min-w-[110px]">
+          <div className="flex flex-wrap items-baseline gap-x-2">
+            <p className="text-sm font-semibold whitespace-nowrap" style={{ color: "var(--text-primary)" }}>{title}</p>
+            <span className="text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap" style={{ color: status.color }}>{status.label}</span>
           </div>
-          {hint && <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>{hint}</p>}
+          {hint && <p className="hidden sm:block text-[11px]" style={{ color: "var(--text-muted)" }}>{hint}</p>}
         </div>
         <div className="shrink-0">{action}</div>
       </div>
