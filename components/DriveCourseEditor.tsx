@@ -1253,7 +1253,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                   const containerKey = `module-${mod.id}`;
                   return (
                     <div key={mod.id} className="rounded-3xl" style={{ border: "1px solid var(--border)" }}>
-                      <div className={`flex items-center gap-2 px-4 py-2.5 rounded-t-3xl ${collapsed ? "rounded-b-3xl" : ""}`}
+                      <div className={`flex flex-wrap sm:flex-nowrap items-center gap-2 px-4 py-2.5 rounded-t-3xl ${collapsed ? "rounded-b-3xl" : ""}`}
                         style={{ background: "var(--bg-card)", borderBottom: collapsed ? undefined : "1px solid var(--border)" }}>
                         <button aria-label={collapsed ? `Expand ${mod.title}` : `Collapse ${mod.title}`} aria-expanded={!collapsed} onClick={() => toggleModuleCollapse(mod.id)} className="p-1 rounded transition hover:bg-[var(--bg-card)]" style={{ color: "var(--text-muted)" }}>
                           <svg xmlns="http://www.w3.org/2000/svg" className={`w-3.5 h-3.5 transition-transform ${collapsed ? "-rotate-90" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
@@ -1265,7 +1265,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                             className="flex-1 rounded-md px-2 py-0.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
                             style={{ background: "var(--bg-card)", color: "var(--text-primary)", border: "1px solid var(--border)" }} />
                         ) : (
-                          <span className="flex-1 text-sm font-semibold" style={{ color: "var(--accent-text)" }}>{mod.title}</span>
+                          <span className="flex-1 min-w-[70%] sm:min-w-0 text-sm font-semibold" style={{ color: "var(--accent-text)" }}>{mod.title}</span>
                         )}
                         <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{modLessons.length} {modLessons.length === 1 ? "lesson" : "lessons"}</span>
                         {renderSelectControls(containerKey, mod.title)}
@@ -1402,11 +1402,11 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                   const showRows = !unassignedCollapsed && unassigned.length > 0;
                   return (
                   <div className="rounded-3xl" style={{ border: "1px solid var(--border)" }}>
-                    <div className={`flex items-center gap-2 px-4 py-2.5 rounded-t-3xl ${showRows ? "" : "rounded-b-3xl"}`} style={{ background: "var(--bg-card)", borderBottom: showRows ? "1px solid var(--border)" : undefined }}>
+                    <div className={`flex flex-wrap sm:flex-nowrap items-center gap-2 px-4 py-2.5 rounded-t-3xl ${showRows ? "" : "rounded-b-3xl"}`} style={{ background: "var(--bg-card)", borderBottom: showRows ? "1px solid var(--border)" : undefined }}>
                       <button aria-label={unassignedCollapsed ? "Expand Unassigned lessons" : "Collapse Unassigned lessons"} aria-expanded={!unassignedCollapsed} onClick={() => toggleModuleCollapse("unassigned")} className="p-1 rounded transition hover:bg-[var(--bg-card)]" style={{ color: "var(--text-muted)" }}>
                         <svg xmlns="http://www.w3.org/2000/svg" className={`w-3.5 h-3.5 transition-transform ${unassignedCollapsed ? "-rotate-90" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
                       </button>
-                      <span className="flex-1 text-sm font-semibold" style={{ color: "var(--text-secondary)" }}>Unassigned lessons</span>
+                      <span className="flex-1 min-w-[70%] sm:min-w-0 text-sm font-semibold" style={{ color: "var(--text-secondary)" }}>Unassigned lessons</span>
                       <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{unassigned.length} {unassigned.length === 1 ? "lesson" : "lessons"}</span>
                       {renderSelectControls("unassigned", "Unassigned lessons")}
                     </div>
