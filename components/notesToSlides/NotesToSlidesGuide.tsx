@@ -20,15 +20,15 @@ const STEPS: { title: string; body: string }[] = [
   },
   {
     title: "Generate, then review",
-    body: "Use the arrow keys to page through the preview and Edit Slides to fix any slide. Save Draft keeps the deck on its lesson without exporting and clears the form; reopen it from the lesson page.",
+    body: "Use the arrow keys to page through the preview and Edit Slides to fix any slide. Save Draft keeps the deck on its lesson without exporting and clears the form. A lesson can have several decks: pick the lesson again (or use Edit on the lesson page) to open one, or Start a New Deck.",
   },
   {
     title: "Export to Drive",
-    body: "Export builds the deck on the course template, saves it into the lesson's Drive folder, lists it under the lesson's Documents, and clears the form for your next deck.",
+    body: "Export builds the deck on the course template, saves it into the lesson's Drive folder, lists it under the lesson's Slides, and clears the form for your next deck.",
   },
   {
     title: "Push to Google Classroom",
-    body: "Same as before: push the lesson from the course page. The lesson's newest deck is the one attached.",
+    body: "Publish the lesson from the course or lesson page. Every exported deck of the lesson is attached.",
   },
 ];
 
@@ -95,7 +95,7 @@ export default function NotesToSlidesGuide() {
           <p className="text-xs font-semibold" style={{ color: "var(--accent-purple)" }}>Used Classic Slides before?</p>
           <ul className="text-xs space-y-1 list-disc pl-4" style={{ color: "var(--text-secondary)" }}>
             <li>Classic Slides has been retired. Your existing decks, lessons and Drive files are untouched, and old decks still open and push to Classroom.</li>
-            <li>To rebuild a lesson&apos;s deck, open it here (or use “Edit Slides” on the lesson page), then click “Start from this lesson&apos;s content”. Its old Slide Content and section text are loaded as notes, ready to generate.</li>
+            <li>To rebuild a lesson&apos;s deck, open it here (or use “+ New Deck” on the lesson page), then click “Start from this lesson&apos;s content”. Its old Slide Content and section text are loaded as notes, ready to generate.</li>
             <li>Lesson sections (overview, activities, rubric) are still edited with Edit Content on the lesson page, and still feed the Overview Doc and quizzes.</li>
           </ul>
           <Link href="/courses" className="inline-block text-[10px] font-semibold hover:underline" style={{ color: "var(--accent-purple)" }}>

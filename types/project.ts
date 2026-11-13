@@ -21,5 +21,16 @@ export interface SavedProject {
   // (mutable) fields. Exactly one of these is set, depending on which pipeline built the deck.
   slideContent?: string;           // retired Classic Slides snapshot (old decks only)
   presentationAST?: PresentationAST; // Notes to Slides (buildSlideDeckFromAst) snapshot
+  // ── Notes to Slides decks (a lesson can have several; see lib/lessonDecks.ts) ──
+  // A deck is saved here from its first Save Draft (status "draft", url "") and re-exporting it
+  // updates this same record. presentationAST is then the deck's working copy.
+  /** The notes this deck was generated from, so reopening it brings them back. */
+  slideNotes?: string;
+  /** Saved after the last export, so the Drive file is behind the working copy. */
+  hasUnexportedEdits?: boolean;
+  /** An older export of a lesson's single deck from before lessons could have several decks.
+   * Kept and listed, but not attached when the lesson is published to Classroom. */
+  earlierVersion?: boolean;
+  updatedAt?: string;
   createdAt: string;
 }

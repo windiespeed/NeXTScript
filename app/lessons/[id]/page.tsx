@@ -101,11 +101,17 @@ export default function LessonHubPage() {
       fetch("/api/projects").then(r => r.json()),
       fetch("/api/courses").then(r => r.json()),
       fetch("/api/user/settings").then(r => r.json()),
-    ]).then(([lessonData, projectData, coursesData, settings]) => {
+      // This lesson's decks (drafts included), from the route that also moves an older lesson's
+      // single deck into the several-decks model, so they win over the copies in /api/projects.
+      fetch(`/api/lessons/${id}/decks`).then(r => r.ok ? r.json() : null).catch(() => null),
+    ]).then(([lessonData, projectData, coursesData, settings, deckData]) => {
       setAllCourses(Array.isArray(coursesData) ? coursesData : []);
       setHasAiKey(settings.hasKey ?? false);
       setLesson(lessonData);
-      setProjects(Array.isArray(projectData) ? projectData : []);
+      const all: SavedProject[] = Array.isArray(projectData) ? projectData : [];
+      setProjects(Array.isArray(deckData)
+        ? [...(deckData as SavedProject[]), ...all.filter(p => !(p.type === "deck" && (p.lessonId === id || p.lessonIds?.includes(id))))]
+        : all);
 
       if (lessonData?.courseId) {
         fetch(`/api/courses/${lessonData.courseId}`).then(r => r.json()).then(c => {
@@ -251,18 +257,6 @@ export default function LessonHubPage() {
     return true;
   }
 
-  // The unexported Notes to Slides draft lives on the lesson itself (lesson.presentationAST),
-  // not as a SavedProject — so it can't go through handleDeleteProject/DELETE /api/projects.
-  async function handleDeleteSlideDraft() {
-    if (!confirm("Delete this Notes to Slides draft? This cannot be undone.")) return;
-    const res = await fetch(`/api/lessons/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ presentationAST: null, presentationStatus: null }),
-    });
-    if (res.ok) setLesson(prev => prev ? { ...prev, presentationAST: undefined, presentationStatus: undefined } : prev);
-  }
-
   // Publish to Google Classroom: same route and messages as the course page's Publish button.
   async function handlePublish() {
     setPublishMenuOpen(false);
@@ -321,13 +315,12 @@ export default function LessonHubPage() {
   const currentModule = courseModules.find(m => m.lessonIds.includes(id));
   const backHref = lesson.courseId ? `/courses/${lesson.courseId}` : "/courses";
 
-  // A lesson can now have several decks (every Generate/Export click adds a new, distinctly
-  // named one instead of silently replacing the last) — already sorted newest-first by
-  // projectStore.getAll. The unexported draft (if any) is independent of how many exist.
-  const decks = projects.filter(p => p.type === "deck" && (p.lessonId === id || p.lessonIds?.includes(id)));
-  // Export also saves the final deck onto the lesson (presentationStatus "exported"), so only an
-  // AST that was saved/edited after the last export counts as an unexported draft.
-  const hasSlideDraft = !!lesson.presentationAST && lesson.presentationStatus !== "exported";
+  // A lesson can have several decks, each opened in Notes to Slides on its own (lib/lessonDecks.ts).
+  // Older exports of a lesson's former single deck are kept, but listed apart as earlier versions.
+  const allDecks = projects.filter(p => p.type === "deck" && (p.lessonId === id || p.lessonIds?.includes(id)));
+  const decks = allDecks.filter(d => !d.earlierVersion);
+  const earlierDecks = allDecks.filter(d => d.earlierVersion);
+  const exportedDecks = decks.filter(d => d.url && d.status !== "draft");
   const quizProjects = projects.filter(p => p.type === "form" && p.isQuiz && (p.lessonId === id || p.lessonIds?.includes(id)));
   const quizDrafts = quizProjects.filter(p => p.status === "draft");
   const quizGenerated = quizProjects.filter(p => p.status === "generated" || (!p.status && p.url));
@@ -386,10 +379,11 @@ export default function LessonHubPage() {
   const dueLabel = lesson.deadline ? fmtDate(/^\d{4}-\d{2}-\d{2}$/.test(lesson.deadline) ? `${lesson.deadline}T00:00:00` : lesson.deadline) : "";
   const statusBadge = STATUS_BADGE[lesson.status] ?? STATUS_BADGE.draft;
   const canPublish = !!lesson.courseId && !!course?.googleClassroomId;
-  const hasSlides = decks.length > 0 || hasSlideDraft;
-  const slidesStatus = decks.length > 0
-    ? { label: decks.length > 1 ? `${decks.length} decks` : "Exported", color: "var(--success-text)" }
-    : hasSlideDraft ? { label: "Draft", color: "var(--warning-text)" } : { label: "Not started", color: "var(--text-muted)" };
+  const hasSlides = decks.length > 0;
+  const slidesStatus = decks.length > 1
+    ? { label: `${decks.length} decks`, color: exportedDecks.length ? "var(--success-text)" : "var(--warning-text)" }
+    : exportedDecks.length ? { label: "Exported", color: "var(--success-text)" }
+    : decks.length ? { label: "Draft", color: "var(--warning-text)" } : { label: "Not started", color: "var(--text-muted)" };
   const quizStatus = quizGenerated.length > 0
     ? { label: quizProjects.length > 1 ? `${quizProjects.length} quizzes` : "Created", color: "var(--success-text)" }
     : quizDrafts.length > 0 ? { label: "Draft", color: "var(--warning-text)" } : { label: "Not started", color: "var(--text-muted)" };
@@ -693,25 +687,54 @@ export default function LessonHubPage() {
                 status={slidesStatus}
                 hint={hasSlides ? undefined : "Build this lesson's deck in Notes to Slides. Exports use the course template."}
                 action={
-                  <Link href={`/ingest?lessonId=${id}`} className={primaryBtn} style={primaryBtnStyle}>
-                    {hasSlides ? "Edit Slides" : "Create Slides"}
+                  // With decks, the row's button makes another; each deck below has its own Edit.
+                  <Link href={`/ingest?lessonId=${id}`} className={hasSlides ? secondaryBtn : primaryBtn} style={hasSlides ? secondaryBtnStyle : primaryBtnStyle}>
+                    {hasSlides ? "+ New Deck" : "Create Slides"}
                   </Link>
                 }
               >
-                {hasSlideDraft && (
-                  <DocRow icon={RESOURCE_ICON.slides} color="#ff8c4a" label="Unexported draft"
-                    sublabel={`${lesson.presentationAST!.slides.length} slide${lesson.presentationAST!.slides.length !== 1 ? "s" : ""} · saved in Notes to Slides, not exported yet`}
-                    onDelete={handleDeleteSlideDraft} />
+                {decks.map(d => {
+                  const isDraft = d.status === "draft" || !d.url;
+                  const count = d.presentationAST?.slides.length;
+                  const parts = [
+                    count != null ? `${count} slide${count !== 1 ? "s" : ""}` : "Classic Slides (retired)",
+                    isDraft ? "draft, not exported yet" : d.hasUnexportedEdits ? "edited since export" : null,
+                    fmtDateTime(d.updatedAt ?? d.createdAt),
+                  ].filter(Boolean);
+                  return (
+                    <DocRow key={d.id} icon={RESOURCE_ICON.slides} color={isDraft ? "#ff8c4a" : "var(--accent-purple)"}
+                      label={d.title}
+                      sublabel={parts.join(" · ")}
+                      badge={isDraft ? "Draft" : d.hasUnexportedEdits ? "Edited" : undefined}
+                      badgeColor="#ff8c4a"
+                      url={isDraft ? undefined : d.url}
+                      // Opens this deck itself. A Classic deck has no slides to open; its lesson
+                      // content can start a new deck ("Start from this lesson's content").
+                      editHref={d.presentationAST ? `/ingest?lessonId=${id}&deckId=${d.id}` : undefined}
+                      editLabel={isDraft ? "Edit Draft" : "Edit"}
+                      onDelete={() => handleDeleteProject(d.id, d.title)}
+                      onRename={newTitle => handleRenameProject(d.id, newTitle)} />
+                  );
+                })}
+                {earlierDecks.length > 0 && (
+                  <details className="rounded-xl px-3 py-2" style={{ border: "1px dashed var(--border)" }}>
+                    <summary className="text-[11px] font-semibold cursor-pointer" style={{ color: "var(--text-muted)" }}>
+                      Earlier versions ({earlierDecks.length}) · older exports, not posted to Classroom
+                    </summary>
+                    <div className="space-y-2 mt-2">
+                      {earlierDecks.map(d => (
+                        <DocRow key={d.id} icon={RESOURCE_ICON.slides} color="var(--text-muted)"
+                          label={d.title}
+                          sublabel={fmtDateTime(d.createdAt)}
+                          url={d.url}
+                          editHref={d.presentationAST ? `/ingest?lessonId=${id}&deckId=${d.id}` : undefined}
+                          editLabel="Open"
+                          onDelete={() => handleDeleteProject(d.id, d.title)}
+                          onRename={newTitle => handleRenameProject(d.id, newTitle)} />
+                      ))}
+                    </div>
+                  </details>
                 )}
-                {decks.map(d => (
-                  <DocRow key={d.id} icon={RESOURCE_ICON.slides} color="var(--accent-purple)"
-                    label={d.title}
-                    // Decks can share a title (it comes from the lesson), so the date tells them apart.
-                    sublabel={`${d.presentationAST ? "Notes to Slides" : "Classic Slides (retired)"} · ${fmtDateTime(d.createdAt)}`}
-                    url={d.url}
-                    onDelete={() => handleDeleteProject(d.id, d.title)}
-                    onRename={newTitle => handleRenameProject(d.id, newTitle)} />
-                ))}
               </MaterialRow>
 
               {/* Overview Doc */}

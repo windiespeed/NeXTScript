@@ -6,6 +6,7 @@ import { canAccessCourse } from "@/lib/access";
 import { store } from "@/lib/store";
 import { projectStore } from "@/lib/projectStore";
 import { getOrCreateClassroomTopic, pushLessonToClassroom } from "@/lib/google";
+import { classroomDecks, listLessonDecks } from "@/lib/lessonDecks";
 
 export const dynamic = "force-dynamic";
 
@@ -42,7 +43,7 @@ export async function POST(req: Request) {
       }
     }
 
-    // Fetch all projects once to find slides URLs (owner's account authored them, regardless of who is pushing)
+    // Fetch the owner's projects once to find quiz URLs (decks are looked up per lesson below)
     const allProjects = await projectStore.getAll(course.userId);
 
     const results: { lessonId: string; ok: boolean; error?: string; skipped?: string[] }[] = [];
@@ -52,9 +53,10 @@ export async function POST(req: Request) {
         const lesson = await store.getById(lessonId);
         if (!lesson) { results.push({ lessonId, ok: false, error: "Lesson not found" }); continue; }
 
-        const deck = allProjects.find(p => p.type === "deck" && (p.lessonId === lessonId || p.lessonIds?.includes(lessonId)));
+        // Every exported deck of the lesson (a lesson can have several), newest first.
+        const decks = classroomDecks(await listLessonDecks(lesson));
         const quiz = allProjects.find(p => p.type === "form" && p.isQuiz && (p.lessonId === lessonId || p.lessonIds?.includes(lessonId)) && p.url);
-        const slidesUrl = deck?.url;
+        const slidesUrls = decks.map(d => d.url);
         const docUrl = lesson.overviewUrl;
         const formUrl = quiz?.url;
 
@@ -65,7 +67,7 @@ export async function POST(req: Request) {
           title: lesson.title,
           description,
           topicId,
-          slidesUrl,
+          slidesUrls,
           docUrl,
           formUrl,
           lessonType: lesson.lessonType,

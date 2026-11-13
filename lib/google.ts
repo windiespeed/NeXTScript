@@ -496,7 +496,8 @@ export async function pushLessonToClassroom(params: {
   title: string;
   description?: string;
   topicId?: string;
-  slidesUrl?: string;
+  /** Every deck to attach (a lesson can have several). */
+  slidesUrls?: string[];
   docUrl?: string;
   formUrl?: string;
   lessonType?: string;
@@ -516,7 +517,13 @@ export async function pushLessonToClassroom(params: {
     skipped.push(label);
     return undefined;
   };
-  const slidesId = await visible(params.slidesUrl, "slides");
+  const decks = params.slidesUrls ?? [];
+  const slidesIds: string[] = [];
+  for (const [i, url] of decks.entries()) {
+    const id = await visible(url, decks.length > 1 ? `slides (deck ${i + 1})` : "slides");
+    if (id && !slidesIds.includes(id)) slidesIds.push(id);
+  }
+  const slideMaterials = slidesIds.map(id => ({ driveFile: { driveFile: { id }, shareMode: "VIEW" } }));
   const docId = await visible(params.docUrl, "overview doc");
   const formId = await visible(params.formUrl, "quiz form");
 
@@ -527,7 +534,7 @@ export async function pushLessonToClassroom(params: {
     if (existingTitles.has(title)) title = `${title} (Copy)`;
 
     const materials: any[] = [];
-    if (slidesId) materials.push({ driveFile: { driveFile: { id: slidesId }, shareMode: "VIEW" } });
+    materials.push(...slideMaterials);
     if (docId) materials.push({ driveFile: { driveFile: { id: docId }, shareMode: "VIEW" } });
     // Classroom API rejects `form` material on create (read-only, populated by Classroom itself) —
     // a `link` to the form URL is auto-upgraded to a form attachment instead.
@@ -556,7 +563,7 @@ export async function pushLessonToClassroom(params: {
     // Classroom API rejects `form` material on create (read-only, populated by Classroom itself) —
     // a `link` to the form URL is auto-upgraded to a form attachment instead.
     if (formId) materials.push({ link: { url: params.formUrl! } });
-    if (slidesId) materials.push({ driveFile: { driveFile: { id: slidesId }, shareMode: "VIEW" } });
+    materials.push(...slideMaterials);
     if (docId) materials.push({ driveFile: { driveFile: { id: docId }, shareMode: "VIEW" } });
 
     await classroom.courses.courseWork.create({
@@ -579,7 +586,7 @@ export async function pushLessonToClassroom(params: {
   if (existingTitles.has(title)) title = `${title} (Copy)`;
 
   const materials: any[] = [];
-  if (slidesId) materials.push({ driveFile: { driveFile: { id: slidesId }, shareMode: "VIEW" } });
+  materials.push(...slideMaterials);
   if (docId) materials.push({ driveFile: { driveFile: { id: docId }, shareMode: "VIEW" } });
   if (formId) materials.push({ link: { url: params.formUrl! } });
 
