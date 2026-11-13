@@ -131,7 +131,9 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
   const [loading, setLoading] = useState(true);
 
   const [copied, setCopied] = useState(false);
-  const [selecting, setSelecting] = useState(false);
+  // Sections ("module-<id>" or "unassigned") whose lessons show checkboxes. Selections can span
+  // several sections; one shared action bar acts on everything selected.
+  const [selectScopes, setSelectScopes] = useState<Set<string>>(new Set());
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [duplicating, setDuplicating] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
@@ -231,11 +233,32 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
   }
 
   async function handleBulkRelease(release: boolean) {
-    const targets = lessons.filter(l => l.released !== release);
-    setLessons(prev => prev.map(l => ({ ...l, released: release })));
-    await Promise.all(targets.map(l =>
+    await setReleased(lessons.map(l => l.id), release);
+  }
+
+  // Release lessons to (or pull them back from) NeXTBox. Only lessons whose state changes are saved.
+  async function setReleased(lessonIds: string[], release: boolean) {
+    const ids = new Set(lessonIds);
+    const targets = lessons.filter(l => ids.has(l.id) && !!l.released !== release);
+    if (targets.length === 0) return;
+    const changed = new Set(targets.map(l => l.id));
+    setLessons(prev => prev.map(l => changed.has(l.id) ? { ...l, released: release } : l));
+    const results = await Promise.all(targets.map(l =>
       fetch(`/api/lessons/${l.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ released: release }) })
+        .then(r => r.ok).catch(() => false)
     ));
+    const failed = new Set(targets.filter((_, i) => !results[i]).map(l => l.id));
+    if (failed.size > 0) {
+      setLessons(prev => prev.map(l => failed.has(l.id) ? { ...l, released: !release } : l));
+      alert(`${failed.size} lesson${failed.size > 1 ? "s" : ""} couldn't be ${release ? "released" : "unreleased"}. Try again.`);
+    }
+  }
+
+  // Course-wide selection for actions on every lesson: every section goes into select mode.
+  function selectWholeCourse() {
+    setSelectScopes(new Set([...driveModules.map(m => `module-${m.id}`), "unassigned"]));
+    setSelectedIds(new Set(lessons.map(l => l.id)));
+    setCollapsedModules(new Set());
   }
 
   function toggleSelect(lessonId: string) {
@@ -291,7 +314,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
       setLessons(prev => [...prev, ...valid]);
       setCourse(prev => prev ? { ...prev, lessonIds: [...prev.lessonIds, ...valid.map(c => c.id)] } : prev);
     }
-    setSelectedIds(new Set()); setSelecting(false); setDuplicating(false);
+    setSelectedIds(new Set()); setSelectScopes(new Set()); setDuplicating(false);
   }
 
   async function handleBulkDelete() {
@@ -308,7 +331,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
     setLessons(prev => prev.filter(l => !deleted.has(l.id)));
     setCourse(prev => prev ? { ...prev, lessonIds: prev.lessonIds.filter(l => !deleted.has(l)) } : prev);
     if (deleted.size < ids.length) alert(`${ids.length - deleted.size} lesson${ids.length - deleted.size > 1 ? "s" : ""} couldn't be deleted. Refresh and try again.`);
-    setSelectedIds(new Set()); setSelecting(false); setBulkDeleting(false);
+    setSelectedIds(new Set()); setSelectScopes(new Set()); setBulkDeleting(false);
   }
 
   async function handleBulkMove(targetCourseId: string) {
@@ -335,7 +358,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
     })));
     setLessons(prev => prev.filter(l => !selectedIds.has(l.id)));
     setCourse(prev => prev ? { ...prev, lessonIds: prev.lessonIds.filter(l => !selectedIds.has(l)) } : prev);
-    setSelectedIds(new Set()); setSelecting(false); setBulkMoving(false);
+    setSelectedIds(new Set()); setSelectScopes(new Set()); setBulkMoving(false);
   }
 
   async function openAddExisting() {
@@ -488,6 +511,14 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
     }));
     saveModules(updated);
     setAssigningModuleForLesson(null);
+  }
+
+  // Collapse keys: each module's id, plus "unassigned" for the Unassigned lessons section
+  // (shown when some lessons have no module, or the course has no modules at all).
+  function collapsibleSectionKeys(): string[] {
+    const assigned = new Set(driveModules.flatMap(m => m.lessonIds));
+    const hasUnassigned = driveModules.length === 0 || lessons.some(l => !assigned.has(l.id));
+    return [...driveModules.map(m => m.id), ...(hasUnassigned && lessons.length > 0 ? ["unassigned"] : [])];
   }
 
   function toggleModuleCollapse(modId: string) {
@@ -797,61 +828,18 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
             )}
           </p>
           <div className="flex items-center gap-2">
-            {selecting ? (
-              <>
-                <button onClick={() => { setSelecting(false); setSelectedIds(new Set()); }}
-                  className="rounded-full px-3 py-2 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)]"
-                  style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}>Cancel</button>
-                <button onClick={() => setSelectedIds(selectedIds.size === lessons.length ? new Set() : new Set(lessons.map(l => l.id)))}
-                  className="rounded-full px-3 py-2 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)]"
-                  style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
-                  {selectedIds.size === lessons.length ? "Unselect All" : "Select All"}
-                </button>
-                <div className="relative">
-                  <button onClick={() => allCourses.filter(c => c.id !== id).length > 0 && setBulkMoveOpen(v => !v)}
-                    disabled={selectedIds.size === 0 || duplicating || bulkDeleting || bulkMoving}
-                    className="rounded-full px-3 py-2 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)] disabled:opacity-50"
-                    style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
-                    {bulkMoving ? "Moving…" : `Move To${selectedIds.size > 0 ? ` (${selectedIds.size})` : ""}`}
-                  </button>
-                  {bulkMoveOpen && (
-                    <>
-                    <div className="fixed inset-0 z-20" onClick={() => setBulkMoveOpen(false)} />
-                    <div className="absolute left-0 top-full mt-1 z-30 rounded-2xl overflow-hidden min-w-[180px] max-w-[calc(100vw-2rem)]" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)" }}>
-                      <p className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Move to…</p>
-                      {allCourses.filter(c => c.id !== id).map(c => (
-                        <button key={c.id} onClick={() => handleBulkMove(c.id)}
-                          className="w-full text-left px-3 py-2 text-xs hover:bg-[var(--bg-card-hover)] transition"
-                          style={{ color: "var(--text-primary)" }}>{c.title}</button>
-                      ))}
-                    </div>
-                    </>
-                  )}
-                </div>
-                <button onClick={handleBulkDuplicate} disabled={selectedIds.size === 0 || duplicating || bulkDeleting || bulkMoving}
-                  className="rounded-full bg-[#0cc0df] px-3 py-2 text-xs font-semibold text-[#0a0b13] hover:opacity-90 disabled:opacity-50 transition">
-                  {duplicating ? "Duplicating…" : `Duplicate${selectedIds.size > 0 ? ` (${selectedIds.size})` : ""}`}
-                </button>
-                <button onClick={handleBulkDelete} disabled={selectedIds.size === 0 || duplicating || bulkDeleting || bulkMoving}
-                  className="rounded-full px-3 py-2 text-xs font-semibold text-[var(--danger-text)] hover:bg-red-500/10 disabled:opacity-50 transition"
-                  style={{ border: "1px solid var(--border)" }}>
-                  {bulkDeleting ? "Deleting…" : `Delete${selectedIds.size > 0 ? ` (${selectedIds.size})` : ""}`}
-                </button>
-              </>
-            ) : (
-              <>
-                {lessons.length > 0 && (
-                  <button onClick={() => setSelecting(true)}
-                    className="rounded-full px-3 py-2 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)]"
-                    style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}>Select</button>
-                )}
-                {driveModules.length > 0 && (
-                  <button onClick={() => setCollapsedModules(collapsedModules.size === driveModules.length ? new Set() : new Set(driveModules.map(m => m.id)))}
+            <>
+                {collapsibleSectionKeys().length > 0 && (() => {
+                  const keys = collapsibleSectionKeys();
+                  const allCollapsed = keys.every(k => collapsedModules.has(k));
+                  return (
+                  <button onClick={() => setCollapsedModules(allCollapsed ? new Set() : new Set(keys))}
                     className="rounded-full px-3 py-2 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)]"
                     style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
-                    {collapsedModules.size === driveModules.length ? "Expand All" : "Collapse All"}
+                    {allCollapsed ? "Expand All" : "Collapse All"}
                   </button>
-                )}
+                  );
+                })()}
                 <div className="relative">
                   <button onClick={() => setMoreOpen(v => !v)} title="More options"
                     className="p-2 rounded-full transition hover:bg-[var(--bg-card-hover)]"
@@ -865,6 +853,13 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                       <button onClick={handleAddModule} className="w-full text-left px-4 py-2.5 text-xs hover:bg-[var(--bg-card-hover)] transition" style={{ color: "var(--text-primary)" }}>+ Add Module Group</button>
                       <button onClick={openAddExisting} className="w-full text-left px-4 py-2.5 text-xs hover:bg-[var(--bg-card-hover)] transition" style={{ color: "var(--text-primary)" }}>Add Existing Lesson</button>
                       <Link href={`/quizzes/new?courseId=${id}`} className="block px-4 py-2.5 text-xs hover:bg-[var(--bg-card-hover)] transition" style={{ color: "var(--text-primary)" }}>New Quiz</Link>
+                      {lessons.length > 0 && (
+                        <button onClick={selectWholeCourse}
+                          className="w-full text-left px-4 py-2.5 text-xs hover:bg-[var(--bg-card-hover)] transition"
+                          style={{ color: "var(--text-primary)" }}>
+                          Select All Lessons
+                        </button>
+                      )}
                       {lessons.length > 0 && (
                         <button onClick={() => handleBulkRelease(!lessons.every(l => l.released))}
                           className="w-full text-left px-4 py-2.5 text-xs hover:bg-[var(--bg-card-hover)] transition"
@@ -898,8 +893,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                   className="rounded-full bg-gradient-to-r from-[#ff8c4a] to-[#e55a1e] px-4 py-2 text-xs font-bold text-[#0a0b13] hover:opacity-90 transition shadow">
                   + New Lesson
                 </Link>
-              </>
-            )}
+            </>
           </div>
         </div>
 
@@ -919,7 +913,135 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
             ...unassignedBase.filter(l => !unassignedOrder.includes(l.id)),
           ];
 
+          // Selection is scoped to one section at a time, so only that section's rows turn into checkboxes.
+          const scopeOf = (lessonId: string) => {
+            const m = driveModules.find(mod => mod.lessonIds.includes(lessonId));
+            return m ? `module-${m.id}` : "unassigned";
+          };
+
+          const sectionLessonIds = (scope: string) => scope === "unassigned"
+            ? unassigned.map(l => l.id)
+            : (driveModules.find(m => `module-${m.id}` === scope)?.lessonIds ?? []).filter(lid => lessons.some(l => l.id === lid));
+
+          function toggleSectionSelecting(scope: string) {
+            setBulkMoveOpen(false);
+            if (selectScopes.has(scope)) {
+              const ids = new Set(sectionLessonIds(scope));
+              setSelectScopes(prev => { const next = new Set(prev); next.delete(scope); return next; });
+              setSelectedIds(prev => new Set([...prev].filter(lid => !ids.has(lid))));
+            } else {
+              setSelectScopes(prev => new Set(prev).add(scope));
+              const collapseKey = scope.startsWith("module-") ? scope.slice("module-".length) : scope;
+              if (collapsedModules.has(collapseKey)) toggleModuleCollapse(collapseKey);
+            }
+          }
+
+          function renderSelectControls(scope: string, label: string) {
+            const ids = sectionLessonIds(scope);
+            if (ids.length === 0) return null;
+            const active = selectScopes.has(scope);
+            const picked = ids.filter(lid => selectedIds.has(lid)).length;
+            const all = picked === ids.length;
+            return (
+              <>
+                {active && (
+                  <button
+                    onClick={() => setSelectedIds(prev => {
+                      const next = new Set(prev);
+                      ids.forEach(lid => all ? next.delete(lid) : next.add(lid));
+                      return next;
+                    })}
+                    aria-label={all ? `Unselect all lessons in ${label}` : `Select all lessons in ${label}`}
+                    className="rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider transition hover:bg-[var(--bg-card-hover)]"
+                    style={{ background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--accent-text)" }}>
+                    {all ? "Unselect All" : `Select All${picked > 0 ? ` (${picked}/${ids.length})` : ""}`}
+                  </button>
+                )}
+                <button
+                  onClick={() => toggleSectionSelecting(scope)}
+                  aria-pressed={active}
+                  aria-label={active ? `Stop selecting in ${label}` : `Select lessons in ${label}`}
+                  className="rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider transition hover:opacity-90"
+                  style={active
+                    ? { background: "var(--brand-gradient)", color: "#ffffff", border: "1px solid transparent" }
+                    : { background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
+                  {active ? "Done" : "Select"}
+                </button>
+              </>
+            );
+          }
+
+          // One shared action bar for everything selected, across modules. Floats at the bottom of the
+          // screen so it stays reachable in long courses.
+          function renderSelectionBar() {
+            if (selectScopes.size === 0) return null;
+            const busy = duplicating || bulkDeleting || bulkMoving;
+            const n = selectedIds.size;
+            const otherCourses = allCourses.filter(c => c.id !== id);
+            const btn = "rounded-full px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider transition disabled:opacity-50";
+            const plain = { background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-secondary)" };
+            return (
+              <div role="toolbar" aria-label="Selected lessons"
+                className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-[min(56rem,calc(100vw-2rem))] rounded-xl flex items-center gap-2 flex-wrap px-4 py-2.5"
+                style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)" }}>
+                <span className="text-[10px] font-semibold uppercase tracking-widest shrink-0" style={{ color: "var(--accent-text)" }}>
+                  {n} of {lessons.length} selected
+                </span>
+                <button onClick={() => n === lessons.length ? setSelectedIds(new Set()) : selectWholeCourse()}
+                  className={`${btn} hover:bg-[var(--bg-card-hover)]`} style={plain}>
+                  {n === lessons.length ? "Unselect All" : "Select All Lessons"}
+                </button>
+                <div className="flex-1" />
+                <div className="relative">
+                  <button onClick={() => otherCourses.length > 0 && setBulkMoveOpen(v => !v)}
+                    disabled={n === 0 || busy || otherCourses.length === 0}
+                    title={otherCourses.length === 0 ? "No other courses to move to" : undefined}
+                    className={`${btn} hover:bg-[var(--bg-card-hover)]`} style={plain}>
+                    {bulkMoving ? "Moving…" : "Move To"}
+                  </button>
+                  {bulkMoveOpen && (
+                    <>
+                    <div className="fixed inset-0 z-20" onClick={() => setBulkMoveOpen(false)} />
+                    <div className="absolute right-0 bottom-full mb-1 z-30 rounded-2xl overflow-hidden min-w-[180px] max-w-[calc(100vw-2rem)] max-h-64 overflow-y-auto" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)" }}>
+                      <p className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Move to…</p>
+                      {otherCourses.map(c => (
+                        <button key={c.id} onClick={() => handleBulkMove(c.id)}
+                          className="w-full text-left px-3 py-2 text-xs hover:bg-[var(--bg-card-hover)] transition"
+                          style={{ color: "var(--text-primary)" }}>{c.title}</button>
+                      ))}
+                    </div>
+                    </>
+                  )}
+                </div>
+                <button onClick={() => setReleased([...selectedIds], true)}
+                  disabled={n === 0 || busy || lessons.every(l => !selectedIds.has(l.id) || l.released)}
+                  className={`${btn} hover:bg-[var(--bg-card-hover)]`} style={{ ...plain, color: "var(--success-text)" }}>
+                  Release
+                </button>
+                <button onClick={() => setReleased([...selectedIds], false)}
+                  disabled={n === 0 || busy || lessons.every(l => !selectedIds.has(l.id) || !l.released)}
+                  className={`${btn} hover:bg-[var(--bg-card-hover)]`} style={plain}>
+                  Unrelease
+                </button>
+                <button onClick={handleBulkDuplicate} disabled={n === 0 || busy}
+                  className={`${btn} bg-[#0cc0df] text-[#0a0b13] hover:opacity-90`} style={{ border: "1px solid transparent" }}>
+                  {duplicating ? "Duplicating…" : "Duplicate"}
+                </button>
+                <button onClick={handleBulkDelete} disabled={n === 0 || busy}
+                  className={`${btn} text-[var(--danger-text)] hover:bg-red-500/10`}
+                  style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
+                  {bulkDeleting ? "Deleting…" : "Delete"}
+                </button>
+                <button onClick={() => { setSelectScopes(new Set()); setSelectedIds(new Set()); setBulkMoveOpen(false); }} disabled={busy}
+                  className={`${btn} hover:bg-[var(--bg-card-hover)]`} style={{ ...plain, color: "var(--text-muted)" }}>
+                  Done
+                </button>
+              </div>
+            );
+          }
+
           function renderLessonRow(lesson: Lesson, i: number, isFirst: boolean, isLast = false, roundTop = false, sortable?: SortableProps) {
+            const selecting = selectScopes.has(scopeOf(lesson.id));
             return (
               <div
                 key={lesson.id}
@@ -928,7 +1050,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                 className={`group flex items-center gap-4 px-4 py-3 transition ${roundTop && isFirst ? "rounded-t-3xl" : ""} ${isLast ? "rounded-b-3xl" : ""} ${selecting ? "cursor-pointer" : "hover:bg-[var(--bg-card-hover)]"} ${selecting && selectedIds.has(lesson.id) ? "bg-[#0cc0df]/10" : ""}`}
                 style={{ background: selecting && selectedIds.has(lesson.id) ? undefined : "var(--bg-card)", borderTop: !isFirst ? "1px solid var(--border)" : undefined, ...sortable?.style }}
               >
-                {sortable?.grip}
+                {!selecting && sortable?.grip}
                 {selecting ? (
                   <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition ${selectedIds.has(lesson.id) ? "bg-[#0cc0df] border-[#0cc0df]" : "border-[var(--border)]"}`}
                     style={selectedIds.has(lesson.id) ? {} : { background: "var(--bg-body)" }}>
@@ -1060,9 +1182,16 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                         </div>
                       );
                     })()}
-                    {/* Released indicator (read-only) */}
+                    {/* Released to NeXTBox: click to unrelease */}
                     {lesson.released && (
-                      <span className="rounded-full px-2.5 py-1 text-[10px] font-semibold" style={{ background: "rgba(45,212,160,0.12)", color: "var(--success-text)" }}>Released</span>
+                      <button onClick={e => { e.stopPropagation(); setReleased([lesson.id], false); }}
+                        title="Released to NeXTBox. Click to unrelease."
+                        aria-label={`Unrelease ${lesson.title} from NeXTBox`}
+                        className="group/rel rounded-full px-2.5 py-1 text-[10px] font-semibold transition hover:bg-red-500/10"
+                        style={{ background: "rgba(45,212,160,0.12)", color: "var(--success-text)" }}>
+                        <span className="group-hover/rel:hidden">Released</span>
+                        <span className="hidden group-hover/rel:inline text-[var(--danger-text)]">Unrelease</span>
+                      </button>
                     )}
                     <Link href={`/lessons/${lesson.id}`}
                       className="rounded-full bg-[#0cc0df] px-3 py-1.5 text-xs font-semibold text-[#0a0b13] hover:opacity-90 transition">View</Link>
@@ -1155,7 +1284,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                   const containerKey = `module-${mod.id}`;
                   return (
                     <div key={mod.id} className="rounded-3xl" style={{ border: "1px solid var(--border)" }}>
-                      <div className={`flex items-center gap-2 px-4 py-2.5 rounded-t-3xl ${collapsed ? "rounded-b-3xl" : ""}`}
+                      <div className={`flex flex-wrap sm:flex-nowrap items-center gap-2 px-4 py-2.5 rounded-t-3xl ${collapsed ? "rounded-b-3xl" : ""}`}
                         style={{ background: "var(--bg-card)", borderBottom: collapsed ? undefined : "1px solid var(--border)" }}>
                         <button aria-label={collapsed ? `Expand ${mod.title}` : `Collapse ${mod.title}`} aria-expanded={!collapsed} onClick={() => toggleModuleCollapse(mod.id)} className="p-1 rounded transition hover:bg-[var(--bg-card)]" style={{ color: "var(--text-muted)" }}>
                           <svg xmlns="http://www.w3.org/2000/svg" className={`w-3.5 h-3.5 transition-transform ${collapsed ? "-rotate-90" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
@@ -1167,9 +1296,10 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                             className="flex-1 rounded-md px-2 py-0.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
                             style={{ background: "var(--bg-card)", color: "var(--text-primary)", border: "1px solid var(--border)" }} />
                         ) : (
-                          <span className="flex-1 text-sm font-semibold" style={{ color: "var(--accent-text)" }}>{mod.title}</span>
+                          <span className="flex-1 min-w-[70%] sm:min-w-0 text-sm font-semibold" style={{ color: "var(--accent-text)" }}>{mod.title}</span>
                         )}
                         <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{modLessons.length} {modLessons.length === 1 ? "lesson" : "lessons"}</span>
+                        {renderSelectControls(containerKey, mod.title)}
                         {modLessons.length > 0 && (() => {
                           const modLessonIds = modLessons.map(l => l.id);
                           const anyReleasing = modLessonIds.some(lid => releasingIds.has(lid));
@@ -1196,7 +1326,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                       {!collapsed && (
                         <>
                           {/* Module NeXTBox settings bar */}
-                          <div className="flex items-center gap-4 px-4 py-2 border-b" style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}>
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2 border-b" style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}>
                             <span className="text-[10px] font-semibold uppercase tracking-widest shrink-0" style={{ color: "var(--text-muted)" }}>NeXTBox</span>
                             <div className="flex items-center gap-1.5">
                               <label htmlFor={`module-progress-${mod.id}`} className="text-[10px]" style={{ color: "var(--text-muted)" }}>Progress:</label>
@@ -1231,12 +1361,14 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                                     setReleasePickerModuleId(null);
                                   } else {
                                     setReleasePickerModuleId(mod.id);
-                                    setReleasePickerSelected(new Set(modLessons.filter(l => !l.released).map(l => l.id)));
+                                    // Checked = released in NeXTBox. Starts with every lesson checked (releases the
+                                    // rest); uncheck a released lesson to pull it back.
+                                    setReleasePickerSelected(new Set(modLessons.map(l => l.id)));
                                   }
                                 }}
                                 className="rounded-full px-2.5 py-0.5 text-[10px] font-semibold transition"
                                 style={{ background: releasePickerModuleId === mod.id ? "rgba(45,212,160,0.12)" : "var(--bg-card-hover)", border: "1px solid var(--border)", color: releasePickerModuleId === mod.id ? "#2dd4a0" : "var(--text-muted)" }}>
-                                Release to NeXTBox
+                                NeXTBox Release
                               </button>
                               {releasePickerModuleId === mod.id && (
                                 <div className="absolute right-0 top-full mt-1 z-50 rounded-xl shadow-lg p-3 min-w-[220px] max-w-[calc(100vw-2rem)]"
@@ -1246,7 +1378,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                                       type="checkbox"
                                       checked={releasePickerSelected.size === modLessons.length && modLessons.length > 0}
                                       onChange={e => setReleasePickerSelected(e.target.checked ? new Set(modLessons.map(l => l.id)) : new Set())} />
-                                    <span className="text-[11px] font-semibold" style={{ color: "var(--text-secondary)" }}>Select All</span>
+                                    <span className="text-[11px] font-semibold" style={{ color: "var(--text-secondary)" }}>Released in NeXTBox</span>
                                   </div>
                                   <div className="space-y-1.5 max-h-48 overflow-y-auto">
                                     {modLessons.map(l => (
@@ -1260,24 +1392,29 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                                             setReleasePickerSelected(next);
                                           }} />
                                         <span className="text-[11px] truncate flex-1" style={{ color: "var(--text-primary)" }}>{l.title}</span>
-                                        {l.released && <span className="shrink-0 text-[10px]" style={{ color: "var(--success-text)" }}>✓</span>}
+                                        {l.released
+                                          ? <span className="shrink-0 text-[10px]" style={{ color: releasePickerSelected.has(l.id) ? "var(--success-text)" : "var(--danger-text)" }}>{releasePickerSelected.has(l.id) ? "Released" : "Will unrelease"}</span>
+                                          : releasePickerSelected.has(l.id) && <span className="shrink-0 text-[10px]" style={{ color: "var(--accent-text)" }}>Will release</span>}
                                       </label>
                                     ))}
                                   </div>
-                                  <button
-                                    disabled={releasePickerSelected.size === 0}
-                                    onClick={async () => {
-                                      const ids = Array.from(releasePickerSelected);
-                                      setLessons(prev => prev.map(l => ids.includes(l.id) ? { ...l, released: true } : l));
-                                      setReleasePickerModuleId(null);
-                                      await Promise.all(ids.map(lid =>
-                                        fetch(`/api/lessons/${lid}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ released: true }) })
-                                      ));
-                                    }}
-                                    className="mt-3 w-full rounded-full py-1 text-[11px] font-semibold transition disabled:opacity-50"
-                                    style={{ background: "rgba(12,192,223,0.12)", color: "var(--accent-text)", border: "1px solid rgba(12,192,223,0.2)" }}>
-                                    Release Selected
-                                  </button>
+                                  {(() => {
+                                    const toRelease = modLessons.filter(l => !l.released && releasePickerSelected.has(l.id)).map(l => l.id);
+                                    const toUnrelease = modLessons.filter(l => l.released && !releasePickerSelected.has(l.id)).map(l => l.id);
+                                    const parts = [toRelease.length && `release ${toRelease.length}`, toUnrelease.length && `unrelease ${toUnrelease.length}`].filter(Boolean);
+                                    return (
+                                      <button
+                                        disabled={parts.length === 0}
+                                        onClick={async () => {
+                                          setReleasePickerModuleId(null);
+                                          await Promise.all([setReleased(toRelease, true), setReleased(toUnrelease, false)]);
+                                        }}
+                                        className="mt-3 w-full rounded-full py-1 text-[11px] font-semibold transition disabled:opacity-50"
+                                        style={{ background: "rgba(12,192,223,0.12)", color: "var(--accent-text)", border: "1px solid rgba(12,192,223,0.2)" }}>
+                                        {parts.length ? `Save (${parts.join(", ")})` : "No changes"}
+                                      </button>
+                                    );
+                                  })()}
                                 </div>
                               )}
                             </div>
@@ -1298,22 +1435,34 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                   );
                 })}
                 {(unassigned.length > 0 || driveModules.length === 0) && (
+                  (() => {
+                  const unassignedCollapsed = collapsedModules.has("unassigned");
+                  const showRows = !unassignedCollapsed && unassigned.length > 0;
+                  return (
                   <div className="rounded-3xl" style={{ border: "1px solid var(--border)" }}>
-                    {driveModules.length > 0 && (
-                      <div className="flex items-center gap-2 px-4 py-2.5 rounded-t-3xl" style={{ background: "var(--bg-card)", borderBottom: "1px solid var(--border)" }}>
-                        <span className="text-sm font-semibold" style={{ color: "var(--text-muted)" }}>Unassigned</span>
-                        <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{unassigned.length} {unassigned.length === 1 ? "lesson" : "lessons"}</span>
-                      </div>
+                    <div className={`flex flex-wrap sm:flex-nowrap items-center gap-2 px-4 py-2.5 rounded-t-3xl ${showRows ? "" : "rounded-b-3xl"}`} style={{ background: "var(--bg-card)", borderBottom: showRows ? "1px solid var(--border)" : undefined }}>
+                      <button aria-label={unassignedCollapsed ? "Expand Unassigned lessons" : "Collapse Unassigned lessons"} aria-expanded={!unassignedCollapsed} onClick={() => toggleModuleCollapse("unassigned")} className="p-1 rounded transition hover:bg-[var(--bg-card)]" style={{ color: "var(--text-muted)" }}>
+                        <svg xmlns="http://www.w3.org/2000/svg" className={`w-3.5 h-3.5 transition-transform ${unassignedCollapsed ? "-rotate-90" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                      </button>
+                      <span className="flex-1 min-w-[70%] sm:min-w-0 text-sm font-semibold" style={{ color: "var(--text-secondary)" }}>Unassigned lessons</span>
+                      <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{unassigned.length} {unassigned.length === 1 ? "lesson" : "lessons"}</span>
+                      {renderSelectControls("unassigned", "Unassigned lessons")}
+                    </div>
+                    {!unassignedCollapsed && (
+                      <SortableContext id="unassigned" items={unassigned.map(l => l.id)} strategy={verticalListSortingStrategy}>
+                        {unassigned.map((lesson, i) => (
+                          <SortableLessonItem key={lesson.id} id={lesson.id}
+                            render={s => renderLessonRow(lesson, i, i === 0, i === unassigned.length - 1, false, s)} />
+                        ))}
+                      </SortableContext>
                     )}
-                    <SortableContext id="unassigned" items={unassigned.map(l => l.id)} strategy={verticalListSortingStrategy}>
-                      {unassigned.map((lesson, i) => (
-                        <SortableLessonItem key={lesson.id} id={lesson.id}
-                          render={s => renderLessonRow(lesson, i, i === 0, i === unassigned.length - 1, driveModules.length === 0, s)} />
-                      ))}
-                    </SortableContext>
                   </div>
+                  );
+                  })()
                 )}
               </div>
+              {renderSelectionBar()}
+              {selectScopes.size > 0 && <div aria-hidden className="h-16" />}
               <DragOverlay>
                 {activeDragId ? (() => {
                   const lesson = lessons.find(l => l.id === activeDragId);
