@@ -536,21 +536,10 @@ function Dashboard() {
     <div className="space-y-6">
 
       {/* ── Header banner + stat cards (NeXT Central style) ─────────────────── */}
-      <div className="rounded-xl px-6 py-5 flex flex-wrap items-center justify-between gap-4" style={{ background: "var(--brand-gradient)" }}>
+      <div className="rounded-xl px-6 py-5" style={{ background: "var(--brand-gradient)" }}>
         <div>
           <h1 className="text-xl font-bold text-white">NeXTScript</h1>
           <p className="text-sm text-white/85">Welcome back, {firstName} · {dayName}, {today.toLocaleDateString(undefined, { month: "long", day: "numeric" })}</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {[
-            { label: "Courses", href: "/courses" },
-            { label: "Notes to Slides", href: "/ingest" },
-            { label: "Schedule", href: "/schedule" },
-          ].map(b => (
-            <Link key={b.href} href={b.href} className="rounded-lg px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/25" style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.35)" }}>
-              {b.label}
-            </Link>
-          ))}
         </div>
       </div>
 
