@@ -40,7 +40,7 @@ export async function POST(req: Request) {
     const courseId = body.courseConfig.courseId;
     // The course is re-read here rather than trusting the anchors the browser sent: the server's
     // copy is the one that gets enforced, and this keeps the usual owner/collaborator scoping.
-    const skeleton = await loadCourseSkeleton(courseId, session.user.email, settings);
+    const skeleton = await loadCourseSkeleton(courseId, session.user.email);
     if (!skeleton) return NextResponse.json({ error: "Course not found or you don't have access to it." }, { status: 403 });
 
     const { slideCount, lessonTitle, lessonSubtitle, topics, outline } = body;
@@ -49,7 +49,7 @@ export async function POST(req: Request) {
 
     const opts = {
       targetAudience, slideCount, anchors: skeleton.anchors, studentLevel, lessonTitle, lessonSubtitle, topics, sources, outline,
-      program: resolveProgramContext(skeleton.course, settings),
+      program: resolveProgramContext(skeleton.course),
     };
     const generated = provider === "gemini"
       ? await ingestRawContentGemini(apiKey, rawText, { ...opts, model })

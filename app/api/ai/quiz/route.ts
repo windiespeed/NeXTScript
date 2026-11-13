@@ -29,8 +29,8 @@ export async function POST(req: Request) {
 
     const rawCourse = courseId ? await courseStore.getById(courseId) : undefined;
     const course = rawCourse && canAccessCourse(rawCourse, session.user.email) ? rawCourse : undefined;
-    const { industry, subject } = resolveProgramContext(course, settings);
-    const sections = resolveSections({ course, userSettings: settings });
+    const { industry, subject } = resolveProgramContext(course);
+    const sections = resolveSections({ course });
 
     const mc = Math.min(50, Math.max(0, mcCount ?? 8));
     const sa = Math.min(50, Math.max(0, saCount ?? 2));

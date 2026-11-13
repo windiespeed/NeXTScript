@@ -37,7 +37,7 @@ export async function POST(req: Request) {
     provider = getAiModel(model).provider;
     const apiKey = (provider === "gemini" ? settings.geminiKey : settings.anthropicKey)!;
 
-    const skeleton = await loadCourseSkeleton(body.courseConfig.courseId, session.user.email, settings);
+    const skeleton = await loadCourseSkeleton(body.courseConfig.courseId, session.user.email);
     if (!skeleton) return NextResponse.json({ error: "Course not found or you don't have access to it." }, { status: 403 });
 
     const { slideCount, lessonTitle, lessonSubtitle, topics } = body;
@@ -45,7 +45,7 @@ export async function POST(req: Request) {
     const { studentLevel, sources, targetAudience } = courseAiInputs(skeleton.course);
     const opts = {
       targetAudience, slideCount, anchors: skeleton.anchors, studentLevel, lessonTitle, lessonSubtitle, topics, sources,
-      program: resolveProgramContext(skeleton.course, settings),
+      program: resolveProgramContext(skeleton.course),
     };
     const outline = provider === "gemini"
       ? await outlineRawContentGemini(apiKey, body.rawNotes, { ...opts, model })

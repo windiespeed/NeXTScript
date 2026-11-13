@@ -193,7 +193,6 @@ export default function NewCoursePage() {
         <div className="rounded-3xl p-6 space-y-4" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
           <p className={sectionHeading}>Sections</p>
           <SectionsEditor
-            scope="course"
             value={resolveSections({ course: { settings } })}
             onChange={sections => patchSettings({ sections })}
           />

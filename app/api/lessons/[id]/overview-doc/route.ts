@@ -4,7 +4,6 @@ import { overviewDocSchema, readBody } from "@/lib/validation";
 import { store } from "@/lib/store";
 import { courseStore } from "@/lib/courseStore";
 import { projectStore } from "@/lib/projectStore";
-import { userSettings } from "@/lib/userSettings";
 import { canAccessLesson, canAccessProject } from "@/lib/access";
 import { buildOverviewDoc, deleteFile, extractDriveFileId, moveFileToFolder } from "@/lib/google";
 import { ensureLessonFolderId, ensureCourseFolderId } from "@/lib/lessonFolders";
@@ -53,11 +52,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         .map(async q => (await canAccessProject(q, session.user!.email!)) ? q : null)
     )).filter((q): q is NonNullable<typeof q> => !!q);
 
-    const [uSettings, course] = await Promise.all([
-      userSettings.get(session.user.email),
-      lesson.courseId ? courseStore.getById(lesson.courseId) : Promise.resolve(undefined),
-    ]);
-    const sections = resolveSections({ course, userSettings: uSettings });
+    const course = lesson.courseId ? await courseStore.getById(lesson.courseId) : undefined;
+    const sections = resolveSections({ course });
 
     // Delete the previous Overview Doc's Drive file before building the new one — this stays
     // single-instance per lesson, unlike decks/quizzes which now accumulate.

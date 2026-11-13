@@ -15,7 +15,6 @@ import { astToDeck, deckSlidesFor } from "@/lib/deck/fromAst";
 import { layoutSlide } from "@/lib/deck/layout/registry";
 import type { Course, CourseModule } from "@/types/course";
 import type { Lesson, LessonInput } from "@/types/lesson";
-import type { SectionDef } from "@/types/section";
 import { resolveSlideAnchors, describeAnchorReport } from "@/lib/slideAnchors";
 import { resolveSections } from "@/lib/sections";
 import { buildNotesFromLesson } from "@/lib/lessonSeed";
@@ -115,11 +114,10 @@ function IngestPageInner() {
   const [topics, setTopics] = useState("");
   const [deadline, setDeadline] = useState("");
   const [lessonType, setLessonType] = useState<LessonType>("lesson");
-  const [userSectionSettings, setUserSectionSettings] = useState<{ sectionLabels?: Record<string, string>; sections?: SectionDef[] }>({});
 
   // The Skeleton: every active section (course-level, falling back to user/global defaults) is a
   // locked slide anchor, in order. Display copy only — the server re-resolves and enforces it.
-  const slideAnchors = resolveSlideAnchors(selectedCourse, userSectionSettings);
+  const slideAnchors = resolveSlideAnchors(selectedCourse);
   const courseThemeId = getTheme(selectedCourse?.settings?.defaultThemeId).id;
   // The course's Google Slides template. Export draws onto it unless the instructor unchecks it.
   const courseTemplateUrl = selectedCourse?.settings?.defaultTemplateUrl?.trim() || "";
@@ -234,7 +232,6 @@ function IngestPageInner() {
       setHasAiKey(!!(settings.hasKey || settings.hasGeminiKey));
       setSavedKeys({ anthropic: !!settings.hasKey, gemini: !!settings.hasGeminiKey });
       setPreferredAiModel(settings.preferredAiModel ?? "auto");
-      setUserSectionSettings({ sectionLabels: settings.sectionLabels, sections: settings.sections });
       setCourses(Array.isArray(coursesData) ? coursesData : []);
     }).catch(() => {}).finally(() => setSettingsLoaded(true));
   }, []);
@@ -316,7 +313,7 @@ function IngestPageInner() {
 
   // Classic content on the attached lesson, as Notes to Slides notes ("" when there's none).
   const seedNotes = attachedLesson
-    ? buildNotesFromLesson(attachedLesson, resolveSections({ course: selectedCourse, userSettings: userSectionSettings }))
+    ? buildNotesFromLesson(attachedLesson, resolveSections({ course: selectedCourse }))
     : "";
 
   /** Bridge from retired Classic Slides: loads the lesson's Slide Content and slide-heading sections

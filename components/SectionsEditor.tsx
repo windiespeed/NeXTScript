@@ -12,9 +12,6 @@ interface Props {
   value: SectionDef[];
   /** Called with the full replacement list on any edit — the caller persists it as-is. */
   onChange: (next: SectionDef[]) => void;
-  /** Course-level lists get the "Include in Overview Doc" toggle per section; user-level
-   * (Profile) defaults don't, since that toggle only makes sense scoped to a course. */
-  scope: "user" | "course";
 }
 
 function newCustomSection(): SectionDef {
@@ -27,7 +24,7 @@ function newCustomSection(): SectionDef {
   };
 }
 
-export default function SectionsEditor({ value, onChange, scope }: Props) {
+export default function SectionsEditor({ value, onChange }: Props) {
   const [restorePickerOpen, setRestorePickerOpen] = useState(false);
   const removedBuiltinIds = BUILTIN_SECTION_IDS.filter(id => !value.some(s => s.id === id));
 
@@ -68,9 +65,7 @@ export default function SectionsEditor({ value, onChange, scope }: Props) {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <p className="text-xs -mt-1" style={{ color: "var(--text-muted)" }}>
-          {scope === "course"
-            ? "Sections used for this course's lessons — Slide Deck, Overview Doc, AI Fill, and quiz generation."
-            : "Default sections for new courses — a course can add, remove, or rename its own."}
+          {"Sections used for this course's lessons — Slide Deck, Overview Doc, AI Fill, and quiz generation."}
         </p>
         <button type="button" onClick={resetToDefaults} className="text-xs shrink-0 hover:underline" style={{ color: "var(--accent-text)" }}>
           Reset to defaults
@@ -107,17 +102,15 @@ export default function SectionsEditor({ value, onChange, scope }: Props) {
               />
               Slide heading
             </label>
-            {scope === "course" && (
-              <label className="flex items-center gap-1.5 shrink-0 text-[10px] font-semibold cursor-pointer select-none" style={{ color: "var(--text-secondary)" }} title="Include this section's content in the generated Overview Doc">
-                <input
-                  type="checkbox"
-                  checked={s.includeInOverviewDoc}
-                  onChange={e => update(s.id, { includeInOverviewDoc: e.target.checked })}
-                  className="accent-[#0cc0df] w-3.5 h-3.5"
-                />
-                Overview Doc
-              </label>
-            )}
+            <label className="flex items-center gap-1.5 shrink-0 text-[10px] font-semibold cursor-pointer select-none" style={{ color: "var(--text-secondary)" }} title="Include this section's content in the generated Overview Doc">
+              <input
+                type="checkbox"
+                checked={s.includeInOverviewDoc}
+                onChange={e => update(s.id, { includeInOverviewDoc: e.target.checked })}
+                className="accent-[#0cc0df] w-3.5 h-3.5"
+              />
+              Overview Doc
+            </label>
             <button
               type="button"
               onClick={() => remove(s.id)}

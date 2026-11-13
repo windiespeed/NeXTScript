@@ -104,17 +104,17 @@ export default function LessonForm({ initial = {}, onSubmit, autoSave, onCancel,
     });
   }
 
-  // Resolves the active section list (course-level > user-level > synthesized defaults) and,
+  // Resolves the active section list (the course's own, else the built-in defaults) and,
   // for a lesson that predates the dynamic-sections model (no `initial.sections` at all),
   // seeds `form.sections` from its legacy fixed fields — the write that actually migrates it,
   // with zero Firestore backfill needed for lessons nobody opens.
   useEffect(() => {
     const courseId = initial.courseId;
-    Promise.all([
-      fetch("/api/user/settings").then(r => r.json()).catch(() => ({})),
-      courseId ? fetch(`/api/courses/${courseId}`).then(r => r.ok ? r.json() : null).catch(() => null) : Promise.resolve(null),
-    ]).then(([userSettingsData, course]) => {
-      const resolved = resolveSections({ course, userSettings: userSettingsData });
+    const loadCourse = courseId
+      ? fetch(`/api/courses/${courseId}`).then(r => r.ok ? r.json() : null).catch(() => null)
+      : Promise.resolve(null);
+    loadCourse.then((course) => {
+      const resolved = resolveSections({ course });
       setSections(resolved);
       if (!initial.sections) {
         setForm(f => {

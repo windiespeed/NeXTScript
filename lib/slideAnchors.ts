@@ -26,12 +26,12 @@ export interface SlideAnchor {
 
 type SectionSource = { settings?: { sectionLabels?: Record<string, string>; sections?: SectionDef[] } } | null | undefined;
 
-/** Ordered, de-duplicated anchors for a course (falling back to the user's own section defaults). */
-export function resolveSlideAnchors(course: SectionSource, userSettings?: { sectionLabels?: Record<string, string>; sections?: SectionDef[] } | null): SlideAnchor[] {
+/** Ordered, de-duplicated anchors for a course (the built-in sections when it has none). */
+export function resolveSlideAnchors(course: SectionSource): SlideAnchor[] {
   const seenIds = new Set<string>();
   const seenLabels = new Set<string>();
   const anchors: SlideAnchor[] = [];
-  for (const section of resolveSections({ course, userSettings })) {
+  for (const section of resolveSections({ course })) {
     const label = section.label?.trim();
     if (!label || !isSlideAnchor(section) || seenIds.has(section.id) || seenLabels.has(normalizeHeading(label))) continue;
     seenIds.add(section.id);
