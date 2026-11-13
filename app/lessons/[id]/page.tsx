@@ -991,16 +991,16 @@ function PagerCard({ lesson, dir }: { lesson: PagerLesson; dir: "prev" | "next" 
       className={`group flex items-center gap-3 rounded-3xl px-4 py-3.5 transition hover:border-[var(--brand-teal)] min-w-0 ${next ? "flex-row-reverse text-right" : ""}`}
       style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}
     >
-      <span className="flex items-center justify-center w-8 h-8 rounded-lg shrink-0 transition group-hover:text-white group-hover:[background:var(--brand-gradient)]" style={{ background: "var(--bg-card-hover)", color: "var(--accent-text)" }}>
+      <span className="hidden sm:flex items-center justify-center w-8 h-8 rounded-lg shrink-0 transition group-hover:text-white group-hover:[background:var(--brand-gradient)]" style={{ background: "var(--bg-card-hover)", color: "var(--accent-text)" }}>
         <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
           {next ? <polyline points="9 18 15 12 9 6" /> : <polyline points="15 18 9 12 15 6" />}
         </svg>
       </span>
       <span className="min-w-0 flex-1">
         <span className="block text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>
-          {next ? "Next lesson" : "Previous lesson"}{lesson.moduleTitle ? <span className="hidden sm:inline"> · {lesson.moduleTitle}</span> : null}
+          {!next && <span className="sm:hidden">‹ </span>}{next ? "Next" : "Previous"}<span className="hidden sm:inline"> lesson</span>{next && <span className="sm:hidden"> ›</span>}{lesson.moduleTitle ? <span className="hidden sm:inline"> · {lesson.moduleTitle}</span> : null}
         </span>
-        <span className="block text-sm font-semibold truncate" style={{ color: "var(--text-primary)" }}>{lesson.title}</span>
+        <span className="block text-sm font-semibold line-clamp-2 sm:truncate break-words" style={{ color: "var(--text-primary)" }}>{lesson.title}</span>
       </span>
     </Link>
   );
