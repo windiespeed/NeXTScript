@@ -634,15 +634,22 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
         fetch(`/api/lessons/${lid}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ publishedToClassroom: true }) })
       ));
       const firstError = Array.isArray(data.results) ? data.results.find((r: { ok: boolean; error?: string }) => !r.ok)?.error : undefined;
-      const msg = data.failed > 0
+      const skippedNotes: string[] = Array.isArray(data.results)
+        ? data.results.filter((r: { skipped?: string[] }) => r.skipped?.length).map((r: { lessonId: string; skipped: string[] }) => {
+            const title = lessons.find(l => l.id === r.lessonId)?.title ?? "A lesson";
+            return `${title} posted without its ${r.skipped.join(" and ")} (not found in your Google Drive, or you don't have access)`;
+          })
+        : [];
+      const msg = (data.failed > 0
         ? `${data.pushed} pushed, ${data.failed} failed${firstError ? `: ${firstError}` : ""}`
-        : `${data.pushed} lesson${data.pushed !== 1 ? "s" : ""} released to Classroom.`;
-      setReleaseMsg({ text: msg, ok: data.failed === 0 });
+        : `${data.pushed} lesson${data.pushed !== 1 ? "s" : ""} posted to Classroom as draft${data.pushed !== 1 ? "s" : ""}.`)
+        + (skippedNotes.length ? ` ${skippedNotes.join(". ")}.` : "");
+      setReleaseMsg({ text: msg, ok: data.failed === 0 && skippedNotes.length === 0 });
     } catch (e: any) {
       setReleaseMsg({ text: e.message || "Push failed.", ok: false });
     } finally {
       setReleasingIds(prev => { const next = new Set(prev); lessonIds.forEach(id => next.delete(id)); return next; });
-      setTimeout(() => setReleaseMsg(null), 5000);
+      setTimeout(() => setReleaseMsg(null), 10000);
     }
   }
 
@@ -963,7 +970,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                   aria-label={active ? `Stop selecting in ${label}` : `Select lessons in ${label}`}
                   className="rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider transition hover:opacity-90"
                   style={active
-                    ? { background: "var(--brand-gradient)", color: "#ffffff", border: "1px solid transparent" }
+                    ? { background: "var(--brand-gradient)", backgroundOrigin: "border-box", color: "#ffffff", border: "1px solid transparent" }
                     : { background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
                   {active ? "Done" : "Select"}
                 </button>
@@ -978,17 +985,18 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
             const busy = duplicating || bulkDeleting || bulkMoving;
             const n = selectedIds.size;
             const otherCourses = allCourses.filter(c => c.id !== id);
-            const btn = "rounded-full px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider transition disabled:opacity-50";
-            const plain = { background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-secondary)" };
+            // Navy brand bar with white buttons, so it stands apart from the white lesson cards under it.
+            const btn = "rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition hover:opacity-90 disabled:opacity-40";
+            const plain = { background: "#ffffff", border: "1px solid #ffffff", color: "var(--brand-navy)" };
             return (
               <div role="toolbar" aria-label="Selected lessons"
-                className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-[min(56rem,calc(100vw-2rem))] rounded-xl flex items-center gap-2 flex-wrap px-4 py-2.5"
-                style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)" }}>
-                <span className="text-[10px] font-semibold uppercase tracking-widest shrink-0" style={{ color: "var(--accent-text)" }}>
+                className="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 w-[min(60rem,calc(100vw-2rem))] rounded-xl flex items-center gap-2 flex-wrap px-4 py-3"
+                style={{ background: "var(--brand-gradient)", boxShadow: "0 0 0 1px rgba(255,255,255,0.15), 0 12px 32px rgba(13,21,48,0.45)" }}>
+                <span className="text-[11px] font-bold uppercase tracking-widest shrink-0 text-white">
                   {n} of {lessons.length} selected
                 </span>
                 <button onClick={() => n === lessons.length ? setSelectedIds(new Set()) : selectWholeCourse()}
-                  className={`${btn} hover:bg-[var(--bg-card-hover)]`} style={plain}>
+                  className={btn} style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.7)", color: "#ffffff" }}>
                   {n === lessons.length ? "Unselect All" : "Select All Lessons"}
                 </button>
                 <div className="flex-1" />
@@ -996,7 +1004,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                   <button onClick={() => otherCourses.length > 0 && setBulkMoveOpen(v => !v)}
                     disabled={n === 0 || busy || otherCourses.length === 0}
                     title={otherCourses.length === 0 ? "No other courses to move to" : undefined}
-                    className={`${btn} hover:bg-[var(--bg-card-hover)]`} style={plain}>
+                    className={btn} style={plain}>
                     {bulkMoving ? "Moving…" : "Move To"}
                   </button>
                   {bulkMoveOpen && (
@@ -1015,25 +1023,24 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                 </div>
                 <button onClick={() => setReleased([...selectedIds], true)}
                   disabled={n === 0 || busy || lessons.every(l => !selectedIds.has(l.id) || l.released)}
-                  className={`${btn} hover:bg-[var(--bg-card-hover)]`} style={{ ...plain, color: "var(--success-text)" }}>
+                  className={btn} style={plain}>
                   Release
                 </button>
                 <button onClick={() => setReleased([...selectedIds], false)}
                   disabled={n === 0 || busy || lessons.every(l => !selectedIds.has(l.id) || !l.released)}
-                  className={`${btn} hover:bg-[var(--bg-card-hover)]`} style={plain}>
+                  className={btn} style={plain}>
                   Unrelease
                 </button>
                 <button onClick={handleBulkDuplicate} disabled={n === 0 || busy}
-                  className={`${btn} bg-[#0cc0df] text-[#0a0b13] hover:opacity-90`} style={{ border: "1px solid transparent" }}>
+                  className={btn} style={plain}>
                   {duplicating ? "Duplicating…" : "Duplicate"}
                 </button>
                 <button onClick={handleBulkDelete} disabled={n === 0 || busy}
-                  className={`${btn} text-[var(--danger-text)] hover:bg-red-500/10`}
-                  style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
+                  className={btn} style={{ ...plain, color: "#c62828" }}>
                   {bulkDeleting ? "Deleting…" : "Delete"}
                 </button>
                 <button onClick={() => { setSelectScopes(new Set()); setSelectedIds(new Set()); setBulkMoveOpen(false); }} disabled={busy}
-                  className={`${btn} hover:bg-[var(--bg-card-hover)]`} style={{ ...plain, color: "var(--text-muted)" }}>
+                  className={btn} style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.7)", color: "#ffffff" }}>
                   Done
                 </button>
               </div>
@@ -1137,7 +1144,8 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                           onClick={() => handleTogglePublishedToClassroom(lesson)}
                           title="Click to mark as unpublished"
                           className="rounded-full px-3 py-1.5 text-xs font-semibold transition hover:opacity-80"
-                          style={{ background: "rgba(45,212,160,0.12)", border: "1px solid rgba(45,212,160,0.35)", color: "var(--success-text)" }}>
+                          // Classroom blue-teal, kept apart from NeXTBox green so the two kinds of release don't blur together.
+                          style={{ background: "rgba(12,192,223,0.10)", border: "1px solid rgba(12,192,223,0.35)", color: "var(--accent-text)" }}>
                           Published ✓
                         </button>
                       ) : (
@@ -1146,10 +1154,10 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                           <button
                             onClick={() => handleReleaseToClassroom([lesson.id], currentModule?.title)}
                             disabled={isPublishing}
-                            title={course?.googleClassroomId ? "Publish to Google Classroom" : "Link a classroom in Course Settings first"}
+                            title={course?.googleClassroomId ? "Publish to Google Classroom (posts a draft)" : "Link a classroom in Course Settings first"}
                             className="px-3 py-1.5 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)] disabled:opacity-50"
                             style={{ color: course?.googleClassroomId ? "var(--text-primary)" : "var(--text-muted)" }}>
-                            {isPublishing ? "Publishing…" : "Publish to Classroom"}
+                            {isPublishing ? "Publishing…" : "Publish"}
                           </button>
                           <div className="self-stretch w-px shrink-0" style={{ background: "var(--border)" }} />
                           <button
@@ -1164,12 +1172,6 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                             <>
                               <div className="fixed inset-0 z-20" onClick={() => setPublishMenuId(null)} />
                               <div className="absolute right-0 top-full mt-1 z-30 rounded-2xl overflow-hidden min-w-[170px] max-w-[calc(100vw-2rem)]" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-float)" }}>
-                                <button
-                                  onClick={() => { setPublishMenuId(null); handleReleaseToClassroom([lesson.id], currentModule?.title); }}
-                                  className="w-full text-left px-3 py-2 text-xs hover:bg-[var(--bg-card-hover)] transition"
-                                  style={{ color: "var(--text-primary)" }}>
-                                  Push to Classroom
-                                </button>
                                 <button
                                   onClick={() => { setPublishMenuId(null); handleTogglePublishedToClassroom(lesson); }}
                                   className="w-full text-left px-3 py-2 text-xs hover:bg-[var(--bg-card-hover)] transition"
@@ -1188,7 +1190,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                         title="Released to NeXTBox. Click to unrelease."
                         aria-label={`Unrelease ${lesson.title} from NeXTBox`}
                         className="group/rel rounded-full px-2.5 py-1 text-[10px] font-semibold transition hover:bg-red-500/10"
-                        style={{ background: "rgba(45,212,160,0.12)", color: "var(--success-text)" }}>
+                        style={{ background: "rgba(45,212,160,0.12)", border: "1px solid rgba(45,212,160,0.35)", color: "var(--success-text)" }}>
                         <span className="group-hover/rel:hidden">Released</span>
                         <span className="hidden group-hover/rel:inline text-[var(--danger-text)]">Unrelease</span>
                       </button>
@@ -1307,10 +1309,10 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                             <button
                               onClick={() => handleReleaseToClassroom(modLessonIds, mod.title)}
                               disabled={anyReleasing}
-                              title={course?.googleClassroomId ? "Publish module to Google Classroom" : "Link a classroom in Course Settings first"}
+                              title={course?.googleClassroomId ? "Publish this module's lessons to Google Classroom (posts drafts)" : "Link a classroom in Course Settings first"}
                               className="rounded-full px-2 py-0.5 text-[10px] font-semibold transition disabled:opacity-50"
                               style={{ background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
-                              {anyReleasing ? "Publishing…" : "Publish to Classroom"}
+                              {anyReleasing ? "Publishing…" : "Publish"}
                             </button>
                           );
                         })()}
@@ -1366,11 +1368,15 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                                     setReleasePickerSelected(new Set(modLessons.map(l => l.id)));
                                   }
                                 }}
-                                className="rounded-full px-2.5 py-0.5 text-[10px] font-semibold transition"
-                                style={{ background: releasePickerModuleId === mod.id ? "rgba(45,212,160,0.12)" : "var(--bg-card-hover)", border: "1px solid var(--border)", color: releasePickerModuleId === mod.id ? "#2dd4a0" : "var(--text-muted)" }}>
+                                title="Choose which lessons in this module are released to NeXTBox"
+                                className="rounded-full px-2.5 py-0.5 text-[10px] font-semibold transition hover:opacity-80"
+                                // Same NeXTBox green as each lesson's Released badge, so the two read as connected.
+                                style={{ background: "rgba(45,212,160,0.12)", border: `1px solid ${releasePickerModuleId === mod.id ? "var(--success-text)" : "rgba(45,212,160,0.35)"}`, color: "var(--success-text)" }}>
                                 NeXTBox Release
                               </button>
                               {releasePickerModuleId === mod.id && (
+                                <>
+                                <div className="fixed inset-0 z-40" onClick={() => setReleasePickerModuleId(null)} />
                                 <div className="absolute right-0 top-full mt-1 z-50 rounded-xl shadow-lg p-3 min-w-[220px] max-w-[calc(100vw-2rem)]"
                                   style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
                                   <div className="flex items-center gap-2 mb-2 pb-2" style={{ borderBottom: "1px solid var(--border)" }}>
@@ -1416,6 +1422,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                                     );
                                   })()}
                                 </div>
+                                </>
                               )}
                             </div>
                           </div>

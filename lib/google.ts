@@ -404,6 +404,17 @@ export function autoDeckName(lessonTitle?: string, lessonSubtitle?: string): str
 
 // ─── Google Classroom ───────────────────────────────���──────────────────────
 
+/** True when the signed-in user can see this Drive file and it is not in the trash. */
+async function isDriveFileVisible(fileId: string, accessToken: string): Promise<boolean> {
+  try {
+    const drive = google.drive({ version: "v3", auth: getAuthClient(accessToken) });
+    const res = await drive.files.get({ fileId, fields: "id,trashed", supportsAllDrives: true });
+    return !res.data.trashed;
+  } catch {
+    return false;
+  }
+}
+
 function extractFileId(url: string): string | undefined {
   return url?.match(/\/d\/([a-zA-Z0-9_-]+)/)?.[1];
 }
@@ -490,13 +501,24 @@ export async function pushLessonToClassroom(params: {
   formUrl?: string;
   lessonType?: string;
   accessToken: string;
-}): Promise<void> {
+}): Promise<{ skipped: string[] }> {
   const classroom = google.classroom({ version: "v1", auth: getAuthClient(params.accessToken) });
   const itemType = classroomItemTypeFor(params.lessonType);
 
-  const slidesId = params.slidesUrl ? extractFileId(params.slidesUrl) : undefined;
-  const docId = params.docUrl ? extractFileId(params.docUrl) : undefined;
-  const formId = params.formUrl ? extractFileId(params.formUrl) : undefined;
+  // Classroom rejects the whole post ("@AttachmentNotVisible") if any attached Drive file is
+  // deleted, trashed, or not visible to the person pushing. Check each file first and leave out
+  // the ones that would fail, so the lesson still posts and the caller can say what was skipped.
+  const skipped: string[] = [];
+  const visible = async (url: string | undefined, label: string) => {
+    const fileId = url ? extractFileId(url) : undefined;
+    if (!fileId) return undefined;
+    if (await isDriveFileVisible(fileId, params.accessToken)) return fileId;
+    skipped.push(label);
+    return undefined;
+  };
+  const slidesId = await visible(params.slidesUrl, "slides");
+  const docId = await visible(params.docUrl, "overview doc");
+  const formId = await visible(params.formUrl, "quiz form");
 
   if (itemType === "material") {
     // Read-only reference post — no submission required
@@ -521,7 +543,7 @@ export async function pushLessonToClassroom(params: {
         ...(materials.length > 0 ? { materials } : {}),
       },
     });
-    return;
+    return { skipped };
   }
 
   if (itemType === "quiz") {
@@ -548,7 +570,7 @@ export async function pushLessonToClassroom(params: {
         ...(materials.length > 0 ? { materials } : {}),
       },
     });
-    return;
+    return { skipped };
   }
 
   // Default: assignment with all attachments
@@ -572,4 +594,5 @@ export async function pushLessonToClassroom(params: {
       ...(materials.length > 0 ? { materials } : {}),
     },
   });
+  return { skipped };
 }
