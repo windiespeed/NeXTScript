@@ -233,11 +233,25 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
   }
 
   async function handleBulkRelease(release: boolean) {
-    const targets = lessons.filter(l => l.released !== release);
-    setLessons(prev => prev.map(l => ({ ...l, released: release })));
-    await Promise.all(targets.map(l =>
+    await setReleased(lessons.map(l => l.id), release);
+  }
+
+  // Release lessons to (or pull them back from) NeXTBox. Only lessons whose state changes are saved.
+  async function setReleased(lessonIds: string[], release: boolean) {
+    const ids = new Set(lessonIds);
+    const targets = lessons.filter(l => ids.has(l.id) && !!l.released !== release);
+    if (targets.length === 0) return;
+    const changed = new Set(targets.map(l => l.id));
+    setLessons(prev => prev.map(l => changed.has(l.id) ? { ...l, released: release } : l));
+    const results = await Promise.all(targets.map(l =>
       fetch(`/api/lessons/${l.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ released: release }) })
+        .then(r => r.ok).catch(() => false)
     ));
+    const failed = new Set(targets.filter((_, i) => !results[i]).map(l => l.id));
+    if (failed.size > 0) {
+      setLessons(prev => prev.map(l => failed.has(l.id) ? { ...l, released: !release } : l));
+      alert(`${failed.size} lesson${failed.size > 1 ? "s" : ""} couldn't be ${release ? "released" : "unreleased"}. Try again.`);
+    }
   }
 
   // Course-wide selection for actions on every lesson: every section goes into select mode.
@@ -999,6 +1013,16 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                     </>
                   )}
                 </div>
+                <button onClick={() => setReleased([...selectedIds], true)}
+                  disabled={n === 0 || busy || lessons.every(l => !selectedIds.has(l.id) || l.released)}
+                  className={`${btn} hover:bg-[var(--bg-card-hover)]`} style={{ ...plain, color: "var(--success-text)" }}>
+                  Release
+                </button>
+                <button onClick={() => setReleased([...selectedIds], false)}
+                  disabled={n === 0 || busy || lessons.every(l => !selectedIds.has(l.id) || !l.released)}
+                  className={`${btn} hover:bg-[var(--bg-card-hover)]`} style={plain}>
+                  Unrelease
+                </button>
                 <button onClick={handleBulkDuplicate} disabled={n === 0 || busy}
                   className={`${btn} bg-[#0cc0df] text-[#0a0b13] hover:opacity-90`} style={{ border: "1px solid transparent" }}>
                   {duplicating ? "Duplicating…" : "Duplicate"}
@@ -1158,9 +1182,16 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                         </div>
                       );
                     })()}
-                    {/* Released indicator (read-only) */}
+                    {/* Released to NeXTBox: click to unrelease */}
                     {lesson.released && (
-                      <span className="rounded-full px-2.5 py-1 text-[10px] font-semibold" style={{ background: "rgba(45,212,160,0.12)", color: "var(--success-text)" }}>Released</span>
+                      <button onClick={e => { e.stopPropagation(); setReleased([lesson.id], false); }}
+                        title="Released to NeXTBox. Click to unrelease."
+                        aria-label={`Unrelease ${lesson.title} from NeXTBox`}
+                        className="group/rel rounded-full px-2.5 py-1 text-[10px] font-semibold transition hover:bg-red-500/10"
+                        style={{ background: "rgba(45,212,160,0.12)", color: "var(--success-text)" }}>
+                        <span className="group-hover/rel:hidden">Released</span>
+                        <span className="hidden group-hover/rel:inline text-[var(--danger-text)]">Unrelease</span>
+                      </button>
                     )}
                     <Link href={`/lessons/${lesson.id}`}
                       className="rounded-full bg-[#0cc0df] px-3 py-1.5 text-xs font-semibold text-[#0a0b13] hover:opacity-90 transition">View</Link>
@@ -1330,12 +1361,14 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                                     setReleasePickerModuleId(null);
                                   } else {
                                     setReleasePickerModuleId(mod.id);
-                                    setReleasePickerSelected(new Set(modLessons.filter(l => !l.released).map(l => l.id)));
+                                    // Checked = released in NeXTBox. Starts with every lesson checked (releases the
+                                    // rest); uncheck a released lesson to pull it back.
+                                    setReleasePickerSelected(new Set(modLessons.map(l => l.id)));
                                   }
                                 }}
                                 className="rounded-full px-2.5 py-0.5 text-[10px] font-semibold transition"
                                 style={{ background: releasePickerModuleId === mod.id ? "rgba(45,212,160,0.12)" : "var(--bg-card-hover)", border: "1px solid var(--border)", color: releasePickerModuleId === mod.id ? "#2dd4a0" : "var(--text-muted)" }}>
-                                Release to NeXTBox
+                                NeXTBox Release
                               </button>
                               {releasePickerModuleId === mod.id && (
                                 <div className="absolute right-0 top-full mt-1 z-50 rounded-xl shadow-lg p-3 min-w-[220px] max-w-[calc(100vw-2rem)]"
@@ -1345,7 +1378,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                                       type="checkbox"
                                       checked={releasePickerSelected.size === modLessons.length && modLessons.length > 0}
                                       onChange={e => setReleasePickerSelected(e.target.checked ? new Set(modLessons.map(l => l.id)) : new Set())} />
-                                    <span className="text-[11px] font-semibold" style={{ color: "var(--text-secondary)" }}>Select All</span>
+                                    <span className="text-[11px] font-semibold" style={{ color: "var(--text-secondary)" }}>Released in NeXTBox</span>
                                   </div>
                                   <div className="space-y-1.5 max-h-48 overflow-y-auto">
                                     {modLessons.map(l => (
@@ -1359,24 +1392,29 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                                             setReleasePickerSelected(next);
                                           }} />
                                         <span className="text-[11px] truncate flex-1" style={{ color: "var(--text-primary)" }}>{l.title}</span>
-                                        {l.released && <span className="shrink-0 text-[10px]" style={{ color: "var(--success-text)" }}>✓</span>}
+                                        {l.released
+                                          ? <span className="shrink-0 text-[10px]" style={{ color: releasePickerSelected.has(l.id) ? "var(--success-text)" : "var(--danger-text)" }}>{releasePickerSelected.has(l.id) ? "Released" : "Will unrelease"}</span>
+                                          : releasePickerSelected.has(l.id) && <span className="shrink-0 text-[10px]" style={{ color: "var(--accent-text)" }}>Will release</span>}
                                       </label>
                                     ))}
                                   </div>
-                                  <button
-                                    disabled={releasePickerSelected.size === 0}
-                                    onClick={async () => {
-                                      const ids = Array.from(releasePickerSelected);
-                                      setLessons(prev => prev.map(l => ids.includes(l.id) ? { ...l, released: true } : l));
-                                      setReleasePickerModuleId(null);
-                                      await Promise.all(ids.map(lid =>
-                                        fetch(`/api/lessons/${lid}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ released: true }) })
-                                      ));
-                                    }}
-                                    className="mt-3 w-full rounded-full py-1 text-[11px] font-semibold transition disabled:opacity-50"
-                                    style={{ background: "rgba(12,192,223,0.12)", color: "var(--accent-text)", border: "1px solid rgba(12,192,223,0.2)" }}>
-                                    Release Selected
-                                  </button>
+                                  {(() => {
+                                    const toRelease = modLessons.filter(l => !l.released && releasePickerSelected.has(l.id)).map(l => l.id);
+                                    const toUnrelease = modLessons.filter(l => l.released && !releasePickerSelected.has(l.id)).map(l => l.id);
+                                    const parts = [toRelease.length && `release ${toRelease.length}`, toUnrelease.length && `unrelease ${toUnrelease.length}`].filter(Boolean);
+                                    return (
+                                      <button
+                                        disabled={parts.length === 0}
+                                        onClick={async () => {
+                                          setReleasePickerModuleId(null);
+                                          await Promise.all([setReleased(toRelease, true), setReleased(toUnrelease, false)]);
+                                        }}
+                                        className="mt-3 w-full rounded-full py-1 text-[11px] font-semibold transition disabled:opacity-50"
+                                        style={{ background: "rgba(12,192,223,0.12)", color: "var(--accent-text)", border: "1px solid rgba(12,192,223,0.2)" }}>
+                                        {parts.length ? `Save (${parts.join(", ")})` : "No changes"}
+                                      </button>
+                                    );
+                                  })()}
                                 </div>
                               )}
                             </div>
