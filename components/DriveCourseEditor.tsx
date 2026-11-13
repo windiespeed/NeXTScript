@@ -1153,10 +1153,10 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                           <button
                             onClick={() => handleReleaseToClassroom([lesson.id], currentModule?.title)}
                             disabled={isPublishing}
-                            title={course?.googleClassroomId ? "Publish to Google Classroom" : "Link a classroom in Course Settings first"}
+                            title={course?.googleClassroomId ? "Publish to Google Classroom (posts a draft)" : "Link a classroom in Course Settings first"}
                             className="px-3 py-1.5 text-xs font-semibold transition hover:bg-[var(--bg-card-hover)] disabled:opacity-50"
                             style={{ color: course?.googleClassroomId ? "var(--text-primary)" : "var(--text-muted)" }}>
-                            {isPublishing ? "Publishing…" : "Publish to Classroom"}
+                            {isPublishing ? "Publishing…" : "Publish"}
                           </button>
                           <div className="self-stretch w-px shrink-0" style={{ background: "var(--border)" }} />
                           <button
@@ -1189,7 +1189,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                         title="Released to NeXTBox. Click to unrelease."
                         aria-label={`Unrelease ${lesson.title} from NeXTBox`}
                         className="group/rel rounded-full px-2.5 py-1 text-[10px] font-semibold transition hover:bg-red-500/10"
-                        style={{ background: "rgba(45,212,160,0.12)", color: "var(--success-text)" }}>
+                        style={{ background: "rgba(45,212,160,0.12)", border: "1px solid rgba(45,212,160,0.35)", color: "var(--success-text)" }}>
                         <span className="group-hover/rel:hidden">Released</span>
                         <span className="hidden group-hover/rel:inline text-[var(--danger-text)]">Unrelease</span>
                       </button>
@@ -1308,10 +1308,10 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                             <button
                               onClick={() => handleReleaseToClassroom(modLessonIds, mod.title)}
                               disabled={anyReleasing}
-                              title={course?.googleClassroomId ? "Publish module to Google Classroom" : "Link a classroom in Course Settings first"}
+                              title={course?.googleClassroomId ? "Publish this module's lessons to Google Classroom (posts drafts)" : "Link a classroom in Course Settings first"}
                               className="rounded-full px-2 py-0.5 text-[10px] font-semibold transition disabled:opacity-50"
                               style={{ background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
-                              {anyReleasing ? "Publishing…" : "Publish to Classroom"}
+                              {anyReleasing ? "Publishing…" : "Publish"}
                             </button>
                           );
                         })()}
@@ -1367,8 +1367,10 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                                     setReleasePickerSelected(new Set(modLessons.map(l => l.id)));
                                   }
                                 }}
-                                className="rounded-full px-2.5 py-0.5 text-[10px] font-semibold transition"
-                                style={{ background: releasePickerModuleId === mod.id ? "rgba(45,212,160,0.12)" : "var(--bg-card-hover)", border: "1px solid var(--border)", color: releasePickerModuleId === mod.id ? "#2dd4a0" : "var(--text-muted)" }}>
+                                title="Choose which lessons in this module are released to NeXTBox"
+                                className="rounded-full px-2.5 py-0.5 text-[10px] font-semibold transition hover:opacity-80"
+                                // Same NeXTBox green as each lesson's Released badge, so the two read as connected.
+                                style={{ background: "rgba(45,212,160,0.12)", border: `1px solid ${releasePickerModuleId === mod.id ? "var(--success-text)" : "rgba(45,212,160,0.35)"}`, color: "var(--success-text)" }}>
                                 NeXTBox Release
                               </button>
                               {releasePickerModuleId === mod.id && (
