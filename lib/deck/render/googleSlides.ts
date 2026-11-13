@@ -22,13 +22,13 @@ import { google } from "googleapis";
 import type { slides_v1 } from "googleapis";
 import type { ThemeConfig } from "@/types/theme";
 import type { DeckContent, DeckSlide } from "../schema";
-import { layoutSlide } from "../layout/registry";
+import { layoutSlide, type LayoutOptions } from "../layout/registry";
 import type { ColorToken, SlideLayout, TextElement } from "../layout/types";
 import { CANVAS_H, CANVAS_W } from "../layout/types";
 import { CODE_BG, CODE_TEXT, fontFamily, resolvePalette } from "./palette";
 import { DECORATION_IDS, FOOTER_Y } from "../layout/decorations";
 import { GRID, HEADER_TITLE_Y } from "../layout/kit";
-import { learnTemplateStyle, learnedColor, type Backdrop, type Decoration, type LearnedFrame, type LearnedStyle } from "./templateStyle";
+import { learnTemplateStyle, learnedColor, textRightOf, type Backdrop, type Decoration, type LearnedFrame, type LearnedStyle } from "./templateStyle";
 
 type Request = slides_v1.Schema$Request;
 type OpaqueColor = slides_v1.Schema$OpaqueColor;
@@ -347,7 +347,7 @@ function drawnSlide(layout: SlideLayout, pageId: string, ids: Ids, ctx: Ctx, ins
   const dark = layout.dark;
   const page = pageFrame(ctx.template?.pageW ?? CANVAS_W, ctx.template?.pageH ?? CANVAS_H, ctx.learned?.frame);
   const body = bodyFrame(layout, page, ctx.learned?.frame);
-  const backdrop = dark ? ctx.learned?.coverBackdrop : ctx.learned?.contentBackdrop;
+  const backdrop = layout.cover && ctx.learned?.titleBackdrop ? ctx.learned.titleBackdrop : dark ? ctx.learned?.coverBackdrop : ctx.learned?.contentBackdrop;
   const reqs: Request[] = backdrop
     ? backdropSlide(backdrop, pageId, ids, insertionIndex)
     : [
@@ -427,6 +427,18 @@ export interface BuiltRequests {
   notes: string[];
 }
 
+/**
+ * Layout options from the template: the title slide's text stops short of the title slide's own
+ * art (a seal on the right), converted from page shares to canvas pt through the page frame.
+ */
+export function layoutOptions(ctx: Ctx): LayoutOptions {
+  const right = textRightOf(ctx.learned?.titleBackdrop?.art);
+  if (right === undefined) return {};
+  const pageW = ctx.template?.pageW ?? CANVAS_W;
+  const f = pageFrame(pageW, ctx.template?.pageH ?? CANVAS_H, ctx.learned?.frame);
+  return { title: { textRight: (right * pageW - f.ox) / f.kx } };
+}
+
 /** Every request needed to draw the deck, after any slides already in the presentation. */
 export function buildSlidesRequests(deck: DeckContent, ctx: Ctx, idPrefix = "nx"): BuiltRequests {
   const ids = new Ids(idPrefix);
@@ -444,7 +456,7 @@ export function buildSlidesRequests(deck: DeckContent, ctx: Ctx, idPrefix = "nx"
     if (placeholder && (slide.type === "title" || slide.type === "section")) {
       requests.push(...placeholderSlide(slide, placeholder, pageId, ids, index));
     } else {
-      requests.push(...drawnSlide(layoutSlide(slide), pageId, ids, ctx, index));
+      requests.push(...drawnSlide(layoutSlide(slide, layoutOptions(ctx)), pageId, ids, ctx, index));
     }
     slideIds.push(pageId);
     notes.push(slide.notes);

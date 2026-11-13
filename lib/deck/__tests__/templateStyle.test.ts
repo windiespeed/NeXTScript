@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { slides_v1 } from "googleapis";
-import { learnTemplateStyle, luminance } from "@/lib/deck/render/templateStyle";
-import { buildSlidesRequests, inspectTemplate, pageFrame, slidesFont, bodyFrame } from "@/lib/deck/render/googleSlides";
+import { learnTemplateStyle, luminance, textRightOf } from "@/lib/deck/render/templateStyle";
+import { buildSlidesRequests, inspectTemplate, layoutOptions, pageFrame, slidesFont, bodyFrame } from "@/lib/deck/render/googleSlides";
 import { layoutSlide } from "@/lib/deck/layout/registry";
 import type { TextElement } from "@/lib/deck/layout/types";
 import { FOOTER_Y } from "@/lib/deck/layout/decorations";
@@ -236,5 +236,51 @@ describe("slidesFont", () => {
     expect(slidesFont("'Segoe UI', Arial, sans-serif")).toBe("Arial");
     expect(slidesFont("'Inter', 'Segoe UI', sans-serif")).toBe("Inter");
     expect(slidesFont("'Some Brand Serif', serif")).toBe("Georgia");
+  });
+});
+
+describe("title slide art (a seal on the template's cover)", () => {
+  const seal: slides_v1.Schema$PageElement = {
+    objectId: "seal",
+    size: { width: { magnitude: 3200000, unit: "EMU" }, height: { magnitude: 3200000, unit: "EMU" } },
+    transform: { scaleX: 1, scaleY: 1, translateX: 5100000, translateY: 800000, unit: "EMU" },
+    image: { contentUrl: "https://example.com/seal.png" },
+  };
+  const withSeal: slides_v1.Schema$Presentation = {
+    ...handStyled,
+    slides: handStyled.slides!.map(sl => (sl.objectId === "s1" ? { ...sl, pageElements: [...sl.pageElements!, seal] } : sl)),
+  };
+  const learned = learnTemplateStyle(withSeal)!;
+  const template = inspectTemplate(withSeal);
+
+  it("keeps the first slide's own pictures for the title slide only", () => {
+    expect(learned.titleBackdrop).toMatchObject({ slideId: "s1", keep: ["g1", "seal"] });
+    expect(learned.titleBackdrop!.art).toEqual([expect.objectContaining({ image: true, x: 5100000 / 9144000 })]);
+    expect(learned.coverBackdrop!.keep).toEqual(["g1"]);
+  });
+
+  it("has no title backdrop when the first slide has no pictures", () => {
+    expect(learnTemplateStyle(handStyled)!.titleBackdrop).toBeUndefined();
+  });
+
+  it("stops the title slide's text short of the seal", () => {
+    expect(textRightOf(learned.titleBackdrop!.art)).toBeCloseTo(5100000 / 9144000 - 0.03);
+    const opts = layoutOptions({ theme: getTheme("pearl"), template, learned });
+    const plain = layoutSlide(SAMPLE_DECK.slides[0]);
+    const narrowed = layoutSlide(SAMPLE_DECK.slides[0], opts);
+    expect(narrowed.cover).toBe(true);
+    const right = (l: typeof plain) => Math.max(...l.elements.filter(e => e.kind === "text").map(e => e.x + e.w));
+    expect(right(narrowed)).toBeLessThan(right(plain));
+    expect(right(narrowed)).toBeLessThanOrEqual(opts.title!.textRight! + 0.5);
+  });
+
+  it("draws the title slide on the copy with the seal, and the other dark slides without it", () => {
+    const { requests } = buildSlidesRequests(SAMPLE_DECK, { theme: getTheme("pearl"), template, learned });
+    const dups = requests.filter(r => r.duplicateObject).map(r => r.duplicateObject!);
+    const deleted = new Set(requests.filter(r => r.deleteObject).map(r => r.deleteObject!.objectId));
+    const sealKept = dups.map(d => !!d.objectIds!.seal && !deleted.has(d.objectIds!.seal));
+    expect(SAMPLE_DECK.slides[0].type).toBe("title");
+    expect(sealKept[0]).toBe(true);
+    expect(sealKept.slice(1).some(Boolean)).toBe(false);
   });
 });

@@ -72,8 +72,12 @@ export function ensureContrast(fg: string, bgs: string[]): string {
 const TEXT_TOKENS = ["text.primary", "text.secondary", "text.muted", "accent.primary", "accent.secondary", "accent.tertiary"] as const;
 
 /** Adjusts every text-colored token so it stays readable on the slide surface and panels. */
-function readable(p: Omit<Palette, "code.label">): Palette {
+function readable(p: Omit<Palette, "code.label">, exact = false): Palette {
   const out = { ...p } as Palette;
+  if (exact) {
+    out["code.label"] = ensureContrast(p["accent.primary"], [p["code.bg"]]);
+    return out;
+  }
   for (const k of TEXT_TOKENS) out[k] = ensureContrast(p[k], [p.surface, p.panel]);
   out["code.label"] = ensureContrast(p["accent.primary"], [p["code.bg"]]);
   return out;
@@ -101,7 +105,7 @@ export function resolvePalette(theme: ThemeConfig, dark = false): Palette {
       "accent.tertiary": d.accent.tertiary,
       "code.bg": CODE_BG,
       "code.text": CODE_TEXT,
-    });
+    }, theme.exactColors);
   }
 
   if (!dark) {
@@ -112,7 +116,7 @@ export function resolvePalette(theme: ThemeConfig, dark = false): Palette {
       "text.secondary": theme.text.secondary,
       "text.muted": theme.text.muted,
       ...accents,
-    });
+    }, theme.exactColors);
   }
 
   // Dark themes already have a dark surface: use the deeper page color so dark slides still read

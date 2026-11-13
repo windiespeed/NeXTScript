@@ -11,7 +11,7 @@ import { layoutCode } from "./code";
 import { layoutConcept } from "./concept";
 import { layoutAgenda, layoutExitTicket, layoutObjectives } from "./lists";
 import { layoutCards, layoutCompare, layoutLab, layoutPitfalls, layoutSteps, layoutTable } from "./panels";
-import { layoutCallout, layoutClosing, layoutSection, layoutTitle } from "./statement";
+import { layoutCallout, layoutClosing, layoutSection, layoutTitle, type TitleOptions } from "./statement";
 import { decorate, takeawayReserve } from "./decorations";
 import { withReservedBottom } from "./kit";
 import type { SlideLayout } from "./types";
@@ -49,7 +49,15 @@ export class UnsupportedSlideTypeError extends Error {
   }
 }
 
-export function layoutSlide(slide: DeckSlide): SlideLayout {
+/** Per-deck layout options; `title` applies to the title slide. */
+export interface LayoutOptions {
+  title?: TitleOptions;
+}
+
+export function layoutSlide(slide: DeckSlide, opts: LayoutOptions = {}): SlideLayout {
+  if (slide.type === "title" && opts.title?.textRight) {
+    return withReservedBottom(takeawayReserve(slide), () => decorate(layoutTitle(slide, opts.title), slide));
+  }
   const fn = LAYOUTS[slide.type] as LayoutFn<typeof slide.type> | undefined;
   if (!fn) throw new UnsupportedSlideTypeError(slide.type);
   // A takeaway line takes room from the bottom of the body area, so the layout fits above it.

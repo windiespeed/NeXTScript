@@ -5,7 +5,9 @@ import { serverError } from "@/lib/apiErrors";
 import { courseStore } from "@/lib/courseStore";
 import { canAccessCourse } from "@/lib/access";
 import { presentationIdFromUrl } from "@/lib/deck/render/googleSlides";
-import { learnTemplateStyle, themeFromLearned } from "@/lib/deck/render/templateStyle";
+import { learnTemplateStyle, themeFromLearned, type Backdrop, type LearnedStyle } from "@/lib/deck/render/templateStyle";
+import { pptxBackdropCss } from "@/lib/deck/render/templateBackdropCss";
+import type { ThemeConfig } from "@/types/theme";
 
 export const dynamic = "force-dynamic";
 
@@ -39,7 +41,12 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       const pres = await slides.presentations.get({ presentationId });
       const learned = learnTemplateStyle(pres.data);
       const name = pres.data.title ?? "Course template";
-      return NextResponse.json({ template: { url, name, theme: learned ? themeFromLearned(learned, name) : null } });
+      const theme = learned ? themeFromLearned(learned, name) : null;
+      if (theme && learned) {
+        const css = await backdropCss(client, presentationId, (pres.data.slides ?? []).map(s => s.objectId ?? ""), learned);
+        if (css) theme.backdropCss = css;
+      }
+      return NextResponse.json({ template: { url, name, theme } });
     } catch (err) {
       const code = (err as { code?: number }).code;
       if (code === 403 || code === 404) {
@@ -49,5 +56,38 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     }
   } catch (err) {
     return serverError(err, "template style");
+  }
+}
+
+/**
+ * The template's background gradients as CSS, so the preview shows them. The Slides API doesn't
+ * expose gradients, so this reads them from a .pptx export of the template. Best effort: without
+ * it the preview falls back to flat colors.
+ */
+async function backdropCss(
+  client: InstanceType<typeof google.auth.OAuth2>,
+  presentationId: string,
+  slideIds: string[],
+  learned: LearnedStyle,
+): Promise<ThemeConfig["backdropCss"] | undefined> {
+  const index = (b?: Backdrop) => (b ? slideIds.indexOf(b.slideId) : -1);
+  const pictures = (b?: Backdrop) => (b?.art ?? []).filter(a => a.image);
+  const wanted = { content: learned.contentBackdrop, dark: learned.coverBackdrop, title: learned.titleBackdrop };
+  const keys = (Object.keys(wanted) as (keyof typeof wanted)[]).filter(k => index(wanted[k]) >= 0);
+  if (!keys.length) return undefined;
+  try {
+    const drive = google.drive({ version: "v3", auth: client });
+    const res = await drive.files.export(
+      { fileId: presentationId, mimeType: "application/vnd.openxmlformats-officedocument.presentationml.presentation" },
+      { responseType: "arraybuffer" },
+    );
+    const found = await pptxBackdropCss(res.data as ArrayBuffer, keys.map(k => ({ index: index(wanted[k]), art: pictures(wanted[k]) })));
+    const css: NonNullable<ThemeConfig["backdropCss"]> = {};
+    keys.forEach((k, i) => {
+      if (found[i]) css[k] = found[i];
+    });
+    return Object.keys(css).length ? css : undefined;
+  } catch {
+    return undefined;
   }
 }

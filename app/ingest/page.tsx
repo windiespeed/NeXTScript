@@ -971,24 +971,24 @@ function IngestPageInner() {
             />
             </div>
 
-            <div className="flex flex-wrap items-end justify-between gap-4">
-              <AiModelNote preference={preferredAiModel} keys={savedKeys} />
-              <div className="w-44">
-                <label htmlFor="ingest-approx-slide-count-optional" className="block text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
-                  Approx. Slide Count <span className="font-normal" style={{ color: "var(--text-muted)" }}>(optional)</span>
-                </label>
-                <input id="ingest-approx-slide-count-optional"
-                  type="number"
-                  min={1}
-                  max={30}
-                  value={slideCount}
-                  onChange={e => setSlideCount(e.target.value)}
-                  placeholder="Let AI decide"
-                  className={inputClass}
-                  style={inputStyle}
-                />
-              </div>
+            {/* Slide count sits right under the notes it applies to, on one line. */}
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 -mt-1">
+              <label htmlFor="ingest-approx-slide-count-optional" className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>
+                Approx. slide count <span className="font-normal" style={{ color: "var(--text-muted)" }}>(optional)</span>
+              </label>
+              <input id="ingest-approx-slide-count-optional"
+                type="number"
+                min={1}
+                max={30}
+                value={slideCount}
+                onChange={e => setSlideCount(e.target.value)}
+                placeholder="Let AI decide"
+                className={inputClass.replace("w-full", "w-36")}
+                style={inputStyle}
+              />
             </div>
+
+            <AiModelNote preference={preferredAiModel} keys={savedKeys} />
 
             {error && <p role="alert" className="text-xs text-[var(--danger-text)]">{error}</p>}
             {saveInfoError && <p role="alert" className="text-xs text-[var(--danger-text)]">{saveInfoError}</p>}
@@ -1175,11 +1175,11 @@ function IngestPageInner() {
                     {cover && (
                       <div className="space-y-1">
                         <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>Cover</p>
-                        <SlideCanvas layout={layoutSlide(cover)} theme={previewTheme} showWarnings={false} label="Cover slide" className="rounded-xl" />
+                        <SlideCanvas layout={layoutSlide(cover, previewTheme.titleTextRight ? { title: { textRight: previewTheme.titleTextRight } } : {})} theme={previewTheme} showWarnings={false} label="Cover slide" className="rounded-xl" />
                       </div>
                     )}
                     {parts.map(s => (
-                      <SlideCanvas key={s.id} layout={layoutSlide(s)} theme={previewTheme} showWarnings={false} label={`Slide ${activeIndex + 1}: ${slide?.title ?? ""}`} className="rounded-xl" />
+                      <SlideCanvas key={s.id} layout={layoutSlide(s, previewTheme.titleTextRight ? { title: { textRight: previewTheme.titleTextRight } } : {})} theme={previewTheme} showWarnings={false} label={`Slide ${activeIndex + 1}: ${slide?.title ?? ""}`} className="rounded-xl" />
                     ))}
                     {slide?.notes?.trim() && (
                       <div className="rounded-xl px-4 py-3 text-xs space-y-1" style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)" }}>
@@ -1189,7 +1189,8 @@ function IngestPageInner() {
                     )}
                     {templateOn && templateInfo?.theme && (
                       <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
-                        Shown in {templateInfo.name ?? "the course template"}&apos;s colors and fonts. Its background art and logos are added when you export.
+                        Shown in {templateInfo.name ?? "the course template"}&apos;s colors, fonts{templateInfo.theme.backdropCss ? " and backgrounds" : ""}.{" "}
+                        {templateInfo.theme.backdropCss ? "Logos that come from its layouts are added when you export." : "Its background art and logos are added when you export."}
                       </p>
                     )}
                   </div>

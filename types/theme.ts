@@ -35,6 +35,24 @@ export interface ThemeConfig {
    * when the deck isn't on a course template. */
   backdrop?: "nextstack";
   /**
+   * A course template's background art (its gradients) as CSS, for the in-browser preview only;
+   * the Google Slides export copies the real thing. `dark` is for the dark slide types.
+   */
+  backdropCss?: {
+    content?: BackdropCssLayer;
+    dark?: BackdropCssLayer;
+    /** The title slide's own backdrop (with its seal or emblem), when the template has one. */
+    title?: BackdropCssLayer;
+  };
+  /** Where title-slide text must end, in canvas pt, to stay clear of the template's cover art. */
+  titleTextRight?: number;
+  /**
+   * Use the colors exactly as given, without the readability adjustment. Set for a course
+   * template's learned look, so the preview matches the export (which copies the template's
+   * colors as they are, and draws them over the template's own gradients).
+   */
+  exactColors?: boolean;
+  /**
    * Colors for the dark slide types (title, section, callout, closing), when they come from
    * somewhere other than the theme itself: a course template's cover slides.
    */
@@ -44,4 +62,12 @@ export interface ThemeConfig {
     text: { primary: string; secondary: string; muted: string };
     accent: { primary: string; secondary: string; tertiary: string };
   };
+}
+
+/** A template backdrop for the preview: CSS background layers plus positioned pictures. */
+export interface BackdropCssLayer {
+  image: string;
+  color?: string;
+  /** Pictures (logos, a seal) as data: URLs, positioned as shares of the slide (0–1). */
+  art?: { src: string; x: number; y: number; w: number; h: number }[];
 }

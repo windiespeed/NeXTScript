@@ -12,10 +12,19 @@ import { CANVAS_H, CANVAS_W } from "./types";
 const STRIPE = { x: GRID.marginX, w: 6 };
 const TEXT_X = GRID.marginX + 28;
 const TEXT_W = CANVAS_W - TEXT_X - 80;
+const DEFAULT_TEXT_W = TEXT_W;
+
+/** Options for the title slide. */
+export interface TitleOptions {
+  /** Where the text must end, in canvas pt, to stay clear of art on the right (a template's seal). */
+  textRight?: number;
+}
 
 /** Title slide: kicker, big title, subtitle, with an accent stripe down the left of the block. */
-export function layoutTitle(slide: SlideOf<"title">): SlideLayout {
+export function layoutTitle(slide: SlideOf<"title">, opts: TitleOptions = {}): SlideLayout {
   const b = new SlideBuilder(slide.id, slide.notes, true);
+  // Narrower only when that still leaves a usable column; the fitter shrinks the type to suit.
+  const TEXT_W = opts.textRight && opts.textRight - TEXT_X >= 240 ? Math.min(DEFAULT_TEXT_W, opts.textRight - TEXT_X) : DEFAULT_TEXT_W;
   const top = 110;
   let y = top;
   if (slide.kicker) {
@@ -41,7 +50,7 @@ export function layoutTitle(slide: SlideOf<"title">): SlideLayout {
     y += sub.h;
   }
   b.elements.unshift({ kind: "rect", id: "stripe", x: STRIPE.x, y: top, w: STRIPE.w, h: y - top, fill: "accent.primary", radius: 3 });
-  return b.build();
+  return { ...b.build(), cover: true };
 }
 
 /** Section divider: like the title slide, a little smaller, vertically centered. */
