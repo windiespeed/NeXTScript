@@ -49,9 +49,9 @@ export default function SlideCanvas({ layout, theme, showWarnings = true, label,
 
   function textStyle(el: TextElement): CSSProperties {
     return {
-      color: palette[el.color],
-      fontFamily: fontFamily(theme, el.font),
-      fontWeight: el.font === "heading" ? theme.typography.headingWeight : undefined,
+      color: el.hex ?? palette[el.color],
+      fontFamily: el.fontFamily ? `"${el.fontFamily}", ${fontFamily(theme, el.font)}` : fontFamily(theme, el.font),
+      fontWeight: el.weight ?? (el.font === "heading" ? theme.typography.headingWeight : undefined),
       fontSize: cq(el.fontSize),
       lineHeight: el.lineHeight,
       textAlign: el.align,

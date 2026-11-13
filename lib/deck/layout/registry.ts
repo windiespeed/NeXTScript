@@ -14,6 +14,7 @@ import { layoutCards, layoutCompare, layoutLab, layoutPitfalls, layoutSteps, lay
 import { layoutCallout, layoutClosing, layoutSection, layoutTitle, type TitleOptions } from "./statement";
 import { decorate, takeawayReserve } from "./decorations";
 import { withReservedBottom } from "./kit";
+import { layoutTemplateCover, type TemplateCover } from "./templateCover";
 import type { SlideLayout } from "./types";
 
 export type LayoutFn<T extends DeckSlideType> = (slide: SlideOf<T>) => SlideLayout;
@@ -49,12 +50,19 @@ export class UnsupportedSlideTypeError extends Error {
   }
 }
 
+/** Layout options a theme asks for: a course template's title-slide design. */
+export function layoutOptionsForTheme(theme: { titleTextRight?: number; templateCover?: TemplateCover }): LayoutOptions {
+  if (!theme.titleTextRight && !theme.templateCover) return {};
+  return { title: { ...(theme.titleTextRight ? { textRight: theme.titleTextRight } : {}), ...(theme.templateCover ? { template: theme.templateCover } : {}) } };
+}
+
 /** Per-deck layout options; `title` applies to the title slide. */
 export interface LayoutOptions {
   title?: TitleOptions;
 }
 
 export function layoutSlide(slide: DeckSlide, opts: LayoutOptions = {}): SlideLayout {
+  if (slide.type === "title" && opts.title?.template) return layoutTemplateCover(slide, opts.title.template);
   if (slide.type === "title" && opts.title?.textRight) {
     return withReservedBottom(takeawayReserve(slide), () => decorate(layoutTitle(slide, opts.title), slide));
   }

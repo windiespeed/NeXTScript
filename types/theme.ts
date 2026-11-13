@@ -1,3 +1,5 @@
+import type { TemplateCover } from "@/lib/deck/layout/templateCover";
+
 export type ThemeCategory = "light" | "dark" | "vibrant";
 
 export interface ThemeConfig {
@@ -46,6 +48,8 @@ export interface ThemeConfig {
   };
   /** Where title-slide text must end, in canvas pt, to stay clear of the template's cover art. */
   titleTextRight?: number;
+  /** A course template's own cover text design, which the title slide follows. */
+  templateCover?: TemplateCover;
   /**
    * Use the colors exactly as given, without the readability adjustment. Set for a course
    * template's learned look, so the preview matches the export (which copies the template's

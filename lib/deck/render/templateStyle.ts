@@ -29,6 +29,7 @@
 import type { slides_v1 } from "googleapis";
 import type { ColorToken } from "../layout/types";
 import { CANVAS_W } from "../layout/types";
+import type { CoverText, TemplateCover } from "../layout/templateCover";
 import type { ThemeConfig } from "@/types/theme";
 
 type Page = slides_v1.Schema$Page;
@@ -104,6 +105,8 @@ export interface LearnedStyle {
    * used for the deck's title slide only. Absent when the first slide has no extra pictures.
    */
   titleBackdrop?: Backdrop;
+  /** The first slide's own text design (title, subtitle, label boxes), followed for the title slide. */
+  titleCover?: TemplateCover;
   headingFont?: string;
   bodyFont?: string;
 }
@@ -471,6 +474,82 @@ export function backdropOf(
 }
 
 /**
+ * The first slide's text design: its biggest text is the title, the nearest smaller text above it
+ * is the label (kicker), and the nearest below it, above the bottom band, is the subtitle. Any
+ * other text box is removed from the copy. Undefined when the slide has no sized text.
+ */
+export function learnCover(slide: Page, scheme: Scheme, pageW: number, pageH: number): TemplateCover | undefined {
+  if (!slide.objectId || !pageW || !pageH) return undefined;
+  const boxes: CoverText[] = [];
+  for (const el of slide.pageElements ?? []) {
+    if (!el.objectId || !el.shape?.text || el.elementGroup) continue;
+    const runs = runsOf(el, scheme);
+    if (!runs.length) continue;
+    const lead = runs.reduce((a, b) => ((b.size ?? 0) > (a.size ?? 0) ? b : a));
+    if (!lead.size) continue;
+    const w = (el.size?.width?.magnitude ?? 0) * Math.abs(el.transform?.scaleX ?? 1);
+    const h = (el.size?.height?.magnitude ?? 0) * Math.abs(el.transform?.scaleY ?? 1);
+    const scale = Math.abs(el.transform?.scaleY ?? 1);
+    const align = el.shape.text.textElements?.find(t => t.paragraphMarker)?.paragraphMarker?.style?.alignment;
+    const valign = el.shape.shapeProperties?.contentAlignment;
+    const text = runs.map(r => r.text).join(" ");
+    boxes.push({
+      objectId: el.objectId,
+      x: (el.transform?.translateX ?? 0) / pageW,
+      y: (el.transform?.translateY ?? 0) / pageH,
+      w: w / pageW,
+      h: h / pageH,
+      // Sizes are scaled with the box when the box itself was scaled.
+      size: lead.size * (scale || 1),
+      color: lead.color ?? "#FFFFFF",
+      bold: lead.bold,
+      ...(lead.font ? { font: lead.font } : {}),
+      align: align === "CENTER" ? "center" : align === "END" ? "right" : "left",
+      valign: valign === "MIDDLE" ? "middle" : valign === "BOTTOM" ? "bottom" : "top",
+      uppercase: /[A-Z]/.test(text) && text === text.toUpperCase(),
+      lines: Math.max(1, (el.shape.text.textElements ?? []).filter(t => t.paragraphMarker).length, ...runs.map(r => r.text.split(/\n|\v/).length)),
+    });
+  }
+  if (!boxes.length) return undefined;
+  // Large pictures (a seal): text boxes that run under them end just before them instead.
+  const pictures = (slide.pageElements ?? [])
+    .filter(el => el.image)
+    .map(el => ({
+      x: (el.transform?.translateX ?? 0) / pageW,
+      y: (el.transform?.translateY ?? 0) / pageH,
+      w: ((el.size?.width?.magnitude ?? 0) * Math.abs(el.transform?.scaleX ?? 1)) / pageW,
+      h: ((el.size?.height?.magnitude ?? 0) * Math.abs(el.transform?.scaleY ?? 1)) / pageH,
+    }))
+    .filter(p => p.w * p.h > 0.04);
+  const native = new Map((slide.pageElements ?? []).map(el => [el.objectId, el]));
+  for (const b of boxes) {
+    const under = pictures.filter(p => b.y < p.y + p.h - 0.01 && b.y + b.h > p.y + 0.01 && p.x > b.x + b.w * 0.25 && p.x < b.x + b.w);
+    if (!under.length) continue;
+    const el = native.get(b.objectId)!;
+    const t = el.transform ?? {};
+    b.w = Math.min(...under.map(p => p.x)) - 0.02 - b.x;
+    b.resize = {
+      nativeWidth: el.size?.width?.magnitude ?? 0,
+      transform: { scaleX: t.scaleX ?? 1, scaleY: t.scaleY ?? 1, shearX: t.shearX ?? 0, shearY: t.shearY ?? 0, translateX: t.translateX ?? 0, translateY: t.translateY ?? 0 },
+    };
+  }
+  const title = boxes.reduce((a, b) => (b.size > a.size ? b : a));
+  const others = boxes.filter(b => b !== title && b.size < title.size);
+  const kicker = others.filter(b => b.y + b.h <= title.y + title.h * 0.25).sort((a, b) => b.y - a.y)[0];
+  const subtitle = others.filter(b => b !== kicker && b.y >= title.y + title.h * 0.5 && b.y < BOTTOM_BAND).sort((a, b) => a.y - b.y)[0];
+  const used = new Set([title, kicker, subtitle].filter(Boolean));
+  return {
+    slideId: slide.objectId,
+    pageW: pageW / EMU_PER_PT,
+    pageH: pageH / EMU_PER_PT,
+    title,
+    ...(subtitle ? { subtitle } : {}),
+    ...(kicker ? { kicker } : {}),
+    otherText: boxes.filter(b => !used.has(b)).map(b => b.objectId),
+  };
+}
+
+/**
  * Where text on a slide must end so it doesn't run into large art on the right (a cover's seal),
  * as a share of the page width, or undefined when nothing is in the way. Small logos in the
  * corners don't count.
@@ -537,6 +616,9 @@ export function learnTemplateStyle(pres: slides_v1.Schema$Presentation): Learned
 
   const contentSlides = info.filter(i => i.bg === contentBg);
   const labels = contentSlides.map(i => decorationsOf(linesOf(i.slide, i.scheme, pageH)).label).filter((r): r is Run => !!r);
+  // Only a real cover: a first slide styled apart from the content slides, or with display-size text.
+  const learnedCover = learnCover(first.slide, first.scheme, pageW, pageH);
+  const titleCover = learnedCover && (coverBg !== undefined || learnedCover.title.size >= 36) ? learnedCover : undefined;
   const footers = info.map(i => decorationsOf(linesOf(i.slide, i.scheme, pageH)).footer).filter((r): r is Run => !!r);
   const schemeOf = new Map(info.map(i => [i.slide, i.scheme]));
   return {
@@ -548,6 +630,7 @@ export function learnTemplateStyle(pres: slides_v1.Schema$Presentation): Learned
     contentBackdrop,
     coverBackdrop,
     ...(titleBackdrop ? { titleBackdrop } : {}),
+    ...(titleCover ? { titleCover } : {}),
     headingFont: top(new Map([...content.titleFont, ...cover.titleFont].map(([k]) => [k, (content.titleFont.get(k) ?? 0) + (cover.titleFont.get(k) ?? 0)]))),
     bodyFont: top(content.bodyFont) ?? top(cover.bodyFont),
   };
@@ -594,6 +677,7 @@ export function themeFromLearned(style: LearnedStyle, name = "Course template"):
     radius: "0",
     exactColors: true,
     ...(titleRight !== undefined ? { titleTextRight: titleRight * CANVAS_W } : {}),
+    ...(style.titleCover ? { templateCover: style.titleCover } : {}),
     darkSlides: {
       surface: v.background,
       panel: v.panel,

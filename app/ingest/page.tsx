@@ -12,7 +12,7 @@ import type { PresentationAST } from "@/types/slideAst";
 import type { ThemeConfig } from "@/types/theme";
 import SlideCanvas from "@/components/deck/SlideCanvas";
 import { astToDeck, deckSlidesFor } from "@/lib/deck/fromAst";
-import { layoutSlide } from "@/lib/deck/layout/registry";
+import { layoutOptionsForTheme, layoutSlide } from "@/lib/deck/layout/registry";
 import type { Course, CourseModule } from "@/types/course";
 import type { Lesson, LessonInput } from "@/types/lesson";
 import type { SectionDef } from "@/types/section";
@@ -1175,11 +1175,11 @@ function IngestPageInner() {
                     {cover && (
                       <div className="space-y-1">
                         <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>Cover</p>
-                        <SlideCanvas layout={layoutSlide(cover, previewTheme.titleTextRight ? { title: { textRight: previewTheme.titleTextRight } } : {})} theme={previewTheme} showWarnings={false} label="Cover slide" className="rounded-xl" />
+                        <SlideCanvas layout={layoutSlide(cover, layoutOptionsForTheme(previewTheme))} theme={previewTheme} showWarnings={false} label="Cover slide" className="rounded-xl" />
                       </div>
                     )}
                     {parts.map(s => (
-                      <SlideCanvas key={s.id} layout={layoutSlide(s, previewTheme.titleTextRight ? { title: { textRight: previewTheme.titleTextRight } } : {})} theme={previewTheme} showWarnings={false} label={`Slide ${activeIndex + 1}: ${slide?.title ?? ""}`} className="rounded-xl" />
+                      <SlideCanvas key={s.id} layout={layoutSlide(s, layoutOptionsForTheme(previewTheme))} theme={previewTheme} showWarnings={false} label={`Slide ${activeIndex + 1}: ${slide?.title ?? ""}`} className="rounded-xl" />
                     ))}
                     {slide?.notes?.trim() && (
                       <div className="rounded-xl px-4 py-3 text-xs space-y-1" style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border)" }}>

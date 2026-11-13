@@ -61,6 +61,12 @@ export interface TextElement extends Box {
   uppercase?: boolean;
   letterSpacing?: number;
   paragraphs: Paragraph[];
+  /** An exact color that wins over `color` (a course template's own cover text). */
+  hex?: string;
+  /** A font that wins over the theme's font for `font` (a course template's own cover text). */
+  fontFamily?: string;
+  /** Font weight that wins over the theme's heading weight. */
+  weight?: number;
 }
 
 export interface RectElement extends Box {

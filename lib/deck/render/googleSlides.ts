@@ -21,8 +21,9 @@
 import { google } from "googleapis";
 import type { slides_v1 } from "googleapis";
 import type { ThemeConfig } from "@/types/theme";
-import type { DeckContent, DeckSlide } from "../schema";
+import type { DeckContent, DeckSlide, SlideOf } from "../schema";
 import { layoutSlide, type LayoutOptions } from "../layout/registry";
+import { coverTexts, fitCoverSize, type TemplateCover } from "../layout/templateCover";
 import type { ColorToken, SlideLayout, TextElement } from "../layout/types";
 import { CANVAS_H, CANVAS_W } from "../layout/types";
 import { CODE_BG, CODE_TEXT, fontFamily, resolvePalette } from "./palette";
@@ -420,6 +421,72 @@ function placeholderSlide(slide: Extract<DeckSlide, { type: "title" | "section" 
   return reqs;
 }
 
+/**
+ * The title slide as a copy of the template's own first slide: every picture, shape and background
+ * stays exactly as designed, and the deck's title, subtitle and label go into the template's own
+ * text boxes in their own style. Text shrinks only if it wouldn't fit its box.
+ */
+function templateCoverSlide(slide: SlideOf<"title">, cover: TemplateCover, pageId: string, ids: Ids, insertionIndex: number): Request[] {
+  const roles = (["title", "subtitle", "kicker"] as const).filter(r => cover[r]);
+  const objectIds: Record<string, string> = { [cover.slideId]: pageId };
+  const boxIds = new Map(roles.map(r => [r, (objectIds[cover[r]!.objectId] = ids.next("ct"))]));
+  for (const id of cover.otherText) objectIds[id] = ids.next("cx");
+  const texts = coverTexts(slide, cover);
+  const reqs: Request[] = [
+    { duplicateObject: { objectId: cover.slideId, objectIds } },
+    ...cover.otherText.map(id => ({ deleteObject: { objectId: objectIds[id] } })),
+    { updateSlidesPosition: { slideObjectIds: [pageId], insertionIndex: insertionIndex + 1 } },
+  ];
+  for (const role of roles) {
+    const box = cover[role]!;
+    const objectId = boxIds.get(role)!;
+    const text = texts[role];
+    if (!text) {
+      reqs.push({ deleteObject: { objectId } });
+      continue;
+    }
+    const size = fitCoverSize(text, box, role, cover);
+    if (box.resize?.nativeWidth) {
+      // Narrowed to end before the cover's picture: same position, new width.
+      const t = box.resize.transform;
+      reqs.push({
+        updatePageElementTransform: {
+          objectId,
+          applyMode: "ABSOLUTE",
+          transform: { ...t, scaleX: (box.w * cover.pageW * EMU_PER_PT) / box.resize.nativeWidth, unit: "EMU" },
+        },
+      });
+    }
+    reqs.push(
+      { deleteText: { objectId, textRange: { type: "ALL" } } },
+      { insertText: { objectId, insertionIndex: 0, text: box.uppercase ? text.toUpperCase() : text } },
+      {
+        // Restated so the new text keeps the template's look whatever the box's leftover style is.
+        updateTextStyle: {
+          objectId,
+          textRange: { type: "ALL" },
+          style: {
+            fontSize: { magnitude: size, unit: "PT" },
+            foregroundColor: { opaqueColor: rgb(box.color) },
+            bold: box.bold,
+            ...(box.font ? { fontFamily: box.font } : {}),
+          },
+          fields: `fontSize,foregroundColor,bold${box.font ? ",fontFamily" : ""}`,
+        },
+      },
+      {
+        updateParagraphStyle: {
+          objectId,
+          textRange: { type: "ALL" },
+          style: { alignment: box.align === "center" ? "CENTER" : box.align === "right" ? "END" : "START" },
+          fields: "alignment",
+        },
+      },
+    );
+  }
+  return reqs;
+}
+
 export interface BuiltRequests {
   requests: Request[];
   /** Page object id of each new slide, in deck order, for adding speaker notes afterwards. */
@@ -453,7 +520,9 @@ export function buildSlidesRequests(deck: DeckContent, ctx: Ctx, idPrefix = "nx"
     // A template styled slide by slide has plain layouts; its title and section look is learned.
     const layouts = ctx.learned ? undefined : ctx.template;
     const placeholder = slide.type === "title" ? layouts?.titleLayout : slide.type === "section" ? layouts?.sectionLayout : undefined;
-    if (placeholder && (slide.type === "title" || slide.type === "section")) {
+    if (slide.type === "title" && ctx.learned?.titleCover) {
+      requests.push(...templateCoverSlide(slide, ctx.learned.titleCover, pageId, ids, index));
+    } else if (placeholder && (slide.type === "title" || slide.type === "section")) {
       requests.push(...placeholderSlide(slide, placeholder, pageId, ids, index));
     } else {
       requests.push(...drawnSlide(layoutSlide(slide, layoutOptions(ctx)), pageId, ids, ctx, index));
