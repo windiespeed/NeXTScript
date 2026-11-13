@@ -1326,7 +1326,7 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                       {!collapsed && (
                         <>
                           {/* Module NeXTBox settings bar */}
-                          <div className="flex items-center gap-4 px-4 py-2 border-b" style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}>
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2 border-b" style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}>
                             <span className="text-[10px] font-semibold uppercase tracking-widest shrink-0" style={{ color: "var(--text-muted)" }}>NeXTBox</span>
                             <div className="flex items-center gap-1.5">
                               <label htmlFor={`module-progress-${mod.id}`} className="text-[10px]" style={{ color: "var(--text-muted)" }}>Progress:</label>
