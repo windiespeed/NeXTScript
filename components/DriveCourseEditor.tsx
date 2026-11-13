@@ -1144,7 +1144,8 @@ export default function DriveCourseEditor({ driveId, onUnlink }: Props) {
                           onClick={() => handleTogglePublishedToClassroom(lesson)}
                           title="Click to mark as unpublished"
                           className="rounded-full px-3 py-1.5 text-xs font-semibold transition hover:opacity-80"
-                          style={{ background: "rgba(45,212,160,0.12)", border: "1px solid rgba(45,212,160,0.35)", color: "var(--success-text)" }}>
+                          // Classroom blue-teal, kept apart from NeXTBox green so the two kinds of release don't blur together.
+                          style={{ background: "rgba(12,192,223,0.10)", border: "1px solid rgba(12,192,223,0.35)", color: "var(--accent-text)" }}>
                           Published ✓
                         </button>
                       ) : (
